@@ -90,7 +90,16 @@ Emails:
 ${emailsText}`
 
     const raw = await callClaude(system, prompt)
-    const parsed = parseJSON(raw).filter(j => (j.confidence || 0) >= 20)
+    const parsed = parseJSON(raw).filter(j => (j.confidence || 0) >= 20).map(j => {
+      // Attach original email ID and from for linking back to Gmail
+      const originalEmail = batch[j.emailId - i - 1]
+      if (originalEmail) {
+        j.gmailId = originalEmail.id
+        j.fromEmail = originalEmail.from
+        j.fromMe = originalEmail.fromMe
+      }
+      return j
+    })
     all.push(...parsed)
   }
 

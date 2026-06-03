@@ -102,6 +102,9 @@ export default function GmailImport({ onImport, onClose, existingJobs }) {
         status: r.status || 'sent',
         date: r.date || new Date().toISOString().split('T')[0],
         notes: r.notes || '',
+        _gmailId: r.gmailId,
+        _fromEmail: r.fromEmail,
+        _fromMe: r.fromMe,
       }))
     onImport(toImport)
     onClose()

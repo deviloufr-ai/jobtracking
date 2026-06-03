@@ -172,6 +172,27 @@ function splitPipeNotes(jobs) {
   })
 }
 
+// Merge history entries from same company on same date with same status
+function mergeSameDateEntries(jobs) {
+  return jobs.map(j => {
+    if (!j.history || j.history.length <= 1) return j
+    const merged = []
+    for (const entry of j.history) {
+      const key = `${entry.date}-${entry.status}`
+      const existing = merged.find(e => `${e.date}-${e.status}` === key && e.source === entry.source)
+      if (existing && entry.note && entry.note !== existing.note) {
+        // Append note if different
+        existing.note = existing.note
+          ? `${existing.note} · ${entry.note}`
+          : entry.note
+      } else if (!existing) {
+        merged.push({ ...entry })
+      }
+    }
+    return { ...j, history: merged }
+  })
+}
+
 function autoStale(jobs) {
   const now = new Date()
   return jobs.map(j => {
@@ -252,8 +273,16 @@ export function useJobs() {
         note: historyNote,
         offerUrl: status === 'todo' ? (data.url || '') : undefined,
         showCVButton: status === 'todo',
+        gmailId: data._gmailId || undefined,
+        from: data._fromEmail || undefined,
+        fromMe: data._fromMe || false,
+        source: data._gmailId ? 'email' : undefined,
       }]
     }
+    // Clean internal fields
+    delete job._gmailId
+    delete job._fromEmail
+    delete job._fromMe
     setJobs(prev => [job, ...prev])
     return job
   }
