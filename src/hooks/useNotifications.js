@@ -4,26 +4,27 @@ const NOTIF_KEY = 'jobtrackr_notif_permission'
 const SEEN_KEY = 'jobtrackr_seen_jobs'
 
 export function useNotifications() {
+  const supported = typeof window !== 'undefined' && 'Notification' in window
+
   const [permission, setPermission] = useState(() => {
-    if (typeof Notification === 'undefined') return 'unsupported'
-    return Notification.permission
+    if (!supported) return 'unsupported'
+    return window.Notification.permission
   })
 
   const requestPermission = async () => {
-    if (typeof Notification === 'undefined') return
-    const result = await Notification.requestPermission()
+    if (!supported) return 'unsupported'
+    const result = await window.Notification.requestPermission()
     setPermission(result)
     return result
   }
 
-  const notify = (title, body, icon = '🎯') => {
-    if (permission !== 'granted') return
+  const notify = (title, body) => {
+    if (!supported || permission !== 'granted') return
     try {
-      const n = new Notification(title, {
+      const n = new window.Notification(title, {
         body,
         icon: '/favicon.ico',
-        badge: '/favicon.ico',
-        tag: title, // prevent duplicates
+        tag: title,
       })
       n.onclick = () => { window.focus(); n.close() }
     } catch (e) {
