@@ -10,6 +10,7 @@ async function callClaude(systemPrompt, userContent) {
     return JSON.stringify(MOCK_PARSE_RESULT)
   }
 
+  console.log('Sending to Claude:', emailsText.slice(0, 500))
   const res = await fetch(CLAUDE_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -58,32 +59,19 @@ export async function parseEmailsForJobs(emails) {
     `[${i + 1}] De: ${e.from}\nSujet: ${e.subject}\nDate: ${e.date}\nAperçu: ${e.snippet}`
   ).join('\n\n---\n\n')
 
-  const system = `Tu es un assistant qui analyse des emails pour détecter des candidatures d'emploi.
-Tu réponds UNIQUEMENT en JSON valide, sans aucun texte avant ou après, sans backticks.`
+  const system = `Tu es un assistant qui analyse des emails pour détecter des candidatures d'emploi. Tu réponds UNIQUEMENT avec un tableau JSON valide, rien d'autre.`
 
-  const prompt = `Analyse ces emails et extrait les informations de candidatures.
-Pour chaque email lié à une candidature retourne :
-- emailId, company, position, status (sent|reviewing|interview|waiting|offer|rejected|cancelled), date (YYYY-MM-DD), notes (max 80 chars), confidence (0-100)
+  const prompt = `Analyse ces emails. Pour CHAQUE email qui concerne un emploi (candidature envoyée, réponse recruteur, entretien, refus, offre), retourne un objet JSON.
 
-Règles importantes :
-- Sois INCLUSIF : en cas de doute, incluis l'email avec confidence 40-60
-- Un email d'une plateforme (LinkedIn, Indeed, APEC, WTTJ, Malt, ATS) est TOUJOURS lié à une candidature
-- Extrais l'entreprise depuis le domaine du DESTINATAIRE (to:) ou depuis le contenu si c'est un email envoyé
-- Extrais le titre du poste depuis le contenu si présent dans le corps du mail
-- Un email avec corps vide : utilise le sujet et l'expéditeur/destinataire pour déduire
+Champs requis : emailId (numéro), company (string), position (string), status ("sent"|"reviewing"|"interview"|"waiting"|"offer"|"rejected"|"cancelled"), date (YYYY-MM-DD), notes (string max 80 chars), confidence (0-100)
 
-EMAILS ENVOYÉS (from: est l'utilisateur lui-même) :
-- Si l'email ENVOYÉ contient une candidature → status "sent", extraire l'entreprise depuis le destinataire ou le corps
-- Si le corps dit "je postule pour le poste de X chez Y" → company=Y, position=X, status="sent"
-- Si le corps contient un CV en pièce jointe et mentionne un poste → status="sent"
-
-EMAILS REÇUS :
-- Plateforme ATS (ashbyhq, greenhouse, lever, workable, teamtailor...) → rejeter si mots négatifs dans le corps
-- Alertes offres LinkedIn/Indeed sans candidature mentionnée → ignorer
-- Confirmation de réception → status "sent"
-- Invitation entretien → status "interview"
-
-- Retourne un tableau JSON vide [] uniquement si AUCUN email n'est lié à une candidature
+Règles :
+- Sois très inclusif, confidence minimum 30
+- Email envoyé avec CV/candidature → status "sent", company = destinataire ou mentionnée dans le corps
+- Email reçu d'un ATS ou recruteur → inclure systématiquement
+- Si company inconnue → utiliser le domaine de l'expéditeur
+- Si position inconnue → mettre "Poste non précisé"
+- Retourne [] SEULEMENT si vraiment aucun email ne concerne l'emploi
 
 Emails:
 ${emailsText}`
@@ -92,7 +80,7 @@ ${emailsText}`
   try {
     const clean = raw.replace(/```json|```/g, '').trim()
     const parsed = JSON.parse(clean)
-    return Array.isArray(parsed) ? parsed.filter(j => j.confidence >= 50) : []
+    return Array.isArray(parsed) ? parsed.filter(j => (j.confidence || 0) >= 20) : []
   } catch {
     return []
   }
