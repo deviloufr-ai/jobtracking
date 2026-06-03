@@ -178,14 +178,18 @@ function mergeSameDateEntries(jobs) {
     if (!j.history || j.history.length <= 1) return j
     const merged = []
     for (const entry of j.history) {
-      const key = `${entry.date}-${entry.status}`
-      const existing = merged.find(e => `${e.date}-${e.status}` === key && e.source === entry.source)
-      if (existing && entry.note && entry.note !== existing.note) {
-        // Append note if different
-        existing.note = existing.note
-          ? `${existing.note} · ${entry.note}`
-          : entry.note
-      } else if (!existing) {
+      // Match on date + status only (ignore source for merging)
+      const existing = merged.find(e => e.date === entry.date && e.status === entry.status)
+      if (existing) {
+        // Only merge if notes are different and both non-empty
+        if (entry.note && entry.note.trim() && entry.note !== existing.note) {
+          existing.note = existing.note
+            ? `${existing.note} · ${entry.note}`
+            : entry.note
+        }
+        // Keep gmailId if not already set
+        if (!existing.gmailId && entry.gmailId) existing.gmailId = entry.gmailId
+      } else {
         merged.push({ ...entry })
       }
     }
