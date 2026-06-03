@@ -46,6 +46,7 @@ export default function App() {
   const [showGmail, setShowGmail] = useState(false)
   const [activeTab, setActiveTab] = useState('tracker')
   const [showFavOnly, setShowFavOnly] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
   const [selectedJobForCV, setSelectedJobForCV] = useState(null) // 'tracker' | 'search' | 'cv'
   const [showImageImport, setShowImageImport] = useState(false)
 
@@ -78,7 +79,7 @@ export default function App() {
         if (filters.period === 'month' && days > 30) return false
       }
       return true
-    }).filter(j => !showFavOnly || j.favorite)
+    }).filter(j => !showFavOnly || j.favorite).filter(j => showArchived || j.status !== 'archived')
     return sortJobs(list, sort)
   }, [jobs, filters, sort])
 
@@ -181,6 +182,21 @@ export default function App() {
             }`}
           >
             🔎 Recherche d'offres
+          </button>
+          <button
+            onClick={() => setShowArchived(v => !v)}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+              showArchived
+                ? 'border-gray-400 text-gray-600'
+                : 'border-transparent text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            📦 Archives
+            {jobs.filter(j => j.status === 'archived').length > 0 && (
+              <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">
+                {jobs.filter(j => j.status === 'archived').length}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setShowFavOnly(v => !v)}

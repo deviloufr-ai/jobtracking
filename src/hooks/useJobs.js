@@ -74,6 +74,7 @@ export const STATUSES = [
   { key: 'rejected',     label: 'Refusée',             color: 'bg-red-100 text-red-700',       dot: 'bg-red-400' },
   { key: 'rejected_ats', label: 'Refus ATS',           color: 'bg-rose-100 text-rose-600',     dot: 'bg-rose-400' },
   { key: 'cancelled',    label: 'Annulée',             color: 'bg-gray-100 text-gray-500',     dot: 'bg-gray-400' },
+  { key: 'archived',    label: 'Archivée',            color: 'bg-slate-100 text-slate-400',   dot: 'bg-slate-300' },
 ]
 
 export function getStatus(key) {
@@ -174,22 +175,29 @@ function splitPipeNotes(jobs) {
 function autoStale(jobs) {
   const now = new Date()
   return jobs.map(j => {
-    if (!['reviewing', 'sent'].includes(j.status)) return j
     const lastUpdate = new Date(j.updatedAt || j.date)
     const daysSince = (now - lastUpdate) / (1000 * 60 * 60 * 24)
-    if (daysSince >= 60) {
+
+    // Auto-archive: no response after 2 months on active statuses
+    if (['sent', 'reviewing', 'waiting'].includes(j.status) && daysSince >= 60) {
       const newEntry = {
         date: now.toISOString().split('T')[0],
-        status: 'rejected',
-        note: 'Aucune nouvelle depuis plus de 2 mois — classé automatiquement comme refus'
+        status: 'archived',
+        note: `Archivée automatiquement — aucune réponse depuis ${Math.round(daysSince)} jours`
       }
-      return {
-        ...j,
-        status: 'rejected',
-        updatedAt: now.toISOString(),
-        history: [...(j.history || []), newEntry]
-      }
+      return { ...j, status: 'archived', updatedAt: now.toISOString(), history: [...(j.history || []), newEntry] }
     }
+
+    // Auto-archive: rejected/cancelled older than 3 months
+    if (['rejected', 'rejected_ats', 'cancelled'].includes(j.status) && daysSince >= 90) {
+      const newEntry = {
+        date: now.toISOString().split('T')[0],
+        status: 'archived',
+        note: 'Archivée automatiquement — candidature de plus de 3 mois'
+      }
+      return { ...j, status: 'archived', updatedAt: now.toISOString(), history: [...(j.history || []), newEntry] }
+    }
+
     return j
   })
 }
