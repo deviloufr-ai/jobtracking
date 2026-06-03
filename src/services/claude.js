@@ -84,10 +84,14 @@ ${emailsText}`
 
   const raw = await callClaude(system, prompt)
   try {
-    const clean = raw.replace(/```json|```/g, '').trim()
+    let clean = raw.trim()
+    const start = clean.indexOf('[')
+    const end = clean.lastIndexOf(']')
+    if (start !== -1 && end !== -1) clean = clean.slice(start, end + 1)
     const parsed = JSON.parse(clean)
     return Array.isArray(parsed) ? parsed.filter(j => (j.confidence || 0) >= 20) : []
-  } catch {
+  } catch (e) {
+    console.error('Parse error:', e.message, raw.slice(0, 100))
     return []
   }
 }
