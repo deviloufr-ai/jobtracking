@@ -122,19 +122,60 @@ export async function fetchJobEmails(maxResults = 100, months = 3) {
   return emails.filter(Boolean)
 }
 
+function decodeBase64(str) {
+  try {
+    return decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/'))))
+  } catch {
+    try { return atob(str.replace(/-/g, '+').replace(/_/g, '/')) } catch { return '' }
+  }
+}
+
+function extractBody(payload) {
+  if (!payload) return ''
+
+  // Direct body
+  if (payload.body?.data) return decodeBase64(payload.body.data)
+
+  // Multipart - prefer text/plain, fallback to text/html
+  if (payload.parts) {
+    const plain = payload.parts.find(p => p.mimeType === 'text/plain')
+    if (plain?.body?.data) return decodeBase64(plain.body.data)
+
+    const html = payload.parts.find(p => p.mimeType === 'text/html')
+    if (html?.body?.data) {
+      const raw = decodeBase64(html.body.data)
+      return raw.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim()
+    }
+
+    // Nested multipart
+    for (const part of payload.parts) {
+      if (part.parts) {
+        const nested = extractBody(part)
+        if (nested) return nested
+      }
+    }
+  }
+  return ''
+}
+
 async function fetchEmailDetail(id) {
   try {
     const data = await gmailFetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=full`
     )
     const headers = data.payload?.headers || []
     const get = (name) => headers.find(h => h.name === name)?.value || ''
+
+    // Extract body text (limit to 2000 chars for Claude)
+    const body = extractBody(data.payload).slice(0, 2000)
+
     return {
       id: data.id,
       subject: get('Subject'),
       from: get('From'),
       date: get('Date'),
       snippet: data.snippet || '',
+      body,
     }
   } catch { return null }
 }

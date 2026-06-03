@@ -68,7 +68,9 @@ Pour chaque email lié à une candidature retourne :
 Règles importantes :
 - Sois INCLUSIF : en cas de doute, incluis l'email avec confidence 40-60
 - Un email d'une plateforme (LinkedIn, Indeed, APEC, WTTJ, Malt, ATS) est TOUJOURS lié à une candidature
-- Extrais l'entreprise depuis le domaine de l'expéditeur si non mentionnée dans le sujet
+- Extrais l'entreprise depuis le domaine de l'expéditeur OU depuis le contenu de l'email
+- Extrais le titre du poste depuis le contenu si présent dans le corps du mail
+- Un email avec corps vide : utilise le sujet et l'expéditeur pour déduire
 - Pour les plateformes ATS (ashbyhq, greenhouse, lever, workable, teamtailor...) → status rejected si le snippet contient des mots négatifs
 - Pour les emails LinkedIn/Indeed d'alertes offres → ignore (pas des candidatures)
 - Pour les emails de confirmation de candidature → status "sent"
