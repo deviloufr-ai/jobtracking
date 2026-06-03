@@ -56,50 +56,18 @@ export async function fetchJobEmails(maxResults = 100, months = 3) {
 
   // Split into multiple targeted searches to maximize coverage
   const queries = [
-    // FR - candidatures envoyées / confirmations
-    `(subject:candidature OR subject:postulation OR subject:"votre candidature" OR subject:"votre dossier" OR subject:"votre profil") newer_than:${days}d`,
+    // Tous les emails liés aux candidatures (inbox + sent + archives)
+    `in:all (candidature OR postulation OR entretien OR recrutement OR "offre d'emploi" OR "votre candidature" OR "votre profil" OR "nous avons bien reçu" OR "suite à votre candidature" OR "nous avons le regret" OR "sans suite" OR "n'avons pas retenu") newer_than:${days}d`,
 
-    // FR - process de recrutement
-    `(subject:entretien OR subject:convocation OR subject:"rendez-vous" OR subject:recrutement OR subject:"prise de contact" OR subject:"invitation" OR subject:"nous avons bien reçu" OR subject:"suite à votre candidature") newer_than:${days}d`,
+    `in:all (interview OR "thank you for applying" OR "thanks for applying" OR "application received" OR "your application" OR "we regret" OR "not selected" OR "not moving forward" OR "job offer" OR "offer letter" OR "next steps" OR "hiring process") newer_than:${days}d`,
 
-    // FR - refus et retours
-    `(subject:refus OR subject:"sans suite" OR subject:"nous n'avons pas retenu" OR subject:"ne correspond pas" OR subject:"nous avons le regret" OR subject:"malheureusement" OR subject:"n'a pas été retenue") newer_than:${days}d`,
+    `in:all (from:ashbyhq.com OR from:greenhouse.io OR from:lever.co OR from:workable.com OR from:teamtailor.com OR from:recruitee.com OR from:bamboohr.com OR from:smartrecruiters.com OR from:jobvite.com OR from:icims.com OR from:myworkdayjobs.com OR from:taleo.net) newer_than:${days}d`,
 
-    // FR - offres et propositions
-    `(subject:"offre d'emploi" OR subject:"proposition" OR subject:"nous avons le plaisir" OR subject:"félicitations" OR subject:"période d'essai" OR subject:"prise de poste" OR subject:CDI OR subject:CDD) newer_than:${days}d`,
+    `in:all (from:linkedin.com OR from:welcometothejungle.com OR from:apec.fr OR from:indeed.com OR from:monster.fr OR from:cadremploi.fr OR from:hellowork.com OR from:jobteaser.com OR from:malt.fr OR from:malt.com) newer_than:${days}d`,
 
-    // EN - applications
-    `(subject:"thank you for applying" OR subject:"thanks for applying" OR subject:"application received" OR subject:"we received your application" OR subject:"your application" OR subject:"application for") newer_than:${days}d`,
+    `in:all (from:talent@ OR from:recrutement@ OR from:rh@ OR from:careers@ OR from:jobs@ OR from:hiring@ OR from:recruiter@ OR subject:recruiter OR subject:recruteur OR subject:"talent acquisition") newer_than:${days}d`,
 
-    // EN - interview process
-    `(subject:interview OR subject:"next steps" OR subject:"moving forward" OR subject:"we would like to invite" OR subject:"schedule" OR subject:"hiring process" OR subject:"your profile") newer_than:${days}d`,
-
-    // EN - rejections
-    `(subject:"we regret" OR subject:"not selected" OR subject:"not moving forward" OR subject:"decided to move forward with other" OR subject:"not be pursuing" OR subject:"position has been filled" OR subject:"not a fit") newer_than:${days}d`,
-
-    // EN - offers
-    `(subject:"job offer" OR subject:"offer letter" OR subject:"pleased to offer" OR subject:"we are delighted" OR subject:onboarding OR subject:"start date" OR subject:"background check") newer_than:${days}d`,
-
-    // ATS platforms (emails from these domains are almost always job-related)
-    `(from:ashbyhq.com OR from:greenhouse.io OR from:lever.co OR from:workable.com OR from:teamtailor.com OR from:recruitee.com OR from:bamboohr.com OR from:smartrecruiters.com OR from:jobvite.com OR from:icims.com OR from:myworkdayjobs.com OR from:taleo.net OR from:successfactors.com) newer_than:${days}d`,
-
-    // Job platforms
-    `(from:linkedin.com OR from:welcometothejungle.com OR from:apec.fr OR from:indeed.com OR from:monster.fr OR from:cadremploi.fr OR from:hellowork.com OR from:meteojob.com OR from:regionsjob.com OR from:jobteaser.com OR from:glassdoor.com) newer_than:${days}d`,
-
-    // Recruiter emails (common patterns)
-    `(subject:recruiter OR subject:recruteur OR subject:"talent acquisition" OR subject:RH OR subject:HR OR from:talent@ OR from:recrutement@ OR from:rh@ OR from:careers@ OR from:jobs@ OR from:hiring@) newer_than:${days}d`,
-
-    // Freelance platforms
-    `(from:malt.fr OR from:malt.com OR from:freelance.com OR from:upwork.com OR from:toptal.com OR subject:freelance OR subject:"mission freelance" OR subject:"proposition de mission") newer_than:${days}d`,
-
-    // SENT emails - candidatures envoyées par l'utilisateur
-    `in:sent (subject:candidature OR subject:postulation OR subject:"je me permets" OR subject:"je vous contacte" OR subject:"ma candidature" OR subject:"postuler" OR subject:"Product Manager" OR subject:"Product Owner" OR subject:"chef de projet" OR subject:"PM" OR subject:CV OR subject:"curriculum") newer_than:${days}d`,
-
-    // SENT - avec pièce jointe CV (très fiable)
-    `in:sent has:attachment (filename:cv OR filename:resume OR filename:CV OR subject:candidature OR subject:postulation) newer_than:${days}d`,
-
-    // SENT - corps contenant des formules de candidature
-    `in:sent ("je postule" OR "je vous adresse" OR "je me permets de vous soumettre" OR "je suis candidat" OR "suite à votre offre" OR "en réponse à votre annonce" OR "I am applying" OR "I would like to apply" OR "please find my CV" OR "please find attached") newer_than:${days}d`,
+    `in:sent (has:attachment OR subject:candidature OR subject:postulation OR "je postule" OR "je vous contacte" OR "je me permets" OR "I am applying" OR "please find my CV" OR "please find attached my resume") newer_than:${days}d`,
   ]
 
   // Run queries in small batches to avoid rate limiting
