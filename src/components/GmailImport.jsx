@@ -16,6 +16,7 @@ const MONTH_OPTIONS = [
 export default function GmailImport({ onImport, onClose, existingJobs }) {
   const [step, setStep] = useState(STEPS.idle)
   const [connected, setConnected] = useState(isConnected())
+  const [forceImport, setForceImport] = useState(false)
   const [results, setResults] = useState([])
   const [selected, setSelected] = useState(new Set())
   const [error, setError] = useState(null)
@@ -67,9 +68,9 @@ export default function GmailImport({ onImport, onClose, existingJobs }) {
       // Filter out already existing companies (normalized match)
       const normalize = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
       const existingNames = existingJobs.map(j => normalize(j.company))
-      const newOnly = deduped.filter(p =>
-        p.company && !existingNames.includes(normalize(p.company))
-      )
+      const newOnly = forceImport
+        ? deduped.filter(p => p.company) // skip dedup
+        : deduped.filter(p => p.company && !existingNames.includes(normalize(p.company)))
 
       setResults(newOnly)
       setSelected(new Set(newOnly.map((_, i) => i)))
@@ -195,6 +196,22 @@ export default function GmailImport({ onImport, onClose, existingJobs }) {
               </div>
 
               {error && <p className="text-xs text-red-500 bg-red-50 rounded-lg p-3 mb-4">{error}</p>}
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-700">
+                  <div
+                    onClick={() => setForceImport(v => !v)}
+                    className={`w-9 h-5 rounded-full transition-colors relative ${forceImport ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                  >
+                    <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${forceImport ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  </div>
+                  Forcer l'import (ignorer les doublons)
+                </label>
+              </div>
+              {forceImport && (
+                <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-1.5 mb-3 text-center">
+                  ⚠️ Toutes les candidatures détectées seront importées, même si déjà présentes
+                </p>
+              )}
               <div className="flex gap-3 justify-center">
                 <button onClick={() => { disconnectGmail(); setConnected(false) }} className="text-xs text-gray-400 hover:text-gray-600 hover:underline">
                   Déconnecter
@@ -214,6 +231,14 @@ export default function GmailImport({ onImport, onClose, existingJobs }) {
                   <div className="text-3xl mb-3">🤷</div>
                   <p className="text-gray-600 font-medium">Aucune nouvelle candidature détectée</p>
                   <p className="text-xs text-gray-400 mt-1">Toutes les candidatures trouvées sont déjà dans votre liste.</p>
+                  {!forceImport && (
+                    <button
+                      onClick={() => { setForceImport(true); setStep('idle') }}
+                      className="mt-3 text-xs text-indigo-600 hover:underline"
+                    >
+                      Réessayer en ignorant les doublons →
+                    </button>
+                  )}
                 </div>
               ) : (
                 <>
