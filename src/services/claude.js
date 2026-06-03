@@ -20,9 +20,14 @@ async function callClaude(systemPrompt, userContent) {
       messages: [{ role: 'user', content: userContent }],
     }),
   })
-  if (!res.ok) throw new Error('Erreur API Claude')
   const data = await res.json()
-  return data.content?.[0]?.text || ''
+  if (!res.ok) {
+    console.error('Claude API error:', data)
+    throw new Error(data?.error?.message || `Claude API ${res.status}`)
+  }
+  const text = data.content?.[0]?.text || ''
+  console.log('Claude raw response:', text.slice(0, 200))
+  return text
 }
 
 // Mock pour tester en dev local sans API key
