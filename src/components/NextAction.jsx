@@ -1,182 +1,191 @@
-// Smart "What's next" panel - shows recommended next action per job
 import { getStatus } from '../hooks/useJobs'
 
-const ACTIONS = {
-  sent: {
-    icon: '⏳',
-    color: 'bg-blue-50 border-blue-200 text-blue-800',
-    badge: 'bg-blue-100 text-blue-700',
-    getAction: (job, daysSince) => {
-      if (daysSince > 14) return {
-        label: 'Relancer',
-        tip: `Aucune réponse depuis ${Math.round(daysSince)} jours. Envoie un email de relance poli.`,
-        urgent: true
-      }
-      return {
-        label: 'En attente',
-        tip: `Candidature envoyée il y a ${Math.round(daysSince)} jour${daysSince > 1 ? 's' : ''}. Attends une réponse sous 2 semaines.`,
-        urgent: false
-      }
-    }
-  },
-  reviewing: {
-    icon: '👀',
-    color: 'bg-yellow-50 border-yellow-200 text-yellow-800',
-    badge: 'bg-yellow-100 text-yellow-700',
-    getAction: (job, daysSince) => {
-      if (daysSince > 7) return {
-        label: 'Relancer',
-        tip: `Ton profil est en cours d'examen depuis ${Math.round(daysSince)} jours. Envisage une relance douce.`,
-        urgent: daysSince > 14
-      }
-      return {
-        label: 'Patienter',
-        tip: 'Ton profil est en cours d\'examen. Laisse encore quelques jours avant de relancer.',
-        urgent: false
-      }
-    }
-  },
-  interview: {
-    icon: '📋',
-    color: 'bg-purple-50 border-purple-200 text-purple-800',
-    badge: 'bg-purple-100 text-purple-700',
-    getAction: (job) => {
-      const nextEvent = (job.history || []).find(h => h.isUpcoming)
-      if (nextEvent) return {
-        label: 'Préparer',
-        tip: `Entretien à venir le ${nextEvent.date}. Prépare tes réponses STAR et tes questions.`,
-        urgent: true,
-        link: nextEvent.meetingLink,
-        linkLabel: `${nextEvent.meetingEmoji || '📹'} Rejoindre ${nextEvent.meetingPlatform || 'la visio'}`
-      }
-      return {
-        label: 'Préparer l\'entretien',
-        tip: 'Prépare tes réponses STAR, recherche l\'entreprise et prépare 3-5 questions à poser.',
-        urgent: false
-      }
-    }
-  },
-  waiting: {
-    icon: '🔔',
-    color: 'bg-orange-50 border-orange-200 text-orange-800',
-    badge: 'bg-orange-100 text-orange-700',
-    getAction: (job, daysSince) => {
-      if (daysSince > 10) return {
-        label: 'Relancer',
-        tip: `En attente depuis ${Math.round(daysSince)} jours. Un email de suivi est approprié.`,
-        urgent: true
-      }
-      return {
-        label: 'Attendre',
-        tip: 'Décision en cours. Reste disponible et vérifie tes emails régulièrement.',
-        urgent: false
-      }
-    }
-  },
-  offer: {
-    icon: '🎉',
-    color: 'bg-green-50 border-green-200 text-green-800',
-    badge: 'bg-green-100 text-green-700',
-    getAction: (job, daysSince) => ({
-      label: 'Négocier / Accepter',
-      tip: 'Tu as une offre ! Prends le temps de négocier le salaire et les conditions avant d\'accepter.',
-      urgent: daysSince > 5
-    })
-  },
-  rejected: {
-    icon: '💌',
-    color: 'bg-gray-50 border-gray-200 text-gray-600',
-    badge: 'bg-gray-100 text-gray-500',
-    getAction: () => ({
-      label: 'Demander un retour',
-      tip: 'Envoie un email remerciant le recruteur et demandant un feedback constructif.',
-      urgent: false
-    })
-  },
-  rejected_ats: {
-    icon: '🤖',
-    color: 'bg-rose-50 border-rose-200 text-rose-700',
-    badge: 'bg-rose-100 text-rose-600',
-    getAction: () => ({
-      label: 'Optimiser ton CV',
-      tip: 'Refus ATS automatique. Optimise ton CV avec les mots-clés de l\'offre pour passer le filtre.',
-      urgent: false
-    })
-  },
-  cancelled: null
+function daysSince(job) {
+  return (new Date() - new Date(job.updatedAt || job.date)) / (1000 * 60 * 60 * 24)
 }
 
-function daysSinceLastUpdate(job) {
-  const date = new Date(job.updatedAt || job.date)
-  return (new Date() - date) / (1000 * 60 * 60 * 24)
+// Urgent actions - things that need attention NOW
+const URGENT_RULES = [
+  {
+    match: j => j.status === 'sent' && daysSince(j) > 14,
+    icon: '📨', urgency: 'high',
+    label: job => `Relancer ${job.company}`,
+    tip: job => `Aucune réponse depuis ${Math.round(daysSince(job))} jours. Un email de relance s'impose.`,
+  },
+  {
+    match: j => j.status === 'reviewing' && daysSince(j) > 10,
+    icon: '📨', urgency: 'medium',
+    label: job => `Relancer ${job.company}`,
+    tip: job => `Profil en examen depuis ${Math.round(daysSince(job))} jours sans retour.`,
+  },
+  {
+    match: j => j.status === 'waiting' && daysSince(j) > 7,
+    icon: '🔔', urgency: 'high',
+    label: job => `Suivi ${job.company}`,
+    tip: job => `En attente depuis ${Math.round(daysSince(job))} jours — relance appropriée.`,
+  },
+  {
+    match: j => j.status === 'offer' && daysSince(j) > 3,
+    icon: '🤝', urgency: 'high',
+    label: job => `Répondre à l'offre ${job.company}`,
+    tip: () => `Offre reçue — négocie et réponds avant qu'elle expire.`,
+  },
+  {
+    match: j => j.status === 'interview',
+    icon: '🎯', urgency: 'medium',
+    label: job => `Préparer entretien ${job.company}`,
+    tip: () => `Prépare tes réponses STAR, recherche l'entreprise, prépare 5 questions.`,
+  },
+  {
+    match: j => ['rejected', 'rejected_ats'].includes(j.status) && daysSince(j) < 7,
+    icon: '💌', urgency: 'low',
+    label: job => `Feedback ${job.company}`,
+    tip: () => `Demande un retour constructif — ça te différencie et maintient la relation.`,
+  },
+]
+
+// Next steps - concrete actionable tasks
+const NEXT_STEPS_RULES = [
+  {
+    match: j => j.status === 'todo',
+    icon: '📄', type: 'cv',
+    label: job => `Générer un CV pour ${job.company}`,
+    tip: job => `Adapte ton CV à l'offre ${job.position} avant de postuler.`,
+    cta: 'Générer le CV',
+  },
+  {
+    match: j => j.status === 'interview',
+    icon: '📋', type: 'prep',
+    label: job => `Préparer le dossier ${job.company}`,
+    tip: () => `Recherche l'entreprise, prépare 5 questions pertinentes, révise ton parcours STAR.`,
+    cta: 'Voir les conseils',
+  },
+  {
+    match: j => j.status === 'sent' && daysSince(j) > 14,
+    icon: '✉️', type: 'email',
+    label: job => `Rédiger relance ${job.company}`,
+    tip: () => `Email de relance poli : rappel de ta candidature + réaffirmation de ton intérêt.`,
+    cta: 'Rédiger l\'email',
+  },
+  {
+    match: j => j.status === 'offer',
+    icon: '💰', type: 'negotiate',
+    label: job => `Préparer négociation ${job.company}`,
+    tip: () => `Salaire, télétravail, avantages, date de prise de poste — prépare chaque point.`,
+    cta: 'Voir les conseils',
+  },
+  {
+    match: j => j.status === 'rejected_ats',
+    icon: '🔧', type: 'cv',
+    label: job => `Optimiser CV pour ${job.company}`,
+    tip: () => `Refus ATS — intègre les mots-clés de l'offre et restructure ton CV.`,
+    cta: 'Optimiser le CV',
+  },
+]
+
+const URGENCY_COLORS = {
+  high:   'border-l-red-400 bg-red-50/40',
+  medium: 'border-l-orange-300 bg-orange-50/40',
+  low:    'border-l-blue-300 bg-blue-50/40',
 }
 
-export default function NextAction({ jobs }) {
-  // Only show jobs that need attention (not cancelled/rejected with no action)
-  const actionable = jobs
-    .filter(j => j.status !== 'cancelled')
-    .map(j => {
-      const config = ACTIONS[j.status]
-      if (!config) return null
-      const days = daysSinceLastUpdate(j)
-      const action = config.getAction(j, days)
-      return { job: j, config, action, days }
-    })
-    .filter(Boolean)
+export default function NextAction({ jobs, onGenerateCV, onOpenJob }) {
+  const activeJobs = jobs.filter(j => !['cancelled', 'archived'].includes(j.status))
+
+  const urgentActions = activeJobs
+    .flatMap(job => URGENT_RULES
+      .filter(r => r.match(job))
+      .map(r => ({ job, rule: r }))
+    )
     .sort((a, b) => {
-      // Sort: urgent first, then by days since update desc
-      if (a.action.urgent && !b.action.urgent) return -1
-      if (!a.action.urgent && b.action.urgent) return 1
-      return b.days - a.days
+      const order = { high: 0, medium: 1, low: 2 }
+      return order[a.rule.urgency] - order[b.rule.urgency]
     })
-    .slice(0, 5) // Show top 5
+    .slice(0, 4)
 
-  if (actionable.length === 0) return null
+  const nextSteps = activeJobs
+    .flatMap(job => NEXT_STEPS_RULES
+      .filter(r => r.match(job))
+      .map(r => ({ job, rule: r }))
+    )
+    .slice(0, 4)
 
-  const urgent = actionable.filter(a => a.action.urgent)
+  if (urgentActions.length === 0 && nextSteps.length === 0) return null
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-4 overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-base">⚡</span>
-          <h3 className="text-sm font-semibold text-gray-800">Actions recommandées</h3>
-          {urgent.length > 0 && (
-            <span className="text-xs bg-red-100 text-red-600 font-medium px-2 py-0.5 rounded-full">
-              {urgent.length} urgent{urgent.length > 1 ? 'es' : 'e'}
-            </span>
-          )}
-        </div>
-        <span className="text-xs text-gray-400">{actionable.length} candidature{actionable.length > 1 ? 's' : ''}</span>
-      </div>
-
-      <div className="divide-y divide-gray-50">
-        {actionable.map(({ job, config, action }) => (
-          <div key={job.id} className={`flex items-start gap-3 px-4 py-3 ${action.urgent ? 'bg-red-50/30' : ''}`}>
-            <span className="text-base mt-0.5 flex-shrink-0">{config.icon}</span>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm font-medium text-gray-800">{job.company}</span>
-                <span className="text-xs text-gray-400">·</span>
-                <span className="text-xs text-gray-500 truncate">{job.position}</span>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ml-auto flex-shrink-0 ${config.badge}`}>
-                  {action.urgent && '🔴 '}{action.label}
-                </span>
-              </div>
-              <p className="text-xs text-gray-500 mt-0.5">{action.tip}</p>
-              {action.link && (
-                <a
-                  href={action.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 mt-1.5 text-xs font-medium text-white bg-indigo-500 hover:bg-indigo-600 px-2.5 py-1 rounded-lg transition-colors"
-                >
-                  {action.linkLabel} ↗
-                </a>
-              )}
-            </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      {/* Urgent Actions */}
+      {urgentActions.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-2">
+            <span className="text-base">⚡</span>
+            <h3 className="text-sm font-semibold text-gray-800">Actions requises</h3>
+            {urgentActions.filter(a => a.rule.urgency === 'high').length > 0 && (
+              <span className="text-xs bg-red-100 text-red-600 font-medium px-2 py-0.5 rounded-full ml-auto">
+                {urgentActions.filter(a => a.rule.urgency === 'high').length} urgent{urgentActions.filter(a => a.rule.urgency === 'high').length > 1 ? 'es' : 'e'}
+              </span>
+            )}
           </div>
-        ))}
+          <div className="divide-y divide-gray-50">
+            {urgentActions.map(({ job, rule }, i) => (
+              <div key={i} className={`flex items-start gap-3 px-4 py-3 border-l-4 ${URGENCY_COLORS[rule.urgency]}`}>
+                <span className="text-base mt-0.5 flex-shrink-0">{rule.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">{rule.label(job)}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{rule.tip(job)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Next Steps */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-2">
+            <span className="text-base">🗺️</span>
+            <h3 className="text-sm font-semibold text-gray-800">Prochaines étapes</h3>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {nextSteps.map(({ job, rule }, i) => (
+              <div key={i} className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50/60 transition-colors">
+                <span className="text-base mt-0.5 flex-shrink-0">{rule.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">{rule.label(job)}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{rule.tip(job)}</p>
+                </div>
+                {rule.type === 'cv' && onGenerateCV && (
+                  <button
+                    onClick={() => onGenerateCV(job)}
+                    className="flex-shrink-0 text-xs font-medium bg-violet-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-violet-600 transition-colors whitespace-nowrap"
+                  >
+                    {rule.cta}
+                  </button>
+                )}
+                {rule.type === 'usecase' && (
+                  <button
+                    onClick={() => onOpenJob && onOpenJob(job)}
+                    className="flex-shrink-0 text-xs font-medium bg-amber-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-amber-600 transition-colors whitespace-nowrap"
+                  >
+                    {rule.cta}
+                  </button>
+                )}
+                {!['cv', 'usecase'].includes(rule.type) && (
+                  <button
+                    onClick={() => onOpenJob && onOpenJob(job)}
+                    className="flex-shrink-0 text-xs font-medium border border-gray-200 text-gray-600 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
+                  >
+                    {rule.cta}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        {nextSteps.length === 0 && (
+          <div className="px-4 py-6 text-center text-gray-400">
+            <p className="text-sm">✅ Aucune étape prioritaire pour l'instant</p>
+          </div>
+        )}
       </div>
     </div>
   )

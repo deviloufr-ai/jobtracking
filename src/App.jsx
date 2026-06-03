@@ -9,6 +9,7 @@ import ConfirmDelete from './components/ConfirmDelete'
 import GmailImport from './components/GmailImport'
 import NextAction from './components/NextAction'
 import { useAutoRefresh } from './hooks/useAutoRefresh'
+import { useNotifications, useJobNotifications } from './hooks/useNotifications'
 import JobSearch from './components/JobSearch'
 import CVManager from './components/CVManager'
 import ImageImport from './components/ImageImport'
@@ -157,6 +158,19 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {/* Notification permission banner */}
+      {permission === 'default' && (
+        <div className="bg-indigo-50 border-b border-indigo-100 px-4 py-2 flex items-center justify-between gap-3">
+          <p className="text-xs text-indigo-700">🔔 Activez les notifications pour être alerté des réponses et mises à jour de vos candidatures</p>
+          <button
+            onClick={requestPermission}
+            className="flex-shrink-0 text-xs font-medium bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            Activer
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="bg-white border-b border-gray-100">
