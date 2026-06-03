@@ -8,6 +8,7 @@ import JobModal from './components/JobModal'
 import ConfirmDelete from './components/ConfirmDelete'
 import GmailImport from './components/GmailImport'
 import NextAction from './components/NextAction'
+import { useAutoRefresh } from './hooks/useAutoRefresh'
 import JobSearch from './components/JobSearch'
 import CVManager from './components/CVManager'
 import ImageImport from './components/ImageImport'
@@ -234,7 +235,7 @@ export default function App() {
         ) : (
           <>
         <Stats jobs={jobs} />
-        <NextAction jobs={jobs} />
+        <NextAction jobs={jobs} onGenerateCV={handleGenerateCV} onOpenJob={(job) => { setFilters(f => ({ ...f, search: job.company })) }} />
         <Filters filters={filters} onChange={setFilters} onReset={() => setFilters(DEFAULT_FILTERS)} total={jobs.length} filtered={filtered.length} />
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
