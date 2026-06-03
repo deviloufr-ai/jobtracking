@@ -17,6 +17,7 @@ export default function GmailImport({ onImport, onClose, existingJobs }) {
   const [step, setStep] = useState(STEPS.idle)
   const [connected, setConnected] = useState(isConnected())
   const [forceImport, setForceImport] = useState(false)
+  const [debugInfo, setDebugInfo] = useState(null)
   const [results, setResults] = useState([])
   const [selected, setSelected] = useState(new Set())
   const [error, setError] = useState(null)
@@ -53,6 +54,12 @@ export default function GmailImport({ onImport, onClose, existingJobs }) {
         return
       }
 
+      // Debug info
+      setDebugInfo({
+        emailsFound: emails.length,
+        subjects: emails.slice(0, 10).map(e => `${e.from?.split('<')[0]?.trim() || e.from} → ${e.subject}`),
+      })
+
       setStep(STEPS.parsing)
       const parsed = await parseEmailsForJobs(emails)
 
@@ -72,8 +79,12 @@ export default function GmailImport({ onImport, onClose, existingJobs }) {
         ? deduped.filter(p => p.company) // skip dedup
         : deduped.filter(p => p.company && !existingNames.includes(normalize(p.company)))
 
-      setResults(newOnly)
-      setSelected(new Set(newOnly.map((_, i) => i)))
+      console.log('Raw parsed by Claude:', parsed)
+      console.log('After dedup:', newOnly)
+      setDebugInfo(prev => ({ ...prev, parsed: parsed.length, afterDedup: newOnly.length, rawParsed: parsed.slice(0,5) }))
+      // Show ALL results if force import, even if 0
+      setResults(newOnly.length > 0 ? newOnly : (forceImport && parsed.length > 0 ? parsed.filter(p => p.company) : []))
+      setSelected(new Set((newOnly.length > 0 ? newOnly : (forceImport && parsed.length > 0 ? parsed.filter(p => p.company) : [])).map((_, i) => i)))
       setStep(STEPS.review)
     } catch (e) {
       setError('Erreur lors du scan : ' + e.message)
@@ -211,6 +222,33 @@ export default function GmailImport({ onImport, onClose, existingJobs }) {
                 <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-1.5 mb-3 text-center">
                   ⚠️ Toutes les candidatures détectées seront importées, même si déjà présentes
                 </p>
+              )}
+              {debugInfo && (
+                <div className="mb-3 bg-gray-50 rounded-xl p-3 text-left">
+                  <p className="text-xs font-semibold text-gray-600 mb-1">🔍 Debug dernier scan :</p>
+                  <p className="text-xs text-gray-500">📧 {debugInfo.emailsFound} emails trouvés</p>
+                  {debugInfo.parsed !== undefined && <p className="text-xs text-gray-500">🤖 {debugInfo.parsed} parsés par Claude</p>}
+                  {debugInfo.afterDedup !== undefined && <p className="text-xs text-gray-500">✅ {debugInfo.afterDedup} après filtre doublons</p>}
+                  {debugInfo.subjects?.length > 0 && (
+                    <div className="mt-1.5">
+                      <p className="text-xs font-medium text-gray-500">Emails scannés :</p>
+                      {debugInfo.subjects.map((s, i) => (
+                        <p key={i} className="text-xs text-gray-400 truncate">• {s}</p>
+                      ))}
+                    </div>
+                  )}
+                  {debugInfo.rawParsed?.length > 0 && (
+                    <div className="mt-1.5">
+                      <p className="text-xs font-medium text-gray-500">Parsés par Claude :</p>
+                      {debugInfo.rawParsed.map((r, i) => (
+                        <p key={i} className="text-xs text-indigo-400 truncate">• {r.company} — {r.position} ({r.status}, {r.confidence}%)</p>
+                      ))}
+                    </div>
+                  )}
+                  {debugInfo.parsed === 0 && (
+                    <p className="text-xs text-red-400 mt-1">⚠️ Claude n'a détecté aucune candidature dans ces emails</p>
+                  )}
+                </div>
               )}
               <div className="flex gap-3 justify-center">
                 <button onClick={() => { disconnectGmail(); setConnected(false) }} className="text-xs text-gray-400 hover:text-gray-600 hover:underline">
