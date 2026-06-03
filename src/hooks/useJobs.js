@@ -297,5 +297,9 @@ export function useJobs() {
     })
   }
 
-  return { jobs, addJob, updateJob, deleteJob, updateStatus, addHistoryEntry, mergeDuplicates }
+  const toggleFavorite = (id) => {
+    setJobs(prev => prev.map(j => j.id === id ? { ...j, favorite: !j.favorite } : j))
+  }
+
+  return { jobs, addJob, updateJob, deleteJob, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite }
 }

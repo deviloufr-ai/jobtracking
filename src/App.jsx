@@ -37,7 +37,7 @@ function SortIcon({ col, sort }) {
 }
 
 export default function App() {
-  const { jobs, addJob, updateJob, deleteJob, updateStatus, addHistoryEntry, mergeDuplicates } = useJobs()
+  const { jobs, addJob, updateJob, deleteJob, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite } = useJobs()
   const [modal, setModal] = useState(null)
   const [toDelete, setToDelete] = useState(null)
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
@@ -45,6 +45,7 @@ export default function App() {
   const [toast, setToast] = useState(null)
   const [showGmail, setShowGmail] = useState(false)
   const [activeTab, setActiveTab] = useState('tracker')
+  const [showFavOnly, setShowFavOnly] = useState(false)
   const [selectedJobForCV, setSelectedJobForCV] = useState(null) // 'tracker' | 'search' | 'cv'
   const [showImageImport, setShowImageImport] = useState(false)
 
@@ -77,7 +78,7 @@ export default function App() {
         if (filters.period === 'month' && days > 30) return false
       }
       return true
-    })
+    }).filter(j => !showFavOnly || j.favorite)
     return sortJobs(list, sort)
   }, [jobs, filters, sort])
 
@@ -99,7 +100,8 @@ export default function App() {
 
   const handleBulkImport = (newJobs) => {
     newJobs.forEach(j => addJob(j))
-    showToast(`${newJobs.length} candidature${newJobs.length > 1 ? 's' : ''} importee${newJobs.length > 1 ? 's' : ''} !`, 3500)
+    showToast(`${newJobs.length} candidature${newJobs.length > 1 ? 's' : ''} importée${newJobs.length > 1 ? 's' : ''} !`, 3500)
+    setTimeout(() => window.location.reload(), 1500)
   }
 
   const handleUpdateHistory = (id, history) => {
@@ -181,6 +183,21 @@ export default function App() {
             🔎 Recherche d'offres
           </button>
           <button
+            onClick={() => setShowFavOnly(v => !v)}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+              showFavOnly
+                ? 'border-yellow-400 text-yellow-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {showFavOnly ? '⭐' : '☆'} Favoris
+            {jobs.filter(j => j.favorite).length > 0 && (
+              <span className={`text-xs px-1.5 py-0.5 rounded-full ${showFavOnly ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>
+                {jobs.filter(j => j.favorite).length}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => setActiveTab('cv')}
             className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'cv'
@@ -241,7 +258,7 @@ export default function App() {
                 </thead>
                 <tbody>
                   {filtered.map(job => (
-                    <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={updateStatus} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onGenerateCV={handleGenerateCV} />
+                    <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={updateStatus} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} />
                   ))}
                 </tbody>
               </table>
@@ -253,7 +270,7 @@ export default function App() {
           <p className="text-xs text-gray-300">JobTrackr v0.4</p>
           {jobs.length > 0 && (
             <div className="flex items-center gap-2">
-              <button onClick={mergeDuplicates}
+<button onClick={mergeDuplicates}
                 className="text-xs text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors border border-transparent hover:border-indigo-200">
                 🔀 Fusionner les doublons
               </button>

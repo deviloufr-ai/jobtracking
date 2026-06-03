@@ -4,7 +4,7 @@ import AdvicePanel from './AdvicePanel'
 
 import { STATUSES, getStatus } from '../hooks/useJobs'
 
-export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onGenerateCV }) {
+export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onGenerateCV, onToggleFavorite }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [showAddStep, setShowAddStep] = useState(false)
@@ -72,6 +72,13 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
               title="Voir l'historique"
             >
               ▶
+            </button>
+            <button
+              onClick={() => onToggleFavorite && onToggleFavorite(job.id)}
+              className={`flex-shrink-0 text-base leading-none transition-all hover:scale-110 ${job.favorite ? 'text-yellow-400' : 'text-gray-200 hover:text-yellow-300'}`}
+              title={job.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+            >
+              ★
             </button>
             <div>
               <div className="font-medium text-gray-800 text-sm">{job.company}</div>
