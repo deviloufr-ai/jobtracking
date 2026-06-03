@@ -10,7 +10,6 @@ async function callClaude(systemPrompt, userContent) {
     return JSON.stringify(MOCK_PARSE_RESULT)
   }
 
-  console.log('Sending to Claude:', emailsText.slice(0, 500))
   const res = await fetch(CLAUDE_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -58,6 +57,8 @@ export async function parseEmailsForJobs(emails) {
   const emailsText = emails.map((e, i) =>
     `[${i + 1}] De: ${e.from}\nSujet: ${e.subject}\nDate: ${e.date}\nAperçu: ${e.snippet}`
   ).join('\n\n---\n\n')
+
+  console.log('Sending to Claude:', emailsText.slice(0, 300))
 
   const system = `Tu es un assistant qui analyse des emails pour détecter des candidatures d'emploi. Tu réponds UNIQUEMENT avec un tableau JSON valide, rien d'autre.`
 
