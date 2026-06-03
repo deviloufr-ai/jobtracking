@@ -91,6 +91,15 @@ export async function fetchJobEmails(maxResults = 100, months = 3) {
 
     // Freelance platforms
     `(from:malt.fr OR from:malt.com OR from:freelance.com OR from:upwork.com OR from:toptal.com OR subject:freelance OR subject:"mission freelance" OR subject:"proposition de mission") newer_than:${days}d`,
+
+    // SENT emails - candidatures envoyées par l'utilisateur
+    `in:sent (subject:candidature OR subject:postulation OR subject:"je me permets" OR subject:"je vous contacte" OR subject:"ma candidature" OR subject:"postuler" OR subject:"Product Manager" OR subject:"Product Owner" OR subject:"chef de projet" OR subject:"PM" OR subject:CV OR subject:"curriculum") newer_than:${days}d`,
+
+    // SENT - avec pièce jointe CV (très fiable)
+    `in:sent has:attachment (filename:cv OR filename:resume OR filename:CV OR subject:candidature OR subject:postulation) newer_than:${days}d`,
+
+    // SENT - corps contenant des formules de candidature
+    `in:sent ("je postule" OR "je vous adresse" OR "je me permets de vous soumettre" OR "je suis candidat" OR "suite à votre offre" OR "en réponse à votre annonce" OR "I am applying" OR "I would like to apply" OR "please find my CV" OR "please find attached") newer_than:${days}d`,
   ]
 
   // Run all queries in parallel, deduplicate results

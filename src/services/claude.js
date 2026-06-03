@@ -68,12 +68,21 @@ Pour chaque email lié à une candidature retourne :
 Règles importantes :
 - Sois INCLUSIF : en cas de doute, incluis l'email avec confidence 40-60
 - Un email d'une plateforme (LinkedIn, Indeed, APEC, WTTJ, Malt, ATS) est TOUJOURS lié à une candidature
-- Extrais l'entreprise depuis le domaine de l'expéditeur OU depuis le contenu de l'email
+- Extrais l'entreprise depuis le domaine du DESTINATAIRE (to:) ou depuis le contenu si c'est un email envoyé
 - Extrais le titre du poste depuis le contenu si présent dans le corps du mail
-- Un email avec corps vide : utilise le sujet et l'expéditeur pour déduire
-- Pour les plateformes ATS (ashbyhq, greenhouse, lever, workable, teamtailor...) → status rejected si le snippet contient des mots négatifs
-- Pour les emails LinkedIn/Indeed d'alertes offres → ignore (pas des candidatures)
-- Pour les emails de confirmation de candidature → status "sent"
+- Un email avec corps vide : utilise le sujet et l'expéditeur/destinataire pour déduire
+
+EMAILS ENVOYÉS (from: est l'utilisateur lui-même) :
+- Si l'email ENVOYÉ contient une candidature → status "sent", extraire l'entreprise depuis le destinataire ou le corps
+- Si le corps dit "je postule pour le poste de X chez Y" → company=Y, position=X, status="sent"
+- Si le corps contient un CV en pièce jointe et mentionne un poste → status="sent"
+
+EMAILS REÇUS :
+- Plateforme ATS (ashbyhq, greenhouse, lever, workable, teamtailor...) → rejeter si mots négatifs dans le corps
+- Alertes offres LinkedIn/Indeed sans candidature mentionnée → ignorer
+- Confirmation de réception → status "sent"
+- Invitation entretien → status "interview"
+
 - Retourne un tableau JSON vide [] uniquement si AUCUN email n'est lié à une candidature
 
 Emails:
