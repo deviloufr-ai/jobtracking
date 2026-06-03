@@ -2,7 +2,73 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: 'Inter', system-ui, sans-serif;
-  background-color: #f8fafc;
+@layer base {
+  body {
+    @apply font-sans antialiased text-slate-800;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.12), transparent),
+      linear-gradient(180deg, #f8fafc 0%, #f1f5f9 50%, #eef2ff 100%);
+    min-height: 100vh;
+  }
+
+  ::selection {
+    @apply bg-brand-200 text-brand-700;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-white/75 backdrop-blur-xl border border-white/80 shadow-card rounded-2xl;
+  }
+
+  .glass-header {
+    @apply bg-white/70 backdrop-blur-xl border-b border-slate-200/60 shadow-sm;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white
+      bg-gradient-to-br from-brand-600 to-brand-700 rounded-xl
+      shadow-sm hover:shadow-glow hover:from-brand-500 hover:to-brand-600
+      active:scale-[0.98] transition-all duration-200 disabled:opacity-40 disabled:pointer-events-none;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-3.5 py-2 text-sm font-medium text-slate-600
+      bg-white/90 border border-slate-200/80 rounded-xl
+      hover:bg-slate-50 hover:border-slate-300 hover:text-slate-800
+      active:scale-[0.98] transition-all duration-200;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white
+      bg-gradient-to-br from-rose-500 to-rose-600 rounded-xl
+      hover:from-rose-400 hover:to-rose-500 active:scale-[0.98] transition-all duration-200;
+  }
+
+  .input-field {
+    @apply w-full border border-slate-200/90 bg-white/90 rounded-xl px-3.5 py-2.5 text-sm text-slate-800
+      placeholder:text-slate-400
+      focus:outline-none focus:ring-2 focus:ring-brand-500/25 focus:border-brand-400
+      transition-shadow duration-200;
+  }
+
+  .modal-overlay {
+    @apply fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in;
+  }
+
+  .modal-backdrop {
+    @apply absolute inset-0 bg-slate-900/50 backdrop-blur-md;
+  }
+
+  .modal-panel {
+    @apply relative glass-panel shadow-card-lg w-full z-10 animate-fade-in overflow-hidden;
+  }
+
+  .stat-card {
+    @apply glass-panel p-5 relative overflow-hidden transition-shadow duration-300 hover:shadow-card-lg;
+  }
+
+  .badge-status {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold;
+  }
 }

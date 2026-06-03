@@ -1,0 +1,274 @@
+import { useState } from 'react'
+import { connectGmail, disconnectGmail, fetchJobEmails, isConnected, isGmailConfigured } from '../services/gmail'
+import { parseEmailsForJobs } from '../services/claude'
+import { getStatus, isAtsRejection, deduplicateJobs } from '../hooks/useJobs'
+
+const STEPS = { idle: 'idle', connecting: 'connecting', fetching: 'fetching', parsing: 'parsing', review: 'review' }
+
+const MONTH_OPTIONS = [
+  { value: 1,  label: '1 mois' },
+  { value: 3,  label: '3 mois' },
+  { value: 6,  label: '6 mois' },
+  { value: 12, label: '12 mois' },
+  { value: 24, label: '24 mois' },
+]
+
+export default function GmailImport({ onImport, onClose, existingJobs }) {
+  const [step, setStep] = useState(STEPS.idle)
+  const [connected, setConnected] = useState(isConnected())
+  const [results, setResults] = useState([])
+  const [selected, setSelected] = useState(new Set())
+  const [error, setError] = useState(null)
+  const [emailCount, setEmailCount] = useState(0)
+  const [months, setMonths] = useState(3)
+
+  const handleConnect = async () => {
+    if (!isGmailConfigured()) {
+      setError('Clé Google Client ID manquante. Ajoutez VITE_GOOGLE_CLIENT_ID dans votre fichier .env')
+      return
+    }
+    try {
+      setStep(STEPS.connecting)
+      setError(null)
+      await connectGmail()
+      setConnected(true)
+      setStep(STEPS.idle)
+    } catch (e) {
+      setError('Connexion Gmail annulée ou échouée : ' + e.message)
+      setStep(STEPS.idle)
+    }
+  }
+
+  const handleScan = async () => {
+    try {
+      setStep(STEPS.fetching)
+      setError(null)
+      const emails = await fetchJobEmails(100, months)
+      setEmailCount(emails.length)
+
+      if (emails.length === 0) {
+        setError(`Aucun email trouvé sur ${months} mois. Essayez d'augmenter la période ou vérifiez vos autorisations Gmail.`)
+        setStep(STEPS.idle)
+        return
+      }
+
+      setStep(STEPS.parsing)
+      const parsed = await parseEmailsForJobs(emails)
+
+      // Auto-detect ATS rejections
+      const enriched = parsed.map(p => ({
+        ...p,
+        status: p.status === 'rejected' && isAtsRejection(p.notes || '') ? 'rejected_ats' : p.status
+      }))
+
+      // Dedup within parsed results (merge same company)
+      const deduped = deduplicateJobs(enriched)
+
+      // Filter out already existing companies (normalized match)
+      const normalize = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+      const existingNames = existingJobs.map(j => normalize(j.company))
+      const newOnly = deduped.filter(p =>
+        p.company && !existingNames.includes(normalize(p.company))
+      )
+
+      setResults(newOnly)
+      setSelected(new Set(newOnly.map((_, i) => i)))
+      setStep(STEPS.review)
+    } catch (e) {
+      setError('Erreur lors du scan : ' + e.message)
+      setStep(STEPS.idle)
+    }
+  }
+
+  const handleImport = () => {
+    const toImport = results
+      .filter((_, i) => selected.has(i))
+      .map(r => ({
+        company: r.company || 'Inconnu',
+        position: r.position || 'Poste non précisé',
+        url: '',
+        status: r.status || 'sent',
+        date: r.date || new Date().toISOString().split('T')[0],
+        notes: r.notes || '',
+      }))
+    onImport(toImport)
+    onClose()
+  }
+
+  const toggleSelect = (i) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(i) ? next.delete(i) : next.add(i)
+      return next
+    })
+  }
+
+  const isLoading = [STEPS.connecting, STEPS.fetching, STEPS.parsing].includes(step)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={!isLoading ? onClose : undefined} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl z-10 overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-lg">📧</div>
+            <div>
+              <h2 className="font-semibold text-gray-800 text-sm">Import depuis Gmail</h2>
+              <p className="text-xs text-gray-400">Détection automatique des candidatures</p>
+            </div>
+          </div>
+          {!isLoading && (
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+          )}
+        </div>
+
+        <div className="px-6 py-5">
+          {/* Not connected */}
+          {!connected && step !== STEPS.connecting && (
+            <div className="text-center py-4">
+              <div className="text-5xl mb-4">🔐</div>
+              <p className="text-gray-700 font-medium mb-1">Connectez votre Gmail</p>
+              <p className="text-sm text-gray-400 mb-6">Lecture seule — aucune donnée stockée sur nos serveurs.</p>
+              {error && <p className="text-xs text-red-500 bg-red-50 rounded-lg p-3 mb-4">{error}</p>}
+              <button
+                onClick={handleConnect}
+                className="flex items-center gap-2 mx-auto bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 font-medium px-5 py-2.5 rounded-xl text-sm transition-all shadow-sm hover:shadow"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Se connecter avec Google
+              </button>
+            </div>
+          )}
+
+          {/* Loading */}
+          {isLoading && (
+            <div className="text-center py-8">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-50 mb-4">
+                <svg className="w-6 h-6 text-indigo-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+              </div>
+              <p className="font-medium text-gray-700 mb-1">
+                {step === STEPS.connecting && 'Connexion à Gmail...'}
+                {step === STEPS.fetching && `Scan multi-sources sur ${months} mois...`}
+                {step === STEPS.parsing && `Analyse IA de ${emailCount} email${emailCount > 1 ? 's' : ''} uniques...`}
+              </p>
+              <p className="text-xs text-gray-400">
+                {step === STEPS.parsing && 'Claude identifie les candidatures et leurs statuts'}
+              </p>
+            </div>
+          )}
+
+          {/* Connected idle */}
+          {connected && step === STEPS.idle && (
+            <div className="text-center py-4">
+              <div className="inline-flex items-center gap-2 bg-green-50 text-green-700 text-xs font-medium px-3 py-1.5 rounded-full mb-5">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                Gmail connecté
+              </div>
+
+              {/* Month selector */}
+              <div className="mb-6">
+                <p className="text-sm text-gray-600 mb-3">Combien de mois voulez-vous scanner ?</p>
+                <div className="flex gap-2 justify-center flex-wrap">
+                  {MONTH_OPTIONS.map(o => (
+                    <button
+                      key={o.value}
+                      onClick={() => setMonths(o.value)}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
+                        months === o.value
+                          ? 'bg-indigo-600 text-white border-indigo-600'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
+                      }`}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {error && <p className="text-xs text-red-500 bg-red-50 rounded-lg p-3 mb-4">{error}</p>}
+              <div className="flex gap-3 justify-center">
+                <button onClick={() => { disconnectGmail(); setConnected(false) }} className="text-xs text-gray-400 hover:text-gray-600 hover:underline">
+                  Déconnecter
+                </button>
+                <button onClick={handleScan} className="bg-indigo-600 text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors">
+                  🔍 Scanner {months} mois
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Review */}
+          {step === STEPS.review && (
+            <div>
+              {results.length === 0 ? (
+                <div className="text-center py-6">
+                  <div className="text-3xl mb-3">🤷</div>
+                  <p className="text-gray-600 font-medium">Aucune nouvelle candidature détectée</p>
+                  <p className="text-xs text-gray-400 mt-1">Toutes les candidatures trouvées sont déjà dans votre liste.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-medium text-gray-700">{results.length} candidature{results.length > 1 ? 's' : ''} détectée{results.length > 1 ? 's' : ''}</p>
+                    <p className="text-xs text-gray-400">{selected.size} sélectionnée{selected.size > 1 ? 's' : ''}</p>
+                  </div>
+                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                    {results.map((r, i) => {
+                      const st = getStatus(r.status)
+                      const isSelected = selected.has(i)
+                      return (
+                        <div key={i} onClick={() => toggleSelect(i)}
+                          className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                            isSelected ? 'border-indigo-200 bg-indigo-50/50' : 'border-gray-100 bg-gray-50/50 opacity-60'
+                          }`}
+                        >
+                          <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 mt-0.5 border-2 transition-colors ${
+                            isSelected ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300'
+                          }`}>
+                            {isSelected && <span className="text-white text-xs">✓</span>}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-sm text-gray-800">{r.company}</span>
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${st.color}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
+                                {st.label}
+                              </span>
+                              {r.confidence && <span className="text-xs text-gray-400">{r.confidence}% sûr</span>}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-0.5">{r.position}</p>
+                            {r.notes && <p className="text-xs text-gray-400 mt-0.5 italic">{r.notes}</p>}
+                          </div>
+                          <span className="text-xs text-gray-400 flex-shrink-0">{r.date}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {step === STEPS.review && results.length > 0 && (
+          <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end">
+            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">Annuler</button>
+            <button onClick={handleImport} disabled={selected.size === 0}
+              className="px-5 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-colors">
+              Importer {selected.size > 0 ? `(${selected.size})` : ''}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
