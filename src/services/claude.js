@@ -82,6 +82,8 @@ Règles:
 - Email envoyé avec candidature → status "sent", company depuis destinataire ou corps
 - Company inconnue → domaine expéditeur
 - Position inconnue → "Poste non précisé"
+- IGNORER : alertes d'offres d'emploi (LinkedIn job alerts, Indeed alerts, "New jobs for you", "Emplois recommandés", "X new jobs match"), newsletters, emails marketing
+- IGNORER : emails sans rapport avec une candidature spécifique de l'utilisateur
 - Retourne [] si vraiment aucun email emploi
 
 Emails:

@@ -157,15 +157,11 @@ function splitPipeNotes(jobs) {
     if (!j.history) return j
     const expanded = []
     for (const entry of j.history) {
+      // Split on ' | ' separator
       if (entry.note && entry.note.includes(' | ')) {
-        const parts = entry.note.split(' | ').filter(Boolean)
-        parts.forEach((part, i) => {
-          expanded.push({
-            ...entry,
-            note: part.trim(),
-            // Spread entries 1 day apart if same date
-            date: i === 0 ? entry.date : entry.date,
-          })
+        const parts = entry.note.split(' | ').filter(p => p.trim())
+        parts.forEach(part => {
+          expanded.push({ ...entry, note: part.trim() })
         })
       } else {
         expanded.push(entry)
@@ -207,7 +203,8 @@ function load() {
         ...j,
         history: j.history || [{ date: j.date, status: j.status, note: 'Candidature ajoutée' }]
       }))
-      return autoStale(splitPipeNotes(migrated))
+      const processed = autoStale(splitPipeNotes(migrated))
+      return processed
     }
   } catch {}
   return INITIAL_DEMO
