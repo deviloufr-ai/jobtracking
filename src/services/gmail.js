@@ -102,11 +102,11 @@ export async function fetchJobEmails(maxResults = 100, months = 3) {
     `in:sent ("je postule" OR "je vous adresse" OR "je me permets de vous soumettre" OR "je suis candidat" OR "suite à votre offre" OR "en réponse à votre annonce" OR "I am applying" OR "I would like to apply" OR "please find my CV" OR "please find attached") newer_than:${days}d`,
   ]
 
-  // Run all queries in parallel, deduplicate results
+  // Run queries in small batches to avoid rate limiting
   const allMessageIds = new Set()
   const allMessages = []
 
-  await Promise.all(queries.map(async (query) => {
+  const runQuery = async (query) => {
     try {
       const data = await gmailFetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=50&q=${encodeURIComponent(query)}`
@@ -119,16 +119,34 @@ export async function fetchJobEmails(maxResults = 100, months = 3) {
         }
       }
     } catch (e) {
-      console.warn('Query failed:', query.slice(0, 50), e.message)
+      console.warn('Query failed:', query.slice(0, 60), e.message)
     }
-  }))
+  }
+
+  // Run in batches of 3 with 200ms delay between batches
+  const batchSize = 3
+  for (let i = 0; i < queries.length; i += batchSize) {
+    const batch = queries.slice(i, i + batchSize)
+    await Promise.all(batch.map(runQuery))
+    if (i + batchSize < queries.length) {
+      await new Promise(r => setTimeout(r, 200))
+    }
+  }
 
   if (allMessages.length === 0) return []
 
-  // Fetch details for all unique messages (cap at maxResults)
+  // Fetch details in batches of 5 to avoid rate limiting
   const toFetch = allMessages.slice(0, maxResults)
-  const emails = await Promise.all(toFetch.map(m => fetchEmailDetail(m.id)))
-  return emails.filter(Boolean)
+  const emails = []
+  for (let i = 0; i < toFetch.length; i += 5) {
+    const batch = toFetch.slice(i, i + 5)
+    const results = await Promise.all(batch.map(m => fetchEmailDetail(m.id)))
+    emails.push(...results.filter(Boolean))
+    if (i + 5 < toFetch.length) {
+      await new Promise(r => setTimeout(r, 100))
+    }
+  }
+  return emails
 }
 
 function decodeBase64(str) {
