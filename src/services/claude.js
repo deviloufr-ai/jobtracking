@@ -43,7 +43,7 @@ const MOCK_PARSE_RESULT = [
   { emailId: 1, company: 'Exemple Corp', position: 'Product Manager', status: 'interview', date: new Date().toISOString().split('T')[0], notes: 'Mode démo', confidence: 95 }
 ]
 
-const system = `Tu es un assistant qui analyse des emails pour détecter des candidatures d'emploi. Tu réponds UNIQUEMENT avec un tableau JSON valide, rien d'autre, sans backticks.`
+const system = `Tu es un assistant qui analyse des emails pour détecter des candidatures d'emploi. Tu réponds UNIQUEMENT avec un tableau JSON valide, rien d'autre.`
 
 export async function parseEmailsForJobs(emails) {
   if (!emails.length) return []
@@ -54,20 +54,19 @@ export async function parseEmailsForJobs(emails) {
       company: (e.from || '').split('@')[1]?.split('.')[0] || 'Entreprise',
       position: 'Poste détecté (mode démo)',
       status: 'sent',
-      date: new Date(e.date || Date.now()).toISOString().split('T')[0],
+      date: (() => { try { return new Date(e.date).toISOString().split('T')[0] } catch { return new Date().toISOString().split('T')[0] } })(),
       notes: e.subject?.slice(0, 80) || '',
       confidence: 70
     }))
   }
 
-  // Process in batches of 15
   const BATCH = 15
   const all = []
   for (let i = 0; i < emails.length; i += BATCH) {
     const batch = emails.slice(i, i + BATCH)
+
     const emailsText = batch.map((e, j) => {
       const bodySection = e.body?.trim() ? `Contenu: ${e.body.slice(0, 500)}` : `Aperçu: ${e.snippet}`
-      // Parse email date to YYYY-MM-DD
       let dateStr = e.date || ''
       try {
         const parsed = new Date(e.date)
@@ -76,28 +75,39 @@ export async function parseEmailsForJobs(emails) {
       return `[${i + j + 1}] De: ${e.from}\nSujet: ${e.subject}\nDate: ${dateStr}\n${bodySection}`
     }).join('\n\n---\n\n')
 
-    console.log(`Batch ${i/BATCH + 1}: sending ${batch.length} emails to Claude`)
+    console.log(`Batch ${Math.floor(i/BATCH) + 1}: sending ${batch.length} emails to Claude`)
 
-    const prompt = `Analyse ces emails. Pour CHAQUE email lié à un emploi (candidature, réponse recruteur, entretien, refus, offre), retourne un objet JSON.
+    const prompt = `Tu analyses des emails pour extraire des candidatures d'emploi.
 
-Champs: emailId (numéro), company (string), position (string), status ("sent"|"reviewing"|"interview"|"waiting"|"offer"|"rejected"|"cancelled"), date (YYYY-MM-DD), notes (max 80 chars), confidence (0-100)
+REGLES ABSOLUES :
+1. Chaque email [N] = 1 objet JSON avec SA PROPRE date
+2. La date = exactement la date du champ "Date:" converti en YYYY-MM-DD
+3. Ne JAMAIS fusionner deux emails en un seul objet
+4. Ne JAMAIS mettre la meme date pour deux emails differents
 
-Règles:
-- Sois inclusif, confidence min 30
-- Email d'un ATS (recruitee, greenhouse, lever, workable...) → toujours inclure
-- Email envoyé avec candidature → status "sent", company depuis destinataire ou corps
-- Company inconnue → domaine expéditeur
-- Position inconnue → "Poste non précisé"
-- IGNORER : alertes d'offres d'emploi (LinkedIn job alerts, Indeed alerts, "New jobs for you", "Emplois recommandés", "X new jobs match"), newsletters, emails marketing
-- IGNORER : emails sans rapport avec une candidature spécifique de l'utilisateur
-- Retourne [] si vraiment aucun email emploi
+Correspondance date:
+[1] Date: 2026-06-01 -> "date": "2026-06-01"
+[2] Date: 2026-06-02 -> "date": "2026-06-02"
+
+Statuts selon LE CONTENU de chaque email:
+- "sent" : candidature envoyee par l utilisateur
+- "reviewing" : accuse reception, profil en cours d examen  
+- "interview" : invitation entretien, echange sur le process, negociation en cours
+- "waiting" : en attente de decision
+- "offer" : proposition embauche
+- "rejected" : refus DEFINITIF uniquement
+- "cancelled" : processus annule
+
+IMPORTANT: Negociation salariale = "interview" ou "waiting", PAS "rejected"
+
+Champs JSON: emailId, company, position, status, date (YYYY-MM-DD), notes (max 80 chars), confidence (0-100)
+IGNORER: alertes offres LinkedIn/Indeed, newsletters.
 
 Emails:
 ${emailsText}`
 
     const raw = await callClaude(system, prompt)
     const parsed = parseJSON(raw).filter(j => (j.confidence || 0) >= 20).map(j => {
-      // Attach original email ID and from for linking back to Gmail
       const originalEmail = batch[j.emailId - i - 1]
       if (originalEmail) {
         j.gmailId = originalEmail.id
@@ -148,13 +158,6 @@ CV: ${cvText}`
     if (start !== -1 && end !== -1) return JSON.parse(clean.slice(start, end + 1))
     return null
   } catch { return null }
-}
-
-function extractCompanyFromEmail(from = '') {
-  const match = from.match(/<(.+)>/)
-  const email = match ? match[1] : from
-  const domain = email.split('@')[1] || ''
-  return domain.split('.')[0] || 'Entreprise inconnue'
 }
 
 const MOCK_ANALYSIS = {
