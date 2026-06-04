@@ -176,23 +176,46 @@ function splitPipeNotes(jobs) {
 function mergeSameDateEntries(jobs) {
   return jobs.map(j => {
     if (!j.history || j.history.length <= 1) return j
-    const merged = []
+
+    // Group by date only — merge all entries from same day
+    const byDate = {}
+    const order = []
     for (const entry of j.history) {
-      // Match on date + status only (ignore source for merging)
-      const existing = merged.find(e => e.date === entry.date && e.status === entry.status)
-      if (existing) {
-        // Only merge if notes are different and both non-empty
-        if (entry.note && entry.note.trim() && entry.note !== existing.note) {
-          existing.note = existing.note
-            ? `${existing.note} · ${entry.note}`
-            : entry.note
-        }
-        // Keep gmailId if not already set
-        if (!existing.gmailId && entry.gmailId) existing.gmailId = entry.gmailId
+      const key = entry.date || 'unknown'
+      if (!byDate[key]) {
+        byDate[key] = { ...entry, _notes: entry.note ? [entry.note] : [], _gmailIds: entry.gmailId ? [entry.gmailId] : [] }
+        order.push(key)
       } else {
-        merged.push({ ...entry })
+        const existing = byDate[key]
+        // Keep most advanced status
+        const statusOrder = ['todo','sent','reviewing','interview','waiting','offer','rejected','rejected_ats','cancelled','archived']
+        const existingIdx = statusOrder.indexOf(existing.status)
+        const entryIdx = statusOrder.indexOf(entry.status)
+        if (entryIdx > existingIdx) existing.status = entry.status
+        // Collect unique notes
+        if (entry.note && entry.note.trim() && !existing._notes.includes(entry.note)) {
+          existing._notes.push(entry.note)
+        }
+        // Keep first gmailId
+        if (entry.gmailId && !existing._gmailIds.includes(entry.gmailId)) {
+          existing._gmailIds.push(entry.gmailId)
+        }
+        // Keep meetingLink if available
+        if (!existing.meetingLink && entry.meetingLink) existing.meetingLink = entry.meetingLink
       }
     }
+
+    const merged = order.map(key => {
+      const e = byDate[key]
+      return {
+        ...e,
+        note: e._notes.join(' · '),
+        gmailId: e._gmailIds[0] || undefined,
+        _notes: undefined,
+        _gmailIds: undefined,
+      }
+    })
+
     return { ...j, history: merged }
   })
 }
@@ -200,8 +223,10 @@ function mergeSameDateEntries(jobs) {
 function autoStale(jobs) {
   const now = new Date()
   return jobs.map(j => {
-    const lastUpdate = new Date(j.updatedAt || j.date)
-    const daysSince = (now - lastUpdate) / (1000 * 60 * 60 * 24)
+    // Use sentAt (original send date) if available, otherwise date - NOT updatedAt
+    // This prevents manual edits from resetting the archive timer
+    const refDate = new Date(j.sentAt || j.date)
+    const daysSince = (now - refDate) / (1000 * 60 * 60 * 24)
 
     // Auto-archive: no response after 2 months on active statuses
     if (['sent', 'reviewing', 'waiting'].includes(j.status) && daysSince >= 60) {
@@ -271,6 +296,7 @@ export function useJobs() {
       status,
       id: crypto.randomUUID(),
       updatedAt: new Date().toISOString(),
+      sentAt: ['sent','reviewing','waiting'].includes(status) ? (data.date || new Date().toISOString().split('T')[0]) : undefined,
       history: [{
         date: data.date,
         status,

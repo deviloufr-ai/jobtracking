@@ -82,7 +82,7 @@ export default function App() {
       return true
     }).filter(j => !showFavOnly || j.favorite).filter(j => showArchived || j.status !== 'archived')
     return sortJobs(list, sort)
-  }, [jobs, filters, sort])
+  }, [jobs, filters, sort, showFavOnly, showArchived])
 
   const handleSave = (form) => {
     if (modal === 'add') { addJob(form); showToast('Candidature ajoutee !') }
