@@ -96,9 +96,10 @@ export default function GmailImport({ onImport, onClose, existingJobs, onUserCha
       console.log('Raw parsed by Claude:', parsed)
       console.log('After dedup:', newOnly)
       setDebugInfo(prev => ({ ...prev, parsed: parsed.length, afterDedup: newOnly.length, rawParsed: parsed.slice(0,5) }))
-      // Show ALL results if force import, even if 0
-      setResults(newOnly.length > 0 ? newOnly : (forceImport && parsed.length > 0 ? parsed.filter(p => p.company) : []))
-      setSelected(new Set((newOnly.length > 0 ? newOnly : (forceImport && parsed.length > 0 ? parsed.filter(p => p.company) : [])).map((_, i) => i)))
+      // Show ALL results if force import, even if 0 — always use deduped to avoid per-email duplicates
+      const displayList = newOnly.length > 0 ? newOnly : (forceImport && deduped.length > 0 ? deduped.filter(p => p.company) : [])
+      setResults(displayList)
+      setSelected(new Set(displayList.map((_, i) => i)))
       setStep(STEPS.review)
     } catch (e) {
       setError('Erreur lors du scan : ' + e.message)
@@ -281,7 +282,7 @@ export default function GmailImport({ onImport, onClose, existingJobs, onUserCha
                 </div>
               )}
               <div className="flex gap-3 justify-center">
-                <button onClick={() => { disconnectGmail(); setConnected(false) }} className="text-xs text-gray-400 hover:text-gray-600 hover:underline">
+                <button onClick={handleDisconnect} className="text-xs text-gray-400 hover:text-gray-600 hover:underline">
                   Déconnecter
                 </button>
                 <button onClick={handleScan} className="bg-indigo-600 text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors">
@@ -301,7 +302,7 @@ export default function GmailImport({ onImport, onClose, existingJobs, onUserCha
                   <p className="text-xs text-gray-400 mt-1">Toutes les candidatures trouvées sont déjà dans votre liste.</p>
                   {!forceImport && (
                     <button
-                      onClick={() => { setForceImport(true); setStep('idle') }}
+                      onClick={() => { setForceImport(true); setStep(STEPS.idle) }}
                       className="mt-3 text-xs text-indigo-600 hover:underline"
                     >
                       Réessayer en ignorant les doublons →

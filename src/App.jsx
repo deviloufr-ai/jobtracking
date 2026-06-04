@@ -103,6 +103,9 @@ export default function App() {
     }))
   }
 
+  const archivedCount = useMemo(() => jobs.filter(j => j.status === 'archived').length, [jobs])
+  const favCount = useMemo(() => jobs.filter(j => j.favorite).length, [jobs])
+
   const filtered = useMemo(() => {
     const list = jobs.filter(j => {
       if (filters.search) {
@@ -141,7 +144,6 @@ export default function App() {
   const handleBulkImport = (newJobs) => {
     newJobs.forEach(j => addJob(j))
     showToast(`${newJobs.length} candidature${newJobs.length > 1 ? 's' : ''} importée${newJobs.length > 1 ? 's' : ''} !`, 3500)
-    setTimeout(() => window.location.reload(), 1500)
   }
 
   const handleUpdateHistory = (id, history) => {
@@ -248,9 +250,9 @@ export default function App() {
             }`}
           >
             📦 Archives
-            {jobs.filter(j => j.status === 'archived').length > 0 && (
+            {archivedCount > 0 && (
               <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">
-                {jobs.filter(j => j.status === 'archived').length}
+                {archivedCount}
               </span>
             )}
           </button>
@@ -263,9 +265,9 @@ export default function App() {
             }`}
           >
             {showFavOnly ? '⭐' : '☆'} Favoris
-            {jobs.filter(j => j.favorite).length > 0 && (
+            {favCount > 0 && (
               <span className={`text-xs px-1.5 py-0.5 rounded-full ${showFavOnly ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>
-                {jobs.filter(j => j.favorite).length}
+                {favCount}
               </span>
             )}
           </button>

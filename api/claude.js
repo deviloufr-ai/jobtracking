@@ -12,6 +12,11 @@ export default async function handler(req, res) {
   if (!apiKey) { res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' }); return }
 
   try {
+    const { model, max_tokens, system, messages, tools, tool_choice } = req.body
+    const safeBody = { model, max_tokens, system, messages }
+    if (tools) safeBody.tools = tools
+    if (tool_choice) safeBody.tool_choice = tool_choice
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -19,7 +24,7 @@ export default async function handler(req, res) {
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
       },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify(safeBody),
     })
     const data = await response.json()
     res.status(response.status).json(data)

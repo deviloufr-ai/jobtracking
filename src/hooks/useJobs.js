@@ -106,7 +106,6 @@ function normalizeCompany(name = '') {
     .replace(/\b(ai|app|tech|digital|solutions?|group|labs?|studio|hq)\b/gi, '')
     // Strip everything non-alphanumeric
     .replace(/[^a-z0-9]/g, '')
-    .trim()
 }
 
 const STATUS_PRIORITY = {
@@ -274,7 +273,7 @@ function load() {
       const processed = autoStale(mergeSameDateEntries(splitPipeNotes(migrated)))
       return processed
     }
-  } catch {}
+  } catch (e) { console.error('JobTrackr: failed to load saved data', e) }
   return INITIAL_DEMO
 }
 
@@ -288,7 +287,7 @@ export function useJobs() {
   useEffect(() => { save(jobs) }, [jobs])
 
   const addJob = (data) => {
-    const status = (data.status === 'rejected' && isAtsRejection(data.notes || '', data.fromEmail || ''))
+    const status = (data.status === 'rejected' && isAtsRejection(data.notes || '', data._fromEmail || ''))
       ? 'rejected_ats'
       : data.status
 
