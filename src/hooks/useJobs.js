@@ -2,6 +2,21 @@ import { useState, useEffect } from 'react'
 
 const STORAGE_KEY = 'jobtrackr_applications'
 
+// ─── enrichedAt helpers ───────────────────────────────────────────────────────
+// Max age before enrichment is considered stale (30 days)
+const ENRICH_TTL_DAYS = 30
+
+export function isEnriched(job) {
+  if (!job?.enrichedAt) return false
+  const age = (Date.now() - new Date(job.enrichedAt).getTime()) / (1000 * 60 * 60 * 24)
+  return age < ENRICH_TTL_DAYS
+}
+
+export function needsEnrichment(job) {
+  return !isEnriched(job)
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 const INITIAL_DEMO = [
   {
     id: '1',
@@ -81,21 +96,24 @@ export function getStatus(key) {
   return STATUSES.find(s => s.key === key) || STATUSES[0]
 }
 
-// Normalize company name for dedup comparison
 function normalizeCompany(name = '') {
   return name.toLowerCase()
+    // Strip legal suffixes
     .replace(/\s+(sas|sasu|sarl|sa|srl|inc|ltd|llc|gmbh|bv|nv|ag|spa|oy|ab)\.?$/i, '')
+    // Strip TLD suffixes (.io .com .fr .co .app .ai .eu etc.)
+    .replace(/\.(io|com|fr|co|net|org|app|ai|eu|de|uk|be|ch|ca|us|tech|dev)\.?$/i, '')
+    // Strip common generic words that don't identify the company
+    .replace(/\b(ai|app|tech|digital|solutions?|group|labs?|studio|hq)\b/gi, '')
+    // Strip everything non-alphanumeric
     .replace(/[^a-z0-9]/g, '')
     .trim()
 }
 
-// Status priority for merge (higher = more advanced)
 const STATUS_PRIORITY = {
   cancelled: 0, sent: 1, reviewing: 2, waiting: 3,
   interview: 4, offer: 5, rejected: 6, rejected_ats: 6
 }
 
-// Merge duplicate jobs — keeps most advanced status, merges history
 export function deduplicateJobs(jobs) {
   const groups = new Map()
 
@@ -115,7 +133,6 @@ export function deduplicateJobs(jobs) {
       continue
     }
 
-    // Sort by status priority desc, then date desc
     group.sort((a, b) => {
       const pa = STATUS_PRIORITY[a.status] ?? 1
       const pb = STATUS_PRIORITY[b.status] ?? 1
@@ -125,11 +142,9 @@ export function deduplicateJobs(jobs) {
 
     const primary = group[0]
 
-    // Merge all histories
     const allHistory = group.flatMap(j => j.history || [])
     allHistory.sort((a, b) => new Date(a.date) - new Date(b.date))
 
-    // Deduplicate history entries
     const seenHistory = new Set()
     const mergedHistory = allHistory.filter(h => {
       const k = `${h.date}-${h.status}-${h.note}`
@@ -138,13 +153,20 @@ export function deduplicateJobs(jobs) {
       return true
     })
 
-    // Merge notes
     const allNotes = [...new Set(group.map(j => j.notes).filter(Boolean))].join(' | ')
+
+    // Keep enrichedAt from the most recently enriched job in the group
+    const latestEnrichedAt = group
+      .map(j => j.enrichedAt)
+      .filter(Boolean)
+      .sort()
+      .pop()
 
     result.push({
       ...primary,
       notes: allNotes || primary.notes,
       history: mergedHistory,
+      enrichedAt: latestEnrichedAt || primary.enrichedAt,
       _merged: group.length > 1 ? group.length : undefined
     })
   }
@@ -152,13 +174,11 @@ export function deduplicateJobs(jobs) {
   return result
 }
 
-// Split pipe-separated notes into multiple history entries
 function splitPipeNotes(jobs) {
   return jobs.map(j => {
     if (!j.history) return j
     const expanded = []
     for (const entry of j.history) {
-      // Split on ' | ' separator
       if (entry.note && entry.note.includes(' | ')) {
         const parts = entry.note.split(' | ').filter(p => p.trim())
         parts.forEach(part => {
@@ -172,12 +192,10 @@ function splitPipeNotes(jobs) {
   })
 }
 
-// Merge history entries from same company on same date with same status
 function mergeSameDateEntries(jobs) {
   return jobs.map(j => {
     if (!j.history || j.history.length <= 1) return j
 
-    // Group by date only — merge all entries from same day
     const byDate = {}
     const order = []
     for (const entry of j.history) {
@@ -187,20 +205,16 @@ function mergeSameDateEntries(jobs) {
         order.push(key)
       } else {
         const existing = byDate[key]
-        // Keep most advanced status
         const statusOrder = ['todo','sent','reviewing','interview','waiting','offer','rejected','rejected_ats','cancelled','archived']
         const existingIdx = statusOrder.indexOf(existing.status)
         const entryIdx = statusOrder.indexOf(entry.status)
         if (entryIdx > existingIdx) existing.status = entry.status
-        // Collect unique notes
         if (entry.note && entry.note.trim() && !existing._notes.includes(entry.note)) {
           existing._notes.push(entry.note)
         }
-        // Keep first gmailId
         if (entry.gmailId && !existing._gmailIds.includes(entry.gmailId)) {
           existing._gmailIds.push(entry.gmailId)
         }
-        // Keep meetingLink if available
         if (!existing.meetingLink && entry.meetingLink) existing.meetingLink = entry.meetingLink
       }
     }
@@ -223,12 +237,9 @@ function mergeSameDateEntries(jobs) {
 function autoStale(jobs) {
   const now = new Date()
   return jobs.map(j => {
-    // Use sentAt (original send date) if available, otherwise date - NOT updatedAt
-    // This prevents manual edits from resetting the archive timer
     const refDate = new Date(j.sentAt || j.date)
     const daysSince = (now - refDate) / (1000 * 60 * 60 * 24)
 
-    // Auto-archive: no response after 2 months on active statuses
     if (['sent', 'reviewing', 'waiting'].includes(j.status) && daysSince >= 60) {
       const newEntry = {
         date: now.toISOString().split('T')[0],
@@ -238,7 +249,6 @@ function autoStale(jobs) {
       return { ...j, status: 'archived', updatedAt: now.toISOString(), history: [...(j.history || []), newEntry] }
     }
 
-    // Auto-archive: rejected/cancelled older than 3 months
     if (['rejected', 'rejected_ats', 'cancelled'].includes(j.status) && daysSince >= 90) {
       const newEntry = {
         date: now.toISOString().split('T')[0],
@@ -278,12 +288,10 @@ export function useJobs() {
   useEffect(() => { save(jobs) }, [jobs])
 
   const addJob = (data) => {
-    // Auto-detect ATS rejection
     const status = (data.status === 'rejected' && isAtsRejection(data.notes || '', data.fromEmail || ''))
       ? 'rejected_ats'
       : data.status
 
-    // Build initial history entry
     let historyNote = data.notes || 'Offre ajoutée'
     if (status === 'todo') {
       historyNote = data.url
@@ -297,6 +305,7 @@ export function useJobs() {
       id: crypto.randomUUID(),
       updatedAt: new Date().toISOString(),
       sentAt: ['sent','reviewing','waiting'].includes(status) ? (data.date || new Date().toISOString().split('T')[0]) : undefined,
+      // enrichedAt intentionally absent on creation — will be set after first enrichment
       history: [{
         date: data.date,
         status,
@@ -309,7 +318,6 @@ export function useJobs() {
         source: data._gmailId ? 'email' : undefined,
       }]
     }
-    // Clean internal fields
     delete job._gmailId
     delete job._fromEmail
     delete job._fromMe
@@ -356,17 +364,27 @@ export function useJobs() {
     }))
   }
 
-  // Merge all duplicate jobs in current list
+  // Mark a job as enriched — call this after any successful Claude enrichment
+  const markEnriched = (id) => {
+    setJobs(prev => prev.map(j =>
+      j.id === id ? { ...j, enrichedAt: new Date().toISOString() } : j
+    ))
+  }
+
+  // Force re-enrichment on next open (clears the flag)
+  const clearEnriched = (id) => {
+    setJobs(prev => prev.map(j =>
+      j.id === id ? { ...j, enrichedAt: undefined } : j
+    ))
+  }
+
   const mergeDuplicates = () => {
-    setJobs(prev => {
-      const merged = deduplicateJobs(prev)
-      return merged
-    })
+    setJobs(prev => deduplicateJobs(prev))
   }
 
   const toggleFavorite = (id) => {
     setJobs(prev => prev.map(j => j.id === id ? { ...j, favorite: !j.favorite } : j))
   }
 
-  return { jobs, addJob, updateJob, deleteJob, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite }
+  return { jobs, addJob, updateJob, deleteJob, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched }
 }
