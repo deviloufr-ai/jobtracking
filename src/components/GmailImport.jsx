@@ -45,8 +45,8 @@ export default function GmailImport({ onImport, onClose, existingJobs, onUserCha
       await connectGmail()
       setConnected(true)
       setStep(STEPS.idle)
-      // connectGmail already fetched and cached user info — read it directly
-      const user = getCachedUser()
+      // connectGmail fetches and caches user info; fall back to a direct fetch if it failed
+      const user = getCachedUser() || await getGmailUserInfo()
       setGmailUser(user)
       onUserChange?.(user)
     } catch (e) {
@@ -86,12 +86,13 @@ export default function GmailImport({ onImport, onClose, existingJobs, onUserCha
       // Dedup within parsed results (merge same company)
       const deduped = deduplicateJobs(enriched)
 
-      // Filter out already existing companies (normalized match)
+      // Filter out already-tracked applications — match on company+position so a second
+      // application to the same company (different role) still comes through
       const normalize = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-      const existingNames = existingJobs.map(j => normalize(j.company))
+      const existingKeys = new Set(existingJobs.map(j => `${normalize(j.company)}_${normalize(j.position)}`))
       const newOnly = forceImport
-        ? deduped.filter(p => p.company) // skip dedup
-        : deduped.filter(p => p.company && !existingNames.includes(normalize(p.company)))
+        ? deduped.filter(p => p.company)
+        : deduped.filter(p => p.company && !existingKeys.has(`${normalize(p.company)}_${normalize(p.position)}`))
 
       console.log('Raw parsed by Claude:', parsed)
       console.log('After dedup:', newOnly)
