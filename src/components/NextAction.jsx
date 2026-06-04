@@ -74,13 +74,6 @@ const NEXT_STEPS_RULES = [
     tip: () => `Salaire, télétravail, avantages, date de prise de poste — prépare chaque point.`,
     cta: 'Voir les conseils',
   },
-  {
-    match: j => j.status === 'rejected_ats',
-    icon: '🔧', type: 'cv',
-    label: job => `Optimiser CV pour ${job.company}`,
-    tip: () => `Refus ATS — intègre les mots-clés de l'offre et restructure ton CV.`,
-    cta: 'Optimiser le CV',
-  },
 ]
 
 const URGENCY_COLORS = {

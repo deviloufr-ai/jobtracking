@@ -45,8 +45,8 @@ export default function GmailImport({ onImport, onClose, existingJobs, onUserCha
       await connectGmail()
       setConnected(true)
       setStep(STEPS.idle)
-      // Fetch user info and propagate to header
-      const user = await getGmailUserInfo()
+      // connectGmail already fetched and cached user info — read it directly
+      const user = getCachedUser()
       setGmailUser(user)
       onUserChange?.(user)
     } catch (e) {
