@@ -194,13 +194,7 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowImageImport(true)}
-              className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 transition-all">
-              <span>🖼️</span><span className="hidden sm:inline">Screenshot</span>
-            </button>
-            {/* Extension install button — shown when extension not detected */}
-            <ExtensionButton />
-            {/* Gmail / Google account button */}
+            {/* When connected: account pill replaces Screenshot (more prominent); Screenshot moves right */}
             {gmailUser ? (
               <button
                 onClick={() => setShowGmail(true)}
@@ -208,18 +202,35 @@ export default function App() {
                 className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium pl-1 pr-3 py-1 rounded-full hover:bg-gray-50 hover:border-gray-300 transition-all"
               >
                 {gmailUser.picture
-                  ? <img src={gmailUser.picture} alt="" className="w-6 h-6 rounded-full" />
-                  : <div className="w-6 h-6 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center font-bold">{gmailUser.email?.[0]?.toUpperCase()}</div>
+                  ? <img src={gmailUser.picture} alt="" className="w-7 h-7 rounded-full" />
+                  : <div className="w-7 h-7 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center font-bold">{gmailUser.email?.[0]?.toUpperCase()}</div>
                 }
-                <span className="hidden sm:inline max-w-[120px] truncate">{gmailUser.name || gmailUser.email}</span>
+                <div className="hidden sm:block text-left leading-tight">
+                  <div className="text-xs font-semibold max-w-[120px] truncate">{gmailUser.name || gmailUser.email}</div>
+                  <div className="text-[10px] text-gray-400 max-w-[120px] truncate">{gmailUser.email}</div>
+                </div>
               </button>
             ) : (
-              <button onClick={() => setShowGmail(true)}
-                className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path fill="#EA4335" d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.909 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
-                </svg>
-                <span className="hidden sm:inline">Gmail</span>
+              <>
+                <button onClick={() => setShowImageImport(true)}
+                  className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 transition-all">
+                  <span>🖼️</span><span className="hidden sm:inline">Screenshot</span>
+                </button>
+                <button onClick={() => setShowGmail(true)}
+                  className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path fill="#EA4335" d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.909 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
+                  </svg>
+                  <span className="hidden sm:inline">Gmail</span>
+                </button>
+              </>
+            )}
+            {/* Extension button + Screenshot (when connected) */}
+            <ExtensionButton />
+            {gmailUser && (
+              <button onClick={() => setShowImageImport(true)}
+                className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 transition-all">
+                <span>🖼️</span><span className="hidden sm:inline">Screenshot</span>
               </button>
             )}
             <button onClick={() => setModal('add')}
