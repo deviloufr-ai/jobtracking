@@ -61,7 +61,8 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
     setEnriching(true)
     setEnrichResult(null)
     try {
-      const result = await enrichJobTimeline(job)
+      // Auto-enrichir = Calendar only (emails are already fetched during Gmail import)
+      const result = await enrichJobTimeline(job, { calendarOnly: true })
       if (result) {
         onUpdateHistory(job.id, result.history)
         setEnrichResult({ success: true, count: result.newCount })
@@ -172,9 +173,9 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                     onClick={handleEnrich}
                     disabled={enriching}
                     className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1 hover:bg-purple-100 px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
-                    title="Enrichir avec Gmail + Calendar"
+                    title="Synchroniser avec Google Calendar"
                   >
-                    {enriching ? '⏳' : '✨'} {enriching ? 'Analyse...' : 'Auto-enrichir'}
+                    {enriching ? '⏳' : '📅'} {enriching ? 'Synchro...' : 'Sync Calendar'}
                   </button>
                   {enrichResult && (
                     <span className={`text-xs px-2 py-0.5 rounded-full ${enrichResult.success ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>

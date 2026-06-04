@@ -87,6 +87,22 @@ export default function GmailImport({ onImport, onClose, existingJobs, onUserCha
       const normalize = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
       const STATUS_ORDER = ['todo','sent','reviewing','interview','waiting','offer','rejected','rejected_ats','cancelled','archived']
 
+      // Build a lookup: gmailId → original email (for body/snippet to extract meeting links)
+      const emailByGmailId = Object.fromEntries(emails.map(e => [e.id, e]))
+
+      // Extract meeting/visio links from text
+      const extractMeetingLink = (text = '') => {
+        const patterns = [
+          /(https:\/\/meet\.google\.com\/[a-z0-9\-]+)/i,
+          /(https:\/\/[a-z0-9]+\.zoom\.us\/j\/[^\s"<>]+)/i,
+          /(https:\/\/teams\.microsoft\.com\/l\/meetup-join\/[^\s"<>]+)/i,
+          /(https:\/\/whereby\.com\/[^\s"<>]+)/i,
+          /(https:\/\/[a-z0-9]+\.webex\.com\/[^\s"<>]+)/i,
+        ]
+        for (const p of patterns) { const m = text.match(p); if (m) return m[1] }
+        return null
+      }
+
       const jobGroups = new Map()
       for (const p of enriched) {
         if (!p.company) continue
@@ -103,16 +119,22 @@ export default function GmailImport({ onImport, onClose, existingJobs, onUserCha
         const highestStatus = sorted.reduce((best, e) =>
           STATUS_ORDER.indexOf(e.status) > STATUS_ORDER.indexOf(best) ? e.status : best
         , sorted[0].status)
-        // Build a history entry per email — this is the key fix
-        const history = sorted.map(e => ({
-          date: e.date,
-          status: e.status,
-          note: e.notes || '',
-          gmailId: e.gmailId,
-          from: e.fromEmail,
-          fromMe: e.fromMe || false,
-          source: 'email',
-        }))
+        // Build a history entry per email, extracting meeting links from the body we already have
+        const history = sorted.map(e => {
+          const originalEmail = emailByGmailId[e.gmailId]
+          const text = (originalEmail?.body || '') + ' ' + (originalEmail?.snippet || '')
+          const meetingLink = extractMeetingLink(text)
+          return {
+            date: e.date,
+            status: e.status,
+            note: e.notes || '',
+            gmailId: e.gmailId,
+            from: e.fromEmail,
+            fromMe: e.fromMe || false,
+            source: 'email',
+            ...(meetingLink && { meetingLink }),
+          }
+        })
         const latest = sorted[sorted.length - 1]
         grouped.push({
           ...latest,

@@ -98,18 +98,20 @@ function getMockTimeline(company) {
   ]
 }
 
-export async function enrichJobTimeline(job, gmailToken) {
+export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
   const events = []
 
-  // 1. Fetch emails mentioning the company
-  try {
-    if (gmailToken) {
+  // 1. Email enrichment — skipped when calendarOnly (already done during Gmail import)
+  if (!calendarOnly) {
+    try {
       const emails = await fetchEmailsForCompany(job.company)
-      const emailEvents = await analyzeEmailsForTimeline(emails, job.company)
-      events.push(...emailEvents.map(e => ({ ...e, source: 'email' })))
+      if (emails.length > 0) {
+        const emailEvents = await analyzeEmailsForTimeline(emails, job.company)
+        events.push(...emailEvents.map(e => ({ ...e, source: 'email' })))
+      }
+    } catch (e) {
+      console.warn('Email enrichment failed:', e.message)
     }
-  } catch (e) {
-    console.warn('Email enrichment failed:', e.message)
   }
 
   // 2. Fetch calendar events
