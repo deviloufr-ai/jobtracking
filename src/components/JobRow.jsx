@@ -262,9 +262,18 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                                 >🗑️</button>
                               </div>
                             </div>
-                            {entry.note && (
-                              <p className="text-xs text-gray-600 mt-0.5">{entry.note}</p>
-                            )}
+                            {entry.note && entry.note.includes(' · ') ? (
+                            <ul className="mt-1 space-y-0.5">
+                              {entry.note.split(' · ').filter(Boolean).map((line, li) => (
+                                <li key={li} className="flex gap-1.5 text-xs text-gray-600">
+                                  <span className="text-gray-300 flex-shrink-0 mt-0.5">•</span>
+                                  <span>{line.trim()}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : entry.note ? (
+                            <p className="text-xs text-gray-600 mt-0.5">{entry.note}</p>
+                          ) : null}
                             {entry.meetingLink && (
                               <a
                                 href={entry.meetingLink}
