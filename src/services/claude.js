@@ -2,6 +2,46 @@ const IS_DEV = import.meta.env.DEV
 const CLAUDE_ENDPOINT = IS_DEV ? null : '/api/claude'
 const MODEL = 'claude-haiku-4-5-20251001'
 
+// ─── Email parse cache ────────────────────────────────────────────────────────
+const EMAIL_CACHE_KEY = 'jobtrackr_email_cache'
+const EMAIL_CACHE_TTL = 7 * 24 * 60 * 60 * 1000 // 7 days
+
+function loadEmailCache() {
+  try {
+    const raw = localStorage.getItem(EMAIL_CACHE_KEY)
+    if (!raw) return {}
+    const cache = JSON.parse(raw)
+    // Evict expired entries
+    const now = Date.now()
+    let dirty = false
+    for (const key of Object.keys(cache)) {
+      if (now - cache[key].ts > EMAIL_CACHE_TTL) { delete cache[key]; dirty = true }
+    }
+    if (dirty) localStorage.setItem(EMAIL_CACHE_KEY, JSON.stringify(cache))
+    return cache
+  } catch { return {} }
+}
+
+function saveEmailCache(cache) {
+  try { localStorage.setItem(EMAIL_CACHE_KEY, JSON.stringify(cache)) } catch {}
+}
+
+function emailCacheKey(email) {
+  // Stable key from gmail message id + subject (no body hashing needed)
+  return `${email.id || ''}_${(email.subject || '').slice(0, 60)}`
+}
+
+export function clearEmailCache() {
+  localStorage.removeItem(EMAIL_CACHE_KEY)
+}
+
+export function getEmailCacheStats() {
+  const cache = loadEmailCache()
+  const keys = Object.keys(cache)
+  return { entries: keys.length, sizeKb: Math.round(JSON.stringify(cache).length / 1024) }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function callClaude(systemPrompt, userContent) {
   if (!CLAUDE_ENDPOINT) return JSON.stringify(MOCK_PARSE_RESULT)
 
@@ -10,7 +50,7 @@ async function callClaude(systemPrompt, userContent) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 4000,
+      max_tokens: 1500,          // was 4000 — Haiku n'en a pas besoin
       system: systemPrompt,
       messages: [{ role: 'user', content: userContent }],
     }),
@@ -60,22 +100,47 @@ export async function parseEmailsForJobs(emails) {
     }))
   }
 
+  const cache = loadEmailCache()
+  let cacheHits = 0
+
   const BATCH = 15
   const all = []
+
   for (let i = 0; i < emails.length; i += BATCH) {
     const batch = emails.slice(i, i + BATCH)
 
-    const emailsText = batch.map((e, j) => {
+    // Separate cached vs uncached emails in this batch
+    const uncached = []
+    const cachedResults = []
+
+    for (const email of batch) {
+      const key = emailCacheKey(email)
+      if (cache[key]) {
+        cachedResults.push(cache[key].result)
+        cacheHits++
+      } else {
+        uncached.push(email)
+      }
+    }
+
+    all.push(...cachedResults)
+
+    if (uncached.length === 0) {
+      console.log(`Batch ${Math.floor(i/BATCH) + 1}: 100% cache hit (${cacheHits} emails)`)
+      continue
+    }
+
+    console.log(`Batch ${Math.floor(i/BATCH) + 1}: ${uncached.length} new emails → Claude (${cachedResults.length} from cache)`)
+
+    const emailsText = uncached.map((e, j) => {
       const bodySection = e.body?.trim() ? `Contenu: ${e.body.slice(0, 500)}` : `Aperçu: ${e.snippet}`
       let dateStr = e.date || ''
       try {
         const parsed = new Date(e.date)
         if (!isNaN(parsed)) dateStr = parsed.toISOString().split('T')[0]
       } catch {}
-      return `[${i + j + 1}] De: ${e.from}\nSujet: ${e.subject}\nDate: ${dateStr}\n${bodySection}`
+      return `[${j + 1}] De: ${e.from}\nSujet: ${e.subject}\nDate: ${dateStr}\n${bodySection}`
     }).join('\n\n---\n\n')
-
-    console.log(`Batch ${Math.floor(i/BATCH) + 1}: sending ${batch.length} emails to Claude`)
 
     const prompt = `Tu analyses des emails pour extraire des candidatures d'emploi.
 
@@ -108,16 +173,24 @@ ${emailsText}`
 
     const raw = await callClaude(system, prompt)
     const parsed = parseJSON(raw).filter(j => (j.confidence || 0) >= 20).map(j => {
-      const originalEmail = batch[j.emailId - i - 1]
+      const originalEmail = uncached[j.emailId - 1]
       if (originalEmail) {
         j.gmailId = originalEmail.id
         j.fromEmail = originalEmail.from
         j.fromMe = originalEmail.fromMe
+
+        // Store in cache
+        const key = emailCacheKey(originalEmail)
+        cache[key] = { result: j, ts: Date.now() }
       }
       return j
     })
+
     all.push(...parsed)
   }
+
+  saveEmailCache(cache)
+  if (cacheHits > 0) console.log(`Cache saved ${cacheHits} Claude calls`)
 
   return all
 }
