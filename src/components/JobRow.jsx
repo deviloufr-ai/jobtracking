@@ -192,9 +192,9 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
 
               {/* Timeline */}
               <div className="relative">
-                {history.map((entry, i) => {
+                {[...history].reverse().map((entry, i, arr) => {
                   const st = getStatus(entry.status)
-                  const isLast = i === history.length - 1
+                  const isLast = i === arr.length - 1
                   return (
                     <div key={i} className="flex gap-3 relative group/step">
                       {/* Line */}
