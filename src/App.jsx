@@ -93,6 +93,7 @@ export default function App() {
   const [toast, setToast] = useState(null)
   const [showGmail, setShowGmail] = useState(false)
   const [gmailUser, setGmailUser] = useState(() => getCachedUser())
+  const [gmailConnected, setGmailConnected] = useState(() => isConnected())
   const [activeTab, setActiveTab] = useState('tracker')
 
   // On load: if token exists but no cached profile, fetch it so the header shows the account
@@ -210,6 +211,12 @@ export default function App() {
                   <div className="text-[10px] text-gray-400 max-w-[120px] truncate">{gmailUser.email}</div>
                 </div>
               </button>
+            ) : gmailConnected ? (
+              <button onClick={() => setShowGmail(true)}
+                className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-100 transition-all">
+                <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                <span className="hidden sm:inline">Gmail connecté</span>
+              </button>
             ) : (
               <>
                 <button onClick={() => setShowImageImport(true)}
@@ -227,7 +234,7 @@ export default function App() {
             )}
             {/* Extension button + Screenshot (when connected) */}
             <ExtensionButton />
-            {gmailUser && (
+            {(gmailUser || gmailConnected) && (
               <button onClick={() => setShowImageImport(true)}
                 className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 transition-all">
                 <span>🖼️</span><span className="hidden sm:inline">Screenshot</span>
@@ -389,7 +396,7 @@ export default function App() {
 
       {modal && <JobModal job={modal === 'add' ? null : modal} onSave={handleSave} onClose={() => setModal(null)} />}
       {toDelete && <ConfirmDelete job={toDelete} onConfirm={handleDelete} onCancel={() => setToDelete(null)} />}
-      {showGmail && <GmailImport onImport={handleBulkImport} onClose={() => { setShowGmail(false); setGmailUser(getCachedUser()) }} onUserChange={setGmailUser} existingJobs={jobs} />}
+      {showGmail && <GmailImport onImport={handleBulkImport} onClose={() => { setShowGmail(false); setGmailUser(getCachedUser()); setGmailConnected(isConnected()) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u || isConnected()) }} existingJobs={jobs} />}
       {showImageImport && <ImageImport onImport={handleBulkImport} onClose={() => setShowImageImport(false)} existingJobs={jobs} />}
 
       {toast && (
