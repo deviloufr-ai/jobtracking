@@ -67,7 +67,13 @@ export async function parseEmailsForJobs(emails) {
     const batch = emails.slice(i, i + BATCH)
     const emailsText = batch.map((e, j) => {
       const bodySection = e.body?.trim() ? `Contenu: ${e.body.slice(0, 500)}` : `Aperçu: ${e.snippet}`
-      return `[${i + j + 1}] De: ${e.from}\nSujet: ${e.subject}\nDate: ${e.date}\n${bodySection}`
+      // Parse email date to YYYY-MM-DD
+      let dateStr = e.date || ''
+      try {
+        const parsed = new Date(e.date)
+        if (!isNaN(parsed)) dateStr = parsed.toISOString().split('T')[0]
+      } catch {}
+      return `[${i + j + 1}] De: ${e.from}\nSujet: ${e.subject}\nDate: ${dateStr}\n${bodySection}`
     }).join('\n\n---\n\n')
 
     console.log(`Batch ${i/BATCH + 1}: sending ${batch.length} emails to Claude`)
