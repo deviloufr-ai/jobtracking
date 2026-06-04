@@ -239,8 +239,12 @@ function autoStale(jobs) {
   return jobs.map(j => {
     if (j.status === 'archived') return j
 
-    // Use last activity date (updatedAt) as reference — not application date
-    const refDate = new Date(j.updatedAt || j.date)
+    // Use the date of the last history entry as reference — this reflects real application
+    // activity, not when the record was imported/touched in the app (updatedAt)
+    const lastHistoryDate = j.history?.length
+      ? j.history.reduce((max, h) => (h.date > max ? h.date : max), j.history[0].date)
+      : null
+    const refDate = new Date(lastHistoryDate || j.updatedAt || j.date)
     const daysSince = (now - refDate) / (1000 * 60 * 60 * 24)
 
     if (daysSince >= SIXTY_DAYS) {
