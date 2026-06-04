@@ -15,13 +15,14 @@ export async function fetchCalendarEvents(companyName, monthsBack = 12) {
   timeMax.setMonth(timeMax.getMonth() + 3)
 
   const params = new URLSearchParams({
-    q: companyName,
     timeMin: timeMin.toISOString(),
     timeMax: timeMax.toISOString(),
     singleEvents: 'true',
     orderBy: 'startTime',
-    maxResults: '50',
+    maxResults: '100',
   })
+  // When a company name is given, restrict the search (single-company lookup)
+  if (companyName) params.set('q', companyName)
 
   const res = await fetch(
     `https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`,

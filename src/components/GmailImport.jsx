@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { connectGmail, disconnectGmail, fetchJobEmails, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser } from '../services/gmail'
-import { parseEmailsForJobs } from '../services/claude'
+import { fetchCalendarEvents } from '../services/calendar'
+import { buildJobsFromEmails } from '../hooks/useAutoRefresh'
 import { getStatus, isAtsRejection } from '../hooks/useJobs'
 
 const STEPS = { idle: 'idle', connecting: 'connecting', fetching: 'fetching', parsing: 'parsing', review: 'review' }
@@ -75,85 +76,37 @@ export default function GmailImport({ onImport, onClose, existingJobs, onUserCha
       })
 
       setStep(STEPS.parsing)
-      const parsed = await parseEmailsForJobs(emails)
-
-      // Auto-detect ATS rejections
-      const enriched = parsed.map(p => ({
-        ...p,
-        status: p.status === 'rejected' && isAtsRejection(p.notes || '') ? 'rejected_ats' : p.status
-      }))
-
-      // Group emails by company+position → one job per role with full per-email history
+      // Fetch emails→jobs (with meeting links) + Calendar in parallel
+      const [grouped, calendarEvents] = await Promise.all([
+        buildJobsFromEmails(emails, []),
+        fetchCalendarEvents('', months).catch(() => []),
+      ])
+      // Merge calendar events per company into existing history
+      if (calendarEvents.length > 0) {
+        for (const job of grouped) {
+          const co = job.company.toLowerCase()
+          const calEntries = calendarEvents
+            .filter(e => e.title.toLowerCase().includes(co) || (e.description || '').toLowerCase().includes(co))
+            .map(e => ({
+              date: e.date,
+              status: e.type === 'interview' ? 'interview' : e.type === 'offer' ? 'offer' : 'waiting',
+              note: `📅 ${e.title}${e.isUpcoming ? ' (à venir)' : ''}`,
+              source: 'calendar', isUpcoming: e.isUpcoming,
+            }))
+          const existingCalKeys = new Set(job.history.map(h => `${h.date}-${h.status}`))
+          const newCal = calEntries.filter(e => !existingCalKeys.has(`${e.date}-${e.status}`))
+          if (newCal.length) job.history = [...job.history, ...newCal].sort((a, b) => new Date(a.date) - new Date(b.date))
+        }
+      }
       const normalize = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-      const STATUS_ORDER = ['todo','sent','reviewing','interview','waiting','offer','rejected','rejected_ats','cancelled','archived']
-
-      // Build a lookup: gmailId → original email (for body/snippet to extract meeting links)
-      const emailByGmailId = Object.fromEntries(emails.map(e => [e.id, e]))
-
-      // Extract meeting/visio links from text
-      const extractMeetingLink = (text = '') => {
-        const patterns = [
-          /(https:\/\/meet\.google\.com\/[a-z0-9\-]+)/i,
-          /(https:\/\/[a-z0-9]+\.zoom\.us\/j\/[^\s"<>]+)/i,
-          /(https:\/\/teams\.microsoft\.com\/l\/meetup-join\/[^\s"<>]+)/i,
-          /(https:\/\/whereby\.com\/[^\s"<>]+)/i,
-          /(https:\/\/[a-z0-9]+\.webex\.com\/[^\s"<>]+)/i,
-        ]
-        for (const p of patterns) { const m = text.match(p); if (m) return m[1] }
-        return null
-      }
-
-      const jobGroups = new Map()
-      for (const p of enriched) {
-        if (!p.company) continue
-        const key = `${normalize(p.company)}_${normalize(p.position || '')}`
-        if (!jobGroups.has(key)) jobGroups.set(key, [])
-        jobGroups.get(key).push(p)
-      }
-
-      const grouped = []
-      for (const [, emailsForJob] of jobGroups) {
-        // Sort emails by date ascending so history reads chronologically
-        const sorted = [...emailsForJob].sort((a, b) => new Date(a.date) - new Date(b.date))
-        // Pick the highest-priority status across all emails for this job
-        const highestStatus = sorted.reduce((best, e) =>
-          STATUS_ORDER.indexOf(e.status) > STATUS_ORDER.indexOf(best) ? e.status : best
-        , sorted[0].status)
-        // Build a history entry per email, extracting meeting links from the body we already have
-        const history = sorted.map(e => {
-          const originalEmail = emailByGmailId[e.gmailId]
-          const text = (originalEmail?.body || '') + ' ' + (originalEmail?.snippet || '')
-          const meetingLink = extractMeetingLink(text)
-          return {
-            date: e.date,
-            status: e.status,
-            note: e.notes || '',
-            gmailId: e.gmailId,
-            from: e.fromEmail,
-            fromMe: e.fromMe || false,
-            source: 'email',
-            ...(meetingLink && { meetingLink }),
-          }
-        })
-        const latest = sorted[sorted.length - 1]
-        grouped.push({
-          ...latest,
-          date: sorted[0].date,   // earliest = application date
-          status: highestStatus,
-          history,
-          notes: sorted.map(e => e.notes).filter(Boolean).join(' | '),
-        })
-      }
-
       // Filter out already-tracked applications — match on company+position
       const existingKeys = new Set(existingJobs.map(j => `${normalize(j.company)}_${normalize(j.position)}`))
       const newOnly = forceImport
         ? grouped
         : grouped.filter(p => !existingKeys.has(`${normalize(p.company)}_${normalize(p.position)}`))
 
-      console.log('Raw parsed by Claude:', parsed)
-      console.log('After grouping:', newOnly)
-      setDebugInfo(prev => ({ ...prev, parsed: parsed.length, afterDedup: newOnly.length, rawParsed: parsed.slice(0,5) }))
+      console.log('After grouping + calendar:', newOnly)
+      setDebugInfo(prev => ({ ...prev, parsed: grouped.length, afterDedup: newOnly.length, rawParsed: grouped.slice(0,5) }))
       const displayList = newOnly.length > 0 ? newOnly : (forceImport && grouped.length > 0 ? grouped : [])
       setResults(displayList)
       setSelected(new Set(displayList.map((_, i) => i)))
