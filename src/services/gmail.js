@@ -100,12 +100,21 @@ export async function fetchJobEmails(maxResults = 100, months = 3) {
 
   const days = months * 30
 
+  // Job alert subjects to exclude from all queries
+  const noAlerts = `-subject:"job alert" -subject:"jobs you might like" -subject:"recommended jobs" -subject:"new jobs for you" -subject:"offres d'emploi" -subject:"nouvelles offres" -subject:"alertes emploi" -subject:"emplois recommandés"`
+
   const queries = [
-    `in:all (candidature OR postulation OR entretien OR recrutement OR "offre d'emploi" OR "votre candidature" OR "votre profil" OR "nous avons bien reçu" OR "suite à votre candidature" OR "nous avons le regret" OR "sans suite" OR "n'avons pas retenu") newer_than:${days}d`,
-    `in:all (interview OR "thank you for applying" OR "thanks for applying" OR "application received" OR "your application" OR "we regret" OR "not selected" OR "not moving forward" OR "job offer" OR "offer letter" OR "next steps" OR "hiring process") newer_than:${days}d`,
+    // French recruitment keywords (incoming)
+    `in:inbox (candidature OR postulation OR entretien OR recrutement OR "votre candidature" OR "votre profil" OR "nous avons bien reçu" OR "suite à votre candidature" OR "nous avons le regret" OR "sans suite" OR "n'avons pas retenu") ${noAlerts} newer_than:${days}d`,
+    // English recruitment keywords (incoming)
+    `in:inbox (interview OR "thank you for applying" OR "thanks for applying" OR "thanks for your application" OR "thank you for your application" OR "application received" OR "your application" OR "we have received" OR "we regret" OR "not selected" OR "not moving forward" OR "job offer" OR "offer letter" OR "next steps" OR "hiring process") ${noAlerts} newer_than:${days}d`,
+    // ATS platforms — always job-related, no alert filter needed
     `in:all (from:ashbyhq.com OR from:greenhouse.io OR from:lever.co OR from:workable.com OR from:teamtailor.com OR from:recruitee.com OR from:bamboohr.com OR from:smartrecruiters.com OR from:jobvite.com OR from:icims.com OR from:myworkdayjobs.com OR from:taleo.net) newer_than:${days}d`,
-    `in:all (from:linkedin.com OR from:welcometothejungle.com OR from:apec.fr OR from:indeed.com OR from:monster.fr OR from:cadremploi.fr OR from:hellowork.com OR from:jobteaser.com OR from:malt.fr OR from:malt.com) newer_than:${days}d`,
-    `in:all (from:talent@ OR from:recrutement@ OR from:rh@ OR from:careers@ OR from:jobs@ OR from:hiring@ OR from:recruiter@ OR subject:recruiter OR subject:recruteur OR subject:"talent acquisition") newer_than:${days}d`,
+    // Job boards — only transactional emails (InMail, applications), not alerts
+    `in:inbox (from:linkedin.com OR from:welcometothejungle.com OR from:apec.fr OR from:indeed.com OR from:monster.fr OR from:cadremploi.fr OR from:hellowork.com OR from:jobteaser.com) (candidature OR application OR entretien OR interview OR "InMail" OR recruteur OR recruiter OR "votre profil") ${noAlerts} newer_than:${days}d`,
+    // Recruiter sender patterns
+    `in:inbox (from:talent@ OR from:recrutement@ OR from:rh@ OR from:careers@ OR from:jobs@ OR from:hiring@ OR from:recruiter@) ${noAlerts} newer_than:${days}d`,
+    // Sent applications
     `in:sent (has:attachment OR subject:candidature OR subject:postulation OR "je postule" OR "je vous contacte" OR "je me permets" OR "I am applying" OR "please find my CV" OR "please find attached my resume") newer_than:${days}d`,
   ]
 
@@ -115,7 +124,7 @@ export async function fetchJobEmails(maxResults = 100, months = 3) {
   const runQuery = async (query) => {
     try {
       const data = await gmailFetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=50&q=${encodeURIComponent(query)}`
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=100&q=${encodeURIComponent(query)}`
       )
       const messages = data.messages || []
       for (const m of messages) {
