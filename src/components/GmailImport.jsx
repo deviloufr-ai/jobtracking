@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { connectGmail, disconnectGmail, fetchJobEmails, isConnected, isGmailConfigured } from '../services/gmail'
+import { connectGmail, disconnectGmail, fetchJobEmails, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser } from '../services/gmail'
 import { parseEmailsForJobs } from '../services/claude'
 import { getStatus, isAtsRejection, deduplicateJobs } from '../hooks/useJobs'
 
@@ -13,8 +13,9 @@ const MONTH_OPTIONS = [
   { value: 24, label: '24 mois' },
 ]
 
-export default function GmailImport({ onImport, onClose, existingJobs }) {
+export default function GmailImport({ onImport, onClose, existingJobs, onUserChange }) {
   const [step, setStep] = useState(STEPS.idle)
+  const [gmailUser, setGmailUser] = useState(() => getCachedUser())
   const [connected, setConnected] = useState(isConnected())
   const [forceImport, setForceImport] = useState(false)
   const [debugInfo, setDebugInfo] = useState(null)
@@ -23,6 +24,15 @@ export default function GmailImport({ onImport, onClose, existingJobs }) {
   const [error, setError] = useState(null)
   const [emailCount, setEmailCount] = useState(0)
   const [months, setMonths] = useState(3)
+
+  const handleDisconnect = () => {
+    disconnectGmail()
+    setConnected(false)
+    setGmailUser(null)
+    onUserChange?.(null)
+    setStep(STEPS.idle)
+    setResults([])
+  }
 
   const handleConnect = async () => {
     if (!isGmailConfigured()) {
@@ -35,6 +45,10 @@ export default function GmailImport({ onImport, onClose, existingJobs }) {
       await connectGmail()
       setConnected(true)
       setStep(STEPS.idle)
+      // Fetch user info and propagate to header
+      const user = await getGmailUserInfo()
+      setGmailUser(user)
+      onUserChange?.(user)
     } catch (e) {
       setError('Connexion Gmail annulée ou échouée : ' + e.message)
       setStep(STEPS.idle)
@@ -184,9 +198,22 @@ export default function GmailImport({ onImport, onClose, existingJobs }) {
           {/* Connected idle */}
           {connected && step === STEPS.idle && (
             <div className="text-center py-4">
-              <div className="inline-flex items-center gap-2 bg-green-50 text-green-700 text-xs font-medium px-3 py-1.5 rounded-full mb-5">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                Gmail connecté
+              {/* Account info */}
+              <div className="flex items-center justify-center gap-3 mb-5">
+                <div className="flex items-center gap-2 bg-green-50 border border-green-100 text-green-700 text-xs font-medium px-3 py-1.5 rounded-full">
+                  {gmailUser?.picture
+                    ? <img src={gmailUser.picture} alt="" className="w-4 h-4 rounded-full" />
+                    : <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+                  }
+                  <span>{gmailUser?.email || 'Gmail connecté'}</span>
+                </div>
+                <button
+                  onClick={handleDisconnect}
+                  className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                  title="Déconnecter"
+                >
+                  Déconnecter
+                </button>
               </div>
 
               {/* Month selector */}

@@ -9,7 +9,7 @@ import ConfirmDelete from './components/ConfirmDelete'
 import GmailImport from './components/GmailImport'
 import NextAction from './components/NextAction'
 import { useAutoRefresh } from './hooks/useAutoRefresh'
-import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo } from './services/gmail'
+import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser } from './services/gmail'
 import JobSearch from './components/JobSearch'
 import CVManager from './components/CVManager'
 import ImageImport from './components/ImageImport'
@@ -38,6 +38,42 @@ function SortIcon({ col, sort }) {
   return <span className="ml-1 text-indigo-500 text-xs">{sort.dir === 'asc' ? '↑' : '↓'}</span>
 }
 
+
+// Detect if JobTrackr Firefox extension is installed
+// The extension injects a custom attribute on <html> or responds to a postMessage
+function ExtensionButton() {
+  const [installed, setInstalled] = useState(null) // null = checking
+
+  useEffect(() => {
+    // Method 1: extension sets data-jobtrackr-ext on <html>
+    if (document.documentElement.hasAttribute('data-jobtrackr-ext')) {
+      setInstalled(true)
+      return
+    }
+    // Method 2: ping via custom event
+    const timeout = setTimeout(() => setInstalled(false), 800)
+    const handler = () => { clearTimeout(timeout); setInstalled(true) }
+    window.addEventListener('jobtrackr-ext-pong', handler, { once: true })
+    window.dispatchEvent(new CustomEvent('jobtrackr-ext-ping'))
+    return () => { clearTimeout(timeout); window.removeEventListener('jobtrackr-ext-pong', handler) }
+  }, [])
+
+  if (installed !== false) return null // don't show if installed or still checking
+
+  return (
+    <a
+      href="https://addons.mozilla.org/firefox/addon/jobtrackr/"
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Installer l'extension Firefox JobTrackr"
+      className="flex items-center gap-2 bg-orange-50 border border-orange-200 text-orange-700 text-sm font-medium px-3 py-2 rounded-lg hover:bg-orange-100 transition-all"
+    >
+      <span>🦊</span>
+      <span className="hidden sm:inline">Installer l'extension</span>
+    </a>
+  )
+}
+
 export default function App() {
   const { jobs, addJob, updateJob, deleteJob, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite } = useJobs()
   const [modal, setModal] = useState(null)
@@ -46,7 +82,7 @@ export default function App() {
   const [sort, setSort] = useState(DEFAULT_SORT)
   const [toast, setToast] = useState(null)
   const [showGmail, setShowGmail] = useState(false)
-  const [gmailUser, setGmailUser] = useState(null)
+  const [gmailUser, setGmailUser] = useState(() => getCachedUser())
   const [activeTab, setActiveTab] = useState('tracker')
   const [showFavOnly, setShowFavOnly] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
@@ -143,13 +179,30 @@ export default function App() {
               className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 transition-all">
               <span>🖼️</span><span className="hidden sm:inline">Screenshot</span>
             </button>
-            <button onClick={() => setShowGmail(true)}
-              className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
-              <svg className="w-4 h-4" viewBox="0 0 24 24">
-                <path fill="#EA4335" d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.909 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
-              </svg>
-              <span className="hidden sm:inline">Gmail</span>
-            </button>
+            {/* Extension install button — shown when extension not detected */}
+            <ExtensionButton />
+            {/* Gmail / Google account button */}
+            {gmailUser ? (
+              <button
+                onClick={() => setShowGmail(true)}
+                title={gmailUser.email}
+                className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium pl-1 pr-3 py-1 rounded-full hover:bg-gray-50 hover:border-gray-300 transition-all"
+              >
+                {gmailUser.picture
+                  ? <img src={gmailUser.picture} alt="" className="w-6 h-6 rounded-full" />
+                  : <div className="w-6 h-6 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center font-bold">{gmailUser.email?.[0]?.toUpperCase()}</div>
+                }
+                <span className="hidden sm:inline max-w-[120px] truncate">{gmailUser.name || gmailUser.email}</span>
+              </button>
+            ) : (
+              <button onClick={() => setShowGmail(true)}
+                className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path fill="#EA4335" d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.909 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
+                </svg>
+                <span className="hidden sm:inline">Gmail</span>
+              </button>
+            )}
             <button onClick={() => setModal('add')}
               className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all shadow-sm">
               <span className="text-lg leading-none">+</span>
@@ -306,7 +359,7 @@ export default function App() {
 
       {modal && <JobModal job={modal === 'add' ? null : modal} onSave={handleSave} onClose={() => setModal(null)} />}
       {toDelete && <ConfirmDelete job={toDelete} onConfirm={handleDelete} onCancel={() => setToDelete(null)} />}
-      {showGmail && <GmailImport onImport={handleBulkImport} onClose={() => setShowGmail(false)} existingJobs={jobs} />}
+      {showGmail && <GmailImport onImport={handleBulkImport} onClose={() => { setShowGmail(false); setGmailUser(getCachedUser()) }} onUserChange={setGmailUser} existingJobs={jobs} />}
       {showImageImport && <ImageImport onImport={handleBulkImport} onClose={() => setShowImageImport(false)} existingJobs={jobs} />}
 
       {toast && (
