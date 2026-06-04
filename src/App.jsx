@@ -45,6 +45,7 @@ export default function App() {
   const [sort, setSort] = useState(DEFAULT_SORT)
   const [toast, setToast] = useState(null)
   const [showGmail, setShowGmail] = useState(false)
+  const [gmailUser, setGmailUser] = useState(null)
   const [activeTab, setActiveTab] = useState('tracker')
   const [showFavOnly, setShowFavOnly] = useState(false)
   const [showArchived, setShowArchived] = useState(false)

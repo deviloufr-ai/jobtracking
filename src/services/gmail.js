@@ -35,6 +35,18 @@ export async function connectGmail() {
   })
 }
 
+export async function getGmailUserInfo() {
+  if (!accessToken) return null
+  try {
+    const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return { email: data.email, name: data.name, picture: data.picture }
+  } catch { return null }
+}
+
 export function disconnectGmail() {
   if (accessToken && window.google) window.google.accounts.oauth2.revoke(accessToken)
   accessToken = null
@@ -164,10 +176,16 @@ async function fetchEmailDetail(id) {
     // Extract body text (limit to 2000 chars for Claude)
     const body = extractBody(data.payload).slice(0, 2000)
 
+    const from = get('From')
+    const to = get('To')
+    const labelIds = data.labelIds || []
+    const isSent = labelIds.includes('SENT')
+
     return {
       id: data.id,
       subject: get('Subject'),
-      from: get('From'),
+      from: isSent ? to : from,
+      fromMe: isSent,
       date: get('Date'),
       snippet: data.snippet || '',
       body,

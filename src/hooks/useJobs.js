@@ -261,7 +261,7 @@ function load() {
         ...j,
         history: j.history || [{ date: j.date, status: j.status, note: 'Candidature ajoutée' }]
       }))
-      const processed = autoStale(splitPipeNotes(migrated))
+      const processed = autoStale(mergeSameDateEntries(splitPipeNotes(migrated)))
       return processed
     }
   } catch {}
