@@ -58,7 +58,17 @@ function ExtensionButton() {
     return () => { clearTimeout(timeout); window.removeEventListener('jobtrackr-ext-pong', handler) }
   }, [])
 
-  if (installed !== false) return null // don't show if installed or still checking
+  if (installed === null) return null // still checking
+
+  if (installed) return (
+    <div
+      title="Extension Firefox JobTrackr active"
+      className="flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-700 text-sm font-medium px-3 py-2 rounded-lg"
+    >
+      <span>🦊</span>
+      <span className="hidden sm:inline">Extension active ✓</span>
+    </div>
+  )
 
   return (
     <a
