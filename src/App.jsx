@@ -84,6 +84,13 @@ export default function App() {
   const [showGmail, setShowGmail] = useState(false)
   const [gmailUser, setGmailUser] = useState(() => getCachedUser())
   const [activeTab, setActiveTab] = useState('tracker')
+
+  // On load: if token exists but no cached profile, fetch it so the header shows the account
+  useEffect(() => {
+    if (!gmailUser && isConnected()) {
+      getGmailUserInfo().then(user => { if (user) setGmailUser(user) })
+    }
+  }, [])
   const [showFavOnly, setShowFavOnly] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [selectedJobForCV, setSelectedJobForCV] = useState(null) // 'tracker' | 'search' | 'cv'
