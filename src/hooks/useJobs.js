@@ -235,24 +235,19 @@ function mergeSameDateEntries(jobs) {
 
 function autoStale(jobs) {
   const now = new Date()
+  const SIXTY_DAYS = 60
   return jobs.map(j => {
-    const refDate = new Date(j.sentAt || j.date)
+    if (j.status === 'archived') return j
+
+    // Use last activity date (updatedAt) as reference — not application date
+    const refDate = new Date(j.updatedAt || j.date)
     const daysSince = (now - refDate) / (1000 * 60 * 60 * 24)
 
-    if (['sent', 'reviewing', 'waiting'].includes(j.status) && daysSince >= 60) {
+    if (daysSince >= SIXTY_DAYS) {
       const newEntry = {
         date: now.toISOString().split('T')[0],
         status: 'archived',
-        note: `Archivée automatiquement — aucune réponse depuis ${Math.round(daysSince)} jours`
-      }
-      return { ...j, status: 'archived', updatedAt: now.toISOString(), history: [...(j.history || []), newEntry] }
-    }
-
-    if (['rejected', 'rejected_ats', 'cancelled'].includes(j.status) && daysSince >= 90) {
-      const newEntry = {
-        date: now.toISOString().split('T')[0],
-        status: 'archived',
-        note: 'Archivée automatiquement — candidature de plus de 3 mois'
+        note: `Archivée automatiquement — aucune mise à jour depuis ${Math.round(daysSince)} jours`
       }
       return { ...j, status: 'archived', updatedAt: now.toISOString(), history: [...(j.history || []), newEntry] }
     }
