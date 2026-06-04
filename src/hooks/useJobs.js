@@ -305,7 +305,8 @@ export function useJobs() {
       updatedAt: new Date().toISOString(),
       sentAt: ['sent','reviewing','waiting'].includes(status) ? (data.date || new Date().toISOString().split('T')[0]) : undefined,
       // enrichedAt intentionally absent on creation — will be set after first enrichment
-      history: [{
+      // Use pre-built history from email import when available (preserves per-email dates)
+      history: data._history || [{
         date: data.date,
         status,
         note: historyNote,
@@ -320,6 +321,7 @@ export function useJobs() {
     delete job._gmailId
     delete job._fromEmail
     delete job._fromMe
+    delete job._history
     setJobs(prev => [job, ...prev])
     return job
   }

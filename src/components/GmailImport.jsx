@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { connectGmail, disconnectGmail, fetchJobEmails, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser } from '../services/gmail'
 import { parseEmailsForJobs } from '../services/claude'
-import { getStatus, isAtsRejection, deduplicateJobs } from '../hooks/useJobs'
+import { getStatus, isAtsRejection } from '../hooks/useJobs'
 
 const STEPS = { idle: 'idle', connecting: 'connecting', fetching: 'fetching', parsing: 'parsing', review: 'review' }
 
@@ -83,22 +83,56 @@ export default function GmailImport({ onImport, onClose, existingJobs, onUserCha
         status: p.status === 'rejected' && isAtsRejection(p.notes || '') ? 'rejected_ats' : p.status
       }))
 
-      // Dedup within parsed results (merge same company)
-      const deduped = deduplicateJobs(enriched)
-
-      // Filter out already-tracked applications — match on company+position so a second
-      // application to the same company (different role) still comes through
+      // Group emails by company+position → one job per role with full per-email history
       const normalize = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+      const STATUS_ORDER = ['todo','sent','reviewing','interview','waiting','offer','rejected','rejected_ats','cancelled','archived']
+
+      const jobGroups = new Map()
+      for (const p of enriched) {
+        if (!p.company) continue
+        const key = `${normalize(p.company)}_${normalize(p.position || '')}`
+        if (!jobGroups.has(key)) jobGroups.set(key, [])
+        jobGroups.get(key).push(p)
+      }
+
+      const grouped = []
+      for (const [, emailsForJob] of jobGroups) {
+        // Sort emails by date ascending so history reads chronologically
+        const sorted = [...emailsForJob].sort((a, b) => new Date(a.date) - new Date(b.date))
+        // Pick the highest-priority status across all emails for this job
+        const highestStatus = sorted.reduce((best, e) =>
+          STATUS_ORDER.indexOf(e.status) > STATUS_ORDER.indexOf(best) ? e.status : best
+        , sorted[0].status)
+        // Build a history entry per email — this is the key fix
+        const history = sorted.map(e => ({
+          date: e.date,
+          status: e.status,
+          note: e.notes || '',
+          gmailId: e.gmailId,
+          from: e.fromEmail,
+          fromMe: e.fromMe || false,
+          source: 'email',
+        }))
+        const latest = sorted[sorted.length - 1]
+        grouped.push({
+          ...latest,
+          date: sorted[0].date,   // earliest = application date
+          status: highestStatus,
+          history,
+          notes: sorted.map(e => e.notes).filter(Boolean).join(' | '),
+        })
+      }
+
+      // Filter out already-tracked applications — match on company+position
       const existingKeys = new Set(existingJobs.map(j => `${normalize(j.company)}_${normalize(j.position)}`))
       const newOnly = forceImport
-        ? deduped.filter(p => p.company)
-        : deduped.filter(p => p.company && !existingKeys.has(`${normalize(p.company)}_${normalize(p.position)}`))
+        ? grouped
+        : grouped.filter(p => !existingKeys.has(`${normalize(p.company)}_${normalize(p.position)}`))
 
       console.log('Raw parsed by Claude:', parsed)
-      console.log('After dedup:', newOnly)
+      console.log('After grouping:', newOnly)
       setDebugInfo(prev => ({ ...prev, parsed: parsed.length, afterDedup: newOnly.length, rawParsed: parsed.slice(0,5) }))
-      // Show ALL results if force import, even if 0 — always use deduped to avoid per-email duplicates
-      const displayList = newOnly.length > 0 ? newOnly : (forceImport && deduped.length > 0 ? deduped.filter(p => p.company) : [])
+      const displayList = newOnly.length > 0 ? newOnly : (forceImport && grouped.length > 0 ? grouped : [])
       setResults(displayList)
       setSelected(new Set(displayList.map((_, i) => i)))
       setStep(STEPS.review)
@@ -121,6 +155,7 @@ export default function GmailImport({ onImport, onClose, existingJobs, onUserCha
         _gmailId: r.gmailId,
         _fromEmail: r.fromEmail,
         _fromMe: r.fromMe,
+        _history: r.history?.length > 0 ? r.history : undefined,
       }))
     onImport(toImport)
     onClose()
