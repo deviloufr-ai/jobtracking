@@ -107,7 +107,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
           <div className="relative">
             <button
               onClick={() => setShowStatusMenu(v => !v)}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer ${status.color} hover:opacity-80 transition-opacity`}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer whitespace-nowrap ${status.color} hover:opacity-80 transition-opacity`}
             >
               <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
               {status.label}
