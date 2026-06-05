@@ -1,4 +1,5 @@
 import { getStatus } from '../hooks/useJobs'
+import { loadSettings } from '../hooks/useSettings'
 
 function daysSince(job) {
   return (new Date() - new Date(job.updatedAt || job.date)) / (1000 * 60 * 60 * 24)
@@ -24,27 +25,29 @@ const TEST_KWS = ['test technique', 'technical test', 'case study', 'assessment'
 const NEGO_KWS = ['négociation', 'salaire', 'rémunération', 'prétentions', 'package', 'compensation', 'offre salariale']
 
 // Urgent actions - things that need attention NOW
-const URGENT_RULES = [
+function getUrgentRules() {
+  const s = loadSettings()
+  return [
   {
-    match: j => j.status === 'sent' && daysSince(j) > 14,
+    match: j => j.status === 'sent' && daysSince(j) > s.followUpSentDays,
     icon: '📨', urgency: 'high',
     label: job => `Relancer ${job.company}`,
     tip: job => `Aucune réponse depuis ${Math.round(daysSince(job))} jours. Un email de relance s'impose.`,
   },
   {
-    match: j => j.status === 'reviewing' && daysSince(j) > 10,
+    match: j => j.status === 'reviewing' && daysSince(j) > s.followUpReviewingDays,
     icon: '📨', urgency: 'medium',
     label: job => `Relancer ${job.company}`,
     tip: job => `Profil en examen depuis ${Math.round(daysSince(job))} jours sans retour.`,
   },
   {
-    match: j => j.status === 'waiting' && daysSince(j) > 7,
+    match: j => j.status === 'waiting' && daysSince(j) > s.followUpWaitingDays,
     icon: '🔔', urgency: 'high',
     label: job => `Suivi ${job.company}`,
     tip: job => `En attente depuis ${Math.round(daysSince(job))} jours — relance appropriée.`,
   },
   {
-    match: j => j.status === 'offer' && daysSince(j) > 3,
+    match: j => j.status === 'offer' && daysSince(j) > s.followUpOfferDays,
     icon: '🤝', urgency: 'high',
     label: job => `Répondre à l'offre ${job.company}`,
     tip: () => `Offre reçue — négocie et réponds avant qu'elle expire.`,
@@ -61,7 +64,7 @@ const URGENT_RULES = [
     label: job => `Feedback ${job.company}`,
     tip: () => `Demande un retour constructif — ça te différencie et maintient la relation.`,
   },
-]
+]}
 
 // Next steps — note-aware, contextual. Order = priority shown to user.
 const NEXT_STEPS_RULES = [
@@ -154,7 +157,7 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob }) {
   const activeJobs = jobs.filter(j => !['cancelled', 'archived'].includes(j.status))
 
   const urgentActions = activeJobs
-    .flatMap(job => URGENT_RULES
+    .flatMap(job => getUrgentRules()
       .filter(r => r.match(job))
       .map(r => ({ job, rule: r }))
     )

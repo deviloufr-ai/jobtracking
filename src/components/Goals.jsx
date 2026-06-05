@@ -1,20 +1,5 @@
 import { useState, useMemo } from 'react'
-
-const STORAGE_KEY = 'jobtrackr_goals'
-
-const DEFAULTS = {
-  weeklyApps: 5,
-  responseRate: 30,
-  monthlyInterviews: 3,
-}
-
-function loadGoals() {
-  try { const r = localStorage.getItem(STORAGE_KEY); return r ? { ...DEFAULTS, ...JSON.parse(r) } : DEFAULTS }
-  catch { return DEFAULTS }
-}
-function saveGoals(g) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(g)) } catch {}
-}
+import { useSettings } from '../hooks/useSettings'
 
 function ProgressBar({ value, max, color = 'bg-indigo-500' }) {
   const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0
@@ -30,7 +15,8 @@ function ProgressBar({ value, max, color = 'bg-indigo-500' }) {
 }
 
 export default function Goals({ jobs }) {
-  const [goals, setGoals] = useState(loadGoals)
+  const { settings, updateSettings } = useSettings()
+  const goals = { weeklyApps: settings.weeklyApps, responseRate: settings.responseRate, monthlyInterviews: settings.monthlyInterviews }
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(goals)
 
@@ -58,8 +44,7 @@ export default function Goals({ jobs }) {
   }, [jobs])
 
   const handleSave = () => {
-    setGoals(draft)
-    saveGoals(draft)
+    updateSettings(draft)
     setEditing(false)
   }
 

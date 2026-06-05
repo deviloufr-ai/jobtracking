@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { loadSettings } from './useSettings'
 
 const STORAGE_KEY = 'jobtrackr_applications'
 
@@ -273,7 +274,7 @@ function mergeSameDateEntries(jobs) {
 
 function autoStale(jobs) {
   const now = new Date()
-  const SIXTY_DAYS = 60
+  const { archiveSentDays, archiveRejectedDays } = loadSettings()
   return jobs.map(j => {
     if (j.status === 'archived') return j
 
@@ -285,7 +286,8 @@ function autoStale(jobs) {
     const refDate = new Date(lastHistoryDate || j.updatedAt || j.date)
     const daysSince = (now - refDate) / (1000 * 60 * 60 * 24)
 
-    if (daysSince >= SIXTY_DAYS) {
+    const threshold = ['rejected', 'rejected_ats', 'cancelled'].includes(j.status) ? archiveRejectedDays : archiveSentDays
+    if (daysSince >= threshold) {
       const newEntry = {
         date: now.toISOString().split('T')[0],
         status: 'archived',
