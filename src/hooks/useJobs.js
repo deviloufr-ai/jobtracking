@@ -260,6 +260,20 @@ function autoStale(jobs) {
   })
 }
 
+function deduplicateHistory(jobs) {
+  return jobs.map(j => {
+    if (!j.history || j.history.length <= 1) return j
+    const seen = new Set()
+    const deduped = j.history.filter(h => {
+      const key = `${h.date}_${(h.note || '').trim().slice(0, 100)}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    return deduped.length === j.history.length ? j : { ...j, history: deduped }
+  })
+}
+
 function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -269,7 +283,7 @@ function load() {
         ...j,
         history: j.history || [{ date: j.date, status: j.status, note: 'Candidature ajoutée' }]
       }))
-      const processed = autoStale(mergeSameDateEntries(splitPipeNotes(migrated)))
+      const processed = autoStale(mergeSameDateEntries(splitPipeNotes(deduplicateHistory(migrated))))
       return processed
     }
   } catch (e) { console.error('JobTrackr: failed to load saved data', e) }

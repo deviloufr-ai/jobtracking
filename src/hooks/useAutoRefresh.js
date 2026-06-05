@@ -135,8 +135,9 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast) {
           added++
         } else {
           // Existing job — merge any new history entries
-          const existingHistKeys = new Set((existing.history || []).map(h => `${h.date}_${h.status}_${(h.note || '').slice(0, 40)}`))
-          const newEntries = (p.history || []).filter(h => !existingHistKeys.has(`${h.date}_${h.status}_${(h.note || '').slice(0, 40)}`))
+          const normNote = s => (s || '').trim().replace(/\s+/g, ' ').slice(0, 80)
+          const existingHistKeys = new Set((existing.history || []).map(h => `${h.date}_${normNote(h.note)}`))
+          const newEntries = (p.history || []).filter(h => !existingHistKeys.has(`${h.date}_${normNote(h.note)}`))
           if (newEntries.length > 0) {
             const mergedHistory = [...(existing.history || []), ...newEntries]
               .sort((a, b) => new Date(a.date) - new Date(b.date))
