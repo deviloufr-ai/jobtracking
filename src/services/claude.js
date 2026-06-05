@@ -116,14 +116,26 @@ export async function parseEmailsForJobs(emails) {
     }))
   }
 
+  // ── Stage 1: rule-based extraction (free, instant) ──────────────────────────
+  const { preParseEmails } = await import('./emailParser.js')
+  const { parsed: rulesParsed, needsAI } = preParseEmails(emails)
+
+  // Only send emails that rules couldn't handle to Claude
+  const emailsForClaude = needsAI
+
   const cache = loadEmailCache()
   let cacheHits = 0
 
   const BATCH = 15
-  const all = []
+  const all = [...rulesParsed] // seed with rule-parsed results
 
-  for (let i = 0; i < emails.length; i += BATCH) {
-    const batch = emails.slice(i, i + BATCH)
+  if (emailsForClaude.length === 0) {
+    console.log('[claude] All emails parsed by rules — no Claude call needed')
+    return all
+  }
+
+  for (let i = 0; i < emailsForClaude.length; i += BATCH) {
+    const batch = emailsForClaude.slice(i, i + BATCH)
 
     // Separate cached vs uncached emails in this batch
     const uncached = []
@@ -232,7 +244,7 @@ ${emailsText}`
   }
 
   saveEmailCache(cache)
-  if (cacheHits > 0) console.log(`Cache saved ${cacheHits} Claude calls`)
+  console.log(`[claude] Summary: ${rulesParsed.length} by rules + ${all.length - rulesParsed.length} by Claude (${cacheHits} from cache) = ${all.length} total`)
 
   return all
 }
