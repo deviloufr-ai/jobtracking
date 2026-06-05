@@ -227,7 +227,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+        <div className="max-w-screen-2xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">J</div>
             <div>
@@ -312,7 +312,7 @@ export default function App() {
 
       {/* Tabs */}
       <div className="bg-white border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-4 flex gap-1">
+        <div className="max-w-screen-2xl mx-auto px-6 flex gap-1">
           <button
             onClick={() => setActiveTab('tracker')}
             className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
@@ -379,7 +379,7 @@ export default function App() {
         </div>
       </div>
 
-      <main className="max-w-6xl mx-auto px-4 py-6">
+      <main className="max-w-screen-2xl mx-auto px-6 py-6">
         {activeTab === 'cv' ? (
           <CVManager jobs={jobs} preselectedJob={selectedJobForCV} />
         ) : activeTab === 'search' ? (
@@ -416,16 +416,7 @@ export default function App() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full table-fixed">
-                <colgroup>
-                  <col className="w-[30%]" />  {/* Entreprise / Poste */}
-                  <col className="w-[16%]" />  {/* Statut */}
-                  <col className="w-[10%]" />  {/* Date */}
-                  <col className="w-[14%]" />  {/* Contact */}
-                  <col className="w-[22%]" />  {/* Notes */}
-                  <col className="w-[6%]" />   {/* Offre */}
-                  <col className="w-[2%]" />   {/* Actions */}
-                </colgroup>
+              <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/60">
                     <ThHeader col="company" label="Entreprise / Poste" />
@@ -465,7 +456,7 @@ export default function App() {
         </div>{/* end flex-1 */}
 
         {/* Right sidebar — upcoming meetings */}
-        <div className="w-72 flex-shrink-0 hidden lg:block">
+        <div className="w-80 flex-shrink-0 hidden xl:block">
           <div className="sticky top-24">
             <UpcomingMeetings jobs={jobs} />
             <CalendarWidget />
