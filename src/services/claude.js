@@ -176,6 +176,7 @@ Statuts selon LE CONTENU de chaque email:
 - "sent"      : candidature envoyée par l'utilisateur
 - "reviewing" : accusé réception, profil en cours d'examen
 - "interview" : invitation entretien, échange sur le process, négociation salariale, test technique proposé, questions posées
+- "done"      : entretien terminé, test technique complété, discussion clôturée — en attente du résultat
 - "waiting"   : en attente de décision finale
 - "offer"     : proposition d'embauche formelle
 - "rejected"  : refus DÉFINITIF explicite ("nous n'irons pas plus loin", "not moving forward", "not selected")

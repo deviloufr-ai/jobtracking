@@ -7,7 +7,7 @@ import { isAtsRejection } from './useJobs'
 const REFRESH_KEY = 'jobtrackr_last_refresh'
 const REFRESH_INTERVAL_HOURS = 6
 
-const STATUS_ORDER = ['todo','sent','reviewing','interview','waiting','offer','rejected','rejected_ats','cancelled','archived']
+const STATUS_ORDER = ['todo','sent','reviewing','interview','done','waiting','offer','rejected','rejected_ats','cancelled','archived']
 
 function normalize(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '') }
 

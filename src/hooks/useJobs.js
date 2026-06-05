@@ -84,6 +84,7 @@ export const STATUSES = [
   { key: 'sent',         label: 'Envoyée',           color: 'bg-blue-100 text-blue-700',     dot: 'bg-blue-500' },
   { key: 'reviewing',    label: "En cours d'examen",  color: 'bg-yellow-100 text-yellow-700', dot: 'bg-yellow-500' },
   { key: 'interview',    label: 'Entretien planifié',  color: 'bg-purple-100 text-purple-700', dot: 'bg-purple-500' },
+  { key: 'done',         label: 'Traité',              color: 'bg-teal-100 text-teal-700',     dot: 'bg-teal-500' },
   { key: 'waiting',      label: 'En attente',          color: 'bg-orange-100 text-orange-700', dot: 'bg-orange-500' },
   { key: 'offer',        label: 'Offre reçue',         color: 'bg-green-100 text-green-700',   dot: 'bg-green-500' },
   { key: 'rejected',     label: 'Refusée',             color: 'bg-red-100 text-red-700',       dot: 'bg-red-400' },
@@ -110,7 +111,7 @@ function normalizeCompany(name = '') {
 
 const STATUS_PRIORITY = {
   cancelled: 0, sent: 1, reviewing: 2, waiting: 3,
-  interview: 4, offer: 5, rejected: 6, rejected_ats: 6
+  interview: 4, done: 4, offer: 5, rejected: 6, rejected_ats: 6
 }
 
 export function deduplicateJobs(jobs) {
@@ -239,7 +240,7 @@ function mergeSameDateEntries(jobs) {
         order.push(key)
       } else {
         const existing = byDate[key]
-        const statusOrder = ['todo','sent','reviewing','interview','waiting','offer','rejected','rejected_ats','cancelled','archived']
+        const statusOrder = ['todo','sent','reviewing','interview','done','waiting','offer','rejected','rejected_ats','cancelled','archived']
         const existingIdx = statusOrder.indexOf(existing.status)
         const entryIdx = statusOrder.indexOf(entry.status)
         if (entryIdx > existingIdx) existing.status = entry.status
