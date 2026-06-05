@@ -432,7 +432,7 @@ export default function App() {
         </div>
 
         <div className="flex items-center justify-between mt-6">
-          <p className="text-xs text-gray-300">JobTrackr v0.4</p>
+          <p className="text-xs text-gray-300">JobTrackr v0.4 <span title={`commit ${__COMMIT_HASH__}`}>· #{__COMMIT_COUNT__}</span></p>
           {jobs.length > 0 && (
             <div className="flex items-center gap-2">
               <button onClick={mergeDuplicates}
