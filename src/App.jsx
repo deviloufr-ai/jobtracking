@@ -13,6 +13,7 @@ import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmail
 import JobSearch from './components/JobSearch'
 import CVManager from './components/CVManager'
 import ImageImport from './components/ImageImport'
+import UpcomingMeetings from './components/UpcomingMeetings'
 
 const DEFAULT_FILTERS = { search: '', statuses: [], period: 'all' }
 const DEFAULT_SORT = { col: 'date', dir: 'desc' }
@@ -327,6 +328,8 @@ export default function App() {
         ) : (
           <>
         <Stats jobs={jobs} />
+        <div className="flex gap-6 items-start">
+        <div className="flex-1 min-w-0">
         <NextAction jobs={jobs} onGenerateCV={handleGenerateCV} onOpenJob={(job) => { setFilters(f => ({ ...f, search: job.company })) }} />
         <Filters filters={filters} onChange={setFilters} onReset={() => setFilters(DEFAULT_FILTERS)} total={jobs.length} filtered={filtered.length} />
 
@@ -379,7 +382,7 @@ export default function App() {
           <p className="text-xs text-gray-300">JobTrackr v0.4</p>
           {jobs.length > 0 && (
             <div className="flex items-center gap-2">
-<button onClick={mergeDuplicates}
+              <button onClick={mergeDuplicates}
                 className="text-xs text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors border border-transparent hover:border-indigo-200">
                 🔀 Fusionner les doublons
               </button>
@@ -390,6 +393,15 @@ export default function App() {
             </div>
           )}
         </div>
+        </div>{/* end flex-1 */}
+
+        {/* Right sidebar — upcoming meetings */}
+        <div className="w-72 flex-shrink-0 hidden lg:block">
+          <div className="sticky top-24">
+            <UpcomingMeetings jobs={jobs} />
+          </div>
+        </div>
+        </div>{/* end flex row */}
           </>
         )}
       </main>
