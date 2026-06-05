@@ -93,17 +93,22 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
     setShowAddStep(false)
   }
 
-  const handleSaveEdit = (index) => {
+  // History is displayed reversed — convert display index back to original array index
+  const toOriginalIdx = (displayIdx) => history.length - 1 - displayIdx
+
+  const handleSaveEdit = (displayIdx) => {
+    const idx = toOriginalIdx(displayIdx)
     const updated = [...history]
-    updated[index] = { ...updated[index], ...editForm }
+    updated[idx] = { ...updated[idx], ...editForm }
     onUpdateHistory(job.id, updated)
     setEditingStep(null)
     setEditForm({})
   }
 
-  const handleDeleteStep = (index) => {
+  const handleDeleteStep = (displayIdx) => {
     if (!window.confirm('Supprimer cette étape ?')) return
-    const updated = history.filter((_, i) => i !== index)
+    const idx = toOriginalIdx(displayIdx)
+    const updated = history.filter((_, i) => i !== idx)
     onUpdateHistory(job.id, updated)
   }
 
@@ -378,9 +383,6 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                   )
                 })}
               </div>
-
-              {/* Advice panel */}
-              <AdvicePanel job={job} />
 
               {/* Add step form */}
               {showAddStep && (
