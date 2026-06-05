@@ -38,19 +38,25 @@ export default function UpcomingMeetings({ jobs }) {
     today.setHours(0, 0, 0, 0)
     const in60 = new Date(today); in60.setDate(today.getDate() + 60)
 
+    const past7 = new Date(today); past7.setDate(today.getDate() - 7)
+
     const events = []
     for (const job of jobs) {
-      if (job.status === 'archived' || job.status === 'rejected' || job.status === 'rejected_ats' || job.status === 'cancelled') continue
+      if (['archived','rejected','rejected_ats','cancelled'].includes(job.status)) continue
       for (const entry of job.history || []) {
         if (!entry.date) continue
         const d = new Date(entry.date)
         d.setHours(0, 0, 0, 0)
-        if (d < today || d > in60) continue
 
-        // Include: calendar entries OR email entries with a meeting link
         const hasCalendar = entry.source === 'calendar'
         const hasMeetingLink = !!entry.meetingLink
         if (!hasCalendar && !hasMeetingLink) continue
+
+        // Calendar entries: only future (they have the real meeting date)
+        // Email entries with meeting link: show if within last 7 days or future
+        //   (email date is receipt date, meeting itself may still be upcoming)
+        if (hasCalendar && (d < today || d > in60)) continue
+        if (!hasCalendar && hasMeetingLink && (d < past7 || d > in60)) continue
 
         events.push({
           date: entry.date,
