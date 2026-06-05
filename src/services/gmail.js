@@ -81,6 +81,25 @@ export function disconnectGmail() {
   saveUser(null)
 }
 
+// Silent re-auth — requests a new token without showing consent screen
+export async function refreshToken() {
+  if (!CLIENT_ID) throw new Error('VITE_GOOGLE_CLIENT_ID manquant')
+  await waitForGoogle()
+  return new Promise((resolve, reject) => {
+    const client = window.google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+      callback: async (response) => {
+        if (response.error) { reject(new Error(response.error)); return }
+        accessToken = response.access_token
+        saveToken(accessToken)
+        resolve(accessToken)
+      },
+    })
+    client.requestAccessToken({ prompt: '' })
+  })
+}
+
 async function gmailFetch(url) {
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
   if (!res.ok) {

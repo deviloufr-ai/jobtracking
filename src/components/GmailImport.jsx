@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { connectGmail, disconnectGmail, fetchJobEmails, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser } from '../services/gmail'
+import { connectGmail, disconnectGmail, refreshToken, fetchJobEmails, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser } from '../services/gmail'
 import { fetchCalendarEvents } from '../services/calendar'
 import { buildJobsFromEmails } from '../hooks/useAutoRefresh'
 import { getStatus, isAtsRejection } from '../hooks/useJobs'
@@ -60,6 +60,20 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
     try {
       setStep(STEPS.fetching)
       setError(null)
+
+      // If token expired, silently refresh before scanning
+      if (!isConnected()) {
+        try {
+          setError(null)
+          await refreshToken()
+        } catch {
+          setError('Session expirée — veuillez vous reconnecter.')
+          setConnected(false)
+          setStep(STEPS.idle)
+          return
+        }
+      }
+
       const emails = await fetchJobEmails(100, months)
       setEmailCount(emails.length)
 
@@ -133,7 +147,12 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
       setSelected(new Set(displayList.map((_, i) => i)))
       setStep(STEPS.review)
     } catch (e) {
-      setError('Erreur lors du scan : ' + e.message)
+      if (e.message?.includes('401') || e.message === 'Non connecté à Gmail') {
+        setConnected(false)
+        setError('Session expirée — cliquez sur "Reconnecter" puis relancez le scan.')
+      } else {
+        setError('Erreur lors du scan : ' + e.message)
+      }
       setStep(STEPS.idle)
     }
   }
