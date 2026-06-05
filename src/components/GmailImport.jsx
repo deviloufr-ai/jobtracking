@@ -14,7 +14,7 @@ const MONTH_OPTIONS = [
   { value: 24, label: '24 mois' },
 ]
 
-export default function GmailImport({ onImport, onClose, existingJobs, onUserChange }) {
+export default function GmailImport({ onImport, onUpdate, onClose, existingJobs, onUserChange }) {
   const [step, setStep] = useState(STEPS.idle)
   const [gmailUser, setGmailUser] = useState(() => getCachedUser())
   const [connected, setConnected] = useState(isConnected())
@@ -99,15 +99,23 @@ export default function GmailImport({ onImport, onClose, existingJobs, onUserCha
         }
       }
       const normalize = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-      // Filter out already-tracked applications — match on company+position
-      const existingKeys = new Set(existingJobs.map(j => `${normalize(j.company)}_${normalize(j.position)}`))
-      const newOnly = forceImport
-        ? grouped
-        : grouped.filter(p => !existingKeys.has(`${normalize(p.company)}_${normalize(p.position)}`))
+      const jobByKey = new Map(existingJobs.map(j => [`${normalize(j.company)}_${normalize(j.position)}`, j]))
 
-      console.log('After grouping + calendar:', newOnly)
-      setDebugInfo(prev => ({ ...prev, parsed: grouped.length, afterDedup: newOnly.length, rawParsed: grouped.slice(0,5) }))
-      const displayList = newOnly.length > 0 ? newOnly : (forceImport && grouped.length > 0 ? grouped : [])
+      // Split into new jobs + updates to existing jobs
+      const newJobs = grouped.filter(p => !jobByKey.has(`${normalize(p.company)}_${normalize(p.position)}`))
+      const updates = forceImport ? [] : grouped
+        .filter(p => jobByKey.has(`${normalize(p.company)}_${normalize(p.position)}`))
+        .map(p => {
+          const existing = jobByKey.get(`${normalize(p.company)}_${normalize(p.position)}`)
+          const existingHistKeys = new Set((existing.history || []).map(h => `${h.date}_${h.status}_${(h.note || '').slice(0, 40)}`))
+          const newEntries = (p.history || []).filter(h => !existingHistKeys.has(`${h.date}_${h.status}_${(h.note || '').slice(0, 40)}`))
+          return newEntries.length > 0 ? { ...p, _existingId: existing.id, _newEntries: newEntries, _isUpdate: true } : null
+        })
+        .filter(Boolean)
+
+      const displayList = forceImport ? grouped : [...newJobs, ...updates]
+      console.log('After grouping + calendar:', displayList)
+      setDebugInfo(prev => ({ ...prev, parsed: grouped.length, afterDedup: displayList.length, rawParsed: grouped.slice(0,5) }))
       setResults(displayList)
       setSelected(new Set(displayList.map((_, i) => i)))
       setStep(STEPS.review)
@@ -118,21 +126,35 @@ export default function GmailImport({ onImport, onClose, existingJobs, onUserCha
   }
 
   const handleImport = () => {
-    const toImport = results
-      .filter((_, i) => selected.has(i))
+    const selected_ = results.filter((_, i) => selected.has(i))
+
+    // New jobs → addJob via onImport
+    const toImport = selected_
+      .filter(r => !r._isUpdate)
       .map(r => ({
         company: r.company || 'Inconnu',
         position: r.position || 'Poste non précisé',
-        url: '',
-        status: r.status || 'sent',
+        url: '', status: r.status || 'sent',
         date: r.date || new Date().toISOString().split('T')[0],
         notes: r.notes || '',
-        _gmailId: r.gmailId,
-        _fromEmail: r.fromEmail,
-        _fromMe: r.fromMe,
+        _gmailId: r.gmailId, _fromEmail: r.fromEmail, _fromMe: r.fromMe,
         _history: r.history?.length > 0 ? r.history : undefined,
       }))
-    onImport(toImport)
+
+    // Updates → merge new history entries into existing job
+    const toUpdate = selected_.filter(r => r._isUpdate)
+    toUpdate.forEach(r => {
+      const existing = existingJobs.find(j => j.id === r._existingId)
+      if (!existing || !onUpdate) return
+      const STATUS_ORDER = ['todo','sent','reviewing','interview','waiting','offer','rejected','rejected_ats','cancelled','archived']
+      const mergedHistory = [...(existing.history || []), ...r._newEntries]
+        .sort((a, b) => new Date(a.date) - new Date(b.date))
+      const newStatus = STATUS_ORDER.indexOf(r.status) > STATUS_ORDER.indexOf(existing.status)
+        ? r.status : existing.status
+      onUpdate(existing.id, { history: mergedHistory, status: newStatus })
+    })
+
+    if (toImport.length > 0) onImport(toImport)
     onClose()
   }
 
@@ -323,7 +345,11 @@ export default function GmailImport({ onImport, onClose, existingJobs, onUserCha
               ) : (
                 <>
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-medium text-gray-700">{results.length} candidature{results.length > 1 ? 's' : ''} détectée{results.length > 1 ? 's' : ''}</p>
+                    <p className="text-sm font-medium text-gray-700">
+                      {results.filter(r => !r._isUpdate).length > 0 && `${results.filter(r => !r._isUpdate).length} nouvelle${results.filter(r => !r._isUpdate).length > 1 ? 's' : ''}`}
+                      {results.filter(r => !r._isUpdate).length > 0 && results.filter(r => r._isUpdate).length > 0 && ' · '}
+                      {results.filter(r => r._isUpdate).length > 0 && `${results.filter(r => r._isUpdate).length} mise${results.filter(r => r._isUpdate).length > 1 ? 's' : ''} à jour`}
+                    </p>
                     <p className="text-xs text-gray-400">{selected.size} sélectionnée{selected.size > 1 ? 's' : ''}</p>
                   </div>
                   <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
@@ -348,10 +374,16 @@ export default function GmailImport({ onImport, onClose, existingJobs, onUserCha
                                 <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
                                 {st.label}
                               </span>
-                              {r.confidence && <span className="text-xs text-gray-400">{r.confidence}% sûr</span>}
+                              {r._isUpdate
+                                ? <span className="text-xs bg-blue-100 text-blue-700 font-medium px-1.5 py-0.5 rounded-full">↻ {r._newEntries?.length} nouv.</span>
+                                : r.confidence && <span className="text-xs text-gray-400">{r.confidence}% sûr</span>
+                              }
                             </div>
                             <p className="text-xs text-gray-500 mt-0.5">{r.position}</p>
-                            {r.notes && <p className="text-xs text-gray-400 mt-0.5 italic">{r.notes}</p>}
+                            {r._isUpdate && r._newEntries?.length > 0 && (
+                              <p className="text-xs text-blue-600 mt-0.5 italic">{r._newEntries[r._newEntries.length - 1]?.note}</p>
+                            )}
+                            {!r._isUpdate && r.notes && <p className="text-xs text-gray-400 mt-0.5 italic">{r.notes}</p>}
                           </div>
                           <span className="text-xs text-gray-400 flex-shrink-0">{r.date}</span>
                         </div>

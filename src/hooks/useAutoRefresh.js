@@ -93,7 +93,7 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
   return grouped
 }
 
-export function useAutoRefresh(jobs, addJob, showToast) {
+export function useAutoRefresh(jobs, addJob, updateJob, showToast) {
   const [refreshing, setRefreshing] = useState(false)
   const [lastRefresh, setLastRefresh] = useState(() => {
     const stored = localStorage.getItem(REFRESH_KEY)
@@ -115,22 +115,45 @@ export function useAutoRefresh(jobs, addJob, showToast) {
       const grouped = await buildJobsFromEmails(emails, calendarEvents)
       if (!grouped.length) { setRefreshing(false); return }
 
-      const existingKeys = new Set(jobs.map(j => `${normalize(j.company)}_${normalize(j.position)}`))
-      const newJobs = grouped.filter(p => !existingKeys.has(`${normalize(p.company)}_${normalize(p.position)}`))
+      const jobByKey = new Map(jobs.map(j => [`${normalize(j.company)}_${normalize(j.position)}`, j]))
 
-      if (newJobs.length > 0) {
-        newJobs.forEach(j => addJob({
-          company: j.company || 'Inconnu',
-          position: j.position || 'Poste non précisé',
-          url: '',
-          status: j.status || 'sent',
-          date: j.date || new Date().toISOString().split('T')[0],
-          notes: j.notes || '',
-          _history: j.history?.length > 0 ? j.history : undefined,
-        }))
-        if (!silent) {
-          showToast(`✨ ${newJobs.length} nouvelle${newJobs.length > 1 ? 's' : ''} candidature${newJobs.length > 1 ? 's' : ''} importée${newJobs.length > 1 ? 's' : ''} !`, 4000)
+      let added = 0, updated = 0
+      for (const p of grouped) {
+        const key = `${normalize(p.company)}_${normalize(p.position)}`
+        const existing = jobByKey.get(key)
+
+        if (!existing) {
+          // New job — add it
+          addJob({
+            company: p.company || 'Inconnu',
+            position: p.position || 'Poste non précisé',
+            url: '', status: p.status || 'sent',
+            date: p.date || new Date().toISOString().split('T')[0],
+            notes: p.notes || '',
+            _history: p.history?.length > 0 ? p.history : undefined,
+          })
+          added++
+        } else {
+          // Existing job — merge any new history entries
+          const existingHistKeys = new Set((existing.history || []).map(h => `${h.date}_${h.status}_${(h.note || '').slice(0, 40)}`))
+          const newEntries = (p.history || []).filter(h => !existingHistKeys.has(`${h.date}_${h.status}_${(h.note || '').slice(0, 40)}`))
+          if (newEntries.length > 0) {
+            const mergedHistory = [...(existing.history || []), ...newEntries]
+              .sort((a, b) => new Date(a.date) - new Date(b.date))
+            // Upgrade status if new emails show a higher-priority status
+            const newStatus = STATUS_ORDER.indexOf(p.status) > STATUS_ORDER.indexOf(existing.status)
+              ? p.status : existing.status
+            updateJob(existing.id, { history: mergedHistory, status: newStatus })
+            updated++
+          }
         }
+      }
+
+      if (!silent && (added > 0 || updated > 0)) {
+        const parts = []
+        if (added > 0) parts.push(`${added} nouvelle${added > 1 ? 's' : ''} candidature${added > 1 ? 's' : ''}`)
+        if (updated > 0) parts.push(`${updated} mise${updated > 1 ? 's' : ''} à jour`)
+        showToast(`✨ ${parts.join(' · ')} !`, 4000)
       }
 
       const now = new Date()

@@ -113,6 +113,7 @@ export default function App() {
     setTimeout(() => setToast(null), duration)
   }
 
+  useAutoRefresh(jobs, addJob, updateJob, showToast)
   useExtensionImport(addJob, showToast)
 
   const handleSort = (col) => {
@@ -408,7 +409,7 @@ export default function App() {
 
       {modal && <JobModal job={modal === 'add' ? null : modal} onSave={handleSave} onClose={() => setModal(null)} />}
       {toDelete && <ConfirmDelete job={toDelete} onConfirm={handleDelete} onCancel={() => setToDelete(null)} />}
-      {showGmail && <GmailImport onImport={handleBulkImport} onClose={() => { setShowGmail(false); setGmailUser(getCachedUser()); setGmailConnected(isConnected()) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u || isConnected()) }} existingJobs={jobs} />}
+      {showGmail && <GmailImport onImport={handleBulkImport} onUpdate={(id, data) => updateJob(id, data)} onClose={() => { setShowGmail(false); setGmailUser(getCachedUser()); setGmailConnected(isConnected()) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u || isConnected()) }} existingJobs={jobs} />}
       {showImageImport && <ImageImport onImport={handleBulkImport} onClose={() => setShowImageImport(false)} existingJobs={jobs} />}
 
       {toast && (
