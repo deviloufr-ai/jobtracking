@@ -4,28 +4,28 @@ import AdvicePanel from './AdvicePanel'
 import { STATUSES, getStatus } from '../hooks/useJobs'
 
 function StepTips({ status }) {
-  const [open, setOpen] = useState(false)
   const tips = STEP_TIPS[status] || []
   if (!tips.length) return null
   return (
-    <div className="mt-1">
-      <button
-        onClick={e => { e.stopPropagation(); setOpen(v => !v) }}
-        className="flex items-center gap-1 text-[11px] text-amber-500 hover:text-amber-700 hover:bg-amber-50 px-1.5 py-0.5 rounded transition-colors"
-      >
-        <span>{open ? '▾' : '▸'}</span>
-        💡 {open ? 'Masquer' : 'Conseils'}
-      </button>
-      {open && (
-        <ul className="mt-1 space-y-0.5 pl-1">
+    <div className="relative inline-block mt-1 group/tips">
+      <span className="text-[11px] text-amber-500 cursor-default select-none px-1 py-0.5 rounded hover:bg-amber-50 transition-colors">
+        💡 Conseils
+      </span>
+      {/* Tooltip */}
+      <div className="absolute left-0 bottom-full mb-1.5 z-30 hidden group-hover/tips:block w-64
+        bg-white border border-amber-100 rounded-xl shadow-lg p-3">
+        <p className="text-[10px] font-semibold text-amber-600 mb-1.5 uppercase tracking-wide">Conseils</p>
+        <ul className="space-y-1">
           {tips.map((t, i) => (
-            <li key={i} className="flex gap-1.5 text-[11px] text-amber-700">
-              <span className="text-amber-300 flex-shrink-0">•</span>
+            <li key={i} className="flex gap-1.5 text-[11px] text-gray-700">
+              <span className="text-amber-400 flex-shrink-0 mt-0.5">•</span>
               <span>{t}</span>
             </li>
           ))}
         </ul>
-      )}
+        {/* Arrow */}
+        <div className="absolute left-3 top-full w-2 h-2 bg-white border-r border-b border-amber-100 rotate-45 -mt-1" />
+      </div>
     </div>
   )
 }
