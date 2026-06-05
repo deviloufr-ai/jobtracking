@@ -11,10 +11,17 @@ function lastNote(job) {
 }
 
 function hasKeyword(job, ...kws) {
-  const note = lastNote(job)
   const notes = (job.history || []).map(h => (h.note || '').toLowerCase()).join(' ')
-  return kws.some(k => note.includes(k) || notes.includes(k))
+  return kws.some(k => notes.includes(k))
 }
+
+function hasUpcomingCalendar(job) {
+  const today = new Date(); today.setHours(0,0,0,0)
+  return (job.history || []).some(h => h.source === 'calendar' && h.isUpcoming && new Date(h.date) >= today)
+}
+
+const TEST_KWS = ['test technique', 'technical test', 'case study', 'assessment', 'exercice technique', 'mise en situation', 'lancement test', 'tech test']
+const NEGO_KWS = ['négociation', 'salaire', 'rémunération', 'prétentions', 'package', 'compensation', 'offre salariale']
 
 // Urgent actions - things that need attention NOW
 const URGENT_RULES = [
@@ -56,31 +63,52 @@ const URGENT_RULES = [
   },
 ]
 
-// Next steps — note-aware, contextual
+// Next steps — note-aware, contextual. Order = priority shown to user.
 const NEXT_STEPS_RULES = [
-  // Tech test detected in notes
+  // Upcoming calendar event (test/meeting) — highest priority
   {
-    match: j => ['interview','done','waiting'].includes(j.status) && hasKeyword(j, 'test technique', 'technical test', 'case study', 'assessment', 'exercice technique', 'mise en situation'),
+    match: j => !['archived','rejected','rejected_ats','cancelled'].includes(j.status) && hasUpcomingCalendar(j) && hasKeyword(j, ...TEST_KWS),
     icon: '💻', type: 'prep',
     label: job => `Préparer le test technique ${job.company}`,
-    tip: () => `Documente ton approche, prépare un repo propre, soigne le README et les explications de tes choix.`,
+    tip: () => `Prépare la documentation, un repo propre, soigne le README et tes explications de choix techniques.`,
     cta: 'Voir les conseils',
+    priority: 0,
   },
-  // Salary negotiation detected
+  // Tech test mentioned anywhere in history (even without calendar)
   {
-    match: j => ['interview','done','waiting','offer'].includes(j.status) && hasKeyword(j, 'négociation', 'salaire', 'rémunération', 'prétentions', 'package', 'compensation'),
-    icon: '💰', type: 'negotiate',
-    label: job => `Préparer la négociation ${job.company}`,
-    tip: () => `Salaire, télétravail, avantages, date de prise de poste — prépare chaque point avec des arguments marché.`,
+    match: j => !['archived','rejected','rejected_ats','cancelled'].includes(j.status) && hasKeyword(j, ...TEST_KWS) && !hasUpcomingCalendar(j),
+    icon: '💻', type: 'prep',
+    label: job => `Préparer le test technique ${job.company}`,
+    tip: () => `Prépare la documentation, un repo propre, soigne le README et tes explications de choix techniques.`,
     cta: 'Voir les conseils',
+    priority: 1,
   },
-  // Interview or visio scheduled
+  // Upcoming calendar event (interview)
   {
-    match: j => j.status === 'interview' && !hasKeyword(j, 'test technique', 'technical test'),
+    match: j => !['archived','rejected','rejected_ats','cancelled'].includes(j.status) && hasUpcomingCalendar(j) && !hasKeyword(j, ...TEST_KWS),
     icon: '🎯', type: 'prep',
     label: job => `Préparer l'entretien ${job.company}`,
     tip: job => `Recherche ${job.company}, prépare 5 questions, révise tes réponses STAR et ton pitch.`,
     cta: 'Voir les conseils',
+    priority: 0,
+  },
+  // Salary negotiation detected
+  {
+    match: j => !['archived','rejected','rejected_ats','cancelled','todo'].includes(j.status) && hasKeyword(j, ...NEGO_KWS),
+    icon: '💰', type: 'negotiate',
+    label: job => `Préparer la négociation ${job.company}`,
+    tip: () => `Salaire, télétravail, avantages, date de prise de poste — prépare chaque point avec des arguments marché.`,
+    cta: 'Voir les conseils',
+    priority: 1,
+  },
+  // Interview status without test
+  {
+    match: j => j.status === 'interview' && !hasKeyword(j, ...TEST_KWS),
+    icon: '🎯', type: 'prep',
+    label: job => `Préparer l'entretien ${job.company}`,
+    tip: job => `Recherche ${job.company}, prépare 5 questions, révise tes réponses STAR et ton pitch.`,
+    cta: 'Voir les conseils',
+    priority: 1,
   },
   // Offer received
   {
@@ -139,9 +167,10 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob }) {
   const nextSteps = activeJobs
     .flatMap(job => NEXT_STEPS_RULES
       .filter(r => r.match(job))
-      .map(r => ({ job, rule: r }))
+      .map(r => ({ job, rule: r, priority: r.priority ?? 2 }))
     )
-    .slice(0, 4)
+    .sort((a, b) => a.priority - b.priority)
+    .slice(0, 6)
 
   if (urgentActions.length === 0 && nextSteps.length === 0) return null
 
