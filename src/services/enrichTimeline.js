@@ -119,7 +119,8 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
     if (isCalendarConnected()) {
       const calEvents = await fetchCalendarEvents(job.company, 12)
       const calTimeline = calEvents.map(e => {
-        const meetLink = extractMeetingLink(e.description) || extractMeetingLink(e.location)
+        // calendar.js already extracts meetingLink; fall back to re-extracting from description/location
+        const meetLink = e.meetingLink || extractMeetingLink(e.description) || extractMeetingLink(e.location)
         const platform = meetLink ? detectMeetingPlatform(meetLink) : null
         return {
           date: e.date,
@@ -127,7 +128,7 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
           note: `📅 ${e.title}${e.location && !meetLink ? ` — ${e.location}` : ''}${e.isUpcoming ? ' (à venir)' : ''}`,
           source: 'calendar',
           isUpcoming: e.isUpcoming,
-          meetingLink: meetLink,
+          meetingLink: meetLink || undefined,
           meetingPlatform: platform?.name,
           meetingEmoji: platform?.emoji,
         }
@@ -140,18 +141,36 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
 
   if (events.length === 0) return null
 
-  // Merge with existing history — deduplicate by date+status
-  const existingKeys = new Set((job.history || []).map(h => `${h.date}-${h.status}`))
-  // Also attach meeting links from emails to matching events
-  for (const email of []) { /* handled in analyzeEmailsForTimeline */ }
-  
-  const newEvents = events.filter(e => !existingKeys.has(`${e.date}-${e.status}`))
+  // Merge with existing history
+  // If a calendar event matches an existing entry by date+status, inject its meeting link
+  const existingByKey = new Map((job.history || []).map(h => [`${h.date}-${h.status}`, h]))
 
-  if (newEvents.length === 0) return null
+  const newEvents = []
+  for (const e of events) {
+    const key = `${e.date}-${e.status}`
+    if (existingByKey.has(key)) {
+      // Entry already exists — inject meeting link if we now have one
+      const existing = existingByKey.get(key)
+      if (e.meetingLink && !existing.meetingLink) {
+        existing.meetingLink = e.meetingLink
+        existing.meetingPlatform = e.meetingPlatform
+        existing.meetingEmoji = e.meetingEmoji
+      }
+    } else {
+      newEvents.push(e)
+    }
+  }
 
   // Merge and sort chronologically
   const merged = [...(job.history || []), ...newEvents]
   merged.sort((a, b) => new Date(a.date) - new Date(b.date))
+
+  // Return even if no new events — meeting links may have been injected into existing entries
+  const hadUpdates = events.some(e => {
+    const key = `${e.date}-${e.status}`
+    return existingByKey.has(key) && e.meetingLink
+  })
+  if (newEvents.length === 0 && !hadUpdates) return null
 
   return { newCount: newEvents.length, history: merged }
 }
