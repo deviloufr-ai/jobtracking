@@ -236,7 +236,46 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* When connected: account pill replaces Screenshot (more prominent); Screenshot moves right */}
+            {/* Screenshot */}
+            <button onClick={() => setShowImageImport(true)}
+              className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 transition-all">
+              <span>🖼️</span><span className="hidden sm:inline">Screenshot</span>
+            </button>
+
+            {/* Extension */}
+            <ExtensionButton />
+
+            {/* Refresh (only when connected) */}
+            {(gmailUser || gmailConnected) && (
+              <button
+                onClick={() => doRefresh(false)}
+                disabled={refreshing}
+                title={lastRefresh ? `Dernière sync : ${lastRefresh}` : 'Synchroniser Gmail & Calendar'}
+                className="relative flex items-center justify-center w-9 h-9 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <svg className={`w-4 h-4 text-gray-600 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            )}
+
+            {/* Notifications */}
+            <NotificationBell
+              notifications={notifications}
+              unreadCount={unreadCount}
+              onMarkAllRead={markAllRead}
+              onClear={clearNotifs}
+            />
+
+            {/* + Nouvelle candidature */}
+            <button onClick={() => setModal('add')}
+              className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all shadow-sm">
+              <span className="text-lg leading-none">+</span>
+              <span className="hidden sm:inline">Nouvelle candidature</span>
+              <span className="sm:hidden">Ajouter</span>
+            </button>
+
+            {/* Login / Account — always top-right */}
             {gmailUser ? (
               <button
                 onClick={() => setShowGmail(true)}
@@ -256,53 +295,17 @@ export default function App() {
               <button onClick={() => setShowGmail(true)}
                 className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-100 transition-all">
                 <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-                <span className="hidden sm:inline">Gmail connecté</span>
+                <span className="hidden sm:inline">Connecté</span>
               </button>
             ) : (
-              <>
-                <button onClick={() => setShowImageImport(true)}
-                  className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 transition-all">
-                  <span>🖼️</span><span className="hidden sm:inline">Screenshot</span>
-                </button>
-                <button onClick={() => setShowGmail(true)}
-                  className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24">
-                    <path fill="#EA4335" d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.909 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
-                  </svg>
-                  <span className="hidden sm:inline">Gmail</span>
-                </button>
-              </>
-            )}
-            {/* Extension button + Screenshot (when connected) */}
-            <ExtensionButton />
-            {(gmailUser || gmailConnected) && (
-              <button onClick={() => setShowImageImport(true)}
-                className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 transition-all">
-                <span>🖼️</span><span className="hidden sm:inline">Screenshot</span>
+              <button onClick={() => setShowGmail(true)}
+                className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 text-sm font-medium px-3 py-2 rounded-lg hover:bg-indigo-100 transition-all">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                </svg>
+                <span className="hidden sm:inline">Connexion</span>
               </button>
             )}
-            <button
-              onClick={() => doRefresh(false)}
-              disabled={refreshing || !isConnected()}
-              title={lastRefresh ? `Dernière sync : ${lastRefresh}` : 'Synchroniser Gmail & Calendar'}
-              className="relative flex items-center justify-center w-9 h-9 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <svg className={`w-4 h-4 text-gray-600 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            <NotificationBell
-              notifications={notifications}
-              unreadCount={unreadCount}
-              onMarkAllRead={markAllRead}
-              onClear={clearNotifs}
-            />
-            <button onClick={() => setModal('add')}
-              className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all shadow-sm">
-              <span className="text-lg leading-none">+</span>
-              <span className="hidden sm:inline">Nouvelle candidature</span>
-              <span className="sm:hidden">Ajouter</span>
-            </button>
           </div>
         </div>
       </header>
