@@ -8,7 +8,7 @@ function StepTips({ status }) {
   if (!tips.length) return null
   return (
     <div className="relative inline-block mt-1 group/tips">
-      <span className="text-[11px] text-amber-500 cursor-default select-none px-1 py-0.5 rounded hover:bg-amber-50 transition-colors">
+      <span className="text-[11px] text-gray-300 cursor-default select-none px-1 py-0.5 rounded hover:text-amber-400 hover:bg-amber-50 transition-colors">
         💡 Conseils
       </span>
       {/* Tooltip */}
@@ -340,7 +340,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                               ))}
                             </ul>
                           ) : entry.note ? (
-                            <p className="text-xs text-gray-600 mt-0.5">{entry.note}</p>
+                            <p className={`text-xs mt-0.5 ${entry.source === 'calendar' ? 'text-gray-400 italic' : 'text-gray-600'}`}>{entry.note}</p>
                           ) : null}
                             {entry.meetingLink && (
                               <a
