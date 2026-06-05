@@ -127,7 +127,7 @@ export async function fetchJobEmails(maxResults = null, months = 3) {
 
   const queries = [
     // French recruitment keywords (incoming)
-    `in:inbox (candidature OR postulation OR entretien OR recrutement OR "votre candidature" OR "votre profil" OR "nous avons bien reçu" OR "suite à votre candidature" OR "nous avons le regret" OR "sans suite" OR "n'avons pas retenu") ${noAlerts} newer_than:${days}d`,
+    `in:inbox (candidature OR postulation OR entretien OR recrutement OR "votre candidature" OR "Votre candidature" OR "votre profil" OR "nous avons bien reçu" OR "suite à votre candidature" OR "nous avons le regret" OR "sans suite" OR "n'avons pas retenu") ${noAlerts} newer_than:${days}d`,
     // English recruitment keywords (incoming)
     `in:all (interview OR "thank you for applying" OR "thanks for applying" OR "thanks for your application" OR "thank you for your application" OR "application received" OR "your application" OR "application viewed" OR "was viewed" OR "viewed your application" OR "we have received" OR "we regret" OR "not selected" OR "not moving forward" OR "job offer" OR "offer letter" OR "next steps" OR "hiring process") ${noAlerts} newer_than:${days}d`,
     // ATS platforms — always job-related, no alert filter needed
