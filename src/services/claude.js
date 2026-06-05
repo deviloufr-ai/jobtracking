@@ -186,12 +186,17 @@ IMPORTANT: Negociation salariale = "interview" ou "waiting", PAS "rejected"
 Champs JSON: emailId (entier, ex: 1 pas "[1]"), company, position, status, date (YYYY-MM-DD), notes (max 80 chars), confidence (0-100)
 
 RÈGLE ENTREPRISE :
-- L'email peut être ENVOYÉ PAR un job board (LinkedIn, Indeed…) mais CONCERNER une vraie entreprise.
-- Exemple : "Your application was viewed by GojiberryAI" envoyé par jobs-noreply@linkedin.com → company = "GojiberryAI"
-- Exemple : "Candidature envoyée chez Publidata" depuis LinkedIn → company = "Publidata"
+- L'email peut être ENVOYÉ PAR un job board mais CONCERNER une vraie entreprise — toujours extraire la vraie entreprise.
+- PATTERN CLÉ Indeed/LinkedIn : le nom d'entreprise apparaît juste AVANT le pays :
+  "Publidata - France" → company = "Publidata"
+  "GojiberryAI · France" → company = "GojiberryAI"
+  "Hublo, France" → company = "Hublo"
+- Autres exemples :
+  "Your application was viewed by GojiberryAI" → company = "GojiberryAI"
+  "Candidature envoyée chez Publidata" → company = "Publidata"
+  "You applied to Product Manager at Yeita" → company = "Yeita"
 - Ne JAMAIS mettre LinkedIn / Indeed / Free-Work / Malt / WTTJ / Apec / Monster comme company.
-- Extraire TOUJOURS le vrai nom de l'entreprise cible depuis le sujet ou le corps de l'email.
-- Si vraiment aucune entreprise identifiable (newsletter pure, alerte générique) : confidence: 0.
+- Si vraiment aucune entreprise identifiable : confidence: 0.
 
 IGNORER : newsletters, alertes "jobs you might like", "candidature suggérée" (offre recommandée sans que l'utilisateur ait postulé), digests sans candidature réelle.
 Un email = candidature réelle uniquement si l'utilisateur A POSTULÉ ou a REÇU une réponse d'un recruteur.
