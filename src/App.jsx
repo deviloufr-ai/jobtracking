@@ -14,6 +14,7 @@ import JobSearch from './components/JobSearch'
 import CVManager from './components/CVManager'
 import ImageImport from './components/ImageImport'
 import UpcomingMeetings from './components/UpcomingMeetings'
+import Goals from './components/Goals'
 import CalendarWidget from './components/CalendarWidget'
 import NotificationBell from './components/NotificationBell'
 import { useNotifications } from './hooks/useNotifications'
@@ -460,6 +461,7 @@ export default function App() {
         <div className="w-80 flex-shrink-0 hidden xl:block">
           <div className="sticky top-24">
             <UpcomingMeetings jobs={jobs} />
+            <Goals jobs={jobs} />
           </div>
         </div>
         </div>{/* end flex row */}
