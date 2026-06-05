@@ -1,8 +1,45 @@
 import { useState } from 'react'
 import { enrichJobTimeline } from '../services/enrichTimeline'
 import AdvicePanel from './AdvicePanel'
-
 import { STATUSES, getStatus } from '../hooks/useJobs'
+
+function StepTips({ status }) {
+  const [open, setOpen] = useState(false)
+  const tips = STEP_TIPS[status] || []
+  if (!tips.length) return null
+  return (
+    <div className="mt-1">
+      <button
+        onClick={e => { e.stopPropagation(); setOpen(v => !v) }}
+        className="flex items-center gap-1 text-[11px] text-amber-500 hover:text-amber-700 hover:bg-amber-50 px-1.5 py-0.5 rounded transition-colors"
+      >
+        <span>{open ? '▾' : '▸'}</span>
+        💡 {open ? 'Masquer' : 'Conseils'}
+      </button>
+      {open && (
+        <ul className="mt-1 space-y-0.5 pl-1">
+          {tips.map((t, i) => (
+            <li key={i} className="flex gap-1.5 text-[11px] text-amber-700">
+              <span className="text-amber-300 flex-shrink-0">•</span>
+              <span>{t}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+const STEP_TIPS = {
+  sent:         ["Connecte-toi sur LinkedIn avec un employé de l'entreprise", "Prépare un message de relance pour J+14 si pas de réponse"],
+  reviewing:    ["Consulte Glassdoor pour connaître la culture de l'entreprise", "Prépare 3-5 questions pertinentes à poser lors d'un éventuel entretien"],
+  interview:    ["Prépare des réponses STAR pour chaque expérience clé", "Recherche les dernières actualités de l'entreprise", "Envoie un email de remerciement dans les 24h après l'entretien"],
+  done:         ["Note les points forts et faibles de cet échange", "Envoie un email de remerciement si ce n'est pas encore fait", "Continue de candidater — ne bloque pas sur une seule opportunité"],
+  waiting:      ["Relance poliment après 5-7 jours ouvrés si pas de retour", "Continue de candidater activement"],
+  offer:        ["Ne jamais accepter sans avoir négocié", "Demande un délai de réflexion de 48-72h", "Négocie salaire, télétravail, date de prise de poste"],
+  rejected:     ["Envoie un email de remerciement — ça te différencie", "Demande un feedback constructif"],
+  rejected_ats: ["Analyse les mots-clés de l'offre et intègre-les dans ton CV", "Évite les CV en tableau — les ATS les lisent mal"],
+}
 
 export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onGenerateCV, onToggleFavorite }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
@@ -329,6 +366,10 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                             </svg>
                             Voir l'email
                           </a>
+                        )}
+                        {/* Per-step tips */}
+                        {STEP_TIPS[entry.status]?.length > 0 && (
+                          <StepTips status={entry.status} />
                         )}
                           </>
                         )}
