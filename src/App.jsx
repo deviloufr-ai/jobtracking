@@ -261,36 +261,6 @@ export default function App() {
                 </button>
               ))}
 
-              {/* Archives toggle */}
-              <button
-                onClick={() => setShowArchived(v => !v)}
-                className={`relative flex items-center gap-1.5 px-3 h-full text-sm font-medium transition-colors ${
-                  showArchived ? 'text-gray-700' : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                <span className="text-[13px]">📦</span>
-                <span className="hidden md:inline">Archives</span>
-                {archivedCount > 0 && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{archivedCount}</span>
-                )}
-                {showArchived && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-400 rounded-t-full" />}
-              </button>
-
-              {/* Favorites toggle */}
-              <button
-                onClick={() => setShowFavOnly(v => !v)}
-                className={`relative flex items-center gap-1.5 px-3 h-full text-sm font-medium transition-colors ${
-                  showFavOnly ? 'text-amber-600' : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                <span className="text-[13px]">{showFavOnly ? '⭐' : '☆'}</span>
-                <span className="hidden md:inline">Favoris</span>
-                {favCount > 0 && (
-                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${showFavOnly ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>{favCount}</span>
-                )}
-                {showFavOnly && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-400 rounded-t-full" />}
-              </button>
-
               {/* CV tab */}
               <button
                 onClick={() => setActiveTab('cv')}
@@ -458,7 +428,29 @@ export default function App() {
         <div className="flex-1 min-w-0">
         <Stats jobs={jobs} />
         <NextAction jobs={jobs} onGenerateCV={handleGenerateCV} onOpenJob={(job) => { setFilters(f => ({ ...f, search: job.company })) }} />
-        <Filters filters={filters} onChange={setFilters} onReset={() => setFilters(DEFAULT_FILTERS)} total={jobs.length} filtered={filtered.length} />
+        <div className="flex items-center gap-2 mt-4 mb-1">
+          <div className="flex-1"><Filters filters={filters} onChange={setFilters} onReset={() => setFilters(DEFAULT_FILTERS)} total={jobs.length} filtered={filtered.length} /></div>
+          <button
+            onClick={() => setShowFavOnly(v => !v)}
+            title="Favoris uniquement"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${
+              showFavOnly ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-white border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <span>{showFavOnly ? '⭐' : '☆'}</span>
+            {favCount > 0 && <span className="text-xs">{favCount}</span>}
+          </button>
+          <button
+            onClick={() => setShowArchived(v => !v)}
+            title="Afficher les archives"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${
+              showArchived ? 'bg-gray-100 border-gray-300 text-gray-700' : 'bg-white border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <span>📦</span>
+            {archivedCount > 0 && <span className="text-xs">{archivedCount}</span>}
+          </button>
+        </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           {filtered.length === 0 ? (
