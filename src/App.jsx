@@ -422,7 +422,6 @@ export default function App() {
                     <ThHeader col="company" label="Entreprise / Poste" />
                     <ThHeader col="status" label="Statut" />
                     <ThHeader col="date" label="Date" />
-                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Contact</th>
                     <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Notes</th>
                     <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Offre</th>
                     <th className="py-3 px-2 w-12"></th>

@@ -126,35 +126,45 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
     setTimeout(() => setEnrichResult(null), 3000)
   }
 
+  // Deterministic avatar color from company name
+  const avatarColors = [
+    'bg-violet-100 text-violet-700','bg-blue-100 text-blue-700','bg-teal-100 text-teal-700',
+    'bg-orange-100 text-orange-700','bg-pink-100 text-pink-700','bg-cyan-100 text-cyan-700',
+    'bg-lime-100 text-lime-700','bg-amber-100 text-amber-700','bg-indigo-100 text-indigo-700',
+  ]
+  const avatarColor = avatarColors[job.company.charCodeAt(0) % avatarColors.length]
+  const initials = job.company.split(/\s+/).slice(0,2).map(w => w[0]?.toUpperCase()).join('')
+
   return (
     <>
-      <tr className={`border-b border-gray-50 hover:bg-gray-50/60 transition-colors group ${job.status === 'cancelled' ? 'opacity-50' : ''}`}>
-        {/* Expand + Company */}
-        <td className="py-3 px-4">
-          <div className="flex items-center gap-2 min-w-0">
+      <tr
+        className={`border-b border-gray-50 hover:bg-indigo-50/30 transition-colors group cursor-pointer ${job.status === 'cancelled' ? 'opacity-40' : ''}`}
+        onClick={() => setExpanded(v => !v)}
+      >
+        {/* Checkbox + Avatar + Company */}
+        <td className="py-3.5 px-4" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Checkbox */}
+            <input type="checkbox" className="flex-shrink-0 accent-indigo-600 w-3.5 h-3.5 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()} />
+            {/* Favorite star */}
             <button
-              onClick={() => setExpanded(v => !v)}
-              className={`w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all flex-shrink-0 text-xs font-bold ${expanded ? 'rotate-90 text-indigo-600' : ''}`}
-              title="Voir l'historique"
-            >
-              ▶
-            </button>
-            <button
-              onClick={() => onToggleFavorite && onToggleFavorite(job.id)}
-              className={`flex-shrink-0 text-sm leading-none transition-all hover:scale-110 ${job.favorite ? 'text-yellow-400' : 'text-gray-200 hover:text-yellow-300'}`}
-              title={job.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-            >
-              ★
-            </button>
+              onClick={e => { e.stopPropagation(); onToggleFavorite && onToggleFavorite(job.id) }}
+              className={`flex-shrink-0 text-sm leading-none transition-all hover:scale-110 -ml-1 ${job.favorite ? 'text-yellow-400' : 'text-gray-200 hover:text-yellow-300'}`}
+            >★</button>
+            {/* Avatar */}
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${avatarColor}`}>
+              {initials}
+            </div>
+            {/* Company + Position */}
             <div className="min-w-0">
-              <div className="font-semibold text-gray-800 text-sm truncate">{job.company}</div>
+              <div className="font-semibold text-gray-800 text-sm truncate leading-tight">{job.company}</div>
               <div className="text-xs text-gray-400 truncate mt-0.5">{job.position}</div>
             </div>
           </div>
         </td>
 
         {/* Status */}
-        <td className="py-3.5 px-4">
+        <td className="py-3.5 px-4" onClick={e => e.stopPropagation()}>
           <div className="relative">
             <button
               onClick={() => setShowStatusMenu(v => !v)}
@@ -186,36 +196,24 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
         </td>
 
         {/* Date */}
-        <td className="py-3 px-4 text-xs text-gray-500 whitespace-nowrap">{formatDate(job.date)}</td>
-
-        {/* Contact */}
-        <td className="py-3 px-4">
-          {recruiter
-            ? <span className="inline-flex items-center gap-1.5 text-xs text-gray-600">
-                <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
-                  {recruiter[0].toUpperCase()}
-                </span>
-                <span className="truncate">{recruiter}</span>
-              </span>
-            : <span className="text-xs text-gray-300">—</span>}
-        </td>
+        <td className="py-3.5 px-4 text-xs text-gray-500 whitespace-nowrap">{formatDate(job.date)}</td>
 
         {/* Notes */}
-        <td className="py-3 px-4">
+        <td className="py-3.5 px-4 max-w-xs">
           {job.notes
-            ? <span className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{job.notes}</span>
+            ? <span className="text-xs text-gray-500 line-clamp-1">{job.notes}</span>
             : <span className="text-xs text-gray-300">—</span>}
         </td>
 
         {/* URL */}
-        <td className="py-3 px-4 hidden md:table-cell">
+        <td className="py-3.5 px-4" onClick={e => e.stopPropagation()}>
           {job.url
-            ? <a href={job.url} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-500 hover:text-indigo-700 hover:underline whitespace-nowrap">Voir ↗</a>
+            ? <a href={job.url} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-500 hover:text-indigo-700 hover:underline whitespace-nowrap">Voir l'offre ↗</a>
             : <span className="text-xs text-gray-300">—</span>}
         </td>
 
         {/* Actions */}
-        <td className="py-3 px-2">
+        <td className="py-3.5 px-4" onClick={e => e.stopPropagation()}>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button onClick={() => onEdit(job)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Modifier">✏️</button>
             <button onClick={() => onDelete(job)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Supprimer">🗑️</button>
