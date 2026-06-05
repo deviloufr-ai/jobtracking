@@ -114,7 +114,10 @@ async function gmailFetch(url) {
   return res.json()
 }
 
-export async function fetchJobEmails(maxResults = 100, months = 3) {
+export async function fetchJobEmails(maxResults = null, months = 3) {
+  // Scale limit with period: ~50/month is a reasonable upper bound for active job searchers
+  const autoLimit = Math.min(months * 60, 500)
+  maxResults = maxResults ?? autoLimit
   if (!accessToken) throw new Error('Non connecté à Gmail')
 
   const days = months * 30
@@ -145,7 +148,7 @@ export async function fetchJobEmails(maxResults = 100, months = 3) {
   const runQuery = async (query) => {
     try {
       const data = await gmailFetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=100&q=${encodeURIComponent(query)}`
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${Math.min(months * 20, 100)}&q=${encodeURIComponent(query)}`
       )
       const messages = data.messages || []
       for (const m of messages) {
