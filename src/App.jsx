@@ -14,6 +14,8 @@ import JobSearch from './components/JobSearch'
 import CVManager from './components/CVManager'
 import ImageImport from './components/ImageImport'
 import UpcomingMeetings from './components/UpcomingMeetings'
+import NotificationBell from './components/NotificationBell'
+import { useNotifications } from './hooks/useNotifications'
 
 const DEFAULT_FILTERS = { search: '', statuses: [], period: 'all' }
 const DEFAULT_SORT = { col: 'date', dir: 'desc' }
@@ -108,13 +110,34 @@ export default function App() {
   const [selectedJobForCV, setSelectedJobForCV] = useState(null) // 'tracker' | 'search' | 'cv'
   const [showImageImport, setShowImageImport] = useState(false)
 
+  const { notifications, push: pushNotif, markAllRead, clear: clearNotifs, unreadCount } = useNotifications()
+
   const showToast = (msg, duration = 2500) => {
     setToast(msg)
     setTimeout(() => setToast(null), duration)
   }
 
-  useAutoRefresh(jobs, addJob, updateJob, showToast)
-  useExtensionImport(addJob, showToast)
+  // Wrap addJob/updateJob to emit notifications
+  const addJobWithNotif = (data) => {
+    const job = addJob(data)
+    pushNotif('new_job', `Nouvelle candidature ajoutée — ${data.company}`, { company: data.company })
+    return job
+  }
+
+  const updateJobWithNotif = (id, data) => {
+    updateJob(id, data)
+    const job = jobs.find(j => j.id === id)
+    if (job && data.history && data.history.length > (job.history?.length || 0)) {
+      const newCount = data.history.length - (job.history?.length || 0)
+      pushNotif('update', `${job.company} — ${newCount} nouvelle${newCount > 1 ? 's' : ''} entrée${newCount > 1 ? 's' : ''} dans l'historique`, { company: job.company, jobId: id })
+    }
+  }
+
+  useAutoRefresh(jobs, addJobWithNotif, updateJobWithNotif, (msg, duration) => {
+    showToast(msg, duration)
+    // Auto-refresh notifications are pushed inside useAutoRefresh via the wrapped fns
+  })
+  useExtensionImport(addJobWithNotif, showToast)
 
   const handleSort = (col) => {
     setSort(prev => ({
@@ -146,14 +169,21 @@ export default function App() {
   }, [jobs, filters, sort, showFavOnly, showArchived])
 
   const handleSave = (form) => {
-    if (modal === 'add') { addJob(form); showToast('Candidature ajoutee !') }
-    else { updateJob(modal.id, form); showToast('Candidature mise a jour') }
+    if (modal === 'add') {
+      addJobWithNotif(form)
+      showToast('Candidature ajoutée !')
+    } else {
+      updateJob(modal.id, form)
+      pushNotif('update', `${form.company} — candidature mise à jour`, { company: form.company, jobId: modal.id })
+      showToast('Candidature mise à jour')
+    }
   }
 
   const handleDelete = () => {
+    pushNotif('info', `Candidature supprimée — ${toDelete.company}`, { company: toDelete.company })
     deleteJob(toDelete.id)
     setToDelete(null)
-    showToast('Candidature supprimee')
+    showToast('Candidature supprimée')
   }
 
   const handleGenerateCV = (job) => {
@@ -162,12 +192,17 @@ export default function App() {
   }
 
   const handleBulkImport = (newJobs) => {
-    newJobs.forEach(j => addJob(j))
+    newJobs.forEach(j => addJobWithNotif(j))
+    if (newJobs.length > 0)
+      pushNotif('new_job', `${newJobs.length} candidature${newJobs.length > 1 ? 's' : ''} importée${newJobs.length > 1 ? 's' : ''} depuis Gmail`, { count: newJobs.length })
     showToast(`${newJobs.length} candidature${newJobs.length > 1 ? 's' : ''} importée${newJobs.length > 1 ? 's' : ''} !`, 3500)
   }
 
   const handleUpdateHistory = (id, history) => {
+    const job = jobs.find(j => j.id === id)
     updateJob(id, { history })
+    if (job && history.length > (job.history?.length || 0))
+      pushNotif('update', `${job.company} — historique mis à jour`, { company: job.company, jobId: id })
   }
 
   const handleClearAll = () => {
@@ -242,6 +277,12 @@ export default function App() {
                 <span>🖼️</span><span className="hidden sm:inline">Screenshot</span>
               </button>
             )}
+            <NotificationBell
+              notifications={notifications}
+              unreadCount={unreadCount}
+              onMarkAllRead={markAllRead}
+              onClear={clearNotifs}
+            />
             <button onClick={() => setModal('add')}
               className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all shadow-sm">
               <span className="text-lg leading-none">+</span>
@@ -409,7 +450,7 @@ export default function App() {
 
       {modal && <JobModal job={modal === 'add' ? null : modal} onSave={handleSave} onClose={() => setModal(null)} />}
       {toDelete && <ConfirmDelete job={toDelete} onConfirm={handleDelete} onCancel={() => setToDelete(null)} />}
-      {showGmail && <GmailImport onImport={handleBulkImport} onUpdate={(id, data) => updateJob(id, data)} onClose={() => { setShowGmail(false); setGmailUser(getCachedUser()); setGmailConnected(isConnected()) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u || isConnected()) }} existingJobs={jobs} />}
+      {showGmail && <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={() => { setShowGmail(false); setGmailUser(getCachedUser()); setGmailConnected(isConnected()) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u || isConnected()) }} existingJobs={jobs} />}
       {showImageImport && <ImageImport onImport={handleBulkImport} onClose={() => setShowImageImport(false)} existingJobs={jobs} />}
 
       {toast && (
