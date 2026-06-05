@@ -139,6 +139,20 @@ export function deduplicateJobs(jobs) {
       return new Date(b.date) - new Date(a.date)
     })
 
+    // Don't merge if a terminal entry (rejected/cancelled) exists AND a newer entry
+    // is more than 30 days later — that's a re-application, not the same application
+    const TERMINAL = ['rejected', 'rejected_ats', 'cancelled']
+    const hasTerminal = group.some(j => TERMINAL.includes(j.status))
+    if (hasTerminal && group.length > 1) {
+      const dates = group.map(j => new Date(j.date).getTime())
+      const span = (Math.max(...dates) - Math.min(...dates)) / (1000 * 60 * 60 * 24)
+      if (span > 30) {
+        // Keep each as separate entry
+        group.forEach(j => result.push(j))
+        continue
+      }
+    }
+
     const primary = group[0]
 
     // Prefer the most descriptive position across the group — "Unknown" / generic loses to a real title
