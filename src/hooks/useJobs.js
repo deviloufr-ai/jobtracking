@@ -299,7 +299,7 @@ function load() {
       return processed
     }
   } catch (e) { console.error('JobTrackr: failed to load saved data', e) }
-  return INITIAL_DEMO
+  return []
 }
 
 function save(jobs) {
