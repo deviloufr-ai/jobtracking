@@ -286,15 +286,27 @@ function deduplicateHistory(jobs) {
   })
 }
 
+const SUGGESTION_NOTE_KEYWORDS = [
+  'recommandée', 'offre recommandée', 'pas de candidature confirmée',
+  'candidature suggérée', 'suggested job', 'job suggestion',
+  'alerte indeed', 'alerte emploi', 'job alert', 'offre correspondante',
+]
+function isSuggestionJob(j) {
+  const notes = (j.history || []).map(h => (h.note || '').toLowerCase())
+  return notes.length > 0 && notes.every(n => SUGGESTION_NOTE_KEYWORDS.some(k => n.includes(k)))
+}
+
 function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
-      const migrated = parsed.map(j => ({
-        ...j,
-        history: j.history || [{ date: j.date, status: j.status, note: 'Candidature ajoutée' }]
-      }))
+      const migrated = parsed
+        .filter(j => !isSuggestionJob(j))   // remove jobs that are only job suggestions
+        .map(j => ({
+          ...j,
+          history: j.history || [{ date: j.date, status: j.status, note: 'Candidature ajoutée' }]
+        }))
       const processed = autoStale(deduplicateJobs(mergeSameDateEntries(splitPipeNotes(deduplicateHistory(migrated)))))
       return processed
     }
