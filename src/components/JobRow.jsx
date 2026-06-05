@@ -141,8 +141,8 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
         className={`border-b border-gray-50 hover:bg-indigo-50/30 transition-colors group cursor-pointer ${job.status === 'cancelled' ? 'opacity-40' : ''}`}
         onClick={() => setExpanded(v => !v)}
       >
-        {/* Checkbox + Avatar + Company */}
-        <td className="py-3.5 px-4" onClick={e => e.stopPropagation()}>
+        {/* Checkbox + Avatar + Company — clicking company/avatar triggers row expand */}
+        <td className="py-3.5 px-4">
           <div className="flex items-center gap-3 min-w-0">
             {/* Checkbox */}
             <input type="checkbox" className="flex-shrink-0 accent-indigo-600 w-3.5 h-3.5 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()} />
