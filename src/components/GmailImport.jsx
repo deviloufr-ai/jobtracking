@@ -99,14 +99,26 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         }
       }
       const normalize = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+      const GENERIC_POSITIONS = ['nonspecifi', 'postenonprecise', 'inconnu', '']
+      const isGenericPosition = pos => GENERIC_POSITIONS.includes(normalize(pos))
+
       const jobByKey = new Map(existingJobs.map(j => [`${normalize(j.company)}_${normalize(j.position)}`, j]))
+      const jobByCompany = new Map(existingJobs.map(j => [normalize(j.company), j]))
+
+      // Look up existing job — fall back to company-only when position is generic
+      const findExisting = p => {
+        const key = `${normalize(p.company)}_${normalize(p.position)}`
+        if (jobByKey.has(key)) return jobByKey.get(key)
+        if (isGenericPosition(p.position)) return jobByCompany.get(normalize(p.company)) || null
+        return null
+      }
 
       // Split into new jobs + updates to existing jobs
-      const newJobs = grouped.filter(p => !jobByKey.has(`${normalize(p.company)}_${normalize(p.position)}`))
+      const newJobs = grouped.filter(p => !findExisting(p))
       const updates = forceImport ? [] : grouped
-        .filter(p => jobByKey.has(`${normalize(p.company)}_${normalize(p.position)}`))
+        .filter(p => !!findExisting(p))
         .map(p => {
-          const existing = jobByKey.get(`${normalize(p.company)}_${normalize(p.position)}`)
+          const existing = findExisting(p)
           const normNote = s => (s || '').trim().replace(/\s+/g, ' ').slice(0, 80)
           const existingHistKeys = new Set((existing.history || []).map(h => `${h.date}_${normNote(h.note)}`))
           const newEntries = (p.history || []).filter(h => !existingHistKeys.has(`${h.date}_${normNote(h.note)}`))

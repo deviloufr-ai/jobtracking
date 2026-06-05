@@ -103,7 +103,7 @@ function normalizeCompany(name = '') {
     // Strip TLD suffixes (.io .com .fr .co .app .ai .eu etc.)
     .replace(/\.(io|com|fr|co|net|org|app|ai|eu|de|uk|be|ch|ca|us|tech|dev)\.?$/i, '')
     // Strip common generic words that don't identify the company
-    .replace(/\b(ai|app|tech|digital|solutions?|group|labs?|studio|hq)\b/gi, '')
+    .replace(/\b(ai|app|tech|technologies?|digital|solutions?|group|labs?|studio|hq|services?|consulting|innovation|ventures?)\b/gi, '')
     // Strip everything non-alphanumeric
     .replace(/[^a-z0-9]/g, '')
 }

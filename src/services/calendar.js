@@ -1,6 +1,18 @@
 // Google Calendar service - reuses Gmail OAuth token (same scope request)
 import { getAccessToken } from './gmail'
 
+function extractLink(text = '') {
+  const patterns = [
+    /(https:\/\/meet\.google\.com\/[a-z0-9\-]+)/i,
+    /(https:\/\/[a-z0-9]+\.zoom\.us\/j\/[^\s"<>]+)/i,
+    /(https:\/\/teams\.microsoft\.com\/l\/meetup-join\/[^\s"<>]+)/i,
+    /(https:\/\/whereby\.com\/[^\s"<>]+)/i,
+    /(https:\/\/[a-z0-9]+\.webex\.com\/[^\s"<>]+)/i,
+  ]
+  for (const p of patterns) { const m = text.match(p); if (m) return m[1] }
+  return null
+}
+
 export function isCalendarConnected() {
   return !!getAccessToken()
 }
@@ -38,15 +50,20 @@ export async function fetchCalendarEvents(companyName, monthsBack = 12) {
     const start = e.start?.dateTime || e.start?.date || ''
     const date = start ? new Date(start).toISOString().split('T')[0] : ''
     const isUpcoming = start && new Date(start) > new Date()
+    const desc = e.description || ''
+    const loc = e.location || ''
+    const meetingLink = extractLink(desc) || extractLink(loc) || extractLink(e.hangoutLink || '')
     return {
       id: e.id,
       title: e.summary || 'Événement',
       date,
-      description: e.description || '',
-      location: e.location || '',
+      rawStart: start,
+      description: desc,
+      location: loc,
       isUpcoming,
       source: 'calendar',
       type: detectEventType(e.summary || ''),
+      meetingLink: meetingLink || undefined,
     }
   }).filter(e => e.date)
 }

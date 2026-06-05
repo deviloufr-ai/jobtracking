@@ -116,11 +116,19 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast) {
       if (!grouped.length) { setRefreshing(false); return }
 
       const jobByKey = new Map(jobs.map(j => [`${normalize(j.company)}_${normalize(j.position)}`, j]))
+      const jobByCompany = new Map(jobs.map(j => [normalize(j.company), j]))
+      const GENERIC_POSITIONS = ['nonspecifi', 'postenonprecise', 'inconnu', '']
+      const isGenericPos = pos => GENERIC_POSITIONS.includes(normalize(pos))
+      const findExisting = p => {
+        const key = `${normalize(p.company)}_${normalize(p.position)}`
+        if (jobByKey.has(key)) return jobByKey.get(key)
+        if (isGenericPos(p.position)) return jobByCompany.get(normalize(p.company)) || null
+        return null
+      }
 
       let added = 0, updated = 0
       for (const p of grouped) {
-        const key = `${normalize(p.company)}_${normalize(p.position)}`
-        const existing = jobByKey.get(key)
+        const existing = findExisting(p)
 
         if (!existing) {
           // New job — add it

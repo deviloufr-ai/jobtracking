@@ -14,6 +14,7 @@ import JobSearch from './components/JobSearch'
 import CVManager from './components/CVManager'
 import ImageImport from './components/ImageImport'
 import UpcomingMeetings from './components/UpcomingMeetings'
+import CalendarWidget from './components/CalendarWidget'
 import NotificationBell from './components/NotificationBell'
 import { useNotifications } from './hooks/useNotifications'
 
@@ -450,6 +451,7 @@ export default function App() {
         <div className="w-72 flex-shrink-0 hidden lg:block">
           <div className="sticky top-24">
             <UpcomingMeetings jobs={jobs} />
+            <CalendarWidget />
           </div>
         </div>
         </div>{/* end flex row */}
