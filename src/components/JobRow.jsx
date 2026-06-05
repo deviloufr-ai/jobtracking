@@ -130,8 +130,8 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
     <>
       <tr className={`border-b border-gray-50 hover:bg-gray-50/60 transition-colors group ${job.status === 'cancelled' ? 'opacity-50' : ''}`}>
         {/* Expand + Company */}
-        <td className="py-3.5 px-4">
-          <div className="flex items-center gap-2">
+        <td className="py-3 px-4">
+          <div className="flex items-center gap-2 min-w-0">
             <button
               onClick={() => setExpanded(v => !v)}
               className={`w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all flex-shrink-0 text-xs font-bold ${expanded ? 'rotate-90 text-indigo-600' : ''}`}
@@ -141,14 +141,14 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
             </button>
             <button
               onClick={() => onToggleFavorite && onToggleFavorite(job.id)}
-              className={`flex-shrink-0 text-base leading-none transition-all hover:scale-110 ${job.favorite ? 'text-yellow-400' : 'text-gray-200 hover:text-yellow-300'}`}
+              className={`flex-shrink-0 text-sm leading-none transition-all hover:scale-110 ${job.favorite ? 'text-yellow-400' : 'text-gray-200 hover:text-yellow-300'}`}
               title={job.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
             >
               ★
             </button>
-            <div>
-              <div className="font-medium text-gray-800 text-sm">{job.company}</div>
-              <div className="text-xs text-gray-500 mt-0.5">{job.position}</div>
+            <div className="min-w-0">
+              <div className="font-semibold text-gray-800 text-sm truncate">{job.company}</div>
+              <div className="text-xs text-gray-400 truncate mt-0.5">{job.position}</div>
             </div>
           </div>
         </td>
@@ -186,36 +186,36 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
         </td>
 
         {/* Date */}
-        <td className="py-3.5 px-4 text-xs text-gray-500 whitespace-nowrap">{formatDate(job.date)}</td>
+        <td className="py-3 px-4 text-xs text-gray-500 whitespace-nowrap">{formatDate(job.date)}</td>
 
         {/* Contact */}
-        <td className="py-3.5 px-4">
+        <td className="py-3 px-4">
           {recruiter
-            ? <span className="inline-flex items-center gap-1 text-xs text-gray-600">
+            ? <span className="inline-flex items-center gap-1.5 text-xs text-gray-600">
                 <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
                   {recruiter[0].toUpperCase()}
                 </span>
-                <span className="truncate max-w-[90px]">{recruiter}</span>
+                <span className="truncate">{recruiter}</span>
               </span>
             : <span className="text-xs text-gray-300">—</span>}
         </td>
 
         {/* Notes */}
-        <td className="py-3.5 px-4 max-w-xs">
+        <td className="py-3 px-4">
           {job.notes
-            ? <span className="text-xs text-gray-500 line-clamp-1">{job.notes}</span>
+            ? <span className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{job.notes}</span>
             : <span className="text-xs text-gray-300">—</span>}
         </td>
 
         {/* URL */}
-        <td className="py-3.5 px-4">
+        <td className="py-3 px-4 hidden md:table-cell">
           {job.url
-            ? <a href={job.url} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-500 hover:text-indigo-700 hover:underline">Voir l'offre ↗</a>
+            ? <a href={job.url} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-500 hover:text-indigo-700 hover:underline whitespace-nowrap">Voir ↗</a>
             : <span className="text-xs text-gray-300">—</span>}
         </td>
 
         {/* Actions */}
-        <td className="py-3.5 px-4">
+        <td className="py-3 px-2">
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button onClick={() => onEdit(job)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Modifier">✏️</button>
             <button onClick={() => onDelete(job)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Supprimer">🗑️</button>

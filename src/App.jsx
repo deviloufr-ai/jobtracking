@@ -416,7 +416,16 @@ export default function App() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full table-fixed">
+                <colgroup>
+                  <col className="w-[30%]" />  {/* Entreprise / Poste */}
+                  <col className="w-[16%]" />  {/* Statut */}
+                  <col className="w-[10%]" />  {/* Date */}
+                  <col className="w-[14%]" />  {/* Contact */}
+                  <col className="w-[22%]" />  {/* Notes */}
+                  <col className="w-[6%]" />   {/* Offre */}
+                  <col className="w-[2%]" />   {/* Actions */}
+                </colgroup>
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/60">
                     <ThHeader col="company" label="Entreprise / Poste" />
@@ -424,8 +433,8 @@ export default function App() {
                     <ThHeader col="date" label="Date" />
                     <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Contact</th>
                     <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Notes</th>
-                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Offre</th>
-                    <th className="py-3 px-4 w-20"></th>
+                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Offre</th>
+                    <th className="py-3 px-2 w-12"></th>
                   </tr>
                 </thead>
                 <tbody>
