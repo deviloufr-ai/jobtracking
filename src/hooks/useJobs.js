@@ -283,7 +283,7 @@ function load() {
         ...j,
         history: j.history || [{ date: j.date, status: j.status, note: 'Candidature ajoutée' }]
       }))
-      const processed = autoStale(mergeSameDateEntries(splitPipeNotes(deduplicateHistory(migrated))))
+      const processed = autoStale(deduplicateJobs(mergeSameDateEntries(splitPipeNotes(deduplicateHistory(migrated)))))
       return processed
     }
   } catch (e) { console.error('JobTrackr: failed to load saved data', e) }

@@ -11,6 +11,17 @@ const STATUS_ORDER = ['todo','sent','reviewing','interview','waiting','offer','r
 
 function normalize(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '') }
 
+const JOB_BOARDS = new Set([
+  'linkedin','indeed','welcometothejungle','wttj','apec','monster','cadremploi',
+  'hellowork','freework','malt','jobteaser','glassdoor','meteojob','regionsjob',
+  'keljob','poleemploi','francetravail','talentio','otta','remixjobs','remotive',
+  'jobboard','smartrecruiters','workday','greenhouse','lever','ashby','jobvite',
+])
+
+function isJobBoard(company) {
+  return JOB_BOARDS.has(normalize(company))
+}
+
 function extractMeetingLink(text = '') {
   const patterns = [
     /(https:\/\/meet\.google\.com\/[a-z0-9\-]+)/i,
@@ -28,10 +39,12 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
   const parsed = await parseEmailsForJobs(emails)
   if (!parsed.length) return []
 
-  const enriched = parsed.map(p => ({
-    ...p,
-    status: p.status === 'rejected' && isAtsRejection(p.notes || '') ? 'rejected_ats' : p.status
-  }))
+  const enriched = parsed
+    .filter(p => p.company && !isJobBoard(p.company))  // drop job board names
+    .map(p => ({
+      ...p,
+      status: p.status === 'rejected' && isAtsRejection(p.notes || '') ? 'rejected_ats' : p.status
+    }))
 
   const emailByGmailId = Object.fromEntries(emails.map(e => [e.id, e]))
 

@@ -166,7 +166,13 @@ Statuts selon LE CONTENU de chaque email:
 IMPORTANT: Negociation salariale = "interview" ou "waiting", PAS "rejected"
 
 Champs JSON: emailId, company, position, status, date (YYYY-MM-DD), notes (max 80 chars), confidence (0-100)
-IGNORER: alertes offres LinkedIn/Indeed, newsletters.
+
+RÈGLE ENTREPRISE : Ne JAMAIS utiliser un job board comme nom d'entreprise.
+Job boards à ignorer comme "company" : LinkedIn, Indeed, Welcome to the Jungle, WTTJ, Apec, Monster, Cadremploi, Hellowork, Free-Work, Malt, Jobteaser, Glassdoor, L'Apec, Meteojob, RegionsJob, Keljob, Pole Emploi, France Travail, Talent.io, Otta, Remix Jobs, Remotive.
+→ Extraire le VRAI nom de l'entreprise depuis le corps de l'email.
+→ Si le vrai nom n'est pas identifiable, mettre confidence: 0 (sera ignoré).
+
+IGNORER: alertes offres, newsletters, emails de job boards sans vrai nom d'entreprise identifiable.
 
 Emails:
 ${emailsText}`
