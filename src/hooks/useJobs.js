@@ -297,6 +297,19 @@ function autoStale(jobs) {
   })
 }
 
+// Deduplicate · -separated fragments within a single note string
+function deduplicateNoteFragments(note = '') {
+  if (!note.includes(' · ')) return note
+  const seen = new Set()
+  const parts = note.split(' · ').filter(Boolean).filter(p => {
+    const norm = p.trim().toLowerCase().replace(/\s+/g, ' ')
+    if (seen.has(norm)) return false
+    seen.add(norm)
+    return true
+  })
+  return parts.join(' · ')
+}
+
 function deduplicateHistory(jobs) {
   return jobs.map(j => {
     if (!j.history || j.history.length <= 1) return j
@@ -329,10 +342,12 @@ function load() {
     if (raw) {
       const parsed = JSON.parse(raw)
       const migrated = parsed
-        .filter(j => !isSuggestionJob(j))   // remove jobs that are only job suggestions
+        .filter(j => !isSuggestionJob(j))
         .map(j => ({
           ...j,
-          history: j.history || [{ date: j.date, status: j.status, note: 'Candidature ajoutée' }]
+          // Clean duplicate · fragments within notes before any other processing
+          history: (j.history || [{ date: j.date, status: j.status, note: 'Candidature ajoutée' }])
+            .map(h => ({ ...h, note: deduplicateNoteFragments(h.note) }))
         }))
       const processed = autoStale(deduplicateJobs(mergeSameDateEntries(splitPipeNotes(deduplicateHistory(migrated)))))
       return processed
