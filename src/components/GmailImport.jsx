@@ -131,7 +131,9 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         .map(p => {
           const existing = findExisting(p)
           const normNote = s => (s || '').trim().replace(/\s+/g, ' ').slice(0, 80)
-          const existingHistKeys = new Set((existing.history || []).map(h => `${h.date}_${normNote(h.note)}`))
+          // Expand merged "note1 · note2" entries so individual notes match too
+          const expandKeys = hist => new Set(hist.flatMap(h => (h.note || '').split(' · ').map(n => `${h.date}_${normNote(n)}`)))
+          const existingHistKeys = expandKeys(existing.history || [])
           const newEntries = (p.history || []).filter(h => !existingHistKeys.has(`${h.date}_${normNote(h.note)}`))
           return newEntries.length > 0 ? { ...p, _existingId: existing.id, _newEntries: newEntries, _isUpdate: true } : null
         })
@@ -144,7 +146,8 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         const existing = findExisting(p)
         if (!existing) return false
         const normNote = s => (s || '').trim().replace(/\s+/g, ' ').slice(0, 80)
-        const existingHistKeys = new Set((existing.history || []).map(h => `${h.date}_${normNote(h.note)}`))
+        const expandKeys = hist => new Set(hist.flatMap(h => (h.note || '').split(' · ').map(n => `${h.date}_${normNote(n)}`)))
+        const existingHistKeys = expandKeys(existing.history || [])
         return !(p.history || []).some(h => !existingHistKeys.has(`${h.date}_${normNote(h.note)}`))
       })
 
