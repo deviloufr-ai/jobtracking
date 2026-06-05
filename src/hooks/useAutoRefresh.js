@@ -119,7 +119,7 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
   return grouped
 }
 
-export function useAutoRefresh(jobs, addJob, updateJob, showToast) {
+export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs) {
   const [refreshing, setRefreshing] = useState(false)
   const [lastRefresh, setLastRefresh] = useState(() => {
     const stored = localStorage.getItem(REFRESH_KEY)
@@ -194,6 +194,9 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast) {
       const now = new Date()
       localStorage.setItem(REFRESH_KEY, now.toISOString())
       setLastRefresh(now)
+
+      // Re-run dedup/merge pipeline so duplicates disappear immediately
+      if (reprocessJobs) reprocessJobs()
     } catch (e) {
       console.warn('Auto-refresh failed:', e.message)
     }

@@ -467,5 +467,14 @@ export function useJobs() {
     setJobs(prev => prev.map(j => j.id === id ? { ...j, favorite: !j.favorite } : j))
   }
 
-  return { jobs, addJob, updateJob, deleteJob, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched }
+  // Re-run the full processing pipeline on current state (dedup, merge, autoStale)
+  // Call this after bulk imports/refreshes to clean up duplicates without a page reload
+  const reprocessJobs = () => {
+    setJobs(prev => {
+      const processed = autoStale(deduplicateJobs(mergeSameDateEntries(splitPipeNotes(deduplicateHistory(prev)))))
+      return processed
+    })
+  }
+
+  return { jobs, addJob, updateJob, deleteJob, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched, reprocessJobs }
 }

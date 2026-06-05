@@ -89,7 +89,7 @@ function ExtensionButton() {
 }
 
 export default function App() {
-  const { jobs, addJob, updateJob, deleteJob, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite } = useJobs()
+  const { jobs, addJob, updateJob, deleteJob, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, reprocessJobs } = useJobs()
   const [modal, setModal] = useState(null)
   const [toDelete, setToDelete] = useState(null)
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
@@ -136,7 +136,7 @@ export default function App() {
 
   const { refreshing, lastRefresh, doRefresh } = useAutoRefresh(jobs, addJobWithNotif, updateJobWithNotif, (msg, duration) => {
     showToast(msg, duration)
-  })
+  }, reprocessJobs)
   useExtensionImport(addJobWithNotif, showToast)
 
   const handleSort = (col) => {
@@ -200,6 +200,8 @@ export default function App() {
     if (newJobs.length > 0)
       pushNotif('new_job', `${newJobs.length} candidature${newJobs.length > 1 ? 's' : ''} importée${newJobs.length > 1 ? 's' : ''} depuis Gmail`, { count: newJobs.length })
     showToast(`${newJobs.length} candidature${newJobs.length > 1 ? 's' : ''} importée${newJobs.length > 1 ? 's' : ''} !`, 3500)
+    // Dedup/merge immediately so duplicates don't linger
+    setTimeout(() => reprocessJobs(), 100)
   }
 
   const handleUpdateHistory = (id, history) => {
