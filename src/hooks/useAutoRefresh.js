@@ -48,14 +48,19 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
 
   const emailByGmailId = Object.fromEntries(emails.map(e => [e.id, e]))
 
-  const SUGGESTION_KEYWORDS = ['suggérée', 'suggested job', 'job suggestion', 'alerte indeed', 'alerte emploi', 'job alert', 'recommended job']
+  const SUGGESTION_KEYWORDS = ['suggérée', 'suggested job', 'job suggestion', 'alerte indeed', 'alerte emploi', 'job alert', 'recommended job', 'recommandée', 'offre recommandée', 'pas de candidature confirmée', 'offre correspondante']
   const isSuggestion = p => SUGGESTION_KEYWORDS.some(k => (p.notes || '').toLowerCase().includes(k))
+
+  const GENERIC_POS = ['unknown', 'unknown position', 'poste non précisé', 'non spécifié', 'inconnu', '']
+  const isGenericPos = pos => GENERIC_POS.includes((pos || '').toLowerCase().trim())
 
   const jobGroups = new Map()
   for (const p of enriched) {
     if (!p.company) continue
-    if (isSuggestion(p)) continue  // skip job suggestions, not real applications
-    const key = `${normalize(p.company)}_${normalize(p.position || '')}`
+    if (isSuggestion(p)) continue
+    // Group by company-only so "Publidata/ProductManager" and "Publidata/Unknown"
+    // don't create two groups that both update the same job with duplicate history
+    const key = normalize(p.company)
     if (!jobGroups.has(key)) jobGroups.set(key, [])
     jobGroups.get(key).push(p)
   }
@@ -99,8 +104,12 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
     const mergedHistory = [...history, ...newCalEntries].sort((a, b) => new Date(a.date) - new Date(b.date))
 
     const latest = sorted[sorted.length - 1]
+    // Pick best position: prefer non-generic over "Unknown"
+    const bestPosition = sorted.map(e => e.position || '').find(p => !isGenericPos(p)) || latest.position
+
     grouped.push({
       ...latest,
+      position: bestPosition,
       date: sorted[0].date,
       status: highestStatus,
       history: mergedHistory,
