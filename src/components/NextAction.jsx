@@ -4,6 +4,18 @@ function daysSince(job) {
   return (new Date() - new Date(job.updatedAt || job.date)) / (1000 * 60 * 60 * 24)
 }
 
+// Get the most recent non-calendar history note
+function lastNote(job) {
+  const hist = [...(job.history || [])].reverse()
+  return (hist.find(h => h.source !== 'calendar')?.note || '').toLowerCase()
+}
+
+function hasKeyword(job, ...kws) {
+  const note = lastNote(job)
+  const notes = (job.history || []).map(h => (h.note || '').toLowerCase()).join(' ')
+  return kws.some(k => note.includes(k) || notes.includes(k))
+}
+
 // Urgent actions - things that need attention NOW
 const URGENT_RULES = [
   {
@@ -44,8 +56,41 @@ const URGENT_RULES = [
   },
 ]
 
-// Next steps - concrete actionable tasks
+// Next steps — note-aware, contextual
 const NEXT_STEPS_RULES = [
+  // Tech test detected in notes
+  {
+    match: j => ['interview','done','waiting'].includes(j.status) && hasKeyword(j, 'test technique', 'technical test', 'case study', 'assessment', 'exercice technique', 'mise en situation'),
+    icon: '💻', type: 'prep',
+    label: job => `Préparer le test technique ${job.company}`,
+    tip: () => `Documente ton approche, prépare un repo propre, soigne le README et les explications de tes choix.`,
+    cta: 'Voir les conseils',
+  },
+  // Salary negotiation detected
+  {
+    match: j => ['interview','done','waiting','offer'].includes(j.status) && hasKeyword(j, 'négociation', 'salaire', 'rémunération', 'prétentions', 'package', 'compensation'),
+    icon: '💰', type: 'negotiate',
+    label: job => `Préparer la négociation ${job.company}`,
+    tip: () => `Salaire, télétravail, avantages, date de prise de poste — prépare chaque point avec des arguments marché.`,
+    cta: 'Voir les conseils',
+  },
+  // Interview or visio scheduled
+  {
+    match: j => j.status === 'interview' && !hasKeyword(j, 'test technique', 'technical test'),
+    icon: '🎯', type: 'prep',
+    label: job => `Préparer l'entretien ${job.company}`,
+    tip: job => `Recherche ${job.company}, prépare 5 questions, révise tes réponses STAR et ton pitch.`,
+    cta: 'Voir les conseils',
+  },
+  // Offer received
+  {
+    match: j => j.status === 'offer',
+    icon: '🤝', type: 'negotiate',
+    label: job => `Répondre à l'offre ${job.company}`,
+    tip: () => `Négocie avant d'accepter. Demande un délai de 48-72h si besoin.`,
+    cta: 'Voir les conseils',
+  },
+  // Todo — generate CV
   {
     match: j => j.status === 'todo',
     icon: '📄', type: 'cv',
@@ -53,26 +98,21 @@ const NEXT_STEPS_RULES = [
     tip: job => `Adapte ton CV à l'offre ${job.position} avant de postuler.`,
     cta: 'Générer le CV',
   },
-  {
-    match: j => j.status === 'interview',
-    icon: '📋', type: 'prep',
-    label: job => `Préparer le dossier ${job.company}`,
-    tip: () => `Recherche l'entreprise, prépare 5 questions pertinentes, révise ton parcours STAR.`,
-    cta: 'Voir les conseils',
-  },
+  // Follow-up overdue
   {
     match: j => j.status === 'sent' && daysSince(j) > 14,
     icon: '✉️', type: 'email',
-    label: job => `Rédiger relance ${job.company}`,
-    tip: () => `Email de relance poli : rappel de ta candidature + réaffirmation de ton intérêt.`,
-    cta: 'Rédiger l\'email',
+    label: job => `Relancer ${job.company}`,
+    tip: () => `Email court et poli : rappel de ta candidature + réaffirmation de ton intérêt.`,
+    cta: 'Rédiger',
   },
+  // Remerciement after rejection
   {
-    match: j => j.status === 'offer',
-    icon: '💰', type: 'negotiate',
-    label: job => `Préparer négociation ${job.company}`,
-    tip: () => `Salaire, télétravail, avantages, date de prise de poste — prépare chaque point.`,
-    cta: 'Voir les conseils',
+    match: j => ['rejected','rejected_ats'].includes(j.status) && daysSince(j) < 5,
+    icon: '💌', type: 'email',
+    label: job => `Envoyer remerciement ${job.company}`,
+    tip: () => `Un email de remerciement te différencie et maintient la relation pour l'avenir.`,
+    cta: 'Rédiger',
   },
 ]
 
