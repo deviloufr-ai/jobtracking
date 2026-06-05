@@ -77,14 +77,13 @@ function ExtensionButton() {
 
   return (
     <a
-      href="https://addons.mozilla.org/firefox/addon/jobtrackr/"
-      target="_blank"
-      rel="noopener noreferrer"
-      title="Installer l'extension Firefox JobTrackr"
+      href="/jobtracker-addon-1.3.2.xpi"
+      download
+      title="Télécharger l'extension Firefox JobTrackr"
       className="flex items-center gap-2 bg-orange-50 border border-orange-200 text-orange-700 text-sm font-medium px-3 py-2 rounded-lg hover:bg-orange-100 transition-all"
     >
       <span>🦊</span>
-      <span className="hidden sm:inline">Installer l'extension</span>
+      <span className="hidden sm:inline">Télécharger l'extension</span>
     </a>
   )
 }
