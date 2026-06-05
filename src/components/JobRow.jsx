@@ -138,7 +138,9 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
   return (
     <>
       <tr
-        className={`border-b border-gray-50 hover:bg-indigo-50/30 transition-colors group cursor-pointer ${job.status === 'cancelled' ? 'opacity-40' : ''}`}
+        className={`border-b transition-colors group cursor-pointer ${
+          job.favorite ? 'bg-amber-50/40 hover:bg-amber-50/70 border-amber-100' : 'border-gray-50 hover:bg-indigo-50/30'
+        } ${job.status === 'cancelled' ? 'opacity-40' : ''}`}
         onClick={() => setExpanded(v => !v)}
       >
         {/* Checkbox + Avatar + Company — clicking company/avatar triggers row expand */}
