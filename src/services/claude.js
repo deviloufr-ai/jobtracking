@@ -2,6 +2,14 @@ const IS_DEV = import.meta.env.DEV
 const CLAUDE_ENDPOINT = IS_DEV ? null : '/api/claude'
 const MODEL = 'claude-haiku-4-5-20251001'
 
+const JOB_BOARD_NAMES = new Set([
+  'linkedin','indeed','welcometothejungle','wttj','apec','monster','cadremploi',
+  'hellowork','freework','malt','jobteaser','glassdoor','meteojob','regionsjob',
+  'keljob','poleemploi','francetravail','talentio','otta','remixjobs','remotive',
+])
+const normCo = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+const isCachedJobBoard = result => JOB_BOARD_NAMES.has(normCo(result?.company))
+
 // ─── Email parse cache ────────────────────────────────────────────────────────
 const EMAIL_CACHE_KEY = 'jobtrackr_email_cache'
 const EMAIL_CACHE_TTL = 7 * 24 * 60 * 60 * 1000 // 7 days
@@ -115,10 +123,12 @@ export async function parseEmailsForJobs(emails) {
 
     for (const email of batch) {
       const key = emailCacheKey(email)
-      if (cache[key]) {
+      if (cache[key] && !isCachedJobBoard(cache[key].result)) {
         cachedResults.push(cache[key].result)
         cacheHits++
       } else {
+        // Force re-parse if cached result had a job board as company (stale from old prompt)
+        if (cache[key]) delete cache[key]
         uncached.push(email)
       }
     }
