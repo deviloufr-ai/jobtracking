@@ -173,15 +173,21 @@ Correspondance date:
 [2] Date: 2026-06-02 -> "date": "2026-06-02"
 
 Statuts selon LE CONTENU de chaque email:
-- "sent" : candidature envoyee par l utilisateur
-- "reviewing" : accuse reception, profil en cours d examen  
-- "interview" : invitation entretien, echange sur le process, negociation en cours
-- "waiting" : en attente de decision
-- "offer" : proposition embauche
-- "rejected" : refus DEFINITIF uniquement
-- "cancelled" : processus annule
+- "sent"      : candidature envoyée par l'utilisateur
+- "reviewing" : accusé réception, profil en cours d'examen
+- "interview" : invitation entretien, échange sur le process, négociation salariale, test technique proposé, questions posées
+- "waiting"   : en attente de décision finale
+- "offer"     : proposition d'embauche formelle
+- "rejected"  : refus DÉFINITIF explicite ("nous n'irons pas plus loin", "not moving forward", "not selected")
+- "cancelled" : processus annulé À L'INITIATIVE DE L'ENTREPRISE (pas d'accord sur salaire ≠ annulation)
 
-IMPORTANT: Negociation salariale = "interview" ou "waiting", PAS "rejected"
+RÈGLES CRITIQUES :
+- Négociation salariale en cours = "interview" (même si désaccord provisoire)
+- "Processus annulé" dans une négociation = "interview" ou "waiting", PAS "cancelled" ni "rejected"
+- "cancelled" uniquement si l'entreprise dit explicitement qu'elle arrête le processus
+- "rejected" uniquement si l'entreprise dit explicitement qu'elle ne retient pas la candidature
+
+Notes : max 60 chars, UNE seule info par note, concis (ex: "Test technique proposé le 08/06" pas de répétitions)
 
 Champs JSON: emailId (entier, ex: 1 pas "[1]"), company, position, status, date (YYYY-MM-DD), notes (max 80 chars), confidence (0-100)
 

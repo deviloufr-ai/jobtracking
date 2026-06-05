@@ -216,8 +216,10 @@ function mergeSameDateEntries(jobs) {
         const existingIdx = statusOrder.indexOf(existing.status)
         const entryIdx = statusOrder.indexOf(entry.status)
         if (entryIdx > existingIdx) existing.status = entry.status
-        if (entry.note && entry.note.trim() && !existing._notes.includes(entry.note)) {
-          existing._notes.push(entry.note)
+        if (entry.note && entry.note.trim()) {
+          const normNew = entry.note.trim().toLowerCase().replace(/\s+/g, ' ')
+          const isDup = existing._notes.some(n => n.trim().toLowerCase().replace(/\s+/g, ' ') === normNew)
+          if (!isDup) existing._notes.push(entry.note.trim())
         }
         if (entry.gmailId && !existing._gmailIds.includes(entry.gmailId)) {
           existing._gmailIds.push(entry.gmailId)
@@ -273,7 +275,9 @@ function deduplicateHistory(jobs) {
     if (!j.history || j.history.length <= 1) return j
     const seen = new Set()
     const deduped = j.history.filter(h => {
-      const key = `${h.date}_${(h.note || '').trim().slice(0, 100)}`
+      // Normalize: lowercase + collapse whitespace so minor variations don't slip through
+      const normNote = (h.note || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 100)
+      const key = `${h.date}_${normNote}`
       if (seen.has(key)) return false
       seen.add(key)
       return true
