@@ -131,6 +131,8 @@ export async function fetchJobEmails(maxResults = 100, months = 3) {
     `in:all (from:ashbyhq.com OR from:greenhouse.io OR from:lever.co OR from:workable.com OR from:teamtailor.com OR from:recruitee.com OR from:bamboohr.com OR from:smartrecruiters.com OR from:jobvite.com OR from:icims.com OR from:myworkdayjobs.com OR from:taleo.net) newer_than:${days}d`,
     // Job boards — in:all to catch Updates/Promotions tabs too
     `in:all (from:linkedin.com OR from:welcometothejungle.com OR from:apec.fr OR from:indeed.com OR from:monster.fr OR from:cadremploi.fr OR from:hellowork.com OR from:jobteaser.com) (candidature OR application OR entretien OR interview OR "InMail" OR recruteur OR recruiter OR "votre profil" OR "was viewed" OR "viewed") ${noAlerts} newer_than:${days}d`,
+    // LinkedIn application status notifications (viewed, accepted, rejected…)
+    `in:all from:linkedin.com (subject:"was viewed" OR subject:"application was viewed" OR subject:"viewed your application" OR subject:"a été consultée" OR subject:"votre candidature a" OR subject:"application to") newer_than:${days}d`,
     // Recruiter sender patterns
     `in:inbox (from:talent@ OR from:recrutement@ OR from:rh@ OR from:careers@ OR from:jobs@ OR from:hiring@ OR from:recruiter@) ${noAlerts} newer_than:${days}d`,
     // Sent applications

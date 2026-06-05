@@ -175,7 +175,7 @@ Statuts selon LE CONTENU de chaque email:
 
 IMPORTANT: Negociation salariale = "interview" ou "waiting", PAS "rejected"
 
-Champs JSON: emailId, company, position, status, date (YYYY-MM-DD), notes (max 80 chars), confidence (0-100)
+Champs JSON: emailId (entier, ex: 1 pas "[1]"), company, position, status, date (YYYY-MM-DD), notes (max 80 chars), confidence (0-100)
 
 RÈGLE ENTREPRISE : Ne JAMAIS utiliser un job board comme nom d'entreprise.
 Job boards à ignorer comme "company" : LinkedIn, Indeed, Welcome to the Jungle, WTTJ, Apec, Monster, Cadremploi, Hellowork, Free-Work, Malt, Jobteaser, Glassdoor, L'Apec, Meteojob, RegionsJob, Keljob, Pole Emploi, France Travail, Talent.io, Otta, Remix Jobs, Remotive.
@@ -189,7 +189,9 @@ ${emailsText}`
 
     const raw = await callClaude(system, prompt)
     const parsed = parseJSON(raw).filter(j => (j.confidence || 0) >= 20).map(j => {
-      const originalEmail = uncached[j.emailId - 1]
+      // Normalize emailId: Claude sometimes returns "[1]", "1", or 1 — strip brackets and coerce
+      const emailIdx = parseInt(String(j.emailId).replace(/\D/g, ''), 10) - 1
+      const originalEmail = uncached[emailIdx]
       if (originalEmail) {
         j.gmailId = originalEmail.id
         j.fromEmail = originalEmail.from
