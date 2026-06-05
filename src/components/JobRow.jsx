@@ -31,6 +31,19 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
   const status = getStatus(job.status)
   const history = job.history || []
 
+  // Extract recruiter name from history — first inbound email with a sender
+  const recruiter = (() => {
+    for (const h of history) {
+      if (h.fromMe || !h.from) continue
+      const raw = h.from
+      // "First Last <email@domain.com>" → extract name part
+      const nameMatch = raw.match(/^([^<]+)</)
+      const name = nameMatch ? nameMatch[1].trim() : raw.split('@')[0]
+      if (name && name.length > 1) return name
+    }
+    return null
+  })()
+
   const formatDate = (d) => {
     if (!d) return '—'
     return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -137,6 +150,18 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
 
         {/* Date */}
         <td className="py-3.5 px-4 text-xs text-gray-500 whitespace-nowrap">{formatDate(job.date)}</td>
+
+        {/* Contact */}
+        <td className="py-3.5 px-4">
+          {recruiter
+            ? <span className="inline-flex items-center gap-1 text-xs text-gray-600">
+                <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                  {recruiter[0].toUpperCase()}
+                </span>
+                <span className="truncate max-w-[90px]">{recruiter}</span>
+              </span>
+            : <span className="text-xs text-gray-300">—</span>}
+        </td>
 
         {/* Notes */}
         <td className="py-3.5 px-4 max-w-xs">
