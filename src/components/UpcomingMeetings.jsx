@@ -1,14 +1,26 @@
 import { useMemo } from 'react'
 
-// A meeting is "done" if its start time + 2h is in the past
-function isDone(event) {
-  if (event.rawStart) {
-    return new Date(event.rawStart).getTime() + 2 * 3600 * 1000 < Date.now()
+function formatTime(rawStart) {
+  if (!rawStart || rawStart.length === 10) return null // date-only, no time
+  return new Date(rawStart).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+}
+
+// Returns visual state based on proximity to meeting start time
+// 'imminent' : from -5min to +3h (solid green — meeting happening now)
+// 'upcoming' : more than 5min away (washed-out green — soon)
+// 'done'     : past start + 3h (greyed out)
+function getMeetingState(event) {
+  if (!event.rawStart) {
+    // No precise time — use date-only heuristic
+    const d = new Date(event.date); d.setHours(23, 59, 59)
+    return d.getTime() + 2 * 3600 * 1000 < Date.now() ? 'done' : 'upcoming'
   }
-  // No time info — consider done if the date was yesterday or earlier
-  const d = new Date(event.date)
-  d.setHours(23, 59, 59)
-  return d.getTime() + 2 * 3600 * 1000 < Date.now()
+  const start = new Date(event.rawStart).getTime()
+  const now = Date.now()
+  const diff = start - now  // ms until start (negative = started)
+  if (now > start + 3 * 3600 * 1000) return 'done'
+  if (diff <= 5 * 60 * 1000) return 'imminent'   // within 5 min or already started
+  return 'upcoming'
 }
 
 function formatDate(dateStr) {
@@ -111,33 +123,46 @@ export default function UpcomingMeetings({ jobs }) {
           const { label, urgent } = formatDate(m.date)
           const platform = m.meetingLink ? getMeetingPlatform(m.meetingLink) : null
           const note = m.note.replace(/^📅\s*/, '')
-          const done = isDone(m)
+          const state = getMeetingState(m)
+          const time = formatTime(m.rawStart)
+
+          const rowBg = state === 'done'     ? 'opacity-40'
+                      : state === 'imminent' ? 'bg-green-50/60'
+                      : urgent               ? 'bg-orange-50/30'
+                      : ''
+
+          const dateCls = state === 'done'     ? 'text-gray-400 line-through'
+                        : state === 'imminent' ? 'text-green-600'
+                        : urgent               ? 'text-orange-600'
+                        : 'text-indigo-500'
+
+          const joinCls = state === 'imminent'
+            ? 'bg-green-500 border-green-500 text-white hover:bg-green-600'
+            : 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
 
           return (
-            <div key={i} className={`px-4 py-3 transition-colors ${done ? 'opacity-40' : urgent ? 'bg-orange-50/40' : ''}`}>
-              {/* Date label */}
-              <div className={`text-xs font-semibold mb-1 flex items-center gap-1 ${done ? 'text-gray-400 line-through' : urgent ? 'text-orange-600' : 'text-indigo-500'}`}>
-                {urgent && !done && <span>⚡</span>}
-                {done && <span>✓</span>}
-                {label}
+            <div key={i} className={`px-4 py-3 transition-colors ${rowBg}`}>
+              {/* Date + time label */}
+              <div className={`text-xs font-semibold mb-1 flex items-center gap-1.5 ${dateCls}`}>
+                {state === 'imminent' && <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />}
+                {state !== 'imminent' && state !== 'done' && urgent && <span>⚡</span>}
+                {state === 'done' && <span>✓</span>}
+                <span>{label}</span>
+                {time && <span className="font-normal opacity-80">{time}</span>}
               </div>
 
               {/* Company + note */}
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className={`text-sm font-medium truncate ${done ? 'text-gray-400' : 'text-gray-800'}`}>{m.company}</p>
+                  <p className={`text-sm font-medium truncate ${state === 'done' ? 'text-gray-400' : 'text-gray-800'}`}>{m.company}</p>
                   {note && <p className="text-xs text-gray-400 mt-0.5 truncate">{note}</p>}
                   <p className="text-xs text-gray-300 truncate">{m.position}</p>
                 </div>
 
-                {/* Meeting link — hide if done */}
-                {m.meetingLink && !done && (
-                  <a
-                    href={m.meetingLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                {m.meetingLink && state !== 'done' && (
+                  <a href={m.meetingLink} target="_blank" rel="noopener noreferrer"
                     title={`Rejoindre via ${platform?.name}`}
-                    className="flex-shrink-0 flex items-center gap-1 text-xs font-medium bg-green-50 border border-green-200 text-green-700 px-2 py-1 rounded-lg hover:bg-green-100 transition-colors whitespace-nowrap"
+                    className={`flex-shrink-0 flex items-center gap-1 text-xs font-medium border px-2 py-1 rounded-lg transition-colors whitespace-nowrap ${joinCls}`}
                   >
                     <span>{platform?.emoji}</span>
                     <span>Rejoindre</span>
