@@ -1,12 +1,20 @@
 import { STATUSES } from '../hooks/useJobs'
 
 export default function Filters({ filters, onChange, onReset, total, filtered }) {
-  const hasActive = filters.search || filters.statuses.length > 0 || filters.period !== 'all'
+  const statusEntries = Object.entries(filters.statuses || {})
+  const hasActive = filters.search || statusEntries.length > 0 || filters.period !== 'all'
 
-  const toggleStatus = (key) => {
-    const next = filters.statuses.includes(key)
-      ? filters.statuses.filter(s => s !== key)
-      : [...filters.statuses, key]
+  // Cycle: undefined → include → exclude → undefined
+  const cycleStatus = (key) => {
+    const current = (filters.statuses || {})[key]
+    const next = { ...filters.statuses }
+    if (!current) {
+      next[key] = 'include'         // 1st click: show only
+    } else if (current === 'include') {
+      next[key] = 'exclude'         // 2nd click: hide
+    } else {
+      delete next[key]              // 3rd click: reset
+    }
     onChange({ ...filters, statuses: next })
   }
 
@@ -46,16 +54,31 @@ export default function Filters({ filters, onChange, onReset, total, filtered })
           {filtered} / {total} candidature{total > 1 ? 's' : ''}
         </span>
       </div>
+
       <div className="flex flex-wrap gap-2 mt-3">
         {STATUSES.map(s => {
-          const active = filters.statuses.includes(s.key)
+          const state = (filters.statuses || {})[s.key] // undefined | 'include' | 'exclude'
           return (
-            <button key={s.key} onClick={() => toggleStatus(s.key)}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all
-                ${active ? s.color + ' border-transparent shadow-sm' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`}
+            <button
+              key={s.key}
+              onClick={() => cycleStatus(s.key)}
+              title={!state ? '1× afficher · 2× masquer · 3× reset' : state === 'include' ? 'Affichage — cliquer pour masquer' : 'Masqué — cliquer pour reset'}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all select-none
+                ${state === 'include'
+                  ? s.color + ' border-transparent shadow-sm'
+                  : state === 'exclude'
+                  ? 'bg-red-50 border-red-200 text-red-400 line-through opacity-60'
+                  : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                }`}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${active ? s.dot : 'bg-gray-300'}`} />
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                state === 'include' ? s.dot
+                : state === 'exclude' ? 'bg-red-300'
+                : 'bg-gray-300'
+              }`} />
               {s.label}
+              {state === 'include' && <span className="text-[10px] opacity-70">✓</span>}
+              {state === 'exclude' && <span className="text-[10px]">✕</span>}
             </button>
           )
         })}

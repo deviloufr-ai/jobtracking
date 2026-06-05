@@ -18,7 +18,7 @@ import CalendarWidget from './components/CalendarWidget'
 import NotificationBell from './components/NotificationBell'
 import { useNotifications } from './hooks/useNotifications'
 
-const DEFAULT_FILTERS = { search: '', statuses: [], period: 'all' }
+const DEFAULT_FILTERS = { search: '', statuses: {}, period: 'all' }
 const DEFAULT_SORT = { col: 'date', dir: 'desc' }
 
 function sortJobs(jobs, sort) {
@@ -155,7 +155,11 @@ export default function App() {
         const q = filters.search.toLowerCase()
         if (!j.company.toLowerCase().includes(q) && !j.position.toLowerCase().includes(q)) return false
       }
-      if (filters.statuses.length > 0 && !filters.statuses.includes(j.status)) return false
+      const statusEntries = Object.entries(filters.statuses || {})
+      const included = statusEntries.filter(([,v]) => v === 'include').map(([k]) => k)
+      const excluded = statusEntries.filter(([,v]) => v === 'exclude').map(([k]) => k)
+      if (included.length > 0 && !included.includes(j.status)) return false
+      if (excluded.includes(j.status)) return false
       if (filters.period !== 'all') {
         const d = new Date(j.date)
         const now = new Date()
