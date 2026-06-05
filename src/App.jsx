@@ -355,7 +355,7 @@ export default function App() {
                       </div>
                     </button>
                     <button
-                      onClick={() => { setShowAddMenu(false); window.open('https://addons.mozilla.org/firefox/addon/jobtrackr/', '_blank') }}
+                      onClick={() => { setShowAddMenu(false); const a = document.createElement('a'); a.href = '/jobtracker-addon-1.4.0.xpi'; a.download = ''; a.click() }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-700 transition-colors"
                     >
                       <span className="text-base">🦊</span>

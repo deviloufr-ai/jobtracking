@@ -1,5 +1,26 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSettings, SETTINGS_DEFAULTS } from '../hooks/useSettings'
+
+const PROFILE_KEY = 'jobtrackr_profile'
+const PROFILE_DEFAULTS = {
+  name: '',
+  title: '',
+  experience: '',
+  skills: '',
+  languages: '',
+  education: '',
+  motivation: '',
+  ai_experience: '',
+  recent_project: '',
+}
+
+function loadProfile() {
+  try { const r = localStorage.getItem(PROFILE_KEY); return r ? { ...PROFILE_DEFAULTS, ...JSON.parse(r) } : { ...PROFILE_DEFAULTS } }
+  catch { return { ...PROFILE_DEFAULTS } }
+}
+function saveProfile(p) {
+  try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)) } catch {}
+}
 
 function Section({ title, icon, children }) {
   return (
@@ -13,7 +34,14 @@ function Section({ title, icon, children }) {
   )
 }
 
-function Row({ label, hint, children }) {
+function Row({ label, hint, children, wide = false }) {
+  if (wide) return (
+    <div className="space-y-1.5">
+      <p className="text-sm font-medium text-gray-700">{label}</p>
+      {hint && <p className="text-xs text-gray-400">{hint}</p>}
+      {children}
+    </div>
+  )
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="flex-1 min-w-0">
@@ -41,12 +69,30 @@ function NumInput({ value, onChange, min = 1, max = 365, suffix }) {
   )
 }
 
+function TextInput({ value, onChange, placeholder, multiline = false, rows = 2 }) {
+  const cls = "w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all resize-none"
+  return multiline
+    ? <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows} className={cls} />
+    : <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={cls} />
+}
+
 export default function Settings({ jobs, onMergeDuplicates }) {
   const { settings, updateSetting, resetSettings } = useSettings()
   const [confirmReset, setConfirmReset] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
   const [exportDone, setExportDone] = useState(false)
   const [importError, setImportError] = useState(null)
+
+  // Profile state
+  const [profile, setProfile] = useState(loadProfile)
+  const [profileSaved, setProfileSaved] = useState(false)
+
+  const updateProfile = (key, value) => setProfile(p => ({ ...p, [key]: value }))
+  const handleSaveProfile = () => {
+    saveProfile(profile)
+    setProfileSaved(true)
+    setTimeout(() => setProfileSaved(false), 2000)
+  }
 
   function handleExport() {
     const data = { jobs, exportedAt: new Date().toISOString(), version: '1.0' }
@@ -96,6 +142,52 @@ export default function Settings({ jobs, onMergeDuplicates }) {
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
+
+      {/* Profile — used by extension autofill */}
+      <Section title="Profil candidat" icon="👤">
+        <p className="text-xs text-gray-400 -mt-2">Ces données sont utilisées par l'extension Firefox pour l'autofill des formulaires de candidature.</p>
+
+        <Row label="Nom complet" hint="Tel qu'il apparaîtra sur les formulaires">
+          <TextInput value={profile.name} onChange={v => updateProfile('name', v)} placeholder="Alexandre Leblanc" />
+        </Row>
+        <Row label="Titre / Poste visé" hint="">
+          <TextInput value={profile.title} onChange={v => updateProfile('title', v)} placeholder="Senior Product Manager" />
+        </Row>
+        <div>
+          <p className="text-sm font-medium text-gray-700 mb-1.5">Résumé d'expérience</p>
+          <TextInput multiline rows={3} value={profile.experience} onChange={v => updateProfile('experience', v)} placeholder="18 ans d'expérience en product management, gaming, SaaS, mobile..." />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-700 mb-1.5">Compétences clés</p>
+          <TextInput multiline rows={2} value={profile.skills} onChange={v => updateProfile('skills', v)} placeholder="Product strategy, OKR, Agile/Scrum, Data analytics, Figma, SQL..." />
+        </div>
+        <Row label="Langues" hint="">
+          <TextInput value={profile.languages} onChange={v => updateProfile('languages', v)} placeholder="Français (natif), Anglais (courant), Japonais (JLPT N1)" />
+        </Row>
+        <Row label="Formation" hint="">
+          <TextInput value={profile.education} onChange={v => updateProfile('education', v)} placeholder="Ingénieur Arts & Métiers ParisTech" />
+        </Row>
+        <div>
+          <p className="text-sm font-medium text-gray-700 mb-1.5">Expérience IA / Projets récents</p>
+          <TextInput multiline rows={2} value={profile.ai_experience} onChange={v => updateProfile('ai_experience', v)} placeholder="Claude API, ComfyUI, JobTrackr (React+Vercel en production)..." />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-700 mb-1.5">Motivation / Pitch par défaut</p>
+          <TextInput multiline rows={2} value={profile.motivation} onChange={v => updateProfile('motivation', v)} placeholder="Passionné par les produits qui résolvent de vrais problèmes..." />
+        </div>
+
+        <div className="flex items-center justify-between pt-1">
+          <p className="text-xs text-gray-400">💡 Sync le CV depuis l'onglet Réglages de l'extension Firefox pour enrichir l'autofill</p>
+          <button
+            onClick={handleSaveProfile}
+            className={`text-sm font-semibold px-4 py-1.5 rounded-lg transition-all ${
+              profileSaved ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-indigo-600 text-white hover:bg-indigo-700'
+            }`}
+          >
+            {profileSaved ? '✓ Sauvegardé' : 'Sauvegarder'}
+          </button>
+        </div>
+      </Section>
 
       {/* Goals */}
       <Section title="Objectifs de recherche" icon="🎯">
