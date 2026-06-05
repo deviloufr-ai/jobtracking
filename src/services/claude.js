@@ -76,10 +76,18 @@ async function callClaude(systemPrompt, userContent) {
 function parseJSON(raw) {
   try {
     let clean = raw.trim()
+    // Strip markdown code fences
+    clean = clean.replace(/^```(?:json)?\s*/i, '').replace(/\s*```[\s\S]*$/, '').trim()
     const start = clean.indexOf('[')
-    const end = clean.lastIndexOf(']')
-    if (start !== -1 && end !== -1) clean = clean.slice(start, end + 1)
-    const parsed = JSON.parse(clean)
+    if (start === -1) return []
+    // Walk forward counting brackets to find the matching closing ]
+    let depth = 0, end = -1
+    for (let i = start; i < clean.length; i++) {
+      if (clean[i] === '[') depth++
+      else if (clean[i] === ']') { depth--; if (depth === 0) { end = i; break } }
+    }
+    if (end === -1) return []
+    const parsed = JSON.parse(clean.slice(start, end + 1))
     return Array.isArray(parsed) ? parsed : []
   } catch (e) {
     console.error('Parse error:', e.message, raw.slice(0, 100))
@@ -177,12 +185,15 @@ IMPORTANT: Negociation salariale = "interview" ou "waiting", PAS "rejected"
 
 Champs JSON: emailId (entier, ex: 1 pas "[1]"), company, position, status, date (YYYY-MM-DD), notes (max 80 chars), confidence (0-100)
 
-RÈGLE ENTREPRISE : Ne JAMAIS utiliser un job board comme nom d'entreprise.
-Job boards à ignorer comme "company" : LinkedIn, Indeed, Welcome to the Jungle, WTTJ, Apec, Monster, Cadremploi, Hellowork, Free-Work, Malt, Jobteaser, Glassdoor, L'Apec, Meteojob, RegionsJob, Keljob, Pole Emploi, France Travail, Talent.io, Otta, Remix Jobs, Remotive.
-→ Extraire le VRAI nom de l'entreprise depuis le corps de l'email.
-→ Si le vrai nom n'est pas identifiable, mettre confidence: 0 (sera ignoré).
+RÈGLE ENTREPRISE :
+- L'email peut être ENVOYÉ PAR un job board (LinkedIn, Indeed…) mais CONCERNER une vraie entreprise.
+- Exemple : "Your application was viewed by GojiberryAI" envoyé par jobs-noreply@linkedin.com → company = "GojiberryAI"
+- Exemple : "Candidature envoyée chez Publidata" depuis LinkedIn → company = "Publidata"
+- Ne JAMAIS mettre LinkedIn / Indeed / Free-Work / Malt / WTTJ / Apec / Monster comme company.
+- Extraire TOUJOURS le vrai nom de l'entreprise cible depuis le sujet ou le corps de l'email.
+- Si vraiment aucune entreprise identifiable (newsletter pure, alerte générique) : confidence: 0.
 
-IGNORER: alertes offres, newsletters, emails de job boards sans vrai nom d'entreprise identifiable.
+IGNORER uniquement : newsletters génériques, alertes "jobs you might like", digests sans candidature spécifique.
 
 Emails:
 ${emailsText}`
