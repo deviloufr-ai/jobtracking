@@ -48,9 +48,13 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
 
   const emailByGmailId = Object.fromEntries(emails.map(e => [e.id, e]))
 
+  const SUGGESTION_KEYWORDS = ['suggérée', 'suggested job', 'job suggestion', 'alerte indeed', 'alerte emploi', 'job alert', 'recommended job']
+  const isSuggestion = p => SUGGESTION_KEYWORDS.some(k => (p.notes || '').toLowerCase().includes(k))
+
   const jobGroups = new Map()
   for (const p of enriched) {
     if (!p.company) continue
+    if (isSuggestion(p)) continue  // skip job suggestions, not real applications
     const key = `${normalize(p.company)}_${normalize(p.position || '')}`
     if (!jobGroups.has(key)) jobGroups.set(key, [])
     jobGroups.get(key).push(p)

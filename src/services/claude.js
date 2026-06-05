@@ -193,7 +193,8 @@ RÈGLE ENTREPRISE :
 - Extraire TOUJOURS le vrai nom de l'entreprise cible depuis le sujet ou le corps de l'email.
 - Si vraiment aucune entreprise identifiable (newsletter pure, alerte générique) : confidence: 0.
 
-IGNORER uniquement : newsletters génériques, alertes "jobs you might like", digests sans candidature spécifique.
+IGNORER : newsletters, alertes "jobs you might like", "candidature suggérée" (offre recommandée sans que l'utilisateur ait postulé), digests sans candidature réelle.
+Un email = candidature réelle uniquement si l'utilisateur A POSTULÉ ou a REÇU une réponse d'un recruteur.
 
 Emails:
 ${emailsText}`
