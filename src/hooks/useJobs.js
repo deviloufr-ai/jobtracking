@@ -141,6 +141,13 @@ export function deduplicateJobs(jobs) {
 
     const primary = group[0]
 
+    // Prefer the most descriptive position across the group — "Unknown" / generic loses to a real title
+    const GENERIC_POSITIONS = ['unknown', 'unknown position', 'poste non précisé', 'non spécifié', 'inconnu', '']
+    const bestPosition = group
+      .map(j => j.position || '')
+      .find(p => !GENERIC_POSITIONS.includes(p.toLowerCase().trim()))
+      || primary.position
+
     const allHistory = group.flatMap(j => j.history || [])
     allHistory.sort((a, b) => new Date(a.date) - new Date(b.date))
 
@@ -163,6 +170,7 @@ export function deduplicateJobs(jobs) {
 
     result.push({
       ...primary,
+      position: bestPosition,
       notes: allNotes || primary.notes,
       history: mergedHistory,
       enrichedAt: latestEnrichedAt || primary.enrichedAt,
