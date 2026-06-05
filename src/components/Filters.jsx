@@ -16,11 +16,17 @@ export default function Filters({ filters, onChange, onReset, total, filtered })
         <div className="relative flex-1 min-w-[200px]">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
           <input
-            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full pl-8 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
             placeholder="Entreprise ou poste..."
             value={filters.search}
             onChange={e => onChange({ ...filters, search: e.target.value })}
           />
+          {filters.search && (
+            <button
+              onClick={() => onChange({ ...filters, search: '' })}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+            >✕</button>
+          )}
         </div>
         <select
           className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
