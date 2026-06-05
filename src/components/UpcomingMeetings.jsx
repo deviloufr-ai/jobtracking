@@ -1,5 +1,16 @@
 import { useMemo } from 'react'
 
+// A meeting is "done" if its start time + 2h is in the past
+function isDone(event) {
+  if (event.rawStart) {
+    return new Date(event.rawStart).getTime() + 2 * 3600 * 1000 < Date.now()
+  }
+  // No time info — consider done if the date was yesterday or earlier
+  const d = new Date(event.date)
+  d.setHours(23, 59, 59)
+  return d.getTime() + 2 * 3600 * 1000 < Date.now()
+}
+
 function formatDate(dateStr) {
   const d = new Date(dateStr)
   const now = new Date()
@@ -60,6 +71,7 @@ export default function UpcomingMeetings({ jobs }) {
 
         events.push({
           date: entry.date,
+          rawStart: entry.rawStart || null, // ISO datetime if available (calendar events)
           note: entry.note || '',
           company: job.company,
           position: job.position,
@@ -98,26 +110,28 @@ export default function UpcomingMeetings({ jobs }) {
         {meetings.map((m, i) => {
           const { label, urgent } = formatDate(m.date)
           const platform = m.meetingLink ? getMeetingPlatform(m.meetingLink) : null
-          // Strip the 📅 prefix from calendar notes for cleaner display
           const note = m.note.replace(/^📅\s*/, '')
+          const done = isDone(m)
 
           return (
-            <div key={i} className={`px-4 py-3 ${urgent ? 'bg-orange-50/40' : ''}`}>
+            <div key={i} className={`px-4 py-3 transition-colors ${done ? 'opacity-40' : urgent ? 'bg-orange-50/40' : ''}`}>
               {/* Date label */}
-              <div className={`text-xs font-semibold mb-1 ${urgent ? 'text-orange-600' : 'text-indigo-500'}`}>
-                {urgent && <span className="mr-1">⚡</span>}{label}
+              <div className={`text-xs font-semibold mb-1 flex items-center gap-1 ${done ? 'text-gray-400 line-through' : urgent ? 'text-orange-600' : 'text-indigo-500'}`}>
+                {urgent && !done && <span>⚡</span>}
+                {done && <span>✓</span>}
+                {label}
               </div>
 
               {/* Company + note */}
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{m.company}</p>
-                  {note && <p className="text-xs text-gray-500 mt-0.5 truncate">{note}</p>}
-                  <p className="text-xs text-gray-400 truncate">{m.position}</p>
+                  <p className={`text-sm font-medium truncate ${done ? 'text-gray-400' : 'text-gray-800'}`}>{m.company}</p>
+                  {note && <p className="text-xs text-gray-400 mt-0.5 truncate">{note}</p>}
+                  <p className="text-xs text-gray-300 truncate">{m.position}</p>
                 </div>
 
-                {/* Meeting link button */}
-                {m.meetingLink && (
+                {/* Meeting link — hide if done */}
+                {m.meetingLink && !done && (
                   <a
                     href={m.meetingLink}
                     target="_blank"
