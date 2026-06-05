@@ -63,34 +63,23 @@ function ExtensionButton() {
     return () => { clearTimeout(timeout); window.removeEventListener('jobtrackr-ext-pong', handler) }
   }, [])
 
-  if (installed === null) return null // still checking
-
-  if (installed) return (
-    <div
-      title="Extension Firefox JobTrackr active"
-      className="flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-700 text-sm font-medium px-3 py-2 rounded-lg"
-    >
-      <span>🦊</span>
-      <span className="hidden sm:inline">Extension active ✓</span>
-    </div>
-  )
+  if (!installed) return null // not installed — no badge, download is in the + menu
 
   return (
-    <a
-      href="/jobtracker-addon-1.3.2.xpi"
-      download
-      title="Télécharger l'extension Firefox JobTrackr"
-      className="flex items-center gap-2 bg-orange-50 border border-orange-200 text-orange-700 text-sm font-medium px-3 py-2 rounded-lg hover:bg-orange-100 transition-all"
+    <div
+      title="Extension Firefox JobTrackr active"
+      className="flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg"
     >
       <span>🦊</span>
-      <span className="hidden sm:inline">Télécharger l'extension</span>
-    </a>
+      <span className="hidden sm:inline">Extension ✓</span>
+    </div>
   )
 }
 
 export default function App() {
   const { jobs, addJob, updateJob, deleteJob, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, reprocessJobs } = useJobs()
   const [modal, setModal] = useState(null)
+  const [showAddMenu, setShowAddMenu] = useState(false)
   const [toDelete, setToDelete] = useState(null)
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
   const [sort, setSort] = useState(DEFAULT_SORT)
@@ -317,14 +306,7 @@ export default function App() {
 
           {/* Right actions */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Screenshot */}
-            <button onClick={() => setShowImageImport(true)}
-              title="Importer via screenshot"
-              className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors">
-              <span className="text-base">🖼️</span>
-            </button>
-
-            {/* Extension */}
+            {/* Extension status (only shown when installed) */}
             <ExtensionButton />
 
             {/* Refresh */}
@@ -352,12 +334,65 @@ export default function App() {
             {/* Divider */}
             <div className="h-5 w-px bg-gray-200 mx-1" />
 
-            {/* + Nouvelle candidature */}
-            <button onClick={() => setModal('add')}
-              className="flex items-center gap-1.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:from-indigo-700 hover:to-violet-700 active:scale-95 transition-all shadow-sm shadow-indigo-200">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
-              <span className="hidden sm:inline">Nouvelle candidature</span>
-            </button>
+            {/* + Add dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowAddMenu(v => !v)}
+                title="Ajouter une candidature"
+                className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:opacity-90 active:scale-95 transition-all shadow-sm shadow-indigo-200"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+              </button>
+              {showAddMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowAddMenu(false)} />
+                  <div className="absolute right-0 top-10 z-50 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden py-1.5">
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-4 pt-1 pb-2">Importer via</p>
+                    <button
+                      onClick={() => { setShowAddMenu(false); setShowGmail(true) }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+                    >
+                      <span className="text-base">📧</span>
+                      <div className="text-left">
+                        <div className="font-medium">Gmail</div>
+                        <div className="text-[11px] text-gray-400">Sync automatique des emails</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => { setShowAddMenu(false); setShowImageImport(true) }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors"
+                    >
+                      <span className="text-base">🖼️</span>
+                      <div className="text-left">
+                        <div className="font-medium">Screenshot</div>
+                        <div className="text-[11px] text-gray-400">Colle une capture d'écran</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => { setShowAddMenu(false); window.open('https://addons.mozilla.org/firefox/addon/jobtrackr/', '_blank') }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-700 transition-colors"
+                    >
+                      <span className="text-base">🦊</span>
+                      <div className="text-left">
+                        <div className="font-medium">Extension Firefox</div>
+                        <div className="text-[11px] text-gray-400">Import depuis n'importe quelle offre</div>
+                      </div>
+                    </button>
+                    <div className="mx-4 my-1.5 border-t border-gray-100" />
+                    <button
+                      onClick={() => { setShowAddMenu(false); setModal('add') }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
+                    >
+                      <span className="text-base">✏️</span>
+                      <div className="text-left">
+                        <div className="font-medium">Manuel</div>
+                        <div className="text-[11px] text-gray-400">Saisie manuelle</div>
+                      </div>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Login / Account */}
             {gmailUser ? (
