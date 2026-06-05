@@ -3,8 +3,16 @@ import { enrichJobTimeline } from '../services/enrichTimeline'
 import AdvicePanel from './AdvicePanel'
 import { STATUSES, getStatus } from '../hooks/useJobs'
 
-function StepTips({ status }) {
-  const tips = STEP_TIPS[status] || []
+function getTipsFromNote(note = '') {
+  const n = note.toLowerCase()
+  for (const [, { keywords, tips }] of Object.entries(NOTE_TIPS)) {
+    if (keywords.some(k => n.includes(k))) return tips
+  }
+  return []
+}
+
+function StepTips({ note }) {
+  const tips = getTipsFromNote(note)
   if (!tips.length) return null
   return (
     <div className="relative inline-block mt-1 group/tips">
@@ -30,15 +38,35 @@ function StepTips({ status }) {
   )
 }
 
-const STEP_TIPS = {
-  sent:         ["Connecte-toi sur LinkedIn avec un employé de l'entreprise", "Prépare un message de relance pour J+14 si pas de réponse"],
-  reviewing:    ["Consulte Glassdoor pour connaître la culture de l'entreprise", "Prépare 3-5 questions pertinentes à poser lors d'un éventuel entretien"],
-  interview:    ["Prépare des réponses STAR pour chaque expérience clé", "Recherche les dernières actualités de l'entreprise", "Envoie un email de remerciement dans les 24h après l'entretien"],
-  done:         ["Note les points forts et faibles de cet échange", "Envoie un email de remerciement si ce n'est pas encore fait", "Continue de candidater — ne bloque pas sur une seule opportunité"],
-  waiting:      ["Relance poliment après 5-7 jours ouvrés si pas de retour", "Continue de candidater activement"],
-  offer:        ["Ne jamais accepter sans avoir négocié", "Demande un délai de réflexion de 48-72h", "Négocie salaire, télétravail, date de prise de poste"],
-  rejected:     ["Envoie un email de remerciement — ça te différencie", "Demande un feedback constructif"],
-  rejected_ats: ["Analyse les mots-clés de l'offre et intègre-les dans ton CV", "Évite les CV en tableau — les ATS les lisent mal"],
+const NOTE_TIPS = {
+  interview: {
+    keywords: ['entretien', 'interview', 'visio', 'call', 'meeting', 'rdv', 'rendez-vous', 'zoom', 'teams', 'meet'],
+    tips: ["Prépare des réponses STAR pour chaque expérience clé", "Recherche les dernières actualités de l'entreprise", "Envoie un email de remerciement dans les 24h après"],
+  },
+  test: {
+    keywords: ['test technique', 'technical test', 'case study', 'assessment', 'exercice', 'mise en situation'],
+    tips: ["Lis attentivement les consignes avant de commencer", "Commente ton code / raisonnement", "Respecte le délai et soigne la présentation"],
+  },
+  relance: {
+    keywords: ['relance', 'follow-up', 'aucune réponse', 'sans réponse', 'pas de retour'],
+    tips: ["Email court et poli : rappelle ton entretien + réaffirme ton intérêt", "Attends 5-7 jours ouvrés avant de relancer à nouveau"],
+  },
+  negocia: {
+    keywords: ['négociation', 'salaire', 'rémunération', 'prétentions', 'offre', 'proposition'],
+    tips: ["Ne jamais accepter sans avoir négocié", "Négocie salaire, télétravail, avantages, date de prise de poste", "Demande un délai de réflexion de 48-72h"],
+  },
+  refus: {
+    keywords: ['refus', 'rejected', 'not selected', 'non retenu', 'sans suite', 'ne correspond pas'],
+    tips: ["Envoie un email de remerciement — ça te différencie", "Demande un feedback constructif pour les prochaines fois"],
+  },
+  sent: {
+    keywords: ['envoyé', 'postulé', 'candidature envoyée', 'applied', 'application sent'],
+    tips: ["Connecte-toi sur LinkedIn avec un employé de l'entreprise", "Prépare un message de relance pour J+14 si pas de réponse"],
+  },
+  reviewing: {
+    keywords: ['examen', 'review', 'consulté', 'profil', 'reçu', 'received'],
+    tips: ["Consulte Glassdoor pour connaître la culture de l'entreprise", "Prépare 3-5 questions pertinentes"],
+  },
 }
 
 export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onGenerateCV, onToggleFavorite }) {
@@ -258,6 +286,47 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                 </div>
               </div>
 
+              {/* Add step form — top of history */}
+              {showAddStep && (
+                <div className="mb-3 bg-white rounded-xl p-3 border border-indigo-100 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                      value={newStep.status}
+                      onChange={e => setNewStep(s => ({ ...s, status: e.target.value }))}
+                    >
+                      {STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                    </select>
+                    <input
+                      type="date"
+                      className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                      value={newStep.date}
+                      onChange={e => setNewStep(s => ({ ...s, date: e.target.value }))}
+                    />
+                  </div>
+                  <input
+                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                    placeholder="Note (ex: Entretien RH - 45min avec Marie)"
+                    value={newStep.note}
+                    onChange={e => setNewStep(s => ({ ...s, note: e.target.value }))}
+                    onKeyDown={e => { if (e.key === 'Enter') handleAddStep() }}
+                    autoFocus
+                  />
+                  <input
+                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                    placeholder="🔗 Lien visio (Meet, Zoom, Teams...)"
+                    value={newStep.meetingLink || ''}
+                    onChange={e => setNewStep(s => ({ ...s, meetingLink: e.target.value || undefined }))}
+                  />
+                  <div className="flex justify-end">
+                    <button onClick={handleAddStep} disabled={!newStep.note.trim()}
+                      className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-colors">
+                      Ajouter
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Timeline */}
               <div className="relative">
                 {[...history].reverse().map((entry, i, arr) => {
@@ -373,8 +442,8 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                           </a>
                         )}
                         {/* Per-step tips */}
-                        {STEP_TIPS[entry.status]?.length > 0 && (
-                          <StepTips status={entry.status} />
+                        {getTipsFromNote(entry.note).length > 0 && (
+                          <StepTips note={entry.note} />
                         )}
                           </>
                         )}
@@ -384,48 +453,6 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                 })}
               </div>
 
-              {/* Add step form */}
-              {showAddStep && (
-                <div className="mt-2 bg-white rounded-xl p-3 border border-indigo-100 space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <select
-                      className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300"
-                      value={newStep.status}
-                      onChange={e => setNewStep(s => ({ ...s, status: e.target.value }))}
-                    >
-                      {STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
-                    </select>
-                    <input
-                      type="date"
-                      className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
-                      value={newStep.date}
-                      onChange={e => setNewStep(s => ({ ...s, date: e.target.value }))}
-                    />
-                  </div>
-                  <input
-                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
-                    placeholder="Note (ex: Entretien RH - 45min avec Marie)"
-                    value={newStep.note}
-                    onChange={e => setNewStep(s => ({ ...s, note: e.target.value }))}
-                    onKeyDown={e => { if (e.key === 'Enter') handleAddStep() }}
-                  />
-                  <input
-                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
-                    placeholder="🔗 Lien visio (Meet, Zoom, Teams...)"
-                    value={newStep.meetingLink || ''}
-                    onChange={e => setNewStep(s => ({ ...s, meetingLink: e.target.value || undefined }))}
-                  />
-                  <div className="flex justify-end">
-                    <button
-                      onClick={handleAddStep}
-                      disabled={!newStep.note.trim()}
-                      className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-colors"
-                    >
-                      Ajouter
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </td>
         </tr>
