@@ -386,9 +386,9 @@ export default function App() {
           <JobSearch onAddJob={(job) => { addJob(job); showToast(`${job.company} ajouté !`); setActiveTab('tracker') }} existingJobs={jobs} />
         ) : (
           <>
-        <Stats jobs={jobs} />
         <div className="flex gap-6 items-start">
         <div className="flex-1 min-w-0">
+        <Stats jobs={jobs} />
         <NextAction jobs={jobs} onGenerateCV={handleGenerateCV} onOpenJob={(job) => { setFilters(f => ({ ...f, search: job.company })) }} />
         <Filters filters={filters} onChange={setFilters} onReset={() => setFilters(DEFAULT_FILTERS)} total={jobs.length} filtered={filtered.length} />
 
@@ -454,11 +454,10 @@ export default function App() {
         </div>
         </div>{/* end flex-1 */}
 
-        {/* Right sidebar — upcoming meetings */}
+        {/* Right sidebar — meetings à venir (top-aligned with stats) */}
         <div className="w-80 flex-shrink-0 hidden xl:block">
           <div className="sticky top-24">
             <UpcomingMeetings jobs={jobs} />
-            <CalendarWidget />
           </div>
         </div>
         </div>{/* end flex row */}
