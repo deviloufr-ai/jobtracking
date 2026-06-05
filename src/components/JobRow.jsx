@@ -240,13 +240,6 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
             : <span className="text-xs text-gray-300">—</span>}
         </td>
 
-        {/* URL */}
-        <td className="py-3.5 px-4" onClick={e => e.stopPropagation()}>
-          {job.url
-            ? <a href={job.url} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-500 hover:text-indigo-700 hover:underline whitespace-nowrap">Voir l'offre ↗</a>
-            : <span className="text-xs text-gray-300">—</span>}
-        </td>
-
         {/* Actions */}
         <td className="py-3.5 px-4" onClick={e => e.stopPropagation()}>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
