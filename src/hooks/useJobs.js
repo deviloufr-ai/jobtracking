@@ -98,12 +98,12 @@ export function getStatus(key) {
 
 function normalizeCompany(name = '') {
   return name.toLowerCase()
-    // Strip legal suffixes
-    .replace(/\s+(sas|sasu|sarl|sa|srl|inc|ltd|llc|gmbh|bv|nv|ag|spa|oy|ab)\.?$/i, '')
-    // Strip TLD suffixes (.io .com .fr .co .app .ai .eu etc.)
-    .replace(/\.(io|com|fr|co|net|org|app|ai|eu|de|uk|be|ch|ca|us|tech|dev)\.?$/i, '')
-    // Strip common generic words that don't identify the company
-    .replace(/\b(ai|app|tech|technologies?|digital|solutions?|group|labs?|studio|hq|services?|consulting|innovation|ventures?)\b/gi, '')
+    // Strip trailing legal suffixes (word boundary required — avoids stripping mid-name)
+    .replace(/\s+(sas|sasu|sarl|sa|srl|inc|ltd|llc|gmbh|bv|nv|ag|spa|oy|ab)\.?\s*$/i, '')
+    // Strip trailing TLD suffixes (.io .com .fr etc.) only when at end
+    .replace(/\.(io|com|fr|co|net|org|app|ai|eu|de|uk|be|ch|ca|us|tech|dev)\s*$/i, '')
+    // Strip truly generic STANDALONE suffixes only — NOT 'ai' or 'app' (part of many brand names)
+    .replace(/\b(technologies|digital|solutions|group|labs|studio|hq|services|consulting|innovation|ventures)\b/gi, '')
     // Strip everything non-alphanumeric
     .replace(/[^a-z0-9]/g, '')
 }
@@ -139,17 +139,23 @@ export function deduplicateJobs(jobs) {
       return new Date(b.date) - new Date(a.date)
     })
 
-    // Don't merge if a terminal entry (rejected/cancelled) exists AND a newer entry
-    // is more than 30 days later — that's a re-application, not the same application
+    // Don't merge re-applications: terminal status (rejected/cancelled) + newer entry > 30 days later
     const TERMINAL = ['rejected', 'rejected_ats', 'cancelled']
+    const GENERIC_POS_SET = new Set(['unknown', 'unknown position', 'poste non précisé', 'non spécifié', 'inconnu', ''])
+    const normPos = p => (p || '').toLowerCase().trim()
     const hasTerminal = group.some(j => TERMINAL.includes(j.status))
     if (hasTerminal && group.length > 1) {
       const dates = group.map(j => new Date(j.date).getTime())
       const span = (Math.max(...dates) - Math.min(...dates)) / (1000 * 60 * 60 * 24)
       if (span > 30) {
-        // Keep each as separate entry
-        group.forEach(j => result.push(j))
-        continue
+        // Also check if positions differ (different roles = definitely separate)
+        const realPositions = [...new Set(group.map(j => normPos(j.position)).filter(p => !GENERIC_POS_SET.has(p)))]
+        const isDifferentRole = realPositions.length > 1
+        // Separate if: >30 days gap, OR different real positions
+        if (isDifferentRole || span > 60) {
+          group.forEach(j => result.push(j))
+          continue
+        }
       }
     }
 
@@ -167,7 +173,9 @@ export function deduplicateJobs(jobs) {
 
     const seenHistory = new Set()
     const mergedHistory = allHistory.filter(h => {
-      const k = `${h.date}-${h.status}-${h.note}`
+      // Normalize note for dedup — same as deduplicateHistory
+      const normNote = (h.note || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 100)
+      const k = `${h.date}_${normNote}`
       if (seenHistory.has(k)) return false
       seenHistory.add(k)
       return true
@@ -200,11 +208,16 @@ function splitPipeNotes(jobs) {
     if (!j.history) return j
     const expanded = []
     for (const entry of j.history) {
+      // Only split on ' | ' when ALL resulting parts are meaningful notes (≥10 chars)
+      // Avoids splitting legitimate content like "CDI | Remote" or "Paris | Full-remote"
       if (entry.note && entry.note.includes(' | ')) {
-        const parts = entry.note.split(' | ').filter(p => p.trim())
-        parts.forEach(part => {
-          expanded.push({ ...entry, note: part.trim() })
-        })
+        const parts = entry.note.split(' | ').map(p => p.trim()).filter(Boolean)
+        const allMeaningful = parts.every(p => p.length >= 10)
+        if (allMeaningful && parts.length >= 2) {
+          parts.forEach(part => expanded.push({ ...entry, note: part }))
+        } else {
+          expanded.push(entry)
+        }
       } else {
         expanded.push(entry)
       }
