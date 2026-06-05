@@ -126,11 +126,11 @@ export async function fetchJobEmails(maxResults = 100, months = 3) {
     // French recruitment keywords (incoming)
     `in:inbox (candidature OR postulation OR entretien OR recrutement OR "votre candidature" OR "votre profil" OR "nous avons bien reçu" OR "suite à votre candidature" OR "nous avons le regret" OR "sans suite" OR "n'avons pas retenu") ${noAlerts} newer_than:${days}d`,
     // English recruitment keywords (incoming)
-    `in:inbox (interview OR "thank you for applying" OR "thanks for applying" OR "thanks for your application" OR "thank you for your application" OR "application received" OR "your application" OR "we have received" OR "we regret" OR "not selected" OR "not moving forward" OR "job offer" OR "offer letter" OR "next steps" OR "hiring process") ${noAlerts} newer_than:${days}d`,
+    `in:all (interview OR "thank you for applying" OR "thanks for applying" OR "thanks for your application" OR "thank you for your application" OR "application received" OR "your application" OR "application viewed" OR "was viewed" OR "viewed your application" OR "we have received" OR "we regret" OR "not selected" OR "not moving forward" OR "job offer" OR "offer letter" OR "next steps" OR "hiring process") ${noAlerts} newer_than:${days}d`,
     // ATS platforms — always job-related, no alert filter needed
     `in:all (from:ashbyhq.com OR from:greenhouse.io OR from:lever.co OR from:workable.com OR from:teamtailor.com OR from:recruitee.com OR from:bamboohr.com OR from:smartrecruiters.com OR from:jobvite.com OR from:icims.com OR from:myworkdayjobs.com OR from:taleo.net) newer_than:${days}d`,
-    // Job boards — only transactional emails (InMail, applications), not alerts
-    `in:inbox (from:linkedin.com OR from:welcometothejungle.com OR from:apec.fr OR from:indeed.com OR from:monster.fr OR from:cadremploi.fr OR from:hellowork.com OR from:jobteaser.com) (candidature OR application OR entretien OR interview OR "InMail" OR recruteur OR recruiter OR "votre profil") ${noAlerts} newer_than:${days}d`,
+    // Job boards — in:all to catch Updates/Promotions tabs too
+    `in:all (from:linkedin.com OR from:welcometothejungle.com OR from:apec.fr OR from:indeed.com OR from:monster.fr OR from:cadremploi.fr OR from:hellowork.com OR from:jobteaser.com) (candidature OR application OR entretien OR interview OR "InMail" OR recruteur OR recruiter OR "votre profil" OR "was viewed" OR "viewed") ${noAlerts} newer_than:${days}d`,
     // Recruiter sender patterns
     `in:inbox (from:talent@ OR from:recrutement@ OR from:rh@ OR from:careers@ OR from:jobs@ OR from:hiring@ OR from:recruiter@) ${noAlerts} newer_than:${days}d`,
     // Sent applications

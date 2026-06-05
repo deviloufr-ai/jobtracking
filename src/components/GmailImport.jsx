@@ -83,10 +83,10 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         return
       }
 
-      // Debug info
+      // Debug info — show ALL emails so user can verify what was fetched
       setDebugInfo({
         emailsFound: emails.length,
-        subjects: emails.slice(0, 10).map(e => `${e.from?.split('<')[0]?.trim() || e.from} → ${e.subject}`),
+        subjects: emails.map(e => `${e.from?.split('<')[0]?.trim() || e.from} → ${e.subject}`),
       })
 
       setStep(STEPS.parsing)
@@ -138,8 +138,31 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         .filter(Boolean)
 
       const displayList = forceImport ? grouped : [...newJobs, ...updates]
-      console.log('After grouping + calendar:', displayList)
-      setDebugInfo(prev => ({ ...prev, parsed: grouped.length, afterDedup: displayList.length, rawParsed: grouped.slice(0,5) }))
+
+      // Grouped results that matched an existing job but had NO new entries (already up-to-date)
+      const alreadyUpToDate = grouped.filter(p => {
+        const existing = findExisting(p)
+        if (!existing) return false
+        const normNote = s => (s || '').trim().replace(/\s+/g, ' ').slice(0, 80)
+        const existingHistKeys = new Set((existing.history || []).map(h => `${h.date}_${normNote(h.note)}`))
+        return !(p.history || []).some(h => !existingHistKeys.has(`${h.date}_${normNote(h.note)}`))
+      })
+
+      setDebugInfo(prev => ({
+        ...prev,
+        parsed: grouped.length,
+        afterDedup: displayList.length,
+        newJobs: newJobs.length,
+        updatesFound: updates.length,
+        alreadyUpToDate: alreadyUpToDate.length,
+        rawParsed: grouped.map(p => ({
+          company: p.company,
+          position: p.position,
+          status: p.status,
+          historyCount: p.history?.length,
+          matched: !!findExisting(p) ? 'update' : 'new',
+        })),
+      }))
       setResults(displayList)
       setSelected(new Set(displayList.map((_, i) => i)))
       setStep(STEPS.review)
@@ -317,29 +340,33 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
                 </p>
               )}
               {debugInfo && (
-                <div className="mb-3 bg-gray-50 rounded-xl p-3 text-left">
+                <div className="mb-3 bg-gray-50 rounded-xl p-3 text-left max-h-64 overflow-y-auto">
                   <p className="text-xs font-semibold text-gray-600 mb-1">🔍 Debug dernier scan :</p>
-                  <p className="text-xs text-gray-500">📧 {debugInfo.emailsFound} emails trouvés</p>
-                  {debugInfo.parsed !== undefined && <p className="text-xs text-gray-500">🤖 {debugInfo.parsed} parsés par Claude</p>}
-                  {debugInfo.afterDedup !== undefined && <p className="text-xs text-gray-500">✅ {debugInfo.afterDedup} après filtre doublons</p>}
+                  <p className="text-xs text-gray-500">📧 {debugInfo.emailsFound} emails récupérés</p>
+                  {debugInfo.parsed !== undefined && <>
+                    <p className="text-xs text-gray-500">🤖 {debugInfo.parsed} candidatures groupées par Claude</p>
+                    <p className="text-xs text-green-600">✨ {debugInfo.newJobs ?? 0} nouvelles · ↻ {debugInfo.updatesFound ?? 0} mises à jour · ✓ {debugInfo.alreadyUpToDate ?? 0} déjà à jour</p>
+                  </>}
+                  {debugInfo.rawParsed?.length > 0 && (
+                    <div className="mt-2 border-t border-gray-200 pt-2">
+                      <p className="text-xs font-medium text-gray-500 mb-1">Résultats Claude :</p>
+                      {debugInfo.rawParsed.map((r, i) => (
+                        <p key={i} className={`text-xs truncate ${r.matched === 'update' ? 'text-blue-500' : 'text-indigo-400'}`}>
+                          {r.matched === 'update' ? '↻' : '+'} {r.company} — {r.status} ({r.historyCount} emails) [{r.matched}]
+                        </p>
+                      ))}
+                    </div>
+                  )}
                   {debugInfo.subjects?.length > 0 && (
-                    <div className="mt-1.5">
-                      <p className="text-xs font-medium text-gray-500">Emails scannés :</p>
+                    <div className="mt-2 border-t border-gray-200 pt-2">
+                      <p className="text-xs font-medium text-gray-500 mb-1">Emails récupérés ({debugInfo.subjects.length}) :</p>
                       {debugInfo.subjects.map((s, i) => (
                         <p key={i} className="text-xs text-gray-400 truncate">• {s}</p>
                       ))}
                     </div>
                   )}
-                  {debugInfo.rawParsed?.length > 0 && (
-                    <div className="mt-1.5">
-                      <p className="text-xs font-medium text-gray-500">Parsés par Claude :</p>
-                      {debugInfo.rawParsed.map((r, i) => (
-                        <p key={i} className="text-xs text-indigo-400 truncate">• {r.company} — {r.position} ({r.status}, {r.confidence}%)</p>
-                      ))}
-                    </div>
-                  )}
                   {debugInfo.parsed === 0 && (
-                    <p className="text-xs text-red-400 mt-1">⚠️ Claude n'a détecté aucune candidature dans ces emails</p>
+                    <p className="text-xs text-red-400 mt-1">⚠️ Claude n'a détecté aucune candidature</p>
                   )}
                 </div>
               )}
