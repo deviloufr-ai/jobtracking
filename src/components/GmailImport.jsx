@@ -113,18 +113,15 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         }
       }
       const normalize = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-      const GENERIC_POSITIONS = ['nonspecifi', 'postenonprecise', 'inconnu', '']
-      const isGenericPosition = pos => GENERIC_POSITIONS.includes(normalize(pos))
-
       const jobByKey = new Map(existingJobs.map(j => [`${normalize(j.company)}_${normalize(j.position)}`, j]))
       const jobByCompany = new Map(existingJobs.map(j => [normalize(j.company), j]))
 
-      // Look up existing job — fall back to company-only when position is generic
+      // Exact match first, then company-only fallback — job boards often give
+      // a different position title than what was originally imported
       const findExisting = p => {
         const key = `${normalize(p.company)}_${normalize(p.position)}`
         if (jobByKey.has(key)) return jobByKey.get(key)
-        if (isGenericPosition(p.position)) return jobByCompany.get(normalize(p.company)) || null
-        return null
+        return jobByCompany.get(normalize(p.company)) || null
       }
 
       // Split into new jobs + updates to existing jobs

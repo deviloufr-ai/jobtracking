@@ -130,13 +130,13 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast) {
 
       const jobByKey = new Map(jobs.map(j => [`${normalize(j.company)}_${normalize(j.position)}`, j]))
       const jobByCompany = new Map(jobs.map(j => [normalize(j.company), j]))
-      const GENERIC_POSITIONS = ['nonspecifi', 'postenonprecise', 'inconnu', '']
-      const isGenericPos = pos => GENERIC_POSITIONS.includes(normalize(pos))
       const findExisting = p => {
+        // Exact company+position match first
         const key = `${normalize(p.company)}_${normalize(p.position)}`
         if (jobByKey.has(key)) return jobByKey.get(key)
-        if (isGenericPos(p.position)) return jobByCompany.get(normalize(p.company)) || null
-        return null
+        // Fall back to company-only: LinkedIn/job boards often give a different
+        // position title than what was originally imported — still the same application
+        return jobByCompany.get(normalize(p.company)) || null
       }
 
       let added = 0, updated = 0
