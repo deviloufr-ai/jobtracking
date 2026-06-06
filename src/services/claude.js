@@ -219,23 +219,26 @@ RÈGLE ENTREPRISE :
 - Ne JAMAIS mettre LinkedIn / Indeed / Free-Work / Malt / WTTJ / Apec / Monster comme company.
 - Si vraiment aucune entreprise identifiable : confidence: 0.
 
+EMAILS À TRAITER AVEC CONFIDENCE 40 (mise à jour uniquement, pas nouvelle candidature) :
+- "Your application was viewed" / "votre candidature a été consultée" → status: "reviewing", note: "Candidature consultée", confidence: 40
+- LinkedIn "application viewed by [Company]" → même traitement
+- Accusés de réception automatiques sans vrai message recruteur → confidence: 40
+
 IGNORER ABSOLUMENT (confidence: 0) :
 - Newsletters, digests, "jobs you might like", "new jobs matching", "offres recommandées"
 - "Candidature suggérée" ou offre recommandée sans action de l'utilisateur
-- Notifications LinkedIn "votre profil a été consulté", "X personnes ont vu votre profil"
-- "Your application was viewed" / "votre candidature a été consultée" SANS réponse du recruteur (= simple notification passive, pas une vraie interaction)
-- Emails automatiques de confirmation générique sans nom d'entreprise identifiable
+- Notifications LinkedIn "votre profil a été consulté", "X personnes ont vu votre profil" (profil, PAS candidature)
 - Alertes emploi de job boards (Indeed Alert, LinkedIn Job Alert, WTTJ Newsletter...)
+- Emails automatiques sans entreprise identifiable
 
-Un email = candidature réelle UNIQUEMENT si :
-- L'utilisateur a POSTULÉ (email envoyé, confirmation de dépôt) OU
-- Un RECRUTEUR a répondu (prise de contact, invitation, refus, question, rendez-vous)
+Un email confidence >= 55 = candidature réelle (l'utilisateur A POSTULÉ ou un RECRUTEUR a répondu)
+Un email confidence 35-54 = signal de suivi seulement (mise à jour d'une candidature existante)
 
 Emails:
 ${emailsText}`
 
     const raw = await callClaude(system, prompt)
-    const parsed = parseJSON(raw).filter(j => (j.confidence || 0) >= 55).map(j => {
+    const parsed = parseJSON(raw).filter(j => (j.confidence || 0) >= 35).map(j => {
       // Normalize emailId: Claude sometimes returns "[1]", "1", or 1 — strip brackets and coerce
       const emailIdx = parseInt(String(j.emailId).replace(/\D/g, ''), 10) - 1
       const originalEmail = uncached[emailIdx]
@@ -243,6 +246,9 @@ ${emailsText}`
         j.gmailId = originalEmail.id
         j.fromEmail = originalEmail.from
         j.fromMe = originalEmail.fromMe
+
+        // Tag low-confidence results — they can only update existing jobs, not create new ones
+        if ((j.confidence || 0) < 55) j._updateOnly = true
 
         // Store in cache
         const key = emailCacheKey(originalEmail)

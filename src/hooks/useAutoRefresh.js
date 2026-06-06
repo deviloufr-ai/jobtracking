@@ -68,6 +68,8 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
   const grouped = []
   for (const [, emailsForJob] of jobGroups) {
     const sorted = [...emailsForJob].sort((a, b) => new Date(a.date) - new Date(b.date))
+    // Group is updateOnly if ALL its emails are updateOnly (e.g. only "viewed" notifications)
+    const allUpdateOnly = sorted.every(e => e._updateOnly)
     const highestStatus = sorted.reduce((best, e) =>
       STATUS_ORDER.indexOf(e.status) > STATUS_ORDER.indexOf(best) ? e.status : best
     , sorted[0].status)
@@ -115,6 +117,7 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
       status: highestStatus,
       history: mergedHistory,
       notes: sorted.map(e => e.notes).filter(Boolean).join(' | '),
+      ...(allUpdateOnly && { _updateOnly: true }),
     })
   }
   return grouped

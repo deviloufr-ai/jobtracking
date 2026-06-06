@@ -168,7 +168,8 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
       }
 
       // Split into new jobs + updates to existing jobs
-      const newJobs = grouped.filter(p => !findExisting(p))
+      // _updateOnly jobs (low confidence, e.g. "viewed" notifications) never create new entries
+      const newJobs = grouped.filter(p => !findExisting(p) && !p._updateOnly)
       const updates = forceImport ? [] : grouped
         .filter(p => !!findExisting(p))
         .map(p => {
