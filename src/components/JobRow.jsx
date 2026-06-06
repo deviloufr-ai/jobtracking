@@ -448,6 +448,28 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
               {/* ── RIGHT: Info Panel ────────────────────────────────────── */}
               <div className="space-y-3">
 
+                {/* Upcoming events — top priority */}
+                {upcomingEvents.length > 0 && (
+                  <div className="bg-amber-50 rounded-xl border border-amber-100 p-3 space-y-2">
+                    <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider">À venir</p>
+                    {upcomingEvents.slice(0, 2).map((e, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className="text-base">📅</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs text-amber-800 font-medium truncate">{e.note}</p>
+                          <p className="text-[10px] text-amber-600">{formatDate(e.date)}</p>
+                        </div>
+                        {e.meetingLink && (
+                          <a href={e.meetingLink} target="_blank" rel="noopener noreferrer" onClick={ev => ev.stopPropagation()}
+                            className="shrink-0 text-[10px] font-semibold bg-amber-500 text-white px-2 py-0.5 rounded-lg hover:bg-amber-600">
+                            Rejoindre
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Recruiter / contacts */}
                 {allContacts.length > 0 ? (
                   <div className="bg-white rounded-xl border border-gray-100 p-3 space-y-2">
@@ -515,27 +537,6 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                   )}
                 </div>
 
-                {/* Upcoming events */}
-                {upcomingEvents.length > 0 && (
-                  <div className="bg-amber-50 rounded-xl border border-amber-100 p-3 space-y-2">
-                    <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider">À venir</p>
-                    {upcomingEvents.slice(0, 2).map((e, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        <span className="text-base">📅</span>
-                        <div className="min-w-0">
-                          <p className="text-xs text-amber-800 font-medium truncate">{e.note}</p>
-                          <p className="text-[10px] text-amber-600">{formatDate(e.date)}</p>
-                        </div>
-                        {e.meetingLink && (
-                          <a href={e.meetingLink} target="_blank" rel="noopener noreferrer" onClick={ev => ev.stopPropagation()}
-                            className="shrink-0 text-[10px] font-semibold bg-amber-500 text-white px-2 py-0.5 rounded-lg hover:bg-amber-600">
-                            Rejoindre
-                          </a>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
 
                 {/* Quick actions */}
                 <div className="flex flex-col gap-1.5">
