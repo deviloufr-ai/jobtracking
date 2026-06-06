@@ -303,39 +303,61 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
           {/* Connected idle */}
           {connected && step === STEPS.idle && (
             <div className="text-center py-4">
-              {/* Connected accounts */}
-              <div className="mb-5 space-y-2">
+              {/* Connected accounts — click to select which to scan */}
+              <div className="mb-5 space-y-1.5">
+                <p className="text-xs font-semibold text-gray-500 text-left mb-2">Compte à scanner</p>
+
+                {/* "Tous" option — shown when multiple accounts */}
+                {connectedAccounts.length > 1 && (
+                  <button
+                    onClick={() => setScanAccount(null)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border transition-all text-left ${
+                      !scanAccount ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-gray-200 hover:border-indigo-200'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${!scanAccount ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300'}`}>
+                      {!scanAccount && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                    <span className={`text-xs font-medium ${!scanAccount ? 'text-indigo-700' : 'text-gray-600'}`}>
+                      Tous les comptes ({connectedAccounts.length})
+                    </span>
+                  </button>
+                )}
+
                 {connectedAccounts.map(acct => (
-                  <div key={acct.email} className="flex items-center gap-2 bg-green-50 border border-green-100 rounded-xl px-3 py-2">
+                  <div key={acct.email}
+                    onClick={() => setScanAccount(acct.email)}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border cursor-pointer transition-all ${
+                      scanAccount === acct.email ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-gray-200 hover:border-indigo-200'
+                    }`}
+                  >
+                    {/* Radio dot */}
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${scanAccount === acct.email ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300'}`}>
+                      {scanAccount === acct.email && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
                     {acct.picture
                       ? <img src={acct.picture} alt="" className="w-6 h-6 rounded-full flex-shrink-0" />
-                      : <span className="w-6 h-6 rounded-full bg-green-400 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">{acct.email[0].toUpperCase()}</span>
+                      : <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold flex items-center justify-center flex-shrink-0">{acct.email[0].toUpperCase()}</span>
                     }
-                    <div className="flex-1 text-left min-w-0">
-                      <p className="text-xs font-semibold text-green-800 truncate">{acct.name || acct.email}</p>
-                      <p className="text-[10px] text-green-600 truncate">{acct.email}</p>
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className={`text-xs font-semibold truncate ${scanAccount === acct.email ? 'text-indigo-800' : 'text-gray-700'}`}>{acct.name || acct.email}</p>
+                      <p className="text-[10px] text-gray-400 truncate">{acct.email}</p>
                     </div>
                     <button
-                      onClick={() => setScanAccount(prev => prev === acct.email ? null : acct.email)}
-                      className={`text-[10px] font-semibold px-2 py-1 rounded-lg border transition-all ${scanAccount === acct.email ? 'bg-indigo-600 text-white border-indigo-600' : 'border-green-200 text-green-700 hover:bg-green-100'}`}
-                    >
-                      {scanAccount === acct.email ? '✓ Sélectionné' : 'Scanner'}
-                    </button>
-                    <button onClick={() => handleDisconnect(acct.email)} className="text-[10px] text-gray-400 hover:text-red-500 transition-colors ml-1" title="Déconnecter">✕</button>
+                      onClick={e => { e.stopPropagation(); handleDisconnect(acct.email) }}
+                      className="text-[10px] text-gray-300 hover:text-red-400 transition-colors ml-1 p-1"
+                      title="Déconnecter"
+                    >✕</button>
                   </div>
                 ))}
+
                 <button
                   onClick={handleConnect}
-                  className="w-full flex items-center justify-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 border border-dashed border-indigo-200 hover:border-indigo-400 rounded-xl py-2 transition-all"
+                  className="w-full flex items-center justify-center gap-1.5 text-xs text-indigo-500 hover:text-indigo-700 border border-dashed border-indigo-200 hover:border-indigo-400 rounded-xl py-2 mt-1 transition-all"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                   Ajouter un compte Gmail
                 </button>
-                {connectedAccounts.length > 1 && (
-                  <p className="text-[10px] text-gray-400 text-center">
-                    {scanAccount ? `Scan : ${scanAccount}` : `Scan : tous les comptes (${connectedAccounts.length})`}
-                  </p>
-                )}
               </div>
 
               {/* Month selector */}
@@ -407,11 +429,18 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
                 </div>
               )}
               <div className="flex gap-3 justify-center">
-                <button onClick={handleDisconnect} className="text-xs text-gray-400 hover:text-gray-600 hover:underline">
-                  Déconnecter
+                <button onClick={() => handleDisconnect()} className="text-xs text-gray-400 hover:text-gray-600 hover:underline">
+                  Tout déconnecter
                 </button>
-                <button onClick={handleScan} className="bg-indigo-600 text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors">
-                  🔍 Scanner {months} mois
+                <button onClick={handleScan} className="bg-indigo-600 text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-indigo-700 active:scale-95 transition-all flex items-center gap-2">
+                  <span>🔍</span>
+                  <span>
+                    Scanner {months} mois
+                    {' '}
+                    <span className="font-normal opacity-80 text-xs">
+                      ({scanAccount ? scanAccount.split('@')[0] : connectedAccounts.length > 1 ? `${connectedAccounts.length} comptes` : connectedAccounts[0]?.email?.split('@')[0]})
+                    </span>
+                  </span>
                 </button>
               </div>
             </div>
