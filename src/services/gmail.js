@@ -317,9 +317,9 @@ async function fetchEmailDetail(id, token) {
     const fromRaw = get('From').toLowerCase()
     const subjectRaw = get('Subject').toLowerCase()
     const JOB_ALERT_SENDERS = [
-      'notification@emails.hellowork', 'jobalerts@', 'jobalertes@', 'alert@', 'alerts@',
-      'noreply@', 'no-reply@', 'notification@', 'notifications@', 'newsletter@',
-      'digest@', 'news@', 'mailer@', 'info@emails.', 'no_reply@',
+      // Job board alert/newsletter specific senders only — keep ATS no-reply (greenhouse, lever, etc.)
+      'notification@emails.hellowork', 'jobalerts@', 'jobalertes@',
+      'newsletter@', 'digest@', 'news@', 'mailer@', 'info@emails.',
     ]
     const JOB_ALERT_SUBJECTS = [
       'nouvelles offres', 'new jobs', 'offres d\'emploi', 'offres recommand',
