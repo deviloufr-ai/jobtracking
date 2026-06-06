@@ -211,7 +211,7 @@ export default function CVManager({ jobs, preselectedJob }) {
 
       {/* Generate CV for a job */}
       {/* Auto-open for preselected job */}
-      {preselectedJob && cvs.length > 0 && !generatorState && (
+      {preselectedJob && preselectedJob.status === 'todo' && cvs.length > 0 && !generatorState && (
         <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-indigo-800">✨ Générer un CV pour {preselectedJob.company}</p>
@@ -237,7 +237,7 @@ export default function CVManager({ jobs, preselectedJob }) {
           <div className="p-4">
             <p className="text-sm text-gray-500 mb-3">Sélectionne un CV et une candidature pour générer une version optimisée :</p>
             <div className="space-y-3">
-              {jobs.filter(j => j.url || j.notes).slice(0, 10).map(job => (
+              {jobs.filter(j => j.status === 'todo' && (j.url || j.notes)).slice(0, 10).map(job => (
                 <div key={job.id} className="flex items-center justify-between gap-3 p-3 border border-gray-100 rounded-xl hover:border-indigo-200 hover:bg-indigo-50/30 transition-all">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-800">{job.company}</p>
