@@ -1,6 +1,12 @@
+import { useState } from 'react'
 import { getStatus } from '../hooks/useJobs'
 import { loadSettings } from '../hooks/useSettings'
 import { isNoReply } from './EmailDraft'
+
+const DISMISSED_KEY = 'jobtrackr_dismissed_actions'
+function loadDismissed() { try { return new Set(JSON.parse(sessionStorage.getItem(DISMISSED_KEY) || '[]')) } catch { return new Set() } }
+function saveDismissed(s) { try { sessionStorage.setItem(DISMISSED_KEY, JSON.stringify([...s])) } catch {} }
+function actionKey(job, rule) { return `${job.id}__${rule.label(job).slice(0, 40)}` }
 
 // Returns true if the job has at least one real (non-ATS, non-no-reply) inbound email address
 function hasRealEmail(job) {
@@ -195,9 +201,18 @@ function buildAllActions(activeJobs, s) {
 }
 
 export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDraftEmail }) {
+  const [dismissed, setDismissed] = useState(loadDismissed)
+
+  const dismiss = (job, rule) => {
+    const key = actionKey(job, rule)
+    const next = new Set(dismissed)
+    next.add(key)
+    setDismissed(next)
+    saveDismissed(next)
+  }
   const activeJobs = jobs.filter(j => !['cancelled', 'archived'].includes(j.status))
   const s = loadSettings()
-  const actions = buildAllActions(activeJobs, s)
+  const actions = buildAllActions(activeJobs, s).filter(({ job, rule }) => !dismissed.has(actionKey(job, rule)))
   const urgentCount = actions.filter(a => a.urgency === 'high').length
 
   if (actions.length === 0) return null
@@ -215,7 +230,7 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
       </div>
       <div className="divide-y divide-gray-50 flex-1 overflow-y-auto">
         {actions.map(({ job, rule, urgency }, i) => (
-          <div key={i} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50/50 transition-colors">
+          <div key={i} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50/50 transition-colors group/action">
             {/* Urgency dot */}
             <div className={`w-2 h-2 rounded-full flex-shrink-0 ${URGENCY_DOT[urgency]}`} />
             <span className="text-sm flex-shrink-0">{rule.icon}</span>
@@ -259,6 +274,14 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
                 {rule.cta}
               </button>
             )}
+            {/* Dismiss */}
+            <button
+              onClick={() => dismiss(job, rule)}
+              className="flex-shrink-0 opacity-0 group-hover/action:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center text-gray-300 hover:text-gray-500 hover:bg-gray-100 rounded-md"
+              title="Masquer cette action"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
           </div>
         ))}
       </div>
