@@ -160,10 +160,12 @@ export function deduplicateJobs(jobs) {
     // Don't merge re-applications: same role, terminal status, then new application > 60 days later
     const TERMINAL = ['rejected', 'rejected_ats', 'cancelled']
     const hasTerminal = group.some(j => TERMINAL.includes(j.status))
-    if (hasTerminal && group.length > 1) {
+    if (group.length > 1) {
       const dates = group.map(j => new Date(j.date).getTime())
       const span = (Math.max(...dates) - Math.min(...dates)) / (1000 * 60 * 60 * 24)
-      if (span > 60) {
+      // Fix #9 — also split non-terminal groups with large date gaps (re-application for same title)
+      const threshold = hasTerminal ? 60 : 90
+      if (span > threshold) {
         group.forEach(j => result.push(j))
         continue
       }
@@ -267,10 +269,13 @@ function mergeSameDateEntries(jobs) {
 
     const merged = order.map(key => {
       const e = byDate[key]
+      const gmailIds = e._gmailIds.filter(Boolean)
       return {
         ...e,
         note: e._notes.join(' · '),
-        gmailId: e._gmailIds[0] || undefined,
+        gmailId: gmailIds[0] || undefined,
+        // Fix #10 — preserve extra gmailIds so multiple "Voir l'email" links can be shown
+        gmailIds: gmailIds.length > 1 ? gmailIds : undefined,
         _notes: undefined,
         _gmailIds: undefined,
       }
@@ -342,9 +347,17 @@ const SUGGESTION_NOTE_KEYWORDS = [
   'candidature suggérée', 'suggested job', 'job suggestion',
   'alerte indeed', 'alerte emploi', 'job alert', 'offre correspondante',
 ]
+// Fix #14 — positive signals override suggestion filter so real candidatures are never dropped
+const APPLICATION_SIGNALS = [
+  'candidature', 'applied', 'postulé', 'entretien', 'interview',
+  'envoyé', 'sent', 'reçu', 'confirmé', 'relance', 'offre reçue',
+]
 function isSuggestionJob(j) {
   const notes = (j.history || []).map(h => (h.note || '').toLowerCase())
-  return notes.length > 0 && notes.every(n => SUGGESTION_NOTE_KEYWORDS.some(k => n.includes(k)))
+  if (notes.length === 0) return false
+  // If ANY note contains a real application signal, keep the job regardless
+  if (notes.some(n => APPLICATION_SIGNALS.some(k => n.includes(k)))) return false
+  return notes.every(n => SUGGESTION_NOTE_KEYWORDS.some(k => n.includes(k)))
 }
 
 function load() {
@@ -360,7 +373,9 @@ function load() {
           history: (j.history || [{ date: j.date, status: j.status, note: 'Candidature ajoutée' }])
             .map(h => ({ ...h, note: deduplicateNoteFragments(h.note) }))
         }))
-      const processed = autoStale(deduplicateJobs(mergeSameDateEntries(splitPipeNotes(deduplicateHistory(migrated)))))
+      // Fix #5 — autoStale removed from load(); it runs in useMemo on every render instead,
+      // avoiding double-archival and stale-threshold drift on initial load.
+      const processed = deduplicateJobs(mergeSameDateEntries(splitPipeNotes(deduplicateHistory(migrated))))
       return processed
     }
   } catch (e) { console.error('JobTrackr: failed to load saved data', e) }
@@ -431,8 +446,12 @@ export function useJobs() {
   }
 
   const updateStatus = (id, status) => {
+    // Fix #4 — add a non-empty note so history doesn't accumulate blank entries
+    const st = STATUSES.find(s => s.key === status)
     setJobs(prev => prev.map(j => {
       if (j.id !== id) return j
+      // Skip if status didn't actually change
+      if (j.status === status) return j
       return {
         ...j,
         status,
@@ -440,7 +459,7 @@ export function useJobs() {
         history: [...(j.history || []), {
           date: new Date().toISOString().split('T')[0],
           status,
-          note: ''
+          note: st ? `Statut mis à jour → ${st.label}` : 'Statut mis à jour',
         }]
       }
     }))
@@ -484,6 +503,9 @@ export function useJobs() {
     setJobs(prev => prev.map(j => j.id === id ? { ...j, favorite: !j.favorite } : j))
   }
 
+  // Fix #3 — single setJobs([]) instead of N deleteJob calls
+  const clearAllJobs = () => setJobs([])
+
   // Re-run the full processing pipeline on current state (dedup, merge, autoStale)
   // Call this after bulk imports/refreshes to clean up duplicates without a page reload
   const reprocessJobs = () => {
@@ -493,5 +515,5 @@ export function useJobs() {
     })
   }
 
-  return { jobs, addJob, updateJob, deleteJob, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched, reprocessJobs }
+  return { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched, reprocessJobs }
 }

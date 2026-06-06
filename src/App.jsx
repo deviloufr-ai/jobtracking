@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useJobs } from './hooks/useJobs'
+import { useJobs, getStatus } from './hooks/useJobs'
 import { useExtensionImport } from './hooks/useExtensionImport'
 import Stats from './components/Stats'
 import Filters from './components/Filters'
@@ -84,7 +84,7 @@ function ExtensionButton() {
 }
 
 export default function App() {
-  const { jobs, addJob, updateJob, deleteJob, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, reprocessJobs } = useJobs()
+  const { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, reprocessJobs } = useJobs()
   const [modal, setModal] = useState(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -160,7 +160,9 @@ export default function App() {
       if (included.length > 0 && !included.includes(j.status)) return false
       if (excluded.includes(j.status)) return false
       if (filters.period !== 'all') {
-        const d = new Date(j.date)
+        // Fix #12 — filter on last activity date (matches Date column) not original application date
+        const lastDate = j.history?.length ? j.history[j.history.length - 1].date : j.date
+        const d = new Date(lastDate)
         const now = new Date()
         const days = (now - d) / (1000 * 60 * 60 * 24)
         if (filters.period === 'week' && days > 7) return false
@@ -189,17 +191,26 @@ export default function App() {
     showToast('Candidature supprimée')
   }
 
+  // Fix #15 — toast feedback on status change
+  const handleStatusChange = (id, newStatus) => {
+    const job = jobs.find(j => j.id === id)
+    updateStatus(id, newStatus)
+    if (job) showToast(`${job.company} → ${getStatus(newStatus).label}`)
+  }
+
   const handleGenerateCV = (job) => {
     setSelectedJobForCV(job)
     setActiveTab('cv')
   }
 
   const handleBulkImport = (newJobs) => {
-    newJobs.forEach(j => addJobWithNotif(j))
-    if (newJobs.length > 0)
-      pushNotif('new_job', `${newJobs.length} candidature${newJobs.length > 1 ? 's' : ''} importée${newJobs.length > 1 ? 's' : ''} depuis Gmail`, { count: newJobs.length })
-    showToast(`${newJobs.length} candidature${newJobs.length > 1 ? 's' : ''} importée${newJobs.length > 1 ? 's' : ''} !`, 3500)
-    // Dedup/merge immediately so duplicates don't linger
+    // Fix #13 — use addJob (no per-job notif) then push ONE summary notification
+    newJobs.forEach(j => addJob(j))
+    if (newJobs.length > 0) {
+      const s = newJobs.length > 1 ? 's' : ''
+      pushNotif('new_job', `${newJobs.length} candidature${s} importée${s} depuis Gmail`, { count: newJobs.length })
+      showToast(`${newJobs.length} candidature${s} importée${s} !`, 3500)
+    }
     setTimeout(() => reprocessJobs(), 100)
   }
 
@@ -212,8 +223,8 @@ export default function App() {
 
   const handleClearAll = () => {
     if (!window.confirm(`Effacer toutes les ${jobs.length} candidatures ? Cette action est irreversible.`)) return
-    jobs.forEach(j => deleteJob(j.id))
-    showToast('Toutes les candidatures ont ete effacees')
+    clearAllJobs() // Fix #3 — single state update instead of N deleteJob calls
+    showToast('Toutes les candidatures ont été effacées')
   }
 
   const ThHeader = ({ col, label }) => (
@@ -557,7 +568,7 @@ export default function App() {
                 </thead>
                 <tbody>
                   {filtered.map(job => (
-                    <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={updateStatus} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} />
+                    <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} />
                   ))}
                 </tbody>
               </table>
@@ -598,15 +609,16 @@ export default function App() {
       <nav className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-white border-t border-gray-100 shadow-[0_-2px_12px_0_rgba(0,0,0,0.06)]">
         <div className="flex items-center justify-around px-2 py-1 safe-area-bottom">
           {NAV_TABS.map(tab => (
+            // Fix #17 — relative needed so absolute badge positions correctly
             <button key={tab.id} onClick={() => goTab(tab.id)}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors min-w-0 flex-1 ${
+              className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors min-w-0 flex-1 ${
                 activeTab === tab.id ? 'text-indigo-600' : 'text-gray-400'
               }`}
             >
               <span className="text-xl leading-none">{tab.icon}</span>
               <span className="text-[10px] font-medium truncate w-full text-center">{tab.label.split(' ')[0]}</span>
               {tab.badge > 0 && activeTab !== tab.id && (
-                <span className="absolute -top-0.5 ml-5 w-4 h-4 text-[9px] font-bold bg-indigo-500 text-white rounded-full flex items-center justify-center">{tab.badge > 99 ? '99' : tab.badge}</span>
+                <span className="absolute top-0.5 right-2 w-4 h-4 text-[9px] font-bold bg-indigo-500 text-white rounded-full flex items-center justify-center">{tab.badge > 99 ? '99' : tab.badge}</span>
               )}
             </button>
           ))}

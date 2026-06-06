@@ -20,8 +20,13 @@ function hasRealEmail(job) {
   return false
 }
 
+// Fix #11 — use last history entry date, not updatedAt (which resets on manual edits)
 function daysSince(job) {
-  return (new Date() - new Date(job.updatedAt || job.date)) / (1000 * 60 * 60 * 24)
+  const lastHistoryDate = job.history?.length
+    ? job.history[job.history.length - 1].date
+    : null
+  const ref = lastHistoryDate || job.updatedAt || job.date
+  return (new Date() - new Date(ref)) / (1000 * 60 * 60 * 24)
 }
 
 // Get the most recent non-calendar history note

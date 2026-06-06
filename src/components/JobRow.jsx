@@ -5,6 +5,38 @@ import { STATUSES, getStatus } from '../hooks/useJobs'
 import { gmailMessageUrl } from '../services/gmail'
 import { isNoReply } from './EmailDraft'
 
+// Fix #7 — NOTE_TIPS moved above getTipsFromNote (was referenced before definition)
+const NOTE_TIPS = {
+  interview: {
+    keywords: ['entretien', 'interview', 'visio', 'call', 'meeting', 'rdv', 'rendez-vous', 'zoom', 'teams', 'meet'],
+    tips: ["Prépare des réponses STAR pour chaque expérience clé", "Recherche les dernières actualités de l'entreprise", "Envoie un email de remerciement dans les 24h après"],
+  },
+  test: {
+    keywords: ['test technique', 'technical test', 'case study', 'assessment', 'exercice', 'mise en situation'],
+    tips: ["Lis attentivement les consignes avant de commencer", "Commente ton code / raisonnement", "Respecte le délai et soigne la présentation"],
+  },
+  relance: {
+    keywords: ['relance', 'follow-up', 'aucune réponse', 'sans réponse', 'pas de retour'],
+    tips: ["Email court et poli : rappelle ton entretien + réaffirme ton intérêt", "Attends 5-7 jours ouvrés avant de relancer à nouveau"],
+  },
+  negocia: {
+    keywords: ['négociation', 'salaire', 'rémunération', 'prétentions', 'offre', 'proposition'],
+    tips: ["Ne jamais accepter sans avoir négocié", "Négocie salaire, télétravail, avantages, date de prise de poste", "Demande un délai de réflexion de 48-72h"],
+  },
+  refus: {
+    keywords: ['refus', 'rejected', 'not selected', 'non retenu', 'sans suite', 'ne correspond pas'],
+    tips: ["Envoie un email de remerciement — ça te différencie", "Demande un feedback constructif pour les prochaines fois"],
+  },
+  sent: {
+    keywords: ['envoyé', 'postulé', 'candidature envoyée', 'applied', 'application sent'],
+    tips: ["Connecte-toi sur LinkedIn avec un employé de l'entreprise", "Prépare un message de relance pour J+14 si pas de réponse"],
+  },
+  reviewing: {
+    keywords: ['examen', 'review', 'consulté', 'profil', 'reçu', 'received'],
+    tips: ["Consulte Glassdoor pour connaître la culture de l'entreprise", "Prépare 3-5 questions pertinentes"],
+  },
+}
+
 function getTipsFromNote(note = '') {
   const n = note.toLowerCase()
   for (const [, { keywords, tips }] of Object.entries(NOTE_TIPS)) {
@@ -40,74 +72,56 @@ function StepTips({ note }) {
   )
 }
 
-const NOTE_TIPS = {
-  interview: {
-    keywords: ['entretien', 'interview', 'visio', 'call', 'meeting', 'rdv', 'rendez-vous', 'zoom', 'teams', 'meet'],
-    tips: ["Prépare des réponses STAR pour chaque expérience clé", "Recherche les dernières actualités de l'entreprise", "Envoie un email de remerciement dans les 24h après"],
-  },
-  test: {
-    keywords: ['test technique', 'technical test', 'case study', 'assessment', 'exercice', 'mise en situation'],
-    tips: ["Lis attentivement les consignes avant de commencer", "Commente ton code / raisonnement", "Respecte le délai et soigne la présentation"],
-  },
-  relance: {
-    keywords: ['relance', 'follow-up', 'aucune réponse', 'sans réponse', 'pas de retour'],
-    tips: ["Email court et poli : rappelle ton entretien + réaffirme ton intérêt", "Attends 5-7 jours ouvrés avant de relancer à nouveau"],
-  },
-  negocia: {
-    keywords: ['négociation', 'salaire', 'rémunération', 'prétentions', 'offre', 'proposition'],
-    tips: ["Ne jamais accepter sans avoir négocié", "Négocie salaire, télétravail, avantages, date de prise de poste", "Demande un délai de réflexion de 48-72h"],
-  },
-  refus: {
-    keywords: ['refus', 'rejected', 'not selected', 'non retenu', 'sans suite', 'ne correspond pas'],
-    tips: ["Envoie un email de remerciement — ça te différencie", "Demande un feedback constructif pour les prochaines fois"],
-  },
-  sent: {
-    keywords: ['envoyé', 'postulé', 'candidature envoyée', 'applied', 'application sent'],
-    tips: ["Connecte-toi sur LinkedIn avec un employé de l'entreprise", "Prépare un message de relance pour J+14 si pas de réponse"],
-  },
-  reviewing: {
-    keywords: ['examen', 'review', 'consulté', 'profil', 'reçu', 'received'],
-    tips: ["Consulte Glassdoor pour connaître la culture de l'entreprise", "Prépare 3-5 questions pertinentes"],
-  },
+// Fix #20 — getSourceLabel moved outside component (pure function, no need for closure)
+function getSourceLabel(entry, companyName) {
+  if (entry.source === 'calendar') return null
+  if (entry.source === 'email') {
+    if (entry.fromMe) return 'Vous'
+    if (entry.from) {
+      const match = entry.from.match(/^([^<]+)/)
+      return match ? match[1].trim().split(' ')[0] : entry.from.split('@')[0]
+    }
+    return companyName
+  }
+  return null
 }
 
 export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onGenerateCV, onToggleFavorite }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
+  const [confirmDeleteIdx, setConfirmDeleteIdx] = useState(null) // Fix #18
   const statusBtnRef = useRef(null)
+  const enrichTimerRef = useRef(null) // Fix #6
 
   const openStatusMenu = (e) => {
     e.stopPropagation()
     const rect = statusBtnRef.current?.getBoundingClientRect()
-    if (rect) setMenuPos({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX })
+    if (rect) {
+      // Fix #2 — flip dropdown up when near bottom of viewport
+      const dropdownH = 11 * 34 // ~11 statuses × 34px each
+      const spaceBelow = window.innerHeight - rect.bottom
+      const top = spaceBelow < dropdownH + 12
+        ? rect.top + window.scrollY - dropdownH - 4
+        : rect.bottom + window.scrollY + 4
+      setMenuPos({ top, left: rect.left + window.scrollX })
+    }
     setShowStatusMenu(v => !v)
   }
 
-  // Close on scroll
+  // Close status menu on scroll
   useEffect(() => {
     if (!showStatusMenu) return
     const close = () => setShowStatusMenu(false)
     window.addEventListener('scroll', close, true)
     return () => window.removeEventListener('scroll', close, true)
   }, [showStatusMenu])
+
+  // Fix #6 — cleanup enrichResult timer on unmount
+  useEffect(() => () => { if (enrichTimerRef.current) clearTimeout(enrichTimerRef.current) }, [])
+
   const [expanded, setExpanded] = useState(false)
   const [showAddStep, setShowAddStep] = useState(false)
   const [enriching, setEnriching] = useState(false)
-
-  // Get display label for history entry source
-  const getSourceLabel = (entry) => {
-    if (entry.source === 'calendar') return null // handled separately
-    if (entry.source === 'email') {
-      if (entry.fromMe) return 'Vous'
-      if (entry.from) {
-        // Extract name from "Name <email>" format
-        const match = entry.from.match(/^([^<]+)/)
-        return match ? match[1].trim().split(' ')[0] : entry.from.split('@')[0]
-      }
-      return job.company
-    }
-    return null
-  }
   const [enrichResult, setEnrichResult] = useState(null)
   const [editingStep, setEditingStep] = useState(null) // index of step being edited
   const [editForm, setEditForm] = useState({})
@@ -182,7 +196,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
   }
 
   const handleDeleteStep = (displayIdx) => {
-    if (!window.confirm('Supprimer cette étape ?')) return
+    // Fix #18 — confirmation is now handled inline (two-step UI), no window.confirm
     const idx = toOriginalIdx(displayIdx)
     const updated = history.filter((_, i) => i !== idx)
     onUpdateHistory(job.id, updated)
@@ -204,7 +218,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
       setEnrichResult({ success: false, error: e.message })
     }
     setEnriching(false)
-    setTimeout(() => setEnrichResult(null), 3000)
+    enrichTimerRef.current = setTimeout(() => setEnrichResult(null), 3000) // Fix #6
   }
 
   // Deterministic avatar color from company name
@@ -370,13 +384,20 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                   {[...history].reverse().map((entry, i, arr) => {
                     const st = getStatus(entry.status)
                     const isLast = i === arr.length - 1
+                    // Fix #19 — stable key: date + status + note prefix (not just index)
+                    const entryKey = `${entry.date}-${entry.status}-${(entry.note || '').slice(0, 20)}-${i}`
                     return (
-                      <div key={i} className="flex gap-3 relative group/step">
+                      <div key={entryKey} className="flex gap-3 relative group/step">
                         {!isLast && <div className="absolute left-[7px] top-5 bottom-0 w-px bg-indigo-200" />}
                         {(() => {
                           const isMeeting = entry.source === 'calendar' || !!entry.meetingLink
                           const isPastMeeting = isMeeting && new Date(entry.date) < new Date()
                           const isUpcomingMeeting = isMeeting && !isPastMeeting
+                          // Fix #8 — proper email extraction before isNoReply check
+                          const rawFrom = (entry.from || '').trim()
+                          const angleMatch = rawFrom.match(/<([^>]+@[^>]+)>/)
+                          const fromEmail = angleMatch ? angleMatch[1].trim() : (rawFrom.includes('@') && !rawFrom.includes(' ') ? rawFrom : null)
+                          const showSender = entry.source === 'email' && !entry.fromMe && fromEmail && !isNoReply(fromEmail)
                           return (
                         <>
                         <div className={`w-3.5 h-3.5 rounded-full flex-shrink-0 mt-1 border-2 border-white shadow-sm ${isPastMeeting ? 'bg-gray-300' : isUpcomingMeeting ? 'bg-amber-400' : st.dot}`} />
@@ -408,15 +429,25 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isPastMeeting ? 'bg-gray-100 text-gray-400' : isUpcomingMeeting ? 'bg-amber-100 text-amber-700' : st.color}`}>{isPastMeeting ? '✓ Passé' : isUpcomingMeeting ? '📅 À venir' : st.label}</span>
                                 <span className={`text-xs text-gray-400 ${isPastMeeting ? 'line-through' : ''}`}>{formatDate(entry.date)}</span>
-                                {entry.source === 'email' && !entry.fromMe && entry.from && !isNoReply(entry.from.match(/<([^>]+)>/)?.[1] || entry.from) && (
+                                {showSender && (
                                   <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full truncate max-w-[100px]">
-                                    {entry.from.match(/^([^<]+)</)?.[1]?.trim().split(' ')[0] || entry.from.split('@')[0]}
+                                    {angleMatch ? rawFrom.match(/^([^<]+)/)?.[1]?.trim().split(' ')[0] : fromEmail.split('@')[0]}
                                   </span>
                                 )}
-                                <div className="ml-auto opacity-0 group-hover/step:opacity-100 transition-opacity flex gap-1">
+                                <div className="ml-auto opacity-0 group-hover/step:opacity-100 transition-opacity flex gap-1 items-center">
                                   <button onClick={() => { setEditingStep(i); setEditForm({ status: entry.status, date: entry.date, note: entry.note || '', meetingLink: entry.meetingLink || '' }) }}
                                     className="text-gray-300 hover:text-indigo-500 text-xs p-0.5 rounded">✏️</button>
-                                  <button onClick={() => handleDeleteStep(i)} className="text-gray-300 hover:text-red-400 text-xs p-0.5 rounded">🗑️</button>
+                                  {/* Fix #18 — two-step delete instead of window.confirm */}
+                                  {confirmDeleteIdx === i ? (
+                                    <>
+                                      <button onClick={() => { handleDeleteStep(i); setConfirmDeleteIdx(null) }}
+                                        className="text-[10px] font-semibold text-white bg-red-500 hover:bg-red-600 px-1.5 py-0.5 rounded transition-colors">Supprimer</button>
+                                      <button onClick={() => setConfirmDeleteIdx(null)}
+                                        className="text-[10px] text-gray-400 hover:text-gray-600 px-1 py-0.5 rounded">✕</button>
+                                    </>
+                                  ) : (
+                                    <button onClick={() => setConfirmDeleteIdx(i)} className="text-gray-300 hover:text-red-400 text-xs p-0.5 rounded">🗑️</button>
+                                  )}
                                 </div>
                               </div>
                               {entry.note && entry.note.includes(' · ') ? (
@@ -431,8 +462,8 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                               ) : entry.note ? (
                                 <p className={`text-xs mt-0.5 ${entry.source === 'calendar' ? 'text-gray-400 italic' : 'text-gray-600'}`}>{entry.note}</p>
                               ) : null}
-                              {/* Action links row */}
-                              {(entry.meetingLink || entry.gmailId || (entry.source === 'calendar' && !entry.meetingLink)) && (
+                              {/* Action links row — Fix #10: render extra gmailIds too */}
+                              {(entry.meetingLink || entry.gmailId || entry.gmailIds?.length || (entry.source === 'calendar' && !entry.meetingLink)) && (
                                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                                   {entry.meetingLink && !isPastMeeting && (
                                     <a href={entry.meetingLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
@@ -444,20 +475,20 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                                   {entry.source === 'calendar' && !entry.meetingLink && (
                                     <span className="text-xs text-gray-400">📅 Google Calendar</span>
                                   )}
-                                  {entry.gmailId && (() => {
-                                    const { url, account, uncertain } = gmailMessageUrl(entry.gmailId, entry.receivedBy)
+                                  {(entry.gmailIds || (entry.gmailId ? [entry.gmailId] : [])).map((gId, gi) => {
+                                    const { url, account, uncertain } = gmailMessageUrl(gId, entry.receivedBy)
                                     return (
-                                      <a href={url} target="_blank" rel="noopener noreferrer"
+                                      <a key={gId} href={url} target="_blank" rel="noopener noreferrer"
                                         onClick={e => e.stopPropagation()}
                                         className={`inline-flex items-center gap-1 text-xs transition-colors ${uncertain ? 'text-amber-400 hover:text-amber-600' : 'text-gray-400 hover:text-red-500'}`}
                                         title={uncertain ? '⚠ Compte incertain' : `Ouvrir dans ${account || 'Gmail'}`}>
                                         <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.909 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>
-                                        Voir l'email
+                                        {gi > 0 ? `Email ${gi + 1}` : "Voir l'email"}
                                         {account && <span className="text-[9px] opacity-60">({account.split('@')[0]})</span>}
                                         {uncertain && <span className="text-[9px]">⚠</span>}
                                       </a>
                                     )
-                                  })()}
+                                  })}
                                 </div>
                               )}
                               {getTipsFromNote(entry.note).length > 0 && <StepTips note={entry.note} />}
@@ -557,10 +588,11 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                     )}
                   </div>
                   {job.url && (
+                    // Fix #1 — try/catch: new URL() throws if url is malformed
                     <a href={job.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
                       className="mt-2 flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 hover:underline truncate">
                       <span>🔗</span>
-                      <span className="truncate">{new URL(job.url).hostname.replace('www.', '')}</span>
+                      <span className="truncate">{(() => { try { return new URL(job.url).hostname.replace('www.', '') } catch { return job.url } })()}</span>
                     </a>
                   )}
                 </div>
