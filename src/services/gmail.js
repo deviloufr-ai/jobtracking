@@ -35,10 +35,25 @@ export function getAccessToken(email) {
 }
 
 // ── Deep link helper ──────────────────────────────────────────────────────────
-// Returns a Gmail URL that opens the right account using authuser param
+// Returns { url, account, uncertain } for a Gmail message deep link
+// account = which Gmail account will be used
+// uncertain = true when we're guessing (no receivedBy stored on the entry)
 export function gmailMessageUrl(gmailId, receivedBy) {
-  const auth = receivedBy ? `?authuser=${encodeURIComponent(receivedBy)}` : ''
-  return `https://mail.google.com/mail/${auth}#inbox/${gmailId}`
+  const connectedEmails = Object.keys(accounts)
+
+  // Determine which account to use
+  let account = receivedBy || null
+
+  // Fallback: if only one account is connected, use it
+  if (!account && connectedEmails.length === 1) {
+    account = connectedEmails[0]
+  }
+
+  const uncertain = !receivedBy && connectedEmails.length > 1
+  const auth = account ? `?authuser=${encodeURIComponent(account)}` : ''
+  const url = `https://mail.google.com/mail/${auth}#inbox/${gmailId}`
+
+  return { url, account, uncertain }
 }
 
 function waitForGoogle() {
