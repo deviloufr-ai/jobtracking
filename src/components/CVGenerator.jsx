@@ -285,12 +285,8 @@ const ONE_PAGE_SCRIPT = `
     if(naturalH > usable && usable > 0){
       var scale = usable / naturalH;
       // zoom on <html> shrinks everything AND affects layout → browser sees one page
+      // Do NOT set overflow:hidden — that clips content; zoom alone is enough
       document.documentElement.style.zoom = scale.toFixed(6);
-      // Prevent layout reflow from pushing content past page boundary
-      document.documentElement.style.overflow = 'hidden';
-      document.documentElement.style.height = '297mm';
-      document.body.style.overflow = 'hidden';
-      document.body.style.height = '277mm';
     }
 
     // 3. Wait one frame for repaint before printing

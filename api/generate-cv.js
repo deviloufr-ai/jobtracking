@@ -25,9 +25,7 @@ export default async function handler(req, res) {
         max_tokens: 4000,
         messages: [{
           role: 'user',
-          content: `You are writing a CV on behalf of the candidate — write entirely in FIRST PERSON voice as if you ARE this person. Never use "—" em-dash transitions, never write "de X à Y" narrative constructions, never use passive or impersonal phrasing. Use direct active verbs only (Piloted, Built, Reduced, Led, Delivered…).
-
-Adapt this CV for the "${position}" role at "${company}".
+          content: `You are an expert CV writer and recruiter. Adapt this CV for the "${position}" role at "${company}".
 
 DETECT the language of the job description and write the ENTIRE CV in THAT language.
 French JD → French CV. English JD → English CV.
@@ -36,19 +34,18 @@ STRICT FORMAT RULES — follow EXACTLY:
 1. # Full Name  (h1, one line)
 2. Contact line(s) as plain text  (no # prefix)
 3. ## Section Title  (h2 for each section: Profil, Expérience Professionnelle, Compétences, Formation…)
-4. ### Job Title  (h3 for each position, title only — NO company or dates on this line)
-5. Company Name  (plain text line immediately after h3 — company name only)
+4. ### Job Title  (h3 for each position — title only, NO company or dates on this line)
+5. Company Name  (plain text line immediately after ### — company name only)
 6. Dates | Location  (plain text line — e.g. "Jan 2021 – May 2023 | Remote, Tokyo")
 7. - Bullet point  (one achievement per line, starting with -)
 8. Leave a blank line between each experience block
 
-WRITING RULES:
-- First-person active voice throughout: "Piloted", "Built", "Reduced", not "Responsible for" or "In charge of"
-- No em-dashes (—) as sentence connectors
-- No "de X à Y" or "from X to Y" narrative phrases in bullet points
-- Strong opening verb on every bullet
-- Quantify results where the original CV has numbers
-- Do NOT invent facts, experiences or skills
+CONTENT RULES:
+- Rewrite bullet points to highlight skills required in the job offer
+- Integrate important keywords from the offer into relevant experiences
+- Do NOT invent new experiences or skills
+- Use strong action verbs and quantified results where the original has numbers
+- Adapt the profile/summary paragraph to match the role
 
 ORIGINAL CV:
 ${cvText.slice(0, 4000)}
