@@ -214,20 +214,39 @@ export async function fetchJobEmails(maxResults = null, months = 3) {
   return _fetchJobEmails(first[1].token, maxResults, months)
 }
 
+// Gmail category labels returned by the API
+const GMAIL_CAT_MAP = {
+  CATEGORY_UPDATES: 'updates',
+  CATEGORY_PERSONAL: 'personal',
+  CATEGORY_SOCIAL: 'social',
+  CATEGORY_PROMOTIONS: 'promotions',
+  CATEGORY_FORUMS: 'forums',
+}
+
 async function _fetchJobEmails(token, maxResults, months) {
   const autoLimit = Math.min(months * 60, 500)
   maxResults = maxResults ?? autoLimit
   const days = months * 30
 
+  // Gmail-native category filter — "promotions" = newsletters/job alerts → skip entirely
+  const noPromo = `-category:promotions -category:forums`
   const noAlerts = `-subject:"job alert" -subject:"jobs you might like" -subject:"recommended jobs" -subject:"new jobs for you" -subject:"offres d'emploi" -subject:"nouvelles offres" -subject:"alertes emploi" -subject:"emplois recommandés" -subject:"suggested job" -subject:"candidature suggérée" -subject:"jobs suggested" -subject:"offres suggérées" -subject:"new jobs matching" -subject:"emplois correspondant" -subject:"offre recommandée" -subject:"recommended job for you"`
+  const baseExclude = `${noPromo} ${noAlerts}`
 
   const queries = [
-    `in:inbox (candidature OR postulation OR entretien OR recrutement OR "votre candidature" OR "Votre candidature" OR "votre profil" OR "nous avons bien reçu" OR "suite à votre candidature" OR "nous avons le regret" OR "sans suite" OR "n'avons pas retenu") ${noAlerts} newer_than:${days}d`,
-    `in:all (interview OR "thank you for applying" OR "thanks for applying" OR "thanks for your application" OR "thank you for your application" OR "application received" OR "your application" OR "application viewed" OR "was viewed" OR "viewed your application" OR "we have received" OR "we regret" OR "not selected" OR "not moving forward" OR "job offer" OR "offer letter" OR "next steps" OR "hiring process") ${noAlerts} newer_than:${days}d`,
+    // ① Gmail "Updates" category = transactional — best signal for ATS/confirmations
+    `category:updates (candidature OR application OR entretien OR interview OR recrutement OR recruteur OR recruiter OR "votre candidature" OR "thank you for applying" OR "application received" OR "your application" OR "we regret" OR "not selected" OR "job offer" OR "next steps") newer_than:${days}d`,
+    // ② Personal inbox keywords (FR)
+    `in:inbox category:personal (candidature OR postulation OR entretien OR recrutement OR "votre candidature" OR "nous avons bien reçu" OR "suite à votre candidature" OR "nous avons le regret" OR "sans suite" OR "n'avons pas retenu") newer_than:${days}d`,
+    // ③ Personal inbox keywords (EN)
+    `in:inbox category:personal (interview OR "thank you for applying" OR "thanks for applying" OR "application received" OR "your application" OR "we have received" OR "we regret" OR "not selected" OR "not moving forward" OR "job offer" OR "offer letter" OR "next steps" OR "hiring process") newer_than:${days}d`,
+    // ④ ATS platforms — always relevant regardless of category
     `in:all (from:ashbyhq.com OR from:greenhouse.io OR from:lever.co OR from:workable.com OR from:teamtailor.com OR from:recruitee.com OR from:bamboohr.com OR from:smartrecruiters.com OR from:jobvite.com OR from:icims.com OR from:myworkdayjobs.com OR from:taleo.net) newer_than:${days}d`,
-    `in:all (from:linkedin.com OR from:welcometothejungle.com OR from:apec.fr OR from:indeed.com OR from:monster.fr OR from:cadremploi.fr OR from:hellowork.com OR from:jobteaser.com) (candidature OR application OR entretien OR interview OR "InMail" OR recruteur OR recruiter OR "votre profil" OR "was viewed" OR "viewed") ${noAlerts} newer_than:${days}d`,
-    `in:all from:linkedin.com (subject:"was viewed" OR subject:"application was viewed" OR subject:"viewed your application" OR subject:"a été consultée" OR subject:"votre candidature a" OR subject:"application to") newer_than:${days}d`,
-    `in:inbox (from:talent@ OR from:recrutement@ OR from:rh@ OR from:careers@ OR from:jobs@ OR from:hiring@ OR from:recruiter@) ${noAlerts} newer_than:${days}d`,
+    // ⑤ Job boards — only when accompanied by real action keywords
+    `in:all (from:linkedin.com OR from:welcometothejungle.com OR from:apec.fr OR from:indeed.com OR from:monster.fr OR from:cadremploi.fr OR from:hellowork.com OR from:jobteaser.com) (candidature OR application OR entretien OR interview OR "InMail" OR recruteur OR recruiter OR "was viewed" OR "viewed") ${noAlerts} newer_than:${days}d`,
+    // ⑥ Recruiter-pattern senders in inbox
+    `in:inbox (from:talent@ OR from:recrutement@ OR from:rh@ OR from:careers@ OR from:jobs@ OR from:hiring@ OR from:recruiter@) ${baseExclude} newer_than:${days}d`,
+    // ⑦ Sent emails (outbound applications)
     `in:sent (has:attachment OR subject:candidature OR subject:postulation OR "je postule" OR "je vous contacte" OR "je me permets" OR "I am applying" OR "please find my CV" OR "please find attached my resume") newer_than:${days}d`,
   ]
 
@@ -285,10 +304,19 @@ function extractBody(payload) {
 async function fetchEmailDetail(id, token) {
   try {
     const data = await gmailFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=full`, token)
+    const labelIds = data.labelIds || []
+
+    // Safety net: drop promotional/forum emails even if they slipped through query filters
+    if (labelIds.includes('CATEGORY_PROMOTIONS') || labelIds.includes('CATEGORY_FORUMS')) return null
+
     const headers = data.payload?.headers || []
     const get = (name) => headers.find(h => h.name === name)?.value || ''
     const body = extractBody(data.payload).slice(0, 2000)
-    const isSent = (data.labelIds || []).includes('SENT')
+    const isSent = labelIds.includes('SENT')
+
+    // Detect Gmail category for Claude confidence hint
+    const gmailCategory = Object.entries(GMAIL_CAT_MAP).find(([k]) => labelIds.includes(k))?.[1] || null
+
     return {
       id: data.id,
       subject: get('Subject'),
@@ -297,6 +325,7 @@ async function fetchEmailDetail(id, token) {
       date: get('Date'),
       snippet: data.snippet || '',
       body,
+      gmailCategory, // 'updates' | 'personal' | 'social' | null
     }
   } catch { return null }
 }

@@ -171,7 +171,12 @@ export async function parseEmailsForJobs(emails) {
         const parsed = new Date(e.date)
         if (!isNaN(parsed)) dateStr = parsed.toISOString().split('T')[0]
       } catch {}
-      return `[${j + 1}] De: ${e.from}\nSujet: ${e.subject}\nDate: ${dateStr}\n${bodySection}`
+      // Include Gmail category as a confidence hint for Claude
+      const catHint = e.gmailCategory === 'updates' ? 'CatégGmail: UPDATES (transactionnel — forte probabilité candidature)'
+        : e.gmailCategory === 'personal' ? 'CatégGmail: PERSONAL (contact direct)'
+        : e.gmailCategory === 'social' ? 'CatégGmail: SOCIAL (réseau social — vérifier si vrai recruteur)'
+        : ''
+      return `[${j + 1}] De: ${e.from}\nSujet: ${e.subject}\nDate: ${dateStr}${catHint ? '\n' + catHint : ''}\n${bodySection}`
     }).join('\n\n---\n\n')
 
     const prompt = `Tu analyses des emails pour extraire des candidatures d'emploi.
@@ -233,6 +238,11 @@ IGNORER ABSOLUMENT (confidence: 0) :
 
 Un email confidence >= 55 = candidature réelle (l'utilisateur A POSTULÉ ou un RECRUTEUR a répondu)
 Un email confidence 35-54 = signal de suivi seulement (mise à jour d'une candidature existante)
+
+BONUS CATÉGORIE GMAIL (si CatégGmail est présent) :
+- CatégGmail: UPDATES → +10 à la confidence (email transactionnel = très probablement lié à une candidature)
+- CatégGmail: PERSONAL → +5 à la confidence (contact direct = probablement un recruteur)
+- CatégGmail: SOCIAL → -5 à la confidence (réseau social = souvent notification LinkedIn pas actionnable)
 
 Emails:
 ${emailsText}`
