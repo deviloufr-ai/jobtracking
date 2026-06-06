@@ -167,11 +167,24 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         return jobByCompany.get(normalize(p.company)) || null
       }
 
+      const TERMINAL = ['rejected', 'rejected_ats', 'cancelled', 'archived']
+      const isReApplication = (p) => {
+        const existing = findExisting(p)
+        if (!existing) return false
+        if (!TERMINAL.includes(existing.status)) return false
+        // If the new entry is > 60 days after the existing job's last activity → re-application
+        const lastActivity = existing.history?.length
+          ? new Date(existing.history[existing.history.length - 1].date)
+          : new Date(existing.date)
+        const newDate = new Date(p.date)
+        return (newDate - lastActivity) / (1000 * 60 * 60 * 24) > 60
+      }
+
       // Split into new jobs + updates to existing jobs
       // _updateOnly jobs (low confidence, e.g. "viewed" notifications) never create new entries
-      const newJobs = grouped.filter(p => !findExisting(p) && !p._updateOnly)
+      const newJobs = grouped.filter(p => (!findExisting(p) || isReApplication(p)) && !p._updateOnly)
       const updates = forceImport ? [] : grouped
-        .filter(p => !!findExisting(p))
+        .filter(p => !!findExisting(p) && !isReApplication(p))
         .map(p => {
           const existing = findExisting(p)
           const normNote = s => (s || '').trim().replace(/\s+/g, ' ').slice(0, 80)

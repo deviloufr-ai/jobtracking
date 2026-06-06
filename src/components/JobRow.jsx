@@ -259,7 +259,20 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
         </td>
 
         {/* Date */}
-        <td className="py-3.5 px-4 text-xs text-gray-500 whitespace-nowrap">{formatDate(job.date)}</td>
+        <td className="py-3.5 px-4 text-xs text-gray-500 whitespace-nowrap">
+          {(() => {
+            const lastEntry = job.history?.length
+              ? job.history[job.history.length - 1].date
+              : null
+            const lastDate = lastEntry || job.updatedAt || job.date
+            const showBoth = lastEntry && lastEntry !== job.date
+            return showBoth ? (
+              <span title={`Candidature : ${formatDate(job.date)}`}>
+                {formatDate(lastDate)}
+              </span>
+            ) : formatDate(job.date)
+          })()}
+        </td>
 
         {/* Notes */}
         <td className="py-3.5 px-4 max-w-xs">
