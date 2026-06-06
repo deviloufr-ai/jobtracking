@@ -87,11 +87,17 @@ function expBlock(block, styles) {
   const extra   = block.meta.slice(2)
   const bullets = block.bullets
 
+  // Company + dates on one row: company left, dates right as a pill
+  const metaRow = (company || dates) ? `
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:2px 0 5px;flex-wrap:wrap">
+      ${company ? `<span style="${styles.company}">${fmt(company)}</span>` : '<span></span>'}
+      ${dates   ? `<span style="${styles.dates}">${fmt(dates)}</span>` : ''}
+    </div>` : ''
+
   return `
     <div style="${styles.block}">
       ${block.title ? `<div style="${styles.title}">${fmt(block.title)}</div>` : ''}
-      ${company ? `<div style="${styles.company}">${fmt(company)}</div>` : ''}
-      ${dates   ? `<div style="${styles.dates}">${fmt(dates)}</div>` : ''}
+      ${metaRow}
       ${extra.map(t => `<div style="${styles.p}">${fmt(t)}</div>`).join('')}
       ${bullets.map(t => `<div style="${styles.li}">${styles.bullet} ${fmt(t)}</div>`).join('')}
     </div>`
@@ -102,10 +108,10 @@ function renderModern(md, pic) {
   const { name, contact, sections } = parseCV(md)
 
   const expStyles = {
-    block:   'page-break-inside:avoid;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #f0f4ff',
-    title:   'font-size:10.5pt;font-weight:800;color:#1e293b;margin:0 0 2px;page-break-after:avoid',
-    company: 'font-size:9.5pt;font-weight:700;color:#4f46e5;margin:0 0 1px',
-    dates:   'font-size:8.5pt;color:#94a3b8;font-style:italic;margin:0 0 4px',
+    block:   'page-break-inside:avoid;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #eef2ff',
+    title:   'font-size:11pt;font-weight:900;color:#0f172a;margin:0;page-break-after:avoid;letter-spacing:-0.01em',
+    company: 'font-size:9.5pt;font-weight:700;color:#4f46e5;letter-spacing:0.01em',
+    dates:   'font-size:8pt;color:#fff;background:#94a3b8;border-radius:999px;padding:1px 8px;white-space:nowrap;font-style:normal',
     p:       'font-size:9pt;color:#475569;margin:2px 0',
     li:      'font-size:9.5pt;color:#334155;padding-left:14px;margin:2px 0;line-height:1.5',
     bullet:  '▸',
@@ -142,10 +148,10 @@ function renderClassic(md, pic) {
   const { name, contact, sections } = parseCV(md)
 
   const expStyles = {
-    block:   'page-break-inside:avoid;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #e2e8f0',
-    title:   'font-size:10.5pt;font-weight:800;color:#0f172a;margin:0 0 2px;page-break-after:avoid',
-    company: 'font-size:9.5pt;font-weight:600;color:#334155;margin:0 0 1px',
-    dates:   'font-size:8.5pt;color:#94a3b8;font-style:italic;margin:0 0 4px',
+    block:   'page-break-inside:avoid;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #e2e8f0',
+    title:   'font-size:11pt;font-weight:900;color:#0f172a;margin:0;page-break-after:avoid;letter-spacing:-0.01em',
+    company: 'font-size:9.5pt;font-weight:700;color:#1e40af;letter-spacing:0.01em',
+    dates:   'font-size:8pt;color:#64748b;background:#f1f5f9;border-radius:999px;padding:1px 8px;white-space:nowrap;border:1px solid #e2e8f0',
     p:       'font-size:9pt;color:#475569;margin:2px 0',
     li:      'font-size:9.5pt;color:#1e293b;padding-left:14px;margin:2px 0;line-height:1.5',
     bullet:  '–',
@@ -187,20 +193,20 @@ function renderExecutive(md, pic) {
   const effectiveMain    = sidebarSecs.length > 0 ? mainSecs    : sections.slice(1)
 
   const sidebarExpStyles = {
-    block:   'margin-bottom:9px;padding-bottom:9px;border-bottom:1px solid #2d3f55',
-    title:   'font-size:8.5pt;font-weight:700;color:#e2e8f0;margin:0 0 1px;page-break-after:avoid',
-    company: 'font-size:8pt;font-weight:600;color:#818cf8;margin:0 0 1px',
-    dates:   'font-size:7.5pt;color:#64748b;font-style:italic;margin:0 0 3px',
+    block:   'margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #2d3f55',
+    title:   'font-size:8.5pt;font-weight:800;color:#f1f5f9;margin:0;page-break-after:avoid',
+    company: 'font-size:8pt;font-weight:700;color:#818cf8;letter-spacing:0.01em',
+    dates:   'font-size:7.5pt;color:#475569;background:#0f172a;border-radius:999px;padding:1px 6px;white-space:nowrap;border:1px solid #334155',
     p:       'font-size:8pt;color:#94a3b8;margin:1px 0',
     li:      'font-size:8pt;color:#cbd5e1;padding-left:8px;margin:2px 0;line-height:1.5',
     bullet:  '·',
   }
 
   const mainExpStyles = {
-    block:   'page-break-inside:avoid;margin-bottom:11px;padding-bottom:11px;border-bottom:1px solid #f0f4ff',
-    title:   'font-size:10.5pt;font-weight:800;color:#0f172a;margin:0 0 2px;page-break-after:avoid',
-    company: 'font-size:9.5pt;font-weight:700;color:#4338ca;margin:0 0 1px',
-    dates:   'font-size:8.5pt;color:#94a3b8;font-style:italic;margin:0 0 4px',
+    block:   'page-break-inside:avoid;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #eef2ff',
+    title:   'font-size:11pt;font-weight:900;color:#0f172a;margin:0;page-break-after:avoid;letter-spacing:-0.01em',
+    company: 'font-size:9.5pt;font-weight:700;color:#4338ca;letter-spacing:0.01em',
+    dates:   'font-size:8pt;color:#fff;background:#94a3b8;border-radius:999px;padding:1px 8px;white-space:nowrap',
     p:       'font-size:9pt;color:#475569;margin:2px 0',
     li:      'font-size:9.5pt;color:#1e293b;padding-left:12px;margin:2px 0;line-height:1.5',
     bullet:  '▹',
