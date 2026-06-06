@@ -113,10 +113,11 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
       // Fix #2 — flip dropdown up when near bottom of viewport
       const dropdownH = 11 * 34 // ~11 statuses × 34px each
       const spaceBelow = window.innerHeight - rect.bottom
+      // position:fixed → coordinates are viewport-relative, no scrollY offset needed
       const top = spaceBelow < dropdownH + 12
-        ? rect.top + window.scrollY - dropdownH - 4
-        : rect.bottom + window.scrollY + 4
-      setMenuPos({ top, left: rect.left + window.scrollX })
+        ? rect.top - dropdownH - 4
+        : rect.bottom + 4
+      setMenuPos({ top, left: rect.left })
     }
     setShowStatusMenu(v => !v)
   }
