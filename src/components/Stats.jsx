@@ -51,35 +51,10 @@ function RadialProgress({ value, max = 100, size = 80, color = '#6366f1', label 
   )
 }
 
-// Mobile-only collapsible wrapper — on sm+ always expanded
-function Card({ title, summary, children }) {
-  const [open, setOpen] = useState(false)
+function Card({ children }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
-      {/* Header — always visible, clickable on mobile */}
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="sm:cursor-default flex items-center justify-between px-5 pt-4 pb-3 sm:pb-0 w-full text-left"
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{title}</span>
-          {/* Summary chips — visible only when collapsed (mobile) */}
-          {!open && (
-            <span className="sm:hidden text-xs font-semibold text-gray-700">{summary}</span>
-          )}
-        </div>
-        {/* Chevron — mobile only */}
-        <svg
-          className={`sm:hidden w-4 h-4 text-gray-300 transition-transform duration-200 flex-shrink-0 ${open ? 'rotate-180' : ''}`}
-          fill="none" stroke="currentColor" viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      {/* Content — hidden on mobile when closed, always visible on sm+ */}
-      <div className={`px-5 pb-5 flex flex-col gap-3 ${open ? 'block' : 'hidden'} sm:block`}>
-        {children}
-      </div>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col p-5 gap-3">
+      {children}
     </div>
   )
 }
@@ -120,11 +95,31 @@ export default function Stats({ jobs }) {
   const thisWeek = jobs.filter(j => (new Date() - new Date(j.date)) / 86400000 <= 7).length
   const rateColor = responseRate >= 30 ? '#10b981' : responseRate >= 15 ? '#f59e0b' : '#6366f1'
 
+  const [open, setOpen] = useState(false)
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
+    <div className="flex flex-col gap-0">
+      {/* Mobile toggle header */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="sm:hidden flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-3 shadow-sm w-full text-left"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Statistiques</span>
+          <span className="text-xs font-bold text-gray-700">{total} candidatures · {responseRate}% réponses · {thisWeek} cette semaine</span>
+        </div>
+        <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0 ${open ? 'rotate-180' : ''}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {/* Grid — always visible on sm+, toggled on mobile */}
+      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 sm:mt-0 ${open ? 'block' : 'hidden'} sm:grid`}>
 
       {/* ── Card 1 — Pipeline ─────────────────────────────────── */}
-      <Card title="Pipeline" summary={`${total} actives`}>
+      <Card>
+        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Pipeline</span>
         <div className="flex items-baseline gap-2">
           <span className="text-5xl font-extrabold text-gray-800 leading-none">{total}</span>
           <span className="text-sm text-gray-400">candidatures actives</span>
@@ -151,7 +146,8 @@ export default function Stats({ jobs }) {
       </Card>
 
       {/* ── Card 2 — Taux de réponse ──────────────────────────── */}
-      <Card title="Taux de réponse" summary={`${responseRate}% réponses`}>
+      <Card>
+        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Taux de réponse</span>
         <div className="flex items-center gap-4">
           <RadialProgress value={responseRate} max={100} size={80} color={rateColor} label={`${responseRate}%`} />
           <div className="flex-1 flex flex-col gap-2">
@@ -182,7 +178,11 @@ export default function Stats({ jobs }) {
       </Card>
 
       {/* ── Card 3 — Activité 7j ──────────────────────────────── */}
-      <Card title="Activité 7j" summary={`${thisWeek} cette semaine`}>
+      <Card>
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Activité 7j</span>
+          <span className="text-[11px] text-indigo-600 font-semibold">{thisWeek} ajoutées</span>
+        </div>
         <div className="flex items-baseline gap-2">
           <span className="text-5xl font-extrabold text-indigo-600 leading-none">{thisWeek}</span>
           <span className="text-sm text-gray-400">cette semaine</span>
@@ -198,7 +198,8 @@ export default function Stats({ jobs }) {
       </Card>
 
       {/* ── Card 4 — Répartition ──────────────────────────────── */}
-      <Card title="Répartition" summary={`${byStatus.length} statuts`}>
+      <Card>
+        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Répartition</span>
         <div className="flex flex-col gap-2.5">
           {byStatus.length === 0 && <span className="text-xs text-gray-300">—</span>}
           {byStatus.map(s => {
@@ -224,6 +225,7 @@ export default function Stats({ jobs }) {
         </div>
       </Card>
 
+      </div>{/* end grid */}
     </div>
   )
 }
