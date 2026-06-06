@@ -333,12 +333,17 @@ async function fetchEmailDetail(id, token) {
       // Job board alert/newsletter specific senders only — keep ATS no-reply (greenhouse, lever, etc.)
       'notification@emails.hellowork', 'jobalerts@', 'jobalertes@',
       'newsletter@', 'digest@', 'news@', 'mailer@', 'info@emails.',
+      // Indeed match/recommendation emails (not real applications)
+      'donotreply@match.indeed.com', '@match.indeed.com', 'match@indeed.com',
+      'suggested@indeed.com', 'recommendations@indeed.com',
     ]
     const JOB_ALERT_SUBJECTS = [
       'nouvelles offres', 'new jobs', 'offres d\'emploi', 'offres recommand',
       'emplois recommand', 'job alert', 'jobs you might like', 'candidatures suggest',
       'suggested job', 'offres suggest', 'new jobs matching', 'emplois correspondant',
       'offre recommand', 'recommended job', 'jobs matching your', 'recrute un ', 'recrute une ',
+      'votre parcours pourrait correspondre', 'pourrait correspondre pour', 'correspond à votre profil',
+      'your profile matches', 'matches your experience', 'job match',
     ]
     const isJobAlert = JOB_ALERT_SENDERS.some(s => fromRaw.includes(s))
       || JOB_ALERT_SUBJECTS.some(s => subjectRaw.includes(s))
