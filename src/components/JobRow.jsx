@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { enrichJobTimeline } from '../services/enrichTimeline'
 import AdvicePanel from './AdvicePanel'
 import { STATUSES, getStatus } from '../hooks/useJobs'
@@ -73,6 +73,23 @@ const NOTE_TIPS = {
 
 export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onGenerateCV, onToggleFavorite }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
+  const statusBtnRef = useRef(null)
+
+  const openStatusMenu = (e) => {
+    e.stopPropagation()
+    const rect = statusBtnRef.current?.getBoundingClientRect()
+    if (rect) setMenuPos({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX })
+    setShowStatusMenu(v => !v)
+  }
+
+  // Close on scroll
+  useEffect(() => {
+    if (!showStatusMenu) return
+    const close = () => setShowStatusMenu(false)
+    window.addEventListener('scroll', close, true)
+    return () => window.removeEventListener('scroll', close, true)
+  }, [showStatusMenu])
   const [expanded, setExpanded] = useState(false)
   const [showAddStep, setShowAddStep] = useState(false)
   const [enriching, setEnriching] = useState(false)
@@ -230,35 +247,37 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
         </td>
 
         {/* Status */}
-        <td className={`py-3.5 px-4 ${showStatusMenu ? 'relative z-[110]' : ''}`} onClick={e => e.stopPropagation()}>
-          <div className="relative">
-            <button
-              onClick={() => setShowStatusMenu(v => !v)}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer whitespace-nowrap ${status.color} hover:opacity-80 transition-opacity`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
-              {status.label}
-              <span className="text-xs opacity-60">▾</span>
-            </button>
-            {showStatusMenu && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowStatusMenu(false)} />
-                <div className="absolute top-full left-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-[100] min-w-[180px]">
-                  {STATUSES.map(s => (
-                    <button
-                      key={s.key}
-                      onClick={() => { onStatusChange(job.id, s.key); setShowStatusMenu(false) }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-50 text-left ${s.key === job.status ? 'font-semibold' : ''}`}
-                    >
-                      <span className={`w-2 h-2 rounded-full ${s.dot}`} />
-                      {s.label}
-                      {s.key === job.status && <span className="ml-auto text-indigo-500">✓</span>}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+        <td className="py-3.5 px-4" onClick={e => e.stopPropagation()}>
+          <button
+            ref={statusBtnRef}
+            onClick={openStatusMenu}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer whitespace-nowrap ${status.color} hover:opacity-80 transition-opacity`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
+            {status.label}
+            <span className="text-xs opacity-60">▾</span>
+          </button>
+          {showStatusMenu && typeof document !== 'undefined' && (
+            <>
+              <div className="fixed inset-0 z-[90]" onClick={() => setShowStatusMenu(false)} />
+              <div
+                className="fixed bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-[200] min-w-[180px]"
+                style={{ top: menuPos.top, left: menuPos.left }}
+              >
+                {STATUSES.map(s => (
+                  <button
+                    key={s.key}
+                    onClick={() => { onStatusChange(job.id, s.key); setShowStatusMenu(false) }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-50 text-left ${s.key === job.status ? 'font-semibold' : ''}`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${s.dot}`} />
+                    {s.label}
+                    {s.key === job.status && <span className="ml-auto text-indigo-500">✓</span>}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </td>
 
         {/* Date */}
