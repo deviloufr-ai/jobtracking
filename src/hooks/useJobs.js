@@ -116,10 +116,18 @@ const STATUS_PRIORITY = {
 }
 
 export function deduplicateJobs(jobs) {
-  const groups = new Map()
+  const GENERIC_POS_SET = new Set(['unknown', 'unknown position', 'poste non précisé', 'non spécifié', 'inconnu', ''])
+  const normPos = p => (p || '').toLowerCase().trim()
+  const isGenericPos = p => GENERIC_POS_SET.has(normPos(p))
 
+  // Group by company + normalized position so different roles at the same company
+  // are never merged. Generic/unknown positions fall back to company-only key so they
+  // can still be deduped against a real position from the same import.
+  const groups = new Map()
   for (const job of jobs) {
-    const key = normalizeCompany(job.company)
+    const co = normalizeCompany(job.company)
+    const pos = normPos(job.position)
+    const key = isGenericPos(job.position) ? co : `${co}|||${pos}`
     if (!groups.has(key)) {
       groups.set(key, [job])
     } else {
@@ -141,23 +149,23 @@ export function deduplicateJobs(jobs) {
       return new Date(b.date) - new Date(a.date)
     })
 
-    // Don't merge re-applications: terminal status (rejected/cancelled) + newer entry > 30 days later
+    // Guard: if multiple distinct real positions slipped into the same bucket
+    // (e.g. two generic-position jobs that resolved differently), keep them separate.
+    const realPositions = [...new Set(group.map(j => normPos(j.position)).filter(p => !GENERIC_POS_SET.has(p)))]
+    if (realPositions.length > 1) {
+      group.forEach(j => result.push(j))
+      continue
+    }
+
+    // Don't merge re-applications: same role, terminal status, then new application > 60 days later
     const TERMINAL = ['rejected', 'rejected_ats', 'cancelled']
-    const GENERIC_POS_SET = new Set(['unknown', 'unknown position', 'poste non précisé', 'non spécifié', 'inconnu', ''])
-    const normPos = p => (p || '').toLowerCase().trim()
     const hasTerminal = group.some(j => TERMINAL.includes(j.status))
     if (hasTerminal && group.length > 1) {
       const dates = group.map(j => new Date(j.date).getTime())
       const span = (Math.max(...dates) - Math.min(...dates)) / (1000 * 60 * 60 * 24)
-      if (span > 30) {
-        // Also check if positions differ (different roles = definitely separate)
-        const realPositions = [...new Set(group.map(j => normPos(j.position)).filter(p => !GENERIC_POS_SET.has(p)))]
-        const isDifferentRole = realPositions.length > 1
-        // Separate if: >30 days gap, OR different real positions
-        if (isDifferentRole || span > 60) {
-          group.forEach(j => result.push(j))
-          continue
-        }
+      if (span > 60) {
+        group.forEach(j => result.push(j))
+        continue
       }
     }
 
