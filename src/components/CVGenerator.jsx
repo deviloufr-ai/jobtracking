@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const IS_DEV = import.meta.env.DEV
 
@@ -36,10 +36,14 @@ function parseCV(raw) {
   return { name, contact: contact.join(' · '), sections }
 }
 
+// ── Profile picture HTML snippet ───────────────────────────────────────────────
+const picHTML = (src, size = 80, border = 'rgba(255,255,255,0.35)') =>
+  src ? `<img src="${src}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;border:3px solid ${border};flex-shrink:0" />` : ''
+
 // ── Simple renderer (used for "before" original CV panel) ─────────────────────
 function renderSimple(md) {
   return (md || '').split('\n').map(line => {
-    if (line.startsWith('# ')) return `<h1 style="font-size:16pt;font-weight:800;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:5px;margin:0 0 10px">${line.slice(2)}</h1>`
+    if (line.startsWith('# '))  return `<h1 style="font-size:16pt;font-weight:800;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:5px;margin:0 0 10px">${line.slice(2)}</h1>`
     if (line.startsWith('## ')) return `<h2 style="font-size:10pt;font-weight:700;color:#4f46e5;margin:14px 0 4px;text-transform:uppercase;letter-spacing:0.08em">${line.slice(3)}</h2>`
     if (line.startsWith('### ')) return `<h3 style="font-size:10pt;font-weight:700;color:#1e293b;margin:7px 0 2px">${line.slice(4)}</h3>`
     if (line.startsWith('- ')) return `<div style="font-size:9.5pt;padding-left:12px;margin:2px 0;color:#334155">• ${fmt(line.slice(2))}</div>`
@@ -48,44 +52,46 @@ function renderSimple(md) {
   }).join('')
 }
 
-// ── Template: MODERN ──────────────────────────────────────────────────────────
-// Gradient indigo header · left accent bar on sections · clean bullets
-function renderModern(md) {
+// ── Template: MODERN ─────────────────────────────────────────────────────────
+function renderModern(md, pic) {
   const { name, contact, sections } = parseCV(md)
   const header = `
-    <div style="background:linear-gradient(135deg,#4338ca 0%,#6366f1 60%,#818cf8 100%);padding:32px 36px 28px;margin:0">
-      <div style="font-size:23pt;font-weight:900;color:#fff;letter-spacing:-0.02em;line-height:1.1;margin-bottom:8px">${name}</div>
-      ${contact ? `<div style="font-size:8.5pt;color:#c7d2fe;letter-spacing:0.03em">${contact}</div>` : ''}
+    <div style="background:linear-gradient(135deg,#4338ca 0%,#6366f1 60%,#818cf8 100%);padding:28px 32px;display:flex;align-items:center;justify-content:space-between;gap:20px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:22pt;font-weight:900;color:#fff;letter-spacing:-0.02em;line-height:1.15;margin-bottom:7px">${name}</div>
+        ${contact ? `<div style="font-size:8.5pt;color:#c7d2fe;letter-spacing:0.03em">${contact}</div>` : ''}
+      </div>
+      ${picHTML(pic, 84, 'rgba(255,255,255,0.3)')}
     </div>`
 
   const body = sections.map(s => {
     const items = s.items.map(it => {
       if (it.type === 'h3') return `<div style="font-size:10pt;font-weight:700;color:#1e293b;margin:10px 0 1px;page-break-after:avoid">${fmt(it.text)}</div>`
       if (it.type === 'p')  return `<div style="font-size:9pt;color:#64748b;margin:1px 0;font-style:italic">${fmt(it.text)}</div>`
-      if (it.type === 'li') return `<div style="font-size:9.5pt;color:#334155;padding-left:14px;margin:3px 0;line-height:1.55">▸ ${fmt(it.text)}</div>`
+      if (it.type === 'li') return `<div style="font-size:9.5pt;color:#334155;padding-left:14px;margin:3px 0;line-height:1.5">▸ ${fmt(it.text)}</div>`
       return ''
     }).join('')
     return `
-      <div style="page-break-inside:avoid;margin-bottom:6px">
-        <div style="display:flex;align-items:center;gap:10px;margin:18px 0 8px;page-break-after:avoid">
-          <div style="width:4px;height:18px;background:linear-gradient(180deg,#6366f1,#818cf8);border-radius:2px;flex-shrink:0"></div>
-          <div style="font-size:8.5pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.1em">${s.title}</div>
+      <div style="page-break-inside:avoid;margin-bottom:4px">
+        <div style="display:flex;align-items:center;gap:10px;margin:16px 0 7px;page-break-after:avoid">
+          <div style="width:4px;height:16px;background:linear-gradient(180deg,#6366f1,#818cf8);border-radius:2px;flex-shrink:0"></div>
+          <div style="font-size:8pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.1em">${s.title}</div>
           <div style="flex:1;height:1px;background:#e0e7ff"></div>
         </div>
         ${items}
       </div>`
   }).join('')
 
-  return `${header}<div style="padding:4px 36px 32px">${body}</div>`
+  return `${header}<div style="padding:4px 32px 28px">${body}</div>`
 }
 
 // ── Template: CLASSIC ─────────────────────────────────────────────────────────
-// Centered name · thin horizontal rules · timeless black & slate
-function renderClassic(md) {
+function renderClassic(md, pic) {
   const { name, contact, sections } = parseCV(md)
   const header = `
-    <div style="text-align:center;padding:32px 36px 20px;border-bottom:2.5px solid #0f172a">
-      <div style="font-size:22pt;font-weight:900;color:#0f172a;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:8px">${name}</div>
+    <div style="text-align:center;padding:28px 36px 18px;border-bottom:2.5px solid #0f172a">
+      ${pic ? `<div style="display:flex;justify-content:center;margin-bottom:12px">${picHTML(pic, 76, '#94a3b8')}</div>` : ''}
+      <div style="font-size:21pt;font-weight:900;color:#0f172a;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:7px">${name}</div>
       ${contact ? `<div style="font-size:8.5pt;color:#64748b;letter-spacing:0.06em">${contact}</div>` : ''}
     </div>`
 
@@ -93,36 +99,33 @@ function renderClassic(md) {
     const items = s.items.map(it => {
       if (it.type === 'h3') return `<div style="font-size:10pt;font-weight:700;color:#0f172a;margin:9px 0 1px;page-break-after:avoid">${fmt(it.text)}</div>`
       if (it.type === 'p')  return `<div style="font-size:9pt;color:#64748b;margin:1px 0;font-style:italic">${fmt(it.text)}</div>`
-      if (it.type === 'li') return `<div style="font-size:9.5pt;color:#1e293b;padding-left:14px;margin:3px 0;line-height:1.55">– ${fmt(it.text)}</div>`
+      if (it.type === 'li') return `<div style="font-size:9.5pt;color:#1e293b;padding-left:14px;margin:3px 0;line-height:1.5">– ${fmt(it.text)}</div>`
       return ''
     }).join('')
     return `
       <div style="page-break-inside:avoid;margin-bottom:4px">
-        <div style="display:flex;align-items:center;gap:12px;margin:18px 0 8px;page-break-after:avoid">
-          <div style="font-size:8.5pt;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.12em;white-space:nowrap">${s.title}</div>
+        <div style="display:flex;align-items:center;gap:12px;margin:16px 0 7px;page-break-after:avoid">
+          <div style="font-size:8pt;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.12em;white-space:nowrap">${s.title}</div>
           <div style="flex:1;height:1px;background:#94a3b8"></div>
         </div>
         ${items}
       </div>`
   }).join('')
 
-  return `${header}<div style="padding:4px 36px 32px">${body}</div>`
+  return `${header}<div style="padding:4px 36px 28px">${body}</div>`
 }
 
-// ── Template: EXECUTIVE (two-column with dark sidebar) ────────────────────────
-// Dark navy sidebar for skills/education · white main for experience
-const SIDEBAR_KEYS = ['compétences', 'competences', 'skills', 'formation', 'education',
-  'langues', 'languages', 'certifications', 'outils', 'tools', 'atouts', 'intérêts', 'interests', 'profil', 'résumé']
-const isSidebarSection = s => SIDEBAR_KEYS.some(k => s.title.toLowerCase().includes(k))
+// ── Template: EXECUTIVE (two-column sidebar) ──────────────────────────────────
+const SIDEBAR_KEYS = ['compétences','competences','skills','formation','education',
+  'langues','languages','certifications','outils','tools','atouts','intérêts','interests','profil','résumé','summary']
+const isSidebarSec = s => SIDEBAR_KEYS.some(k => s.title.toLowerCase().includes(k))
 
-function renderExecutive(md) {
+function renderExecutive(md, pic) {
   const { name, contact, sections } = parseCV(md)
-  const sidebarSecs = sections.filter(isSidebarSection)
-  const mainSecs    = sections.filter(s => !isSidebarSection(s))
-
-  // If nothing ends up in sidebar, put Profil there
+  const sidebarSecs = sections.filter(isSidebarSec)
+  const mainSecs    = sections.filter(s => !isSidebarSec(s))
   const effectiveSidebar = sidebarSecs.length > 0 ? sidebarSecs : sections.slice(0, 1)
-  const effectiveMain    = sidebarSecs.length > 0 ? mainSecs : sections.slice(1)
+  const effectiveMain    = sidebarSecs.length > 0 ? mainSecs    : sections.slice(1)
 
   const sidebarSection = s => {
     const items = s.items.map(it => {
@@ -132,8 +135,8 @@ function renderExecutive(md) {
       return ''
     }).join('')
     return `
-      <div style="margin-bottom:18px">
-        <div style="font-size:7pt;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:#818cf8;padding-bottom:5px;border-bottom:1px solid #334155;margin-bottom:7px">${s.title}</div>
+      <div style="margin-bottom:16px">
+        <div style="font-size:7pt;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:#818cf8;padding-bottom:5px;border-bottom:1px solid #334155;margin-bottom:6px">${s.title}</div>
         ${items}
       </div>`
   }
@@ -142,27 +145,29 @@ function renderExecutive(md) {
     const items = s.items.map(it => {
       if (it.type === 'h3') return `<div style="font-size:10pt;font-weight:700;color:#0f172a;margin:9px 0 1px;page-break-after:avoid">${fmt(it.text)}</div>`
       if (it.type === 'p')  return `<div style="font-size:9pt;color:#64748b;margin:1px 0;font-style:italic">${fmt(it.text)}</div>`
-      if (it.type === 'li') return `<div style="font-size:9.5pt;color:#1e293b;padding-left:12px;margin:3px 0;line-height:1.55">▹ ${fmt(it.text)}</div>`
+      if (it.type === 'li') return `<div style="font-size:9.5pt;color:#1e293b;padding-left:12px;margin:3px 0;line-height:1.5">▹ ${fmt(it.text)}</div>`
       return ''
     }).join('')
     return `
       <div style="page-break-inside:avoid;margin-bottom:4px">
-        <div style="font-size:8pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.1em;margin:16px 0 7px;padding-bottom:4px;border-bottom:1.5px solid #e0e7ff;page-break-after:avoid">${s.title}</div>
+        <div style="font-size:8pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.1em;margin:16px 0 6px;padding-bottom:4px;border-bottom:1.5px solid #e0e7ff;page-break-after:avoid">${s.title}</div>
         ${items}
       </div>`
   }
 
   return `
-    <table style="width:100%;border-collapse:collapse;min-height:100%">
+    <table style="width:100%;border-collapse:collapse;table-layout:fixed">
+      <colgroup><col style="width:205px"/><col/></colgroup>
       <tr>
-        <td style="width:210px;background:#1e293b;padding:28px 20px;vertical-align:top">
-          <div style="margin-bottom:24px">
-            <div style="font-size:13pt;font-weight:900;color:#fff;line-height:1.2;margin-bottom:6px">${name}</div>
+        <td style="background:#1e293b;padding:26px 18px 28px;vertical-align:top">
+          ${pic ? `<div style="display:flex;justify-content:center;margin-bottom:16px">${picHTML(pic, 72, 'rgba(255,255,255,0.2)')}</div>` : ''}
+          <div style="margin-bottom:22px">
+            <div style="font-size:12.5pt;font-weight:900;color:#fff;line-height:1.2;margin-bottom:6px">${name}</div>
             ${contact ? `<div style="font-size:7.5pt;color:#94a3b8;line-height:1.8">${contact.split(' · ').join('<br>')}</div>` : ''}
           </div>
           ${effectiveSidebar.map(sidebarSection).join('')}
         </td>
-        <td style="padding:28px 28px 32px;vertical-align:top">
+        <td style="padding:26px 26px 28px;vertical-align:top;background:#fff">
           ${effectiveMain.map(mainSection).join('')}
         </td>
       </tr>
@@ -171,47 +176,85 @@ function renderExecutive(md) {
 
 // ── Template registry ─────────────────────────────────────────────────────────
 const TEMPLATES = [
-  { id: 'modern',    label: 'Moderne',    icon: '🎨', desc: 'Header dégradé indigo' },
-  { id: 'classic',   label: 'Classique',  icon: '📄', desc: 'Sobre, centré, intemporel' },
-  { id: 'executive', label: 'Executive',  icon: '💼', desc: 'Sidebar sombre, deux colonnes' },
+  { id: 'modern',    label: 'Moderne',   icon: '🎨', desc: 'Header dégradé indigo' },
+  { id: 'classic',   label: 'Classique', icon: '📄', desc: 'Sobre, centré, intemporel' },
+  { id: 'executive', label: 'Executive', icon: '💼', desc: 'Sidebar sombre, 2 colonnes' },
 ]
 
-function renderCV(md, templateId) {
-  if (templateId === 'classic')   return renderClassic(md)
-  if (templateId === 'executive') return renderExecutive(md)
-  return renderModern(md)
+function renderCV(md, templateId, pic) {
+  if (templateId === 'classic')   return renderClassic(md, pic)
+  if (templateId === 'executive') return renderExecutive(md, pic)
+  return renderModern(md, pic)
 }
 
-// ── Print CSS (handles page breaks & base reset) ───────────────────────────────
-function getPrintCSS(templateId) {
-  const base = `
-    @page { margin: 12mm 14mm; size: A4; }
-    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background: #fff; }
-    h1,h2,h3,h4 { page-break-after: avoid; }
-    table { page-break-inside: auto; }
-    tr    { page-break-inside: avoid; }
-  `
-  return base
-}
+// ── Auto-fit to one page: injected script inside print window ─────────────────
+// Uses CSS zoom (Chrome) + transform scale fallback to shrink content to A4 height
+const ONE_PAGE_SCRIPT = `
+<script>
+(function(){
+  function fit(){
+    // A4 = 297mm; margins = 12mm top+bottom each → usable ≈ 273mm
+    // At 96dpi: 1mm = 3.7795px → 273mm ≈ 1032px
+    var usable = Math.round(273 * 3.7795);
+    var h = document.body.scrollHeight;
+    if(h <= usable) return;
+    var s = usable / h;
+    // zoom works best in Chrome/Edge for printing
+    document.body.style.zoom = s;
+    // transform fallback for Firefox/Safari
+    if(!('zoom' in document.body.style)){
+      document.body.style.transform='scale('+s+')';
+      document.body.style.transformOrigin='top left';
+      document.body.style.width=Math.ceil(100/s)+'%';
+      document.body.style.overflow='hidden';
+    }
+  }
+  if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',fit);}else{fit();}
+  window.addEventListener('load',function(){fit();setTimeout(function(){window.print();window.close();},250);});
+})();
+<\/script>`
+
+const BASE_PRINT_CSS = `
+  @page { margin:12mm 14mm; size:A4 portrait; }
+  *{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ margin:0; padding:0; font-family:Arial,Helvetica,sans-serif; background:#fff; }
+  img{ display:block; }
+  table{ border-collapse:collapse; width:100%; }
+`
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function CVGenerator({ cv, job, onBack }) {
-  const [step, setStep] = useState('fetching_jd')
-  const [jdText, setJdText] = useState('')
-  const [jdError, setJdError] = useState(null)
+  const [step, setStep]             = useState('fetching_jd')
+  const [jdText, setJdText]         = useState('')
+  const [jdError, setJdError]       = useState(null)
   const [generatedCV, setGeneratedCV] = useState('')
   const [editableCV, setEditableCV] = useState('')
-  const [isEditing, setIsEditing] = useState(false)
-  const [viewMode, setViewMode] = useState('split')
-  const [template, setTemplate] = useState('modern')
+  const [isEditing, setIsEditing]   = useState(false)
+  const [viewMode, setViewMode]     = useState('split')
+  const [template, setTemplate]     = useState('modern')
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
+  const [profilePic, setProfilePic] = useState(() => localStorage.getItem('cv_profile_picture') || null)
+  const picInputRef = useRef()
 
   useEffect(() => { fetchJobDescription() }, [])
 
+  // ── Profile picture upload ────────────────────────────────────────────────
+  const handlePicUpload = e => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => {
+      const b64 = ev.target.result
+      setProfilePic(b64)
+      localStorage.setItem('cv_profile_picture', b64)
+    }
+    reader.readAsDataURL(file)
+  }
+  const removePic = () => { setProfilePic(null); localStorage.removeItem('cv_profile_picture') }
+
+  // ── JD fetch ──────────────────────────────────────────────────────────────
   const fetchJobDescription = async () => {
-    setStep('fetching_jd')
-    setJdError(null)
+    setStep('fetching_jd'); setJdError(null)
     if (job.jobDescription) { setJdText(job.jobDescription); setStep('ready_to_generate'); return }
     if (!job.url) { setJdText(job.notes || ''); setStep('ready_to_generate'); return }
     if (IS_DEV) {
@@ -219,51 +262,50 @@ export default function CVGenerator({ cv, job, onBack }) {
       setStep('ready_to_generate'); return
     }
     try {
-      const res = await fetch('/api/fetch-jd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: job.url }) })
+      const res  = await fetch('/api/fetch-jd', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({url:job.url}) })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      setJdText(data.text)
-      setStep('ready_to_generate')
-    } catch (e) { setJdError(e.message); setStep('manual_jd') }
+      setJdText(data.text); setStep('ready_to_generate')
+    } catch(e) { setJdError(e.message); setStep('manual_jd') }
   }
 
+  // ── Generate ──────────────────────────────────────────────────────────────
   const generateCV = async () => {
     setStep('generating')
     try {
       if (IS_DEV) {
-        const mock = `# Alexandre Leblanc\nParis, France · alexandre@email.com · linkedin.com/in/devilalex\n\n## Profil\nProduct Manager Senior avec 18 ans d'expérience internationale en B2B SaaS, gaming et IoT. Expert en pilotage de roadmap produit orienté OKR, A/B testing et métriques de rétention (NPS +32%, DAU +40%). Trilingue FR/EN/JP.\n\n## Expérience\n\n### Senior Product Manager — Datachain\nMai 2023 – Juin 2025 | Remote (Tokyo)\n- Piloté l'implémentation complète d'un pont inter-chaînes Web3/DeFi — discovery, rollout et suivi d'adoption\n- Structuré les interviews clients, recherche concurrentielle et priorisation data-driven des features\n- Coordonné les équipes cross-fonctionnelles (Engineering, Product, Marketing)\n- Opéré 100% en remote asynchrone, partenariat direct avec la CTO\n\n### Program Manager Ads — SmartNews\nJanvier 2021 – Mai 2023 | Remote (Tokyo)\n- Piloté les programmes produit globaux Ads (20M+ MAU), reportage direct au VP Product\n- Analyse data pour identifier pain points ; traduit les insights en requirements engineering\n- Implémenté les frameworks A/B testing et cohort analysis\n\n### Chef de Projet — Hakuhodo I-Studio\nJanvier 2017 – Janvier 2020 | Tokyo\n- Développement end-to-end de l'app IoT Pechat ; 0 à 120K unités vendues\n- Lancement US avec +15% revenue en 12 mois · Good Design Award 2019\n\n## Compétences\n- **Produit** : OKR, roadmap, A/B testing, NPS, DAU/MAU, funnel analysis\n- **Tech** : SQL, Jira, Figma, Confluence, analytics\n- **Méthodo** : Agile/Scrum, RICE, user interviews, discovery\n\n## Formation\nArts & Métiers — Ingénieur généraliste (2012)\nJLPT N1 · Trilingue FR/EN/JP`
+        const mock = `# Alexandre Leblanc\nParis, France · alexandre@email.com · linkedin.com/in/devilalex\n\n## Profil\nProduct Manager Senior avec 18 ans d'expérience internationale en B2B SaaS, gaming et IoT. Expert en pilotage de roadmap produit orienté OKR, A/B testing et métriques de rétention. Trilingue FR/EN/JP.\n\n## Expérience\n\n### Senior Product Manager — Datachain\nMai 2023 – Juin 2025 | Remote (Tokyo)\n- Piloté l'implémentation d'un pont inter-chaînes Web3/DeFi — discovery, rollout et suivi d'adoption\n- Structuré les interviews clients, recherche concurrentielle et priorisation data-driven\n- Coordonné les équipes cross-fonctionnelles (Engineering, Product, Marketing)\n\n### Program Manager Ads — SmartNews\nJanvier 2021 – Mai 2023 | Remote (Tokyo)\n- Piloté les programmes produit globaux Ads (20M+ MAU)\n- Analyse data pour identifier pain points ; traduit les insights en requirements\n- Frameworks A/B testing et cohort analysis\n\n### Chef de Projet — Hakuhodo I-Studio\nJanvier 2017 – Janvier 2020 | Tokyo\n- Développement end-to-end de l'app IoT Pechat ; 0 à 120K unités vendues\n- Lancement US avec +15% revenue · Good Design Award 2019\n\n## Compétences\n- **Produit** : OKR, roadmap, A/B testing, NPS, DAU/MAU, funnel\n- **Tech** : SQL, Jira, Figma, Confluence, analytics\n- **Méthodo** : Agile/Scrum, RICE, user interviews\n\n## Formation\nArts & Métiers — Ingénieur généraliste (2012)\nJLPT N1 · Trilingue FR/EN/JP`
         setGeneratedCV(mock); setEditableCV(mock); setStep('preview'); return
       }
-      const res = await fetch('/api/generate-cv', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cvText: cv.text, jobDescription: jdText, company: job.company, position: job.position })
-      })
+      const res  = await fetch('/api/generate-cv', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({cvText:cv.text,jobDescription:jdText,company:job.company,position:job.position}) })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setGeneratedCV(data.cv); setEditableCV(data.cv); setStep('preview')
-    } catch (e) { setJdError(e.message); setStep('ready_to_generate') }
+    } catch(e) { setJdError(e.message); setStep('ready_to_generate') }
   }
 
+  // ── Export PDF (one page auto-fit) ────────────────────────────────────────
   const handleExportPDF = () => {
-    const html = renderCV(editableCV || generatedCV, template)
-    const filename = `CV_${job.company}_${job.position.replace(/\s+/g, '_')}`
-    const win = window.open('', '_blank')
+    const html     = renderCV(editableCV || generatedCV, template, profilePic)
+    const filename = `CV_${job.company}_${job.position.replace(/\s+/g,'_')}`
+    const win      = window.open('', '_blank')
     if (!win) { alert('Autorisez les pop-ups pour exporter le PDF.'); return }
     win.document.write(`<!DOCTYPE html><html><head>
       <meta charset="utf-8"/>
       <title>${filename}</title>
-      <style>${getPrintCSS(template)}</style>
+      <style>${BASE_PRINT_CSS}</style>
+      ${ONE_PAGE_SCRIPT}
     </head><body>${html}</body></html>`)
     win.document.close()
-    win.focus()
-    setTimeout(() => { win.print(); win.close() }, 400)
   }
 
   const currentTpl = TEMPLATES.find(t => t.id === template) || TEMPLATES[0]
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-full space-y-3">
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+
+      {/* Header */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-4 py-3 flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="text-gray-400 hover:text-gray-600 p-1.5 hover:bg-gray-100 rounded-lg text-sm">← Retour</button>
@@ -275,6 +317,23 @@ export default function CVGenerator({ cv, job, onBack }) {
 
         {step === 'preview' && (
           <div className="flex items-center gap-2 flex-wrap">
+
+            {/* Profile picture */}
+            <div className="flex items-center gap-1.5">
+              {profilePic ? (
+                <div className="relative group">
+                  <img src={profilePic} alt="Photo" className="w-8 h-8 rounded-full object-cover border-2 border-indigo-200 cursor-pointer" onClick={() => picInputRef.current?.click()} />
+                  <button onClick={removePic} className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity leading-none">✕</button>
+                </div>
+              ) : (
+                <button onClick={() => picInputRef.current?.click()}
+                  className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors">
+                  📷 Photo
+                </button>
+              )}
+              <input ref={picInputRef} type="file" accept="image/*" className="hidden" onChange={handlePicUpload} />
+            </div>
+
             {/* View toggle */}
             <div className="flex border border-gray-200 rounded-lg overflow-hidden text-xs">
               {[['split','⬛⬛ Côte à côte'],['before','◀ Avant'],['after','▶ Après']].map(([m,l]) => (
@@ -287,13 +346,11 @@ export default function CVGenerator({ cv, job, onBack }) {
 
             {/* Template picker */}
             <div className="relative">
-              <button
-                onClick={() => setShowTemplatePicker(v => !v)}
-                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
-              >
+              <button onClick={() => setShowTemplatePicker(v => !v)}
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
                 <span>{currentTpl.icon}</span>
                 <span>{currentTpl.label}</span>
-                <span className="text-gray-300">▾</span>
+                <span className="text-gray-300 text-[10px]">▾</span>
               </button>
               {showTemplatePicker && (
                 <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-xl shadow-xl border border-gray-100 p-1.5 w-52">
@@ -325,7 +382,7 @@ export default function CVGenerator({ cv, job, onBack }) {
         )}
       </div>
 
-      {/* ── Loading ─────────────────────────────────────────────────────────── */}
+      {/* Loading */}
       {['fetching_jd','generating'].includes(step) && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
           <svg className="w-10 h-10 text-indigo-400 animate-spin mx-auto mb-4" fill="none" viewBox="0 0 24 24">
@@ -339,7 +396,7 @@ export default function CVGenerator({ cv, job, onBack }) {
         </div>
       )}
 
-      {/* ── JD input ────────────────────────────────────────────────────────── */}
+      {/* JD input */}
       {['manual_jd','ready_to_generate'].includes(step) && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
           <div className="flex items-center justify-between mb-3">
@@ -363,7 +420,7 @@ export default function CVGenerator({ cv, job, onBack }) {
         </div>
       )}
 
-      {/* ── Preview ─────────────────────────────────────────────────────────── */}
+      {/* Preview */}
       {step === 'preview' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden" style={{ minHeight: 640 }}>
           {isEditing ? (
@@ -377,16 +434,17 @@ export default function CVGenerator({ cv, job, onBack }) {
             </div>
           ) : (
             <div className="flex divide-x divide-gray-100" style={{ minHeight: 640 }}>
+
               {/* BEFORE */}
               {(viewMode === 'split' || viewMode === 'before') && (
-                <div className={`flex flex-col ${viewMode === 'split' ? 'w-1/2' : 'w-full'}`}>
+                <div className={`flex flex-col ${viewMode==='split' ? 'w-1/2' : 'w-full'}`}>
                   <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100">
                     <span className="w-2 h-2 rounded-full bg-gray-400"></span>
                     <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">CV Original</span>
                     <span className="text-xs text-gray-400 ml-auto">{cv.name}</span>
                   </div>
                   <div className="flex-1 overflow-y-auto p-5">
-                    <div style={{ fontFamily: 'Arial, sans-serif', lineHeight: '1.5' }}
+                    <div style={{ fontFamily:'Arial,sans-serif', lineHeight:'1.5' }}
                       dangerouslySetInnerHTML={{ __html: renderSimple(cv.text) }} />
                   </div>
                 </div>
@@ -394,18 +452,15 @@ export default function CVGenerator({ cv, job, onBack }) {
 
               {/* AFTER — rendered with selected template */}
               {(viewMode === 'split' || viewMode === 'after') && (
-                <div className={`flex flex-col ${viewMode === 'split' ? 'w-1/2' : 'w-full'}`}>
+                <div className={`flex flex-col ${viewMode==='split' ? 'w-1/2' : 'w-full'}`}>
                   <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border-b border-indigo-100">
                     <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                    <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">
-                      CV Adapté — {job.company}
-                    </span>
+                    <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">CV Adapté — {job.company}</span>
                     <span className="text-[10px] text-indigo-400 ml-auto">{currentTpl.icon} {currentTpl.label}</span>
                   </div>
-                  <div className="flex-1 overflow-y-auto" style={{ background: '#f8fafc' }}>
-                    {/* A4-ish preview card */}
-                    <div style={{ margin: '16px auto', maxWidth: 680, background: '#fff', boxShadow: '0 4px 24px rgba(0,0,0,0.10)', borderRadius: 4, overflow: 'hidden', fontFamily: 'Arial, Helvetica, sans-serif' }}
-                      dangerouslySetInnerHTML={{ __html: renderCV(editableCV, template) }} />
+                  <div className="flex-1 overflow-y-auto" style={{ background:'#f1f5f9' }}>
+                    <div style={{ margin:'16px auto', maxWidth:680, background:'#fff', boxShadow:'0 4px 24px rgba(0,0,0,0.10)', borderRadius:4, overflow:'hidden', fontFamily:'Arial,Helvetica,sans-serif' }}
+                      dangerouslySetInnerHTML={{ __html: renderCV(editableCV, template, profilePic) }} />
                   </div>
                 </div>
               )}
@@ -414,10 +469,7 @@ export default function CVGenerator({ cv, job, onBack }) {
         </div>
       )}
 
-      {/* Close template picker on outside click */}
-      {showTemplatePicker && (
-        <div className="fixed inset-0 z-40" onClick={() => setShowTemplatePicker(false)} />
-      )}
+      {showTemplatePicker && <div className="fixed inset-0 z-40" onClick={() => setShowTemplatePicker(false)} />}
     </div>
   )
 }
