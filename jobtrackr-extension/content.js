@@ -309,25 +309,28 @@ function injectStyles() {
   style.id = 'jt-autofill-styles'
   style.textContent = `
     .jt-field-btn {
-      position: fixed;
-      z-index: 2147483647;
-      width: 24px; height: 24px;
-      background: #18181b;
-      color: #a78bfa;
-      border: none;
-      border-radius: 6px;
-      font-size: 13px;
-      line-height: 24px;
-      text-align: center;
-      cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-      transition: transform 0.1s, background 0.1s;
-      font-family: sans-serif;
-      user-select: none;
-      padding: 0;
+      position: absolute !important;
+      bottom: 6px !important;
+      right: 6px !important;
+      z-index: 9999 !important;
+      width: 22px !important; height: 22px !important;
+      background: #18181b !important;
+      color: #a78bfa !important;
+      border: none !important;
+      border-radius: 5px !important;
+      font-size: 12px !important;
+      line-height: 22px !important;
+      text-align: center !important;
+      cursor: pointer !important;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+      transition: transform 0.1s, background 0.1s !important;
+      font-family: sans-serif !important;
+      user-select: none !important;
+      padding: 0 !important;
+      display: block !important;
     }
-    .jt-field-btn:hover { background: #3730a3; transform: scale(1.1); }
-    .jt-field-btn.jt-done { background: #16a34a; color: #fff; }
+    .jt-field-btn:hover { background: #3730a3 !important; transform: scale(1.1) !important; }
+    .jt-field-btn.jt-done { background: #16a34a !important; color: #fff !important; }
 
     .jt-popover {
       position: fixed;
@@ -408,12 +411,12 @@ async function getJD() {
   return cachedJD
 }
 
-function positionNearField(el, popover) {
-  const rect = el.getBoundingClientRect()
-  const pw = 300, ph = 220
-  let left = rect.right + 8
-  let top = rect.top
-  if (left + pw > window.innerWidth - 8) left = rect.left - pw - 8
+function positionNearField(btn, popover) {
+  const rect = btn.getBoundingClientRect()
+  const pw = 300, ph = 240
+  let left = rect.right + 10
+  let top = rect.top - 10
+  if (left + pw > window.innerWidth - 8) left = rect.left - pw - 10
   if (left < 8) left = 8
   if (top + ph > window.innerHeight - 8) top = window.innerHeight - ph - 8
   if (top < 8) top = 8
@@ -457,7 +460,7 @@ function openFieldPopover(field, btn) {
   `
 
   document.body.appendChild(popover)
-  positionNearField(field.el, popover)
+  positionNearField(btn, popover)
 
   popover.querySelector('.jt-pop-close').addEventListener('click', () => { popover.remove(); activePopover = null })
 
@@ -548,26 +551,21 @@ function placeFieldButton(field) {
   btn.className = 'jt-field-btn'
   btn.textContent = '✦'
   btn.title = 'JobTrackr Autofill'
-  document.body.appendChild(btn)
+
+  // Inject button as a sibling right after the field inside the DOM
+  // This guarantees it's visible inside any modal/stacking context
+  const parent = field.el.parentElement
+  if (!parent) return
+  // Make parent relative so our absolute button anchors to it
+  const cs = window.getComputedStyle(parent)
+  if (cs.position === 'static') parent.style.position = 'relative'
+  parent.appendChild(btn)
 
   fieldState.set(field.el, { btn, answer: null })
 
-  function updatePos() {
-    if (!document.contains(field.el)) { btn.remove(); return }
-    const rect = field.el.getBoundingClientRect()
-    if (rect.width === 0) { btn.style.display = 'none'; return }
-    btn.style.display = ''
-    btn.style.top = (rect.top + 4) + 'px'
-    btn.style.left = (rect.right - 28) + 'px'
-  }
-
-  updatePos()
-  // Reposition on scroll/resize
-  window.addEventListener('scroll', updatePos, { passive: true })
-  window.addEventListener('resize', updatePos, { passive: true })
-
   btn.addEventListener('click', e => {
     e.stopPropagation()
+    e.preventDefault()
     openFieldPopover(field, btn)
   })
 }
@@ -591,17 +589,6 @@ function initAutofill() {
   })
   observer.observe(document.body, { childList: true, subtree: true })
 
-  // Also reposition all buttons on scroll (modal scrolls internally)
-  window.addEventListener('scroll', () => {
-    fieldState.forEach(({ btn }, el) => {
-      if (!document.contains(el)) { btn?.remove(); return }
-      const rect = el.getBoundingClientRect()
-      if (btn && document.contains(btn)) {
-        btn.style.top = (rect.top + 4) + 'px'
-        btn.style.left = (rect.right - 28) + 'px'
-      }
-    })
-  }, { passive: true })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
