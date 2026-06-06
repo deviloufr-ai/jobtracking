@@ -258,35 +258,50 @@ function renderCV(md, templateId, pic) {
 
 // ── Auto-fit to one page: injected script inside print window ─────────────────
 // Uses CSS zoom (Chrome) + transform scale fallback to shrink content to A4 height
+// Strategy: measure A4 usable height using the browser's own mm→px conversion
+// (a probe div with height:277mm), then apply zoom on <html> — zoom affects
+// layout (unlike transform:scale) so Chrome/Edge's print renderer sees one page.
 const ONE_PAGE_SCRIPT = `
 <script>
 (function(){
-  function fit(){
-    // A4 = 297mm; margins = 12mm top+bottom each → usable ≈ 273mm
-    // At 96dpi: 1mm = 3.7795px → 273mm ≈ 1032px
-    var usable = Math.round(273 * 3.7795);
-    var h = document.body.scrollHeight;
-    if(h <= usable) return;
-    var s = usable / h;
-    // zoom works best in Chrome/Edge for printing
-    document.body.style.zoom = s;
-    // transform fallback for Firefox/Safari
-    if(!('zoom' in document.body.style)){
-      document.body.style.transform='scale('+s+')';
-      document.body.style.transformOrigin='top left';
-      document.body.style.width=Math.ceil(100/s)+'%';
-      document.body.style.overflow='hidden';
+  window.addEventListener('load', function(){
+    // 1. Measure usable A4 height in the browser's current px unit
+    //    (avoids hardcoding 96dpi which varies by device/browser)
+    var probe = document.createElement('div');
+    probe.style.cssText = 'position:absolute;visibility:hidden;height:277mm;top:0;left:0';
+    document.body.appendChild(probe);
+    var usable = probe.offsetHeight;
+    document.body.removeChild(probe);
+
+    // 2. Natural content height (before any scaling)
+    var naturalH = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+
+    if(naturalH > usable && usable > 0){
+      var scale = usable / naturalH;
+      // zoom on <html> shrinks everything AND affects layout → browser sees one page
+      document.documentElement.style.zoom = scale.toFixed(6);
+      // Prevent layout reflow from pushing content past page boundary
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.height = '297mm';
+      document.body.style.overflow = 'hidden';
+      document.body.style.height = '277mm';
     }
-  }
-  if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',fit);}else{fit();}
-  window.addEventListener('load',function(){fit();setTimeout(function(){window.print();window.close();},250);});
+
+    // 3. Wait one frame for repaint before printing
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        window.print();
+        window.close();
+      });
+    });
+  });
 })();
 <\/script>`
 
 const BASE_PRINT_CSS = `
-  @page { margin:12mm 14mm; size:A4 portrait; }
+  @page { margin:10mm 12mm; size:A4 portrait; }
   *{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  body{ margin:0; padding:0; font-family:Arial,Helvetica,sans-serif; background:#fff; }
+  html,body{ margin:0; padding:0; font-family:Arial,Helvetica,sans-serif; background:#fff; }
   img{ display:block; }
   table{ border-collapse:collapse; width:100%; }
 `
