@@ -80,8 +80,29 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         }
       }
 
-      const fetchFn = scanAccount ? () => fetchJobEmailsForAccount(scanAccount, 100, months) : () => fetchJobEmails(100, months)
-      const emails = await fetchFn()
+      // Fetch from selected account or ALL connected accounts
+      let emails = []
+      if (scanAccount) {
+        emails = await fetchJobEmailsForAccount(scanAccount, 100, months)
+      } else if (connectedAccounts.length > 1) {
+        // Fetch from all accounts in parallel, deduplicate by id
+        setStep(STEPS.fetching)
+        const perAccount = await Promise.all(
+          connectedAccounts.map(acct =>
+            fetchJobEmailsForAccount(acct.email, 100, months)
+              .then(res => res.map(e => ({ ...e, _account: acct.email })))
+              .catch(() => [])
+          )
+        )
+        const seen = new Set()
+        for (const batch of perAccount) {
+          for (const e of batch) {
+            if (!seen.has(e.id)) { seen.add(e.id); emails.push(e) }
+          }
+        }
+      } else {
+        emails = await fetchJobEmails(100, months)
+      }
       setEmailCount(emails.length)
 
       if (emails.length === 0) {
@@ -102,14 +123,20 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         buildJobsFromEmails(emails, []),
         fetchCalendarEvents('', months).catch(() => []),
       ])
+      // Build a gmailId → account map from the raw emails (populated when scanning multiple accounts)
+      const emailAccountMap = {}
+      for (const e of emails) {
+        if (e._account && e.id) emailAccountMap[e.id] = e._account
+      }
+      const fallbackAccount = scanAccount || (connectedAccounts.length === 1 ? connectedAccounts[0]?.email : null)
+
       // Stamp every email history entry with the account that received it
-      const account = scanAccount || gmailUser?.email || getCachedUser()?.email || null
-      if (account) {
-        for (const job of grouped) {
-          job.history = (job.history || []).map(h =>
-            h.source === 'email' ? { ...h, receivedBy: h.receivedBy || account } : h
-          )
-        }
+      for (const job of grouped) {
+        job.history = (job.history || []).map(h => {
+          if (h.source !== 'email') return h
+          const acct = (h.gmailId && emailAccountMap[h.gmailId]) || h.receivedBy || fallbackAccount
+          return acct ? { ...h, receivedBy: acct } : h
+        })
       }
       // Merge calendar events per company into existing history
       if (calendarEvents.length > 0) {
