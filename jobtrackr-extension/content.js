@@ -286,39 +286,24 @@ let autofillButton = null
 let autofillPanel = null
 let detectedFields = []
 
-function getModalContainer() {
-  // If detected fields live inside a modal/dialog, inject UI there to avoid z-index issues
-  if (detectedFields.length > 0) {
-    const modal = detectedFields[0].el.closest(
-      '[role="dialog"], dialog, .artdeco-modal, [class*="jobs-easy-apply-modal"], [class*="modal__content"], [class*="overlay-container"]'
-    )
-    if (modal) return modal
-  }
-  return document.body
-}
-
 function createAutofillButton() {
+  // Reset if button was removed from DOM (e.g. modal closed)
+  if (autofillButton && !document.contains(autofillButton)) {
+    autofillButton = null
+  }
   if (autofillButton) return
+
   detectedFields = detectFormFields()
   if (detectedFields.length === 0) return
 
-  const container = getModalContainer()
-  const insideModal = container !== document.body
-
   autofillButton = document.createElement('div')
   autofillButton.id = 'jt-autofill-btn'
-  if (insideModal) {
-    // Inside modal: use sticky positioning at the bottom of the scroll container
-    autofillButton.style.cssText = 'position:sticky;bottom:16px;z-index:9999;margin:8px 16px 0;display:inline-flex;align-items:center;gap:7px;padding:8px 14px;background:#18181b;color:#fff;border-radius:24px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;font-weight:500;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.3);'
-    container.appendChild(autofillButton)
-  } else {
-    container.appendChild(autofillButton)
-  }
   autofillButton.innerHTML = `
     <span class="jt-icon">✦</span>
     <span class="jt-label">Autofill (${detectedFields.length} champ${detectedFields.length > 1 ? 's' : ''})</span>
   `
   autofillButton.addEventListener('click', openAutofillPanel)
+  document.body.appendChild(autofillButton)
 }
 
 async function openAutofillPanel() {
@@ -681,7 +666,7 @@ function injectStyles() {
       position: fixed;
       bottom: 24px;
       right: 24px;
-      z-index: 2147483646;
+      z-index: 2147483647;
       display: flex;
       align-items: center;
       gap: 7px;
@@ -707,7 +692,7 @@ function injectStyles() {
       position: fixed;
       bottom: 76px;
       right: 24px;
-      z-index: 2147483645;
+      z-index: 2147483646;
       width: 380px;
       max-height: 540px;
       background: #fff;
@@ -954,23 +939,32 @@ function injectStyles() {
 // Les formulaires apparaissent souvent dynamiquement (React SPA, modales, etc.)
 function initAutofill() {
   injectStyles()
-
-  // Essai immédiat
   createAutofillButton()
 
-  // Observer les mutations pour les formulaires qui apparaissent en différé
+  let debounceTimer = null
+
   const observer = new MutationObserver(() => {
-    if (!autofillButton) {
-      createAutofillButton()
-    } else {
-      // Refresh la liste si de nouveaux champs sont apparus
-      const newFields = detectFormFields()
-      if (newFields.length !== detectedFields.length) {
-        detectedFields = newFields
-        const label = autofillButton.querySelector('.jt-label')
-        if (label) label.textContent = `Autofill (${detectedFields.length} champ${detectedFields.length > 1 ? 's' : ''})`
-      }
+    // Reset button reference if it was removed from DOM (modal closed)
+    if (autofillButton && !document.contains(autofillButton)) {
+      autofillButton = null
+      if (autofillPanel && !document.contains(autofillPanel)) autofillPanel = null
     }
+
+    // Debounce — LinkedIn / SPAs render modals in multiple mutation bursts
+    clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      if (!autofillButton) {
+        createAutofillButton()
+      } else {
+        // Refresh field count if DOM changed
+        const newFields = detectFormFields()
+        if (newFields.length !== detectedFields.length) {
+          detectedFields = newFields
+          const label = autofillButton.querySelector('.jt-label')
+          if (label) label.textContent = `Autofill (${detectedFields.length} champ${detectedFields.length > 1 ? 's' : ''})`
+        }
+      }
+    }, 300)
   })
 
   observer.observe(document.body, { childList: true, subtree: true })
