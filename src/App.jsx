@@ -537,7 +537,7 @@ export default function App() {
 
       {modal && <JobModal job={modal === 'add' ? null : modal} onSave={handleSave} onClose={() => setModal(null)} />}
       {toDelete && <ConfirmDelete job={toDelete} onConfirm={handleDelete} onCancel={() => setToDelete(null)} />}
-      {showGmail && <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={() => { setShowGmail(false); setGmailUser(getCachedUser()); setGmailConnected(isConnected()) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u || isConnected()) }} existingJobs={jobs} />}
+      {showGmail && <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={() => { setShowGmail(false); const connected = isConnected(); setGmailConnected(connected); setGmailUser(connected ? getCachedUser() : null) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u) }} existingJobs={jobs} />}
       {showImageImport && <ImageImport onImport={handleBulkImport} onClose={() => setShowImageImport(false)} existingJobs={jobs} />}
       {starJob && <STARGenerator job={starJob} onClose={() => setStarJob(null)} />}
       {emailDraft && <EmailDraft job={emailDraft.job} type={emailDraft.type} onClose={() => setEmailDraft(null)} />}
