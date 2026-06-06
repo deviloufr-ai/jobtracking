@@ -243,7 +243,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
             {showStatusMenu && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowStatusMenu(false)} />
-                <div className="absolute top-full left-0 mt-1 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20 min-w-[180px]">
+                <div className="absolute top-full left-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-[100] min-w-[180px]">
                   {STATUSES.map(s => (
                     <button
                       key={s.key}
