@@ -309,21 +309,71 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
 
           {/* Loading */}
           {isLoading && (
-            <div className="text-center py-8">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-50 mb-4">
-                <svg className="w-6 h-6 text-indigo-600 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-              </div>
-              <p className="font-medium text-gray-700 mb-1">
-                {step === STEPS.connecting && 'Connexion à Gmail...'}
-                {step === STEPS.fetching && `Scan multi-sources sur ${months} mois...`}
-                {step === STEPS.parsing && `Analyse IA de ${emailCount} email${emailCount > 1 ? 's' : ''} uniques...`}
-              </p>
-              <p className="text-xs text-gray-400">
-                {step === STEPS.parsing && 'Claude identifie les candidatures et leurs statuts'}
-              </p>
+            <div className="py-6 space-y-5">
+              {/* Steps */}
+              {[
+                {
+                  id: STEPS.connecting,
+                  icon: '🔐',
+                  label: 'Connexion Gmail',
+                  detail: 'Authentification OAuth en cours…',
+                },
+                {
+                  id: STEPS.fetching,
+                  icon: '📬',
+                  label: `Lecture des emails (${months} mois)`,
+                  detail: connectedAccounts.length > 1
+                    ? `Scan de ${connectedAccounts.length} comptes en parallèle — 7 requêtes par compte…`
+                    : 'Scan multi-sources : recruteurs, ATS, LinkedIn, WTTJ…',
+                },
+                {
+                  id: STEPS.parsing,
+                  icon: '🤖',
+                  label: `Analyse IA — ${emailCount} email${emailCount > 1 ? 's' : ''} trouvé${emailCount > 1 ? 's' : ''}`,
+                  detail: 'Claude extrait entreprise, poste, statut et dates depuis chaque email…',
+                },
+              ].map((s, i) => {
+                const stepOrder = [STEPS.connecting, STEPS.fetching, STEPS.parsing]
+                const currentIdx = stepOrder.indexOf(step)
+                const stepIdx = stepOrder.indexOf(s.id)
+                const isDone = stepIdx < currentIdx
+                const isActive = stepIdx === currentIdx
+
+                return (
+                  <div key={s.id} className={`flex items-start gap-3 transition-all ${isActive ? 'opacity-100' : isDone ? 'opacity-50' : 'opacity-25'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-base transition-all ${
+                      isDone ? 'bg-green-100' : isActive ? 'bg-indigo-100 ring-2 ring-indigo-300 ring-offset-1' : 'bg-gray-100'
+                    }`}>
+                      {isDone ? '✓' : isActive ? (
+                        <svg className="w-4 h-4 text-indigo-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                      ) : s.icon}
+                    </div>
+                    <div className="flex-1 min-w-0 pt-1">
+                      <p className={`text-sm font-semibold ${isActive ? 'text-indigo-700' : isDone ? 'text-green-700' : 'text-gray-400'}`}>
+                        {s.label}
+                      </p>
+                      {isActive && (
+                        <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{s.detail}</p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* Friendly timing hint */}
+              {step === STEPS.parsing && (
+                <div className="bg-indigo-50 rounded-xl px-4 py-3 text-xs text-indigo-600 leading-relaxed">
+                  ⏱ L'analyse IA prend 15–60 secondes selon le volume d'emails. Pas besoin de rester sur cette page.
+                </div>
+              )}
+              {step === STEPS.fetching && (
+                <div className="bg-blue-50 rounded-xl px-4 py-3 text-xs text-blue-600 leading-relaxed">
+                  📡 Récupération des emails depuis les serveurs Google… Cela peut prendre quelques secondes.
+                </div>
+              )}
             </div>
           )}
 
