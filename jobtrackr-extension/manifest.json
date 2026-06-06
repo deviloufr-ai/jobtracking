@@ -1,55 +1,36 @@
 {
   "manifest_version": 2,
-  "name": "JobTrackr — Capture d'offres",
-  "version": "1.0.0",
-  "description": "Capturez une offre d'emploi depuis n'importe quelle page et ajoutez-la à JobTrackr en un clic. Extraction automatique via IA.",
-  "author": "Alexandre Leblanc",
-
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "jobtrackr@deviloufr.dev",
-      "strict_min_version": "140.0",
-      "data_collection_permissions": {
-        "required": ["none"],
-        "optional": []
-      }
-    },
-    "gecko_android": {
-      "strict_min_version": "142.0",
-      "data_collection_permissions": {
-        "required": ["none"],
-        "optional": []
-      }
-    }
-  },
-
-  "permissions": [
-    "activeTab"
-  ],
-
+  "name": "JobTrackr",
+  "version": "1.5.0",
+  "description": "Ajoute une offre d'emploi à JobTrackr en 1 clic + Autofill IA des formulaires de candidature",
   "icons": {
-    "48":  "icons/icon-48.svg",
-    "96":  "icons/icon-96.svg",
-    "128": "icons/icon-128.svg"
+    "48": "icons/icon48.png",
+    "96": "icons/icon96.png"
   },
-
-  "browser_action": {
-    "default_popup": "popup/popup.html",
-    "default_title": "JobTrackr — Capturer cette offre",
-    "default_icon": {
-      "48":  "icons/icon-48.svg",
-      "96":  "icons/icon-96.svg"
-    }
-  },
-
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content/content.js"],
-      "run_at": "document_idle",
-      "all_frames": false
-    }
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "storage",
+    "<all_urls>"
   ],
-
-  "content_security_policy": "script-src 'self'; object-src 'self'"
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": true
+  },
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "48": "icons/icon48.png",
+      "96": "icons/icon96.png"
+    },
+    "default_title": "JobTrackr"
+  },
+  "content_scripts": [{
+    "matches": ["<all_urls>"],
+    "js": ["content.js"],
+    "run_at": "document_idle"
+  }],
+  "browser_specific_settings": {
+    "gecko": { "id": "jobtrackr@deviloufr.dev" }
+  }
 }
