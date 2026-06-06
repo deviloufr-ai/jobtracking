@@ -25,24 +25,28 @@ export default async function handler(req, res) {
         max_tokens: 4000,
         messages: [{
           role: 'user',
-          content: `Tu es un expert en rédaction de CV et recrutement. Adapte ce CV pour le poste "${position}" chez "${company}".
+          content: `You are an expert CV writer and recruiter. Adapt this CV for the "${position}" role at "${company}".
 
-RÈGLES STRICTES :
-1. CONSERVE EXACTEMENT la même structure, sections et titres du CV original
-2. RÉÉCRIS les descriptions d'expériences pour mettre en valeur les compétences demandées dans l'offre
-3. INTÈGRE les mots-clés importants de l'offre dans les expériences pertinentes
-4. NE PAS inventer de nouvelles expériences ou compétences
-5. REFORMULE avec des verbes d'action forts et des résultats quantifiés quand possible
-6. Adapte le résumé/profil en premier paragraphe pour matcher le poste
-7. Retourne le CV complet reformaté en Markdown avec les mêmes sections
+DETECT the language of the job description below and write the entire adapted CV in THAT SAME language.
+If the job description is in English → write the CV in English.
+If the job description is in French → write the CV in French.
 
-CV ORIGINAL :
+STRICT RULES:
+1. KEEP EXACTLY the same structure, sections and headings as the original CV
+2. REWRITE experience descriptions to highlight skills required in the job offer
+3. INTEGRATE important keywords from the offer into relevant experiences
+4. DO NOT invent new experiences or skills
+5. REPHRASE with strong action verbs and quantified results where possible
+6. Adapt the summary/profile paragraph first to match the role
+7. Return the complete reformatted CV in Markdown with the same sections
+
+ORIGINAL CV:
 ${cvText.slice(0, 4000)}
 
-OFFRE D'EMPLOI (${company} - ${position}) :
+JOB DESCRIPTION (${company} - ${position}):
 ${jobDescription.slice(0, 2000)}
 
-Retourne UNIQUEMENT le CV reformaté en Markdown, sans commentaires avant ou après.`
+Return ONLY the reformatted CV in Markdown, no comments before or after.`
         }]
       })
     })

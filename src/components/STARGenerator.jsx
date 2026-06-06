@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { detectLanguage } from '../utils/detectLanguage'
 
 const IS_DEV = import.meta.env.DEV
 
@@ -36,6 +37,7 @@ export default function STARGenerator({ job, onClose }) {
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(null)
   const [expanded, setExpanded] = useState(0)
+  const lang = detectLanguage(job)
 
   useEffect(() => { generate() }, [])
 
@@ -66,7 +68,26 @@ export default function STARGenerator({ job, onClose }) {
     const historyText = (job.history || []).slice(-6)
       .map(h => `${h.date} : ${h.note || h.status}`).join('\n')
 
-    const prompt = `Génère 3 réponses STAR pour préparer un entretien de ${job.position} chez ${job.company}.
+    const isEn = lang === 'en'
+    const prompt = isEn
+      ? `Generate 3 STAR answers to prepare for a ${job.position} interview at ${job.company}.
+
+Candidate profile:
+${profileText}
+
+Application context:
+${job.notes || ''}
+${historyText}
+
+For each answer:
+- Pick a tough, realistic interview question for this seniority level
+- Base the answer on the profile (invent credible details if needed)
+- Each S/T/A/R part: 1-2 punchy sentences, quantified where possible
+- Direct, natural tone — as if the candidate is speaking
+
+Reply ONLY in valid JSON (no backticks):
+[{"question":"...","S":"...","T":"...","A":"...","R":"..."},...]`
+      : `Génère 3 réponses STAR pour préparer un entretien de ${job.position} chez ${job.company}.
 
 Profil candidat :
 ${profileText}
@@ -107,8 +128,11 @@ Réponds UNIQUEMENT en JSON valide (sans backticks) :
   }
 
   function copyAll() {
+    const labels = lang === 'en'
+      ? { S: 'Situation', T: 'Task', A: 'Action', R: 'Result' }
+      : { S: 'Situation', T: 'Tâche', A: 'Action', R: 'Résultat' }
     const text = stars.map((s, i) =>
-      `STAR ${i + 1} — ${s.question}\n\nSituation : ${s.S}\nTâche : ${s.T}\nAction : ${s.A}\nRésultat : ${s.R}`
+      `STAR ${i + 1} — ${s.question}\n\n${labels.S}: ${s.S}\n${labels.T}: ${s.T}\n${labels.A}: ${s.A}\n${labels.R}: ${s.R}`
     ).join('\n\n---\n\n')
     navigator.clipboard.writeText(text)
     setCopied('all')
@@ -117,7 +141,10 @@ Réponds UNIQUEMENT en JSON valide (sans backticks) :
 
   function copySingle(i) {
     const s = stars[i]
-    const text = `${s.question}\n\nSituation : ${s.S}\nTâche : ${s.T}\nAction : ${s.A}\nRésultat : ${s.R}`
+    const labels = lang === 'en'
+      ? { S: 'Situation', T: 'Task', A: 'Action', R: 'Result' }
+      : { S: 'Situation', T: 'Tâche', A: 'Action', R: 'Résultat' }
+    const text = `${s.question}\n\n${labels.S}: ${s.S}\n${labels.T}: ${s.T}\n${labels.A}: ${s.A}\n${labels.R}: ${s.R}`
     navigator.clipboard.writeText(text)
     setCopied(i)
     setTimeout(() => setCopied(null), 2000)
@@ -131,7 +158,12 @@ Réponds UNIQUEMENT en JSON valide (sans backticks) :
         <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-base">🎯</div>
           <div>
-            <h2 className="font-bold text-gray-900 text-sm">Réponses STAR</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="font-bold text-gray-900 text-sm">Réponses STAR</h2>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${lang === 'en' ? 'bg-blue-100 text-blue-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                {lang === 'en' ? '🇬🇧 EN' : '🇫🇷 FR'}
+              </span>
+            </div>
             <p className="text-xs text-gray-400">{job.position} · {job.company}</p>
           </div>
           <div className="ml-auto flex items-center gap-2">
@@ -179,10 +211,11 @@ Réponds UNIQUEMENT en JSON valide (sans backticks) :
 
               {expanded === i && (
                 <div className="px-4 pb-4 space-y-2 border-t border-gray-50">
-                  {[['S', 'Situation', 'bg-blue-50 text-blue-700'],
-                    ['T', 'Tâche', 'bg-violet-50 text-violet-700'],
+                  {[
+                    ['S', 'Situation', 'bg-blue-50 text-blue-700'],
+                    ['T', lang === 'en' ? 'Task' : 'Tâche', 'bg-violet-50 text-violet-700'],
                     ['A', 'Action', 'bg-amber-50 text-amber-700'],
-                    ['R', 'Résultat', 'bg-green-50 text-green-700']
+                    ['R', lang === 'en' ? 'Result' : 'Résultat', 'bg-green-50 text-green-700'],
                   ].map(([key, label, cls]) => (
                     <div key={key} className="flex gap-2.5 mt-2">
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5 ${cls}`}>{label}</span>
@@ -202,7 +235,9 @@ Réponds UNIQUEMENT en JSON valide (sans backticks) :
 
         {/* Footer hint */}
         <div className="px-5 py-3 border-t border-gray-50 bg-gray-50/50">
-          <p className="text-[11px] text-gray-400 text-center">Adapte les détails à ta réalité — STAR = base, pas script.</p>
+          <p className="text-[11px] text-gray-400 text-center">
+            {lang === 'en' ? 'Adapt details to your reality — STAR = foundation, not script.' : 'Adapte les détails à ta réalité — STAR = base, pas script.'}
+          </p>
         </div>
       </div>
     </div>
