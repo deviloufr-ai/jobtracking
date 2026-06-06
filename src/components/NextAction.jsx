@@ -153,7 +153,7 @@ const URGENCY_COLORS = {
   low:    'border-l-blue-300 bg-blue-50/40',
 }
 
-export default function NextAction({ jobs, onGenerateCV, onOpenJob }) {
+export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDraftEmail }) {
   const activeJobs = jobs.filter(j => !['cancelled', 'archived'].includes(j.status))
 
   const urgentActions = activeJobs
@@ -199,6 +199,21 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob }) {
                   <p className="text-sm font-medium text-gray-800 truncate">{rule.label(job)}</p>
                   <p className="text-xs text-gray-500 mt-0.5">{rule.tip(job)}</p>
                 </div>
+                {rule.icon === '🎯' && onSTAR && (
+                  <button onClick={() => onSTAR(job)} className="flex-shrink-0 text-xs font-medium bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-indigo-600 transition-colors whitespace-nowrap">
+                    STAR ✦
+                  </button>
+                )}
+                {rule.icon === '💌' && onDraftEmail && (
+                  <button onClick={() => onDraftEmail(job, 'remerciement')} className="flex-shrink-0 text-xs font-medium bg-pink-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-pink-600 transition-colors whitespace-nowrap">
+                    Rédiger ✦
+                  </button>
+                )}
+                {rule.icon === '📨' && onDraftEmail && (
+                  <button onClick={() => onDraftEmail(job, 'relance')} className="flex-shrink-0 text-xs font-medium bg-blue-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap">
+                    Rédiger ✦
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -220,26 +235,32 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob }) {
                   <p className="text-xs text-gray-500 mt-0.5">{rule.tip(job)}</p>
                 </div>
                 {rule.type === 'cv' && onGenerateCV && (
-                  <button
-                    onClick={() => onGenerateCV(job)}
-                    className="flex-shrink-0 text-xs font-medium bg-violet-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-violet-600 transition-colors whitespace-nowrap"
-                  >
+                  <button onClick={() => onGenerateCV(job)} className="flex-shrink-0 text-xs font-medium bg-violet-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-violet-600 transition-colors whitespace-nowrap">
                     {rule.cta}
+                  </button>
+                )}
+                {rule.type === 'prep' && onSTAR && (
+                  <button onClick={() => onSTAR(job)} className="flex-shrink-0 text-xs font-medium bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-indigo-600 transition-colors whitespace-nowrap">
+                    STAR ✦
+                  </button>
+                )}
+                {rule.type === 'email' && rule.label(job).toLowerCase().includes('remerciement') && onDraftEmail && (
+                  <button onClick={() => onDraftEmail(job, 'remerciement')} className="flex-shrink-0 text-xs font-medium bg-pink-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-pink-600 transition-colors whitespace-nowrap">
+                    Rédiger ✦
+                  </button>
+                )}
+                {rule.type === 'email' && rule.label(job).toLowerCase().includes('relancer') && onDraftEmail && (
+                  <button onClick={() => onDraftEmail(job, 'relance')} className="flex-shrink-0 text-xs font-medium bg-blue-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap">
+                    Rédiger ✦
                   </button>
                 )}
                 {rule.type === 'usecase' && (
-                  <button
-                    onClick={() => onOpenJob && onOpenJob(job)}
-                    className="flex-shrink-0 text-xs font-medium bg-amber-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-amber-600 transition-colors whitespace-nowrap"
-                  >
+                  <button onClick={() => onOpenJob && onOpenJob(job)} className="flex-shrink-0 text-xs font-medium bg-amber-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-amber-600 transition-colors whitespace-nowrap">
                     {rule.cta}
                   </button>
                 )}
-                {!['cv', 'usecase'].includes(rule.type) && (
-                  <button
-                    onClick={() => onOpenJob && onOpenJob(job)}
-                    className="flex-shrink-0 text-xs font-medium border border-gray-200 text-gray-600 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
-                  >
+                {!['cv', 'prep', 'email', 'usecase'].includes(rule.type) && (
+                  <button onClick={() => onOpenJob && onOpenJob(job)} className="flex-shrink-0 text-xs font-medium border border-gray-200 text-gray-600 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">
                     {rule.cta}
                   </button>
                 )}

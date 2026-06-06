@@ -8,6 +8,8 @@ import JobModal from './components/JobModal'
 import ConfirmDelete from './components/ConfirmDelete'
 import GmailImport from './components/GmailImport'
 import NextAction from './components/NextAction'
+import STARGenerator from './components/STARGenerator'
+import EmailDraft from './components/EmailDraft'
 import { useAutoRefresh } from './hooks/useAutoRefresh'
 import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser } from './services/gmail'
 import JobSearch from './components/JobSearch'
@@ -81,6 +83,8 @@ export default function App() {
   const { jobs, addJob, updateJob, deleteJob, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, reprocessJobs } = useJobs()
   const [modal, setModal] = useState(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
+  const [starJob, setStarJob] = useState(null)
+  const [emailDraft, setEmailDraft] = useState(null) // { job, type }
   const [toDelete, setToDelete] = useState(null)
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
   const [sort, setSort] = useState(DEFAULT_SORT)
@@ -427,7 +431,13 @@ export default function App() {
         <div className="flex gap-6 items-start">
         <div className="flex-1 min-w-0">
         <Stats jobs={jobs} />
-        <NextAction jobs={jobs} onGenerateCV={handleGenerateCV} onOpenJob={(job) => { setFilters(f => ({ ...f, search: job.company })) }} />
+        <NextAction
+          jobs={jobs}
+          onGenerateCV={handleGenerateCV}
+          onOpenJob={(job) => { setFilters(f => ({ ...f, search: job.company })) }}
+          onSTAR={(job) => setStarJob(job)}
+          onDraftEmail={(job, type) => setEmailDraft({ job, type })}
+        />
         <div className="flex items-center gap-2 mt-4 mb-1">
           <div className="flex-1"><Filters filters={filters} onChange={setFilters} onReset={() => setFilters(DEFAULT_FILTERS)} total={jobs.length} filtered={filtered.length} /></div>
           <button
@@ -529,6 +539,8 @@ export default function App() {
       {toDelete && <ConfirmDelete job={toDelete} onConfirm={handleDelete} onCancel={() => setToDelete(null)} />}
       {showGmail && <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={() => { setShowGmail(false); setGmailUser(getCachedUser()); setGmailConnected(isConnected()) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u || isConnected()) }} existingJobs={jobs} />}
       {showImageImport && <ImageImport onImport={handleBulkImport} onClose={() => setShowImageImport(false)} existingJobs={jobs} />}
+      {starJob && <STARGenerator job={starJob} onClose={() => setStarJob(null)} />}
+      {emailDraft && <EmailDraft job={emailDraft.job} type={emailDraft.type} onClose={() => setEmailDraft(null)} />}
 
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-5 py-2.5 rounded-full shadow-lg z-50">
