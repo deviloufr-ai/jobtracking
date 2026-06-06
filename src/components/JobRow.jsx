@@ -4,6 +4,7 @@ import AdvicePanel from './AdvicePanel'
 import { STATUSES, getStatus } from '../hooks/useJobs'
 import { gmailMessageUrl } from '../services/gmail'
 import { isNoReply } from './EmailDraft'
+import UseCasePanel from './UseCasePanel'
 
 // Fix #7 — NOTE_TIPS moved above getTipsFromNote (was referenced before definition)
 const NOTE_TIPS = {
@@ -86,9 +87,10 @@ function getSourceLabel(entry, companyName) {
   return null
 }
 
-export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onGenerateCV, onToggleFavorite }) {
+export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
+  const [showUseCase, setShowUseCase] = useState(false)
   const [confirmDeleteIdx, setConfirmDeleteIdx] = useState(null) // Fix #18
   const statusBtnRef = useRef(null)
   const enrichTimerRef = useRef(null) // Fix #6
@@ -347,6 +349,11 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                         {enrichResult.success ? `+${enrichResult.count}` : '—'}
                       </span>
                     )}
+                    <button onClick={() => { setShowUseCase(v => !v); setShowAddStep(false) }}
+                      className={`text-xs flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${job.useCase?.title ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-50' : 'text-gray-400 hover:text-purple-600 hover:bg-purple-50'}`}
+                      title="Cas pratique">
+                      📝 {job.useCase?.title ? 'Cas pratique' : '+ Cas pratique'}
+                    </button>
                     <button onClick={() => setShowAddStep(v => !v)}
                       className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1 hover:bg-indigo-100 px-2 py-1 rounded-lg transition-colors">
                       {showAddStep ? '✕ Annuler' : '+ Ajouter une étape'}
@@ -614,6 +621,11 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
 
               </div>
             </div>
+
+            {/* ── Use Case Panel ────────────────────────────────────────── */}
+            {(showUseCase || job.useCase?.title) && onUpdateJob && (
+              <UseCasePanel job={job} onUpdate={onUpdateJob} />
+            )}
           </td>
         </tr>
       )}

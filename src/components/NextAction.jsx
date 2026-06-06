@@ -45,6 +45,12 @@ function hasUpcomingCalendar(job) {
   return (job.history || []).some(h => h.source === 'calendar' && h.isUpcoming && new Date(h.date) >= today)
 }
 
+// Use case deadline helpers
+function useCaseDaysLeft(job) {
+  if (!job.useCase?.deadline) return null
+  return Math.ceil((new Date(job.useCase.deadline) - new Date()) / (1000 * 60 * 60 * 24))
+}
+
 const TEST_KWS = ['test technique', 'technical test', 'case study', 'assessment', 'exercice technique', 'mise en situation', 'lancement test', 'tech test']
 const NEGO_KWS = ['négociation', 'salaire', 'rémunération', 'prétentions', 'package', 'compensation', 'offre salariale']
 
@@ -52,6 +58,19 @@ const NEGO_KWS = ['négociation', 'salaire', 'rémunération', 'prétentions', '
 function getUrgentRules() {
   const s = loadSettings()
   return [
+  // Use case deadline urgent — appears before all other rules when < 3 days left
+  {
+    match: j => {
+      const days = useCaseDaysLeft(j)
+      return days !== null && days <= 3 && j.useCase?.status !== 'submitted'
+    },
+    icon: '📝', urgency: 'high',
+    label: job => `Rendre le cas pratique ${job.company}`,
+    tip: job => {
+      const days = useCaseDaysLeft(job)
+      return days < 0 ? `Deadline dépassée de ${Math.abs(days)}j !` : days === 0 ? "Deadline aujourd'hui !" : `Il reste ${days} jour${days > 1 ? 's' : ''} pour rendre le cas pratique.`
+    },
+  },
   {
     match: j => j.status === 'sent' && daysSince(j) > s.followUpSentDays,
     icon: '📨', urgency: 'high',
