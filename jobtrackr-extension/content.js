@@ -309,28 +309,24 @@ function injectStyles() {
   style.id = 'jt-autofill-styles'
   style.textContent = `
     .jt-field-btn {
-      position: absolute !important;
-      bottom: 6px !important;
-      right: 6px !important;
-      z-index: 9999 !important;
-      width: 22px !important; height: 22px !important;
-      background: #18181b !important;
-      color: #a78bfa !important;
-      border: none !important;
-      border-radius: 5px !important;
-      font-size: 12px !important;
-      line-height: 22px !important;
-      text-align: center !important;
-      cursor: pointer !important;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
-      transition: transform 0.1s, background 0.1s !important;
-      font-family: sans-serif !important;
-      user-select: none !important;
-      padding: 0 !important;
-      display: block !important;
+      position: absolute;
+      width: 22px; height: 22px;
+      background: #18181b;
+      color: #a78bfa;
+      border: none;
+      border-radius: 5px;
+      font-size: 12px;
+      line-height: 22px;
+      text-align: center;
+      cursor: pointer;
+      pointer-events: all;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+      font-family: sans-serif;
+      user-select: none;
+      padding: 0;
     }
-    .jt-field-btn:hover { background: #3730a3 !important; transform: scale(1.1) !important; }
-    .jt-field-btn.jt-done { background: #16a34a !important; color: #fff !important; }
+    .jt-field-btn:hover { background: #3730a3; transform: scale(1.1); }
+    .jt-field-btn.jt-done { background: #16a34a; color: #fff; }
 
     .jt-popover {
       position: fixed;
@@ -544,6 +540,17 @@ function openFieldPopover(field, btn) {
   }, 0)
 }
 
+let jtOverlay = null
+
+function getOverlay() {
+  if (jtOverlay && document.contains(jtOverlay)) return jtOverlay
+  jtOverlay = document.createElement('div')
+  jtOverlay.id = 'jt-overlay'
+  jtOverlay.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2147483647;overflow:hidden;'
+  document.body.appendChild(jtOverlay)
+  return jtOverlay
+}
+
 function placeFieldButton(field) {
   if (fieldState.has(field.el) && document.contains(fieldState.get(field.el).btn)) return
 
@@ -551,17 +558,24 @@ function placeFieldButton(field) {
   btn.className = 'jt-field-btn'
   btn.textContent = '✦'
   btn.title = 'JobTrackr Autofill'
-
-  // Inject button as a sibling right after the field inside the DOM
-  // This guarantees it's visible inside any modal/stacking context
-  const parent = field.el.parentElement
-  if (!parent) return
-  // Make parent relative so our absolute button anchors to it
-  const cs = window.getComputedStyle(parent)
-  if (cs.position === 'static') parent.style.position = 'relative'
-  parent.appendChild(btn)
+  getOverlay().appendChild(btn)
 
   fieldState.set(field.el, { btn, answer: null })
+
+  // Position loop — runs every frame, keeps button glued to field
+  function tick() {
+    if (!document.contains(field.el) || !document.contains(btn)) return
+    const rect = field.el.getBoundingClientRect()
+    if (rect.width > 0 && rect.height > 0) {
+      btn.style.display = 'block'
+      btn.style.top = (rect.bottom - 28) + 'px'
+      btn.style.left = (rect.right - 28) + 'px'
+    } else {
+      btn.style.display = 'none'
+    }
+    requestAnimationFrame(tick)
+  }
+  requestAnimationFrame(tick)
 
   btn.addEventListener('click', e => {
     e.stopPropagation()
