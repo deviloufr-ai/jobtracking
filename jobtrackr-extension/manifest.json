@@ -30,7 +30,26 @@
     "js": ["content.js"],
     "run_at": "document_idle"
   }],
+  "homepage_url": "https://jobtracking-three.vercel.app",
+  "developer": {
+    "name": "Alexandre Leblanc",
+    "url": "https://jobtracking-three.vercel.app"
+  },
   "browser_specific_settings": {
-    "gecko": { "id": "jobtrackr@deviloufr.dev" }
+    "gecko": {
+      "id": "jobtrackr@deviloufr.dev",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": ["none"],
+        "optional": []
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": ["none"],
+        "optional": []
+      }
+    }
   }
 }
