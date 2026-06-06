@@ -1,5 +1,18 @@
 import { getStatus } from '../hooks/useJobs'
 import { loadSettings } from '../hooks/useSettings'
+import { isNoReply } from './EmailDraft'
+
+// Returns true if the job has at least one real (non-ATS, non-no-reply) inbound email address
+function hasRealEmail(job) {
+  for (const h of (job?.history || [])) {
+    if (h.fromMe || !h.from) continue
+    const raw = h.from.trim()
+    const angleMatch = raw.match(/<([^>]+@[^>]+)>/)
+    const email = angleMatch ? angleMatch[1].trim() : (raw.includes('@') && !raw.includes(' ') ? raw : null)
+    if (email && !isNoReply(email)) return true
+  }
+  return false
+}
 
 function daysSince(job) {
   return (new Date() - new Date(job.updatedAt || job.date)) / (1000 * 60 * 60 * 24)
@@ -204,12 +217,12 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
                     STAR ✦
                   </button>
                 )}
-                {rule.icon === '💌' && onDraftEmail && (
+                {rule.icon === '💌' && onDraftEmail && hasRealEmail(job) && (
                   <button onClick={() => onDraftEmail(job, 'remerciement')} className="flex-shrink-0 text-xs font-medium bg-pink-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-pink-600 transition-colors whitespace-nowrap">
                     Rédiger ✦
                   </button>
                 )}
-                {rule.icon === '📨' && onDraftEmail && (
+                {rule.icon === '📨' && onDraftEmail && hasRealEmail(job) && (
                   <button onClick={() => onDraftEmail(job, 'relance')} className="flex-shrink-0 text-xs font-medium bg-blue-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap">
                     Rédiger ✦
                   </button>
@@ -244,12 +257,12 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
                     STAR ✦
                   </button>
                 )}
-                {rule.type === 'email' && rule.label(job).toLowerCase().includes('remerciement') && onDraftEmail && (
+                {rule.type === 'email' && rule.label(job).toLowerCase().includes('remerciement') && onDraftEmail && hasRealEmail(job) && (
                   <button onClick={() => onDraftEmail(job, 'remerciement')} className="flex-shrink-0 text-xs font-medium bg-pink-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-pink-600 transition-colors whitespace-nowrap">
                     Rédiger ✦
                   </button>
                 )}
-                {rule.type === 'email' && rule.label(job).toLowerCase().includes('relancer') && onDraftEmail && (
+                {rule.type === 'email' && rule.label(job).toLowerCase().includes('relancer') && onDraftEmail && hasRealEmail(job) && (
                   <button onClick={() => onDraftEmail(job, 'relance')} className="flex-shrink-0 text-xs font-medium bg-blue-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap">
                     Rédiger ✦
                   </button>

@@ -8,9 +8,9 @@ function loadProfile() {
   try { const r = localStorage.getItem('jobtrackr_profile'); return r ? JSON.parse(r) : null } catch { return null }
 }
 
-const NO_REPLY_RE = /^(no[-_.]?reply|noreply|do[-_.]?not[-_.]?reply|donotreply|notifications?|alerts?|mailer[-_.]?daemon|postmaster|bounce|auto[-_.]?reply|automessage)@/i
+export const NO_REPLY_RE = /^(no[-_.]?reply|noreply|do[-_.]?not[-_.]?reply|donotreply|notifications?|alerts?|mailer[-_.]?daemon|postmaster|bounce|auto[-_.]?reply|automessage)@/i
 
-function isNoReply(email) {
+export function isNoReply(email) {
   return NO_REPLY_RE.test(email) || email.includes('ats.') || email.includes('@ashbyhq') || email.includes('@greenhouse') || email.includes('@lever.co') || email.includes('@workable') || email.includes('@teamtailor')
 }
 
