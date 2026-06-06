@@ -87,13 +87,24 @@ function getSourceLabel(entry, companyName) {
   return null
 }
 
-export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite }) {
+export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, forceExpand, onForceExpandDone }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
   const [showUseCase, setShowUseCase] = useState(false)
   const [confirmDeleteIdx, setConfirmDeleteIdx] = useState(null) // Fix #18
   const statusBtnRef = useRef(null)
   const enrichTimerRef = useRef(null) // Fix #6
+  const rowRef = useRef(null)
+
+  // Open + scroll when triggered from Prochaines étapes
+  useEffect(() => {
+    if (!forceExpand) return
+    setExpanded(true)
+    setTimeout(() => {
+      rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 50)
+    onForceExpandDone?.()
+  }, [forceExpand]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const openStatusMenu = (e) => {
     e.stopPropagation()
@@ -235,6 +246,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
   return (
     <>
       <tr
+        ref={rowRef}
         className={`border-b transition-colors group cursor-pointer ${
           job.favorite ? 'bg-amber-50/40 hover:bg-amber-50/70 border-amber-100' : 'border-gray-50 hover:bg-indigo-50/30'
         } ${job.status === 'cancelled' ? 'opacity-40' : ''}`}

@@ -98,6 +98,7 @@ export default function App() {
   const [gmailUser, setGmailUser] = useState(() => getCachedUser())
   const [gmailConnected, setGmailConnected] = useState(() => isConnected())
   const [activeTab, setActiveTab] = useState('tracker')
+  const [expandedJobId, setExpandedJobId] = useState(null)
 
   // On load: if token exists but no cached profile, fetch it so the header shows the account
   useEffect(() => {
@@ -519,7 +520,7 @@ export default function App() {
             <NextAction
               jobs={jobs}
               onGenerateCV={handleGenerateCV}
-              onOpenJob={(job) => { setFilters(f => ({ ...f, search: job.company })) }}
+              onOpenJob={(job) => { setActiveTab('tracker'); setFilters(DEFAULT_FILTERS); setExpandedJobId(job.id) }}
               onSTAR={(job) => setStarJob(job)}
               onDraftEmail={(job, type) => setEmailDraft({ job, type })}
             />
@@ -568,7 +569,7 @@ export default function App() {
                 </thead>
                 <tbody>
                   {filtered.map(job => (
-                    <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} />
+                    <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} />
                   ))}
                 </tbody>
               </table>
