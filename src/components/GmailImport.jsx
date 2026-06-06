@@ -119,10 +119,15 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
 
       setStep(STEPS.parsing)
       // Fetch emails→jobs (with meeting links) + Calendar in parallel
-      const [grouped, calendarEvents] = await Promise.all([
+      let calendarEvents = []
+      let calendarError = null
+      const [grouped] = await Promise.all([
         buildJobsFromEmails(emails, []),
-        fetchCalendarEvents('', months).catch(() => []),
+        fetchCalendarEvents('', months)
+          .then(evts => { calendarEvents = evts; console.log(`📅 Calendar: ${evts.length} events fetched`) })
+          .catch(e => { calendarError = e.message; console.error('Calendar fetch failed during scan:', e) }),
       ])
+
       // Build a gmailId → account map from the raw emails (populated when scanning multiple accounts)
       const emailAccountMap = {}
       for (const e of emails) {
@@ -139,11 +144,19 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         })
       }
       // Merge calendar events per company into existing history
+      const normCo = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
       if (calendarEvents.length > 0) {
         for (const job of grouped) {
-          const co = job.company.toLowerCase()
+          const co = normCo(job.company)
+          const coWords = job.company.toLowerCase().split(/\s+/).filter(w => w.length > 2) // e.g. ["publidata"]
           const calEntries = calendarEvents
-            .filter(e => e.title.toLowerCase().includes(co) || (e.description || '').toLowerCase().includes(co))
+            .filter(e => {
+              const title = e.title.toLowerCase()
+              const desc = (e.description || '').toLowerCase()
+              // Match if title/desc contains company name OR any significant word from company name
+              return normCo(e.title).includes(co) || normCo(e.description || '').includes(co)
+                || coWords.some(w => title.includes(w) || desc.includes(w))
+            })
             .map(e => ({
               date: e.date,
               status: e.type === 'interview' ? 'interview' : e.type === 'offer' ? 'offer' : 'waiting',
@@ -215,6 +228,8 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         newJobs: newJobs.length,
         updatesFound: updates.length,
         alreadyUpToDate: alreadyUpToDate.length,
+        calendarEvents: calendarEvents.length,
+        calendarError: calendarError || null,
         rawParsed: grouped.map(p => ({
           company: p.company,
           position: p.position,
@@ -500,6 +515,10 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
                   {debugInfo.parsed !== undefined && <>
                     <p className="text-xs text-gray-500">🤖 {debugInfo.parsed} candidatures groupées par Claude</p>
                     <p className="text-xs text-green-600">✨ {debugInfo.newJobs ?? 0} nouvelles · ↻ {debugInfo.updatesFound ?? 0} mises à jour · ✓ {debugInfo.alreadyUpToDate ?? 0} déjà à jour</p>
+                    {debugInfo.calendarError
+                      ? <p className="text-xs text-red-500">📅 Calendrier : erreur — {debugInfo.calendarError}</p>
+                      : <p className="text-xs text-indigo-500">📅 Calendrier : {debugInfo.calendarEvents ?? 0} événements récupérés</p>
+                    }
                   </>}
                   {debugInfo.rawParsed?.length > 0 && (
                     <div className="mt-2 border-t border-gray-200 pt-2">
