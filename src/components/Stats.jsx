@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { STATUSES } from '../hooks/useJobs'
 
 function Sparkline({ values, color = '#6366f1' }) {
@@ -51,6 +51,39 @@ function RadialProgress({ value, max = 100, size = 80, color = '#6366f1', label 
   )
 }
 
+// Mobile-only collapsible wrapper — on sm+ always expanded
+function Card({ title, summary, children }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
+      {/* Header — always visible, clickable on mobile */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="sm:cursor-default flex items-center justify-between px-5 pt-4 pb-3 sm:pb-0 w-full text-left"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{title}</span>
+          {/* Summary chips — visible only when collapsed (mobile) */}
+          {!open && (
+            <span className="sm:hidden text-xs font-semibold text-gray-700">{summary}</span>
+          )}
+        </div>
+        {/* Chevron — mobile only */}
+        <svg
+          className={`sm:hidden w-4 h-4 text-gray-300 transition-transform duration-200 flex-shrink-0 ${open ? 'rotate-180' : ''}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {/* Content — hidden on mobile when closed, always visible on sm+ */}
+      <div className={`px-5 pb-5 flex flex-col gap-3 ${open ? 'block' : 'hidden'} sm:block`}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 export default function Stats({ jobs }) {
   const total = jobs.filter(j => j.status !== 'archived').length
   const active = jobs.filter(j => ['sent','reviewing','interview','waiting'].includes(j.status)).length
@@ -91,20 +124,12 @@ export default function Stats({ jobs }) {
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
 
       {/* ── Card 1 — Pipeline ─────────────────────────────────── */}
-      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Pipeline</span>
-          <span className="text-[11px] text-gray-400">{thisWeek} cette semaine</span>
-        </div>
-
-        {/* Big number */}
-        <div className="flex items-baseline gap-2 mb-4">
+      <Card title="Pipeline" summary={`${total} actives`}>
+        <div className="flex items-baseline gap-2">
           <span className="text-5xl font-extrabold text-gray-800 leading-none">{total}</span>
           <span className="text-sm text-gray-400">candidatures actives</span>
         </div>
-
-        {/* Funnel — fills the rest */}
-        <div className="flex flex-col gap-3 flex-1 justify-end">
+        <div className="flex flex-col gap-3">
           {funnel.map((f, i) => {
             const pct = funnel[0].count > 0 ? (f.count / funnel[0].count) * 100 : 0
             return (
@@ -123,14 +148,11 @@ export default function Stats({ jobs }) {
             )
           })}
         </div>
-      </div>
+      </Card>
 
       {/* ── Card 2 — Taux de réponse ──────────────────────────── */}
-      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col">
-        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Taux de réponse</span>
-
-        {/* Radial + legend */}
-        <div className="flex items-center gap-4 mb-4">
+      <Card title="Taux de réponse" summary={`${responseRate}% réponses`}>
+        <div className="flex items-center gap-4">
           <RadialProgress value={responseRate} max={100} size={80} color={rateColor} label={`${responseRate}%`} />
           <div className="flex-1 flex flex-col gap-2">
             {[
@@ -146,37 +168,26 @@ export default function Stats({ jobs }) {
             ))}
           </div>
         </div>
-
-        {/* Progress bars for each metric */}
-        <div className="flex flex-col gap-2.5 flex-1 justify-end">
+        <div className="flex flex-col gap-2.5">
           {[
-            { label: 'Entretiens', pct: interviewRate, color: '#8b5cf6' },
-            { label: 'Offres',     pct: offerRate,     color: '#10b981' },
-          ].map(bar => (
-            <div key={bar.label}>
-              <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                <div className="h-full rounded-full transition-all" style={{ width: `${bar.pct}%`, background: bar.color }} />
-              </div>
+            { pct: interviewRate, color: '#8b5cf6' },
+            { pct: offerRate,     color: '#10b981' },
+          ].map((bar, i) => (
+            <div key={i} className="h-2 rounded-full bg-gray-100 overflow-hidden">
+              <div className="h-full rounded-full transition-all" style={{ width: `${bar.pct}%`, background: bar.color }} />
             </div>
           ))}
-          {total < 5 && <p className="text-[10px] text-amber-500 mt-1">⚠ Données insuffisantes</p>}
+          {total < 5 && <p className="text-[10px] text-amber-500">⚠ Données insuffisantes</p>}
         </div>
-      </div>
+      </Card>
 
       {/* ── Card 3 — Activité 7j ──────────────────────────────── */}
-      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Activité 7j</span>
-          <span className="text-[11px] text-indigo-600 font-semibold">{thisWeek} ajoutées</span>
-        </div>
-
-        <div className="flex items-baseline gap-2 mb-3">
+      <Card title="Activité 7j" summary={`${thisWeek} cette semaine`}>
+        <div className="flex items-baseline gap-2">
           <span className="text-5xl font-extrabold text-indigo-600 leading-none">{thisWeek}</span>
           <span className="text-sm text-gray-400">cette semaine</span>
         </div>
-
-        {/* Sparkline — fills remaining space */}
-        <div className="flex-1 flex flex-col justify-end">
+        <div>
           <Sparkline values={weeklyActivity} color="#6366f1" />
           <div className="flex justify-between mt-1 px-0.5">
             {['L','M','M','J','V','S','D'].map((d, i) => (
@@ -184,17 +195,14 @@ export default function Stats({ jobs }) {
             ))}
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* ── Card 4 — Répartition ──────────────────────────────── */}
-      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col">
-        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Répartition</span>
-
-        <div className="flex flex-col gap-2.5 flex-1">
-          {byStatus.length === 0 && <span className="text-xs text-gray-300 mt-2">—</span>}
+      <Card title="Répartition" summary={`${byStatus.length} statuts`}>
+        <div className="flex flex-col gap-2.5">
+          {byStatus.length === 0 && <span className="text-xs text-gray-300">—</span>}
           {byStatus.map(s => {
             const pct = total > 0 ? (s.count / total) * 100 : 0
-            // Extract hex/color from Tailwind dot class for the bar
             const colorMap = {
               'bg-blue-400': '#60a5fa', 'bg-yellow-400': '#facc15', 'bg-orange-400': '#fb923c',
               'bg-purple-500': '#a855f7', 'bg-green-500': '#22c55e', 'bg-indigo-500': '#6366f1',
@@ -203,7 +211,7 @@ export default function Stats({ jobs }) {
             }
             const barColor = colorMap[s.dot] || '#6366f1'
             return (
-              <div key={s.key} className="flex items-center gap-2 group">
+              <div key={s.key} className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: barColor }} />
                 <span className="text-xs text-gray-600 w-28 flex-shrink-0">{s.label}</span>
                 <div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden min-w-0">
@@ -214,7 +222,7 @@ export default function Stats({ jobs }) {
             )
           })}
         </div>
-      </div>
+      </Card>
 
     </div>
   )
