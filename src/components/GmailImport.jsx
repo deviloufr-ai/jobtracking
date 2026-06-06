@@ -330,7 +330,12 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
                   id: STEPS.parsing,
                   icon: '🤖',
                   label: `Analyse IA — ${emailCount} email${emailCount > 1 ? 's' : ''} trouvé${emailCount > 1 ? 's' : ''}`,
-                  detail: 'Claude extrait entreprise, poste, statut et dates depuis chaque email…',
+                  detail: (() => {
+                    const batches = Math.ceil(emailCount / 8)
+                    const estSecs = batches * 3 + batches * 2 // delay + API time
+                    const estMin = Math.ceil(estSecs / 60)
+                    return `Claude extrait entreprise, poste, statut et dates. Environ ${estMin > 1 ? `${estMin} minutes` : `${estSecs} secondes`} (${batches} lots de 8 emails, avec pauses anti-rate-limit).`
+                  })(),
                 },
               ].map((s, i) => {
                 const stepOrder = [STEPS.connecting, STEPS.fetching, STEPS.parsing]
@@ -366,7 +371,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
               {/* Friendly timing hint */}
               {step === STEPS.parsing && (
                 <div className="bg-indigo-50 rounded-xl px-4 py-3 text-xs text-indigo-600 leading-relaxed">
-                  ⏱ L'analyse IA prend 15–60 secondes selon le volume d'emails. Pas besoin de rester sur cette page.
+                  ⏱ Des pauses sont ajoutées entre les lots pour respecter les limites de l'API Claude. Laisse la fenêtre ouverte.
                 </div>
               )}
               {step === STEPS.fetching && (

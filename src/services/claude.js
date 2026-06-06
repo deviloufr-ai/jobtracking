@@ -50,27 +50,38 @@ export function getEmailCacheStats() {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function callClaude(systemPrompt, userContent) {
+async function callClaude(systemPrompt, userContent, retries = 3) {
   if (!CLAUDE_ENDPOINT) return JSON.stringify(MOCK_PARSE_RESULT)
 
-  const res = await fetch(CLAUDE_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 1500,          // was 4000 — Haiku n'en a pas besoin
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userContent }],
-    }),
-  })
-  const data = await res.json()
-  if (!res.ok) {
-    console.error('Claude API error:', data)
-    throw new Error(data?.error?.message || `Claude API ${res.status}`)
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const res = await fetch(CLAUDE_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 1500,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userContent }],
+      }),
+    })
+    const data = await res.json()
+
+    // Rate limit — wait and retry with exponential backoff
+    if (res.status === 429) {
+      const waitMs = Math.min(5000 * Math.pow(2, attempt), 30000) // 5s, 10s, 20s, 30s max
+      console.warn(`Rate limit hit — waiting ${waitMs / 1000}s before retry ${attempt + 1}/${retries}`)
+      await new Promise(r => setTimeout(r, waitMs))
+      continue
+    }
+
+    if (!res.ok) {
+      console.error('Claude API error:', data)
+      throw new Error(data?.error?.message || `Claude API ${res.status}`)
+    }
+    const text = data.content?.[0]?.text || ''
+    return text
   }
-  const text = data.content?.[0]?.text || ''
-  console.log('Claude raw response:', text.slice(0, 300))
-  return text
+  throw new Error('Rate limit — réessaie dans quelques secondes.')
 }
 
 function parseJSON(raw) {
@@ -119,11 +130,14 @@ export async function parseEmailsForJobs(emails) {
   const cache = loadEmailCache()
   let cacheHits = 0
 
-  const BATCH = 15
+  const BATCH = 8  // ~1200 tokens/batch — safe under 50k/min rate limit with delays
+  const BATCH_DELAY_MS = 3000 // 3s between batches → max ~20 batches/min → ~24k tokens/min
   const all = []
 
   for (let i = 0; i < emails.length; i += BATCH) {
     const batch = emails.slice(i, i + BATCH)
+    // Delay between batches to avoid hitting the 50k tokens/min rate limit
+    if (i > 0) await new Promise(r => setTimeout(r, BATCH_DELAY_MS))
 
     // Separate cached vs uncached emails in this batch
     const uncached = []
@@ -151,7 +165,7 @@ export async function parseEmailsForJobs(emails) {
     console.log(`Batch ${Math.floor(i/BATCH) + 1}: ${uncached.length} new emails → Claude (${cachedResults.length} from cache)`)
 
     const emailsText = uncached.map((e, j) => {
-      const bodySection = e.body?.trim() ? `Contenu: ${e.body.slice(0, 500)}` : `Aperçu: ${e.snippet}`
+      const bodySection = e.body?.trim() ? `Contenu: ${e.body.slice(0, 300)}` : `Aperçu: ${e.snippet?.slice(0, 150) || ''}`
       let dateStr = e.date || ''
       try {
         const parsed = new Date(e.date)
