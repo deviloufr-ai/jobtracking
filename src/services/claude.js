@@ -219,14 +219,23 @@ RÈGLE ENTREPRISE :
 - Ne JAMAIS mettre LinkedIn / Indeed / Free-Work / Malt / WTTJ / Apec / Monster comme company.
 - Si vraiment aucune entreprise identifiable : confidence: 0.
 
-IGNORER : newsletters, alertes "jobs you might like", "candidature suggérée" (offre recommandée sans que l'utilisateur ait postulé), digests sans candidature réelle.
-Un email = candidature réelle uniquement si l'utilisateur A POSTULÉ ou a REÇU une réponse d'un recruteur.
+IGNORER ABSOLUMENT (confidence: 0) :
+- Newsletters, digests, "jobs you might like", "new jobs matching", "offres recommandées"
+- "Candidature suggérée" ou offre recommandée sans action de l'utilisateur
+- Notifications LinkedIn "votre profil a été consulté", "X personnes ont vu votre profil"
+- "Your application was viewed" / "votre candidature a été consultée" SANS réponse du recruteur (= simple notification passive, pas une vraie interaction)
+- Emails automatiques de confirmation générique sans nom d'entreprise identifiable
+- Alertes emploi de job boards (Indeed Alert, LinkedIn Job Alert, WTTJ Newsletter...)
+
+Un email = candidature réelle UNIQUEMENT si :
+- L'utilisateur a POSTULÉ (email envoyé, confirmation de dépôt) OU
+- Un RECRUTEUR a répondu (prise de contact, invitation, refus, question, rendez-vous)
 
 Emails:
 ${emailsText}`
 
     const raw = await callClaude(system, prompt)
-    const parsed = parseJSON(raw).filter(j => (j.confidence || 0) >= 20).map(j => {
+    const parsed = parseJSON(raw).filter(j => (j.confidence || 0) >= 55).map(j => {
       // Normalize emailId: Claude sometimes returns "[1]", "1", or 1 — strip brackets and coerce
       const emailIdx = parseInt(String(j.emailId).replace(/\D/g, ''), 10) - 1
       const originalEmail = uncached[emailIdx]
