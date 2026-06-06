@@ -130,8 +130,17 @@ function extractJobInfo() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SECTION 2 : AUTOFILL — Détection des champs + UI + injection
+// SECTION 2 : AUTOFILL — Per-field ✦ buttons + generation
 // ─────────────────────────────────────────────────────────────────────────────
+
+const IDENTITY_VALUES = {
+  name: 'Alexandre Leblanc',
+  firstname: 'Alexandre',
+  lastname: 'Leblanc',
+  email: 'deviloufr@gmail.com',
+  linkedin: 'https://www.linkedin.com/in/devilalex/',
+  phone: '0744723658'
+}
 
 // ── 2.1 Détection des champs de formulaire ────────────────────────────────────
 function detectFormFields() {
@@ -281,693 +290,316 @@ function injectAnswer(el, text) {
   el.dispatchEvent(new Event('blur', { bubbles: true }))
 }
 
-// ── 2.3 UI : bouton flottant "✦ Autofill" ─────────────────────────────────────
-let autofillButton = null
-let autofillPanel = null
-let detectedFields = []
-
-function createAutofillButton() {
-  // Reset if button was removed from DOM (e.g. modal closed)
-  if (autofillButton && !document.contains(autofillButton)) {
-    autofillButton = null
-  }
-  if (autofillButton) return
-
-  detectedFields = detectFormFields()
-  if (detectedFields.length === 0) return
-
-  autofillButton = document.createElement('div')
-  autofillButton.id = 'jt-autofill-btn'
-  autofillButton.innerHTML = `
-    <span class="jt-icon">✦</span>
-    <span class="jt-label">Autofill (${detectedFields.length} champ${detectedFields.length > 1 ? 's' : ''})</span>
-  `
-  autofillButton.addEventListener('click', openAutofillPanel)
-  document.body.appendChild(autofillButton)
-}
-
-async function openAutofillPanel() {
-  if (autofillPanel) {
-    autofillPanel.remove()
-    autofillPanel = null
-    return
-  }
-
-  autofillPanel = document.createElement('div')
-  autofillPanel.id = 'jt-autofill-panel'
-
-  const jobInfo = extractJobInfo()
-  const IDENTITY_VALUES = {
-    name: 'Alexandre Leblanc',
-    firstname: 'Alexandre',
-    lastname: 'Leblanc',
-    email: 'deviloufr@gmail.com',
-    linkedin: 'https://www.linkedin.com/in/devilalex/',
-    phone: '0744723658'
-  }
-
-  const fieldsHtml = detectedFields.map((f, i) => {
-    const identVal = f.identityKey && IDENTITY_VALUES[f.identityKey] !== undefined ? IDENTITY_VALUES[f.identityKey] : null
-    if (identVal !== null) {
-      const isEmpty = identVal === ''
-      return `
-    <div class="jt-field jt-field-identity" data-index="${i}">
-      <label class="jt-field-check">
-        <input type="checkbox" class="jt-chk" data-index="${i}" checked />
-        <span class="jt-field-label">${escHtml(f.label.slice(0, 72))}</span>
-      </label>
-      ${isEmpty
-        ? `<input type="text" class="jt-identity-edit" id="jt-preview-${i}" data-answer="" placeholder="À remplir…" style="grid-column:1;padding-left:22px;font-size:11.5px;border:1px solid #e5e7eb;border-radius:6px;padding:4px 8px;color:#374151;width:100%;box-sizing:border-box" />`
-        : `<div class="jt-field-preview jt-identity-val" id="jt-preview-${i}" data-answer="${escHtml(identVal)}">${escHtml(identVal)}</div>`
-      }
-      <button class="jt-inject-btn" data-index="${i}"${isEmpty ? ' disabled' : ''}>Injecter</button>
-    </div>`
-    }
-    return `
-    <div class="jt-field" data-index="${i}">
-      <label class="jt-field-check">
-        <input type="checkbox" class="jt-chk" data-index="${i}" checked />
-        <span class="jt-field-label">${escHtml(f.label.slice(0, 72))}${f.label.length > 72 ? '…' : ''}</span>
-      </label>
-      <div class="jt-field-preview" id="jt-preview-${i}">En attente…</div>
-      <button class="jt-inject-btn" data-index="${i}" disabled>Injecter</button>
-    </div>`
-  }).join('')
-
-  autofillPanel.innerHTML = `
-    <div class="jt-panel-header">
-      <span class="jt-panel-title">✦ JobTrackr Autofill</span>
-      <button class="jt-close-btn" id="jt-close">✕</button>
-    </div>
-    <div class="jt-context">
-      <strong>${escHtml(jobInfo.company || 'Entreprise inconnue')}</strong> — ${escHtml(jobInfo.position || 'Poste inconnu')}
-    </div>
-    <div class="jt-select-row">
-      <label class="jt-select-all-label">
-        <input type="checkbox" id="jt-chk-all" checked /> Tout sélectionner
-      </label>
-    </div>
-    <div class="jt-fields-list">${fieldsHtml}</div>
-    <div class="jt-jd-section">
-      <div class="jt-jd-header">
-        <div style="display:flex;align-items:center;gap:6px">
-          <span class="jt-jd-label">Description du poste</span>
-          <button class="jt-jd-scan-btn" id="jt-jd-scan" style="display:none">↺ Scanner</button>
-        </div>
-        <div style="display:flex;align-items:center;gap:5px">
-          <span class="jt-jd-status" id="jt-jd-status">Chargement…</span>
-          <button class="jt-jd-clear-btn" id="jt-jd-clear" title="Vider">✕</button>
-        </div>
-      </div>
-      <textarea id="jt-extra-ctx" class="jt-jd-textarea" placeholder="La description du poste sera chargée automatiquement. Tu peux la modifier ou la remplacer." rows="4"></textarea>
-    </div>
-    <div class="jt-actions">
-      <button class="jt-btn-primary" id="jt-generate-all">⚡ Générer la sélection</button>
-      <button class="jt-btn-secondary" id="jt-inject-all" disabled>↓ Tout injecter</button>
-    </div>
-    <div class="jt-status" id="jt-status"></div>
-  `
-
-  document.body.appendChild(autofillPanel)
-
-  // ── Auto-fetch JD from page ──────────────────────────────────────────────
-  const jdStatusEl = document.getElementById('jt-jd-status')
-  const jdTextarea = document.getElementById('jt-extra-ctx')
-
-  // Storage key = normalized job URL (strip /apply*, query, hash)
-  // Ashby: app.ashbyhq.com/company/jobs/UUID  (same URL, tab switch is JS-only)
-  // Greenhouse: boards.greenhouse.io/co/jobs/ID
-  // Lever: jobs.lever.co/co/UUID
-  const rawPath = window.location.pathname
-    .replace(/\/(apply|application|form|candidature|submit)(\/.*)$/i, '')
-    .replace(/\/+$/, '')
-  const jdKey = 'jd:' + window.location.hostname + rawPath
-
-  function saveJD(text) {
-    if (text && text.length > 80) {
-      browser.runtime.sendMessage({ type: 'SAVE_JD', key: jdKey, text })
-    }
-  }
-
-  // Auto-save when user edits
-  jdTextarea.addEventListener('input', () => {
-    const len = jdTextarea.value.trim().length
-    jdStatusEl.textContent = len > 0 ? `${len} car.` : 'Vide'
-    jdStatusEl.className = 'jt-jd-status ' + (len > 80 ? 'ok' : 'empty')
-    saveJD(jdTextarea.value.trim())
-  })
-
-  function setJD(text, label, type) {
-    jdTextarea.value = text
-    jdStatusEl.textContent = label
-    jdStatusEl.className = 'jt-jd-status ' + type
-    saveJD(text)
-  }
-
-  console.log('[JobTrackr] jdKey:', jdKey)
-
-  // 1. Check storage first (JD from another tab on same job)
-  let storedJD = null
-  try {
-    const r = await Promise.race([
-      browser.runtime.sendMessage({ type: 'LOAD_JD', key: jdKey }),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 2000))
-    ])
-    storedJD = r?.text || ''
-    console.log('[JobTrackr] stored JD length:', storedJD.length)
-  } catch (e) {
-    console.warn('[JobTrackr] storage lookup failed:', e.message)
-  }
-
-  if (storedJD && storedJD.length > 80) {
-    setJD(storedJD, `${storedJD.length} car. — sauvegardé`, 'ok')
-  } else {
-    // 2. Try targeted selector (fast, clean)
-    const targeted = getJobDescription()
-    if (targeted && targeted.length > 80) {
-      setJD(targeted.slice(0, 6000), `${targeted.length} car. — page actuelle`, 'ok')
-    } else {
-      // 3. Try full page text — but filter out form-heavy pages
-      // Count form fields: if many inputs/textareas → likely a form page, skip
-      const formFieldCount = document.querySelectorAll('textarea, input[type="text"], input[type="email"]').length
-      const isFormHeavy = formFieldCount >= 3
-      if (!isFormHeavy) {
-        const pageText = getFullPageText()
-        if (pageText && pageText.length > 80) {
-          setJD(pageText.slice(0, 4000), 'Page entière — à nettoyer si besoin', 'warn')
-        } else {
-          jdTextarea.value = ''
-          jdStatusEl.textContent = 'Non détectée'
-          jdStatusEl.className = 'jt-jd-status empty'
-        }
-      } else {
-        // Form page with no stored JD — offer manual scan anyway
-        jdTextarea.value = ''
-        jdStatusEl.textContent = 'Non trouvée'
-        jdStatusEl.className = 'jt-jd-status empty'
-        document.getElementById('jt-jd-scan').style.display = 'inline-block'
-      }
-    }
-  }
-
-  // Manual scan button (shown when auto-detection fails on form pages)
-  document.getElementById('jt-jd-scan').addEventListener('click', () => {
-    const pageText = getFullPageText()
-    if (pageText && pageText.length > 80) {
-      setJD(pageText.slice(0, 4000), 'Page scannée manuellement', 'warn')
-    }
-    document.getElementById('jt-jd-scan').style.display = 'none'
-  })
-
-  // Clear button
-  document.getElementById('jt-jd-clear').addEventListener('click', () => {
-    jdTextarea.value = ''
-    jdStatusEl.textContent = 'Vidé — colle manuellement'
-    jdStatusEl.className = 'jt-jd-status empty'
-    browser.runtime.sendMessage({ type: 'SAVE_JD', key: jdKey, text: '' })
-  })
-
-  // Wire editable identity fields (e.g. empty phone)
-  autofillPanel.querySelectorAll('.jt-identity-edit').forEach(input => {
-    input.addEventListener('input', () => {
-      input.dataset.answer = input.value
-      const idx = input.id.replace('jt-preview-', '')
-      const btn = autofillPanel.querySelector(`.jt-inject-btn[data-index="${idx}"]`)
-      if (btn) btn.disabled = !input.value.trim()
-    })
-  })
-
-  document.getElementById('jt-close').addEventListener('click', () => {
-    autofillPanel.remove()
-    autofillPanel = null
-  })
-
-  // Select-all checkbox
-  document.getElementById('jt-chk-all').addEventListener('change', (e) => {
-    autofillPanel.querySelectorAll('.jt-chk').forEach(chk => { chk.checked = e.target.checked })
-  })
-  autofillPanel.addEventListener('change', (e) => {
-    if (!e.target.classList.contains('jt-chk')) return
-    const all = [...autofillPanel.querySelectorAll('.jt-chk')]
-    document.getElementById('jt-chk-all').checked = all.every(c => c.checked)
-    document.getElementById('jt-chk-all').indeterminate = !all.every(c => c.checked) && all.some(c => c.checked)
-  })
-
-  // Update jd status when user edits
-  jdTextarea.addEventListener('input', () => {
-    const len = jdTextarea.value.trim().length
-    jdStatusEl.textContent = len > 0 ? `${len} car.` : 'Vide'
-    jdStatusEl.className = 'jt-jd-status ' + (len > 80 ? 'ok' : 'empty')
-  })
-
-  document.getElementById('jt-generate-all').addEventListener('click', () => generateAll(jobInfo))
-  document.getElementById('jt-inject-all').addEventListener('click', injectAll)
-
-  autofillPanel.querySelectorAll('.jt-inject-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const idx = parseInt(btn.dataset.index)
-      const preview = document.getElementById(`jt-preview-${idx}`)
-      const text = preview.dataset.answer || ''
-      if (text) {
-        injectAnswer(detectedFields[idx].el, text)
-        highlightField(detectedFields[idx].el, 'success')
-        btn.textContent = '✓ Injecté'
-        setTimeout(() => { btn.textContent = 'Injecter' }, 1500)
-      }
-    })
-  })
-}
-
-// ── 2.4 Génération via background.js (qui appelle Claude) ────────────────────
-async function generateAll(jobInfo) {
-  const btn = document.getElementById('jt-generate-all')
-  const injectAllBtn = document.getElementById('jt-inject-all')
-  const status = document.getElementById('jt-status')
-
-  btn.disabled = true
-  btn.textContent = '⏳ Génération en cours…'
-  setStatus('Appel à Claude AI…', 'loading')
-
-  // Only generate for checked non-identity fields (identity fields are pre-filled)
-  const checkedIndexes = [...autofillPanel.querySelectorAll('.jt-chk:checked')].map(c => parseInt(c.dataset.index))
-  const fieldsData = detectedFields
-    .filter((f, i) => checkedIndexes.includes(i) && !f.identityKey)
-    .map(f => {
-      const origIdx = detectedFields.indexOf(f)
-      return { label: f.label, type: f.type, maxLength: f.maxLength, placeholder: f.placeholder, _origIdx: origIdx }
-    })
-
-  if (fieldsData.length === 0) {
-    setStatus('Aucun champ à générer (que des champs identité)', 'loading')
-    btn.disabled = false
-    btn.textContent = '⚡ Générer la sélection'
-    return
-  }
-
-  const jdText = document.getElementById('jt-extra-ctx')?.value?.trim() || ''
-  const jobContext = [
-    `Entreprise: ${jobInfo.company}`,
-    `Poste: ${jobInfo.position}`,
-    jdText
-      ? `Description du poste (source: page ou collée par l'utilisateur):\n${jdText.slice(0, 3500)}`
-      : '(pas de description disponible — génère des réponses génériques PM senior)'
-  ].filter(Boolean).join('\n')
-
-  try {
-    const response = await browser.runtime.sendMessage({
-      type: 'AUTOFILL_REQUEST',
-      fields: fieldsData,
-      jobContext
-    })
-
-    if (response.error) {
-      setStatus(`Erreur : ${response.error}`, 'error')
-      btn.disabled = false
-      btn.textContent = '⚡ Réessayer'
-      return
-    }
-
-    // Remplir les previews — remap fieldIndex (index dans subset) → origIdx
-    let allReady = true
-    for (const answer of (response.answers || [])) {
-      const { fieldIndex, text } = answer
-      const origIdx = fieldsData[fieldIndex]?._origIdx ?? fieldIndex
-      const preview = document.getElementById(`jt-preview-${origIdx}`)
-      const injectBtn = autofillPanel.querySelector(`.jt-inject-btn[data-index="${origIdx}"]`)
-      if (preview && text) {
-        preview.textContent = text
-        preview.dataset.answer = text
-        if (injectBtn) injectBtn.disabled = false
-      } else {
-        allReady = false
-      }
-    }
-
-    setStatus(`${response.answers?.length || 0} réponse(s) générée(s) ✓`, 'success')
-    btn.textContent = '⚡ Regénérer'
-    btn.disabled = false
-    injectAllBtn.disabled = false
-
-  } catch (err) {
-    setStatus(`Erreur de communication : ${err.message}`, 'error')
-    btn.disabled = false
-    btn.textContent = '⚡ Réessayer'
-  }
-}
-
-function injectAll() {
-  let count = 0
-  detectedFields.forEach((field, idx) => {
-    const preview = document.getElementById(`jt-preview-${idx}`)
-    const text = preview?.dataset.answer || ''
-    if (text) {
-      injectAnswer(field.el, text)
-      highlightField(field.el, 'success')
-      const btn = autofillPanel.querySelector(`.jt-inject-btn[data-index="${idx}"]`)
-      if (btn) {
-        btn.textContent = '✓ Injecté'
-        setTimeout(() => { btn.textContent = 'Injecter' }, 1500)
-      }
-      count++
-    }
-  })
-  setStatus(`${count} champ(s) injecté(s) — tu peux réinjecter ✓`, 'success')
-}
-
-// ── 2.5 Helpers UI ─────────────────────────────────────────────────────────────
-function setStatus(msg, type = 'info') {
-  const el = document.getElementById('jt-status')
-  if (!el) return
-  el.textContent = msg
-  el.className = `jt-status jt-status-${type}`
-}
-
-function highlightField(el, type) {
-  el.style.transition = 'box-shadow 0.3s, border-color 0.3s'
-  el.style.boxShadow = type === 'success' ? '0 0 0 3px rgba(34,197,94,0.4)' : '0 0 0 3px rgba(239,68,68,0.4)'
-  el.style.borderColor = type === 'success' ? '#22c55e' : '#ef4444'
-  setTimeout(() => {
-    el.style.boxShadow = ''
-    el.style.borderColor = ''
-  }, 2500)
-}
+// ── 2.3 Per-field ✦ buttons ───────────────────────────────────────────────────
 
 function escHtml(str) {
   return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-// ── 2.6 Styles injectés ────────────────────────────────────────────────────────
+function highlightField(el, type) {
+  el.style.outline = type === 'success' ? '2px solid #22c55e' : '2px solid #ef4444'
+  setTimeout(() => { el.style.outline = '' }, 2000)
+}
+
 function injectStyles() {
   if (document.getElementById('jt-autofill-styles')) return
   const style = document.createElement('style')
   style.id = 'jt-autofill-styles'
   style.textContent = `
-    #jt-autofill-btn {
+    .jt-field-btn {
       position: fixed;
-      bottom: 24px;
-      right: 24px;
       z-index: 2147483647;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      padding: 10px 16px;
+      width: 24px; height: 24px;
       background: #18181b;
-      color: #fff;
-      border-radius: 24px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.22), 0 1px 4px rgba(0,0,0,0.12);
-      transition: transform 0.15s, box-shadow 0.15s;
-      user-select: none;
-    }
-    #jt-autofill-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.14);
-    }
-    #jt-autofill-btn .jt-icon { font-size: 15px; color: #a78bfa; }
-
-    #jt-autofill-panel {
-      position: fixed;
-      bottom: 76px;
-      right: 24px;
-      z-index: 2147483646;
-      width: 380px;
-      max-height: 540px;
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 8px 48px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.1);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 13px;
-      color: #18181b;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      border: 1px solid #e5e7eb;
-    }
-
-    .jt-panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px 16px;
-      background: #18181b;
-      color: #fff;
-    }
-    .jt-panel-title { font-weight: 600; font-size: 14px; letter-spacing: 0.01em; }
-    .jt-close-btn {
-      background: none;
+      color: #a78bfa;
       border: none;
-      color: #9ca3af;
-      font-size: 16px;
-      cursor: pointer;
-      padding: 0 2px;
-      line-height: 1;
-    }
-    .jt-close-btn:hover { color: #fff; }
-
-    .jt-context {
-      padding: 10px 16px;
-      background: #f9fafb;
-      border-bottom: 1px solid #e5e7eb;
-      font-size: 12px;
-      color: #6b7280;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .jt-context strong { color: #18181b; }
-
-    .jt-select-row {
-      padding: 8px 16px;
-      background: #f9fafb;
-      border-bottom: 1px solid #e5e7eb;
-    }
-    .jt-select-all-label {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      font-size: 12px;
-      font-weight: 500;
-      color: #374151;
-      cursor: pointer;
-      user-select: none;
-    }
-    .jt-select-all-label input { cursor: pointer; accent-color: #18181b; width: 14px; height: 14px; }
-    .jt-fields-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 4px 0;
-    }
-    .jt-field {
-      padding: 10px 16px;
-      border-bottom: 1px solid #f3f4f6;
-      display: grid;
-      grid-template-columns: 1fr auto;
-      grid-template-rows: auto auto;
-      gap: 5px 10px;
-      align-items: start;
-    }
-    .jt-field:last-child { border-bottom: none; }
-    .jt-field-check {
-      grid-column: 1;
-      grid-row: 1;
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      cursor: pointer;
-      padding-top: 1px;
-    }
-    .jt-field-check input { cursor: pointer; accent-color: #18181b; flex-shrink: 0; width: 14px; height: 14px; margin-top: 1px; }
-    .jt-field-label {
-      font-weight: 500;
-      font-size: 12px;
-      color: #111827;
-      line-height: 1.4;
-    }
-    .jt-field-preview {
-      grid-column: 1;
-      grid-row: 2;
-      font-size: 11.5px;
-      color: #6b7280;
-      line-height: 1.55;
-      max-height: 60px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      padding-left: 22px;
-    }
-    .jt-inject-btn {
-      grid-column: 2;
-      grid-row: 1 / 3;
-      align-self: center;
-      padding: 5px 11px;
-      background: #f3f4f6;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      font-size: 11px;
-      font-weight: 500;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background 0.15s;
-      min-width: 62px;
+      border-radius: 6px;
+      font-size: 13px;
+      line-height: 24px;
       text-align: center;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      transition: transform 0.1s, background 0.1s;
+      font-family: sans-serif;
+      user-select: none;
+      padding: 0;
     }
-    .jt-inject-btn:hover { background: #e5e7eb; }
-    .jt-field-identity { background: #fafafa; }
-    .jt-identity-val {
-      color: #374151;
-      font-weight: 500;
-      padding-left: 22px;
-      font-size: 11.5px;
-    }
+    .jt-field-btn:hover { background: #3730a3; transform: scale(1.1); }
+    .jt-field-btn.jt-done { background: #16a34a; color: #fff; }
 
-    .jt-jd-section {
-      padding: 8px 16px 6px;
-      border-top: 1px solid #e5e7eb;
-      background: #fafafa;
+    .jt-popover {
+      position: fixed;
+      z-index: 2147483647;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+      width: 300px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      color: #18181b;
+      overflow: hidden;
     }
-    .jt-jd-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 5px;
+    .jt-pop-header {
+      background: #18181b; color: #fff;
+      padding: 10px 14px;
+      display: flex; align-items: center; justify-content: space-between;
+      font-weight: 600; font-size: 12px;
     }
-    .jt-jd-label {
-      font-size: 11px;
-      font-weight: 600;
-      color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    .jt-jd-status {
-      font-size: 10px;
-      font-weight: 500;
-      padding: 2px 7px;
-      border-radius: 10px;
-    }
-    .jt-jd-status.ok    { background: #dcfce7; color: #16a34a; }
-    .jt-jd-status.warn  { background: #fef3c7; color: #92400e; }
-    .jt-jd-status.empty { background: #f3f4f6; color: #9ca3af; }
-    .jt-jd-textarea {
-      width: 100%;
+    .jt-pop-close { background:none;border:none;color:#9ca3af;cursor:pointer;font-size:14px;line-height:1; }
+    .jt-pop-close:hover { color:#fff; }
+    .jt-pop-label { padding: 10px 14px 4px; font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; }
+    .jt-pop-preview {
+      margin: 0 14px 10px;
+      padding: 8px 10px;
+      background: #f9fafb;
       border: 1px solid #e5e7eb;
       border-radius: 8px;
-      padding: 7px 10px;
-      font-size: 11px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      color: #374151;
-      resize: vertical;
-      outline: none;
-      line-height: 1.5;
-      box-sizing: border-box;
-      background: #fff;
-      transition: border-color 0.15s;
-      min-height: 72px;
-    }
-    .jt-jd-textarea:focus {
-      border-color: #a78bfa;
-      box-shadow: 0 0 0 2px rgba(167,139,250,0.12);
-    }
-    .jt-jd-textarea::placeholder { color: #c4c4c4; font-style: italic; }
-    .jt-jd-clear-btn {
-      background: none;
-      border: none;
-      font-size: 10px;
-      color: #9ca3af;
-      cursor: pointer;
-      padding: 1px 3px;
-      border-radius: 4px;
-      line-height: 1;
-    }
-    .jt-jd-clear-btn:hover { background: #f3f4f6; color: #6b7280; }
-    .jt-jd-scan-btn {
-      background: none;
-      border: 1px solid #d1d5db;
-      font-size: 10px;
-      color: #6b7280;
-      cursor: pointer;
-      padding: 2px 7px;
-      border-radius: 10px;
-      font-weight: 500;
-    }
-    .jt-jd-scan-btn:hover { background: #f3f4f6; border-color: #9ca3af; }
-    .jt-actions {
-      display: flex;
-      gap: 8px;
-      padding: 8px 16px 12px;
-      border-top: 1px solid #e5e7eb;
-      background: #f9fafb;
-    }
-    .jt-btn-primary, .jt-btn-secondary {
-      flex: 1;
-      padding: 8px 12px;
-      border-radius: 10px;
       font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      transition: opacity 0.15s, transform 0.1s;
+      color: #374151;
+      max-height: 100px;
+      overflow-y: auto;
+      line-height: 1.5;
+      white-space: pre-wrap;
     }
-    .jt-btn-primary { background: #18181b; color: #fff; }
-    .jt-btn-primary:hover:not(:disabled) { opacity: 0.85; }
-    .jt-btn-secondary {
-      background: #fff;
-      color: #18181b;
-      border: 1px solid #d1d5db;
+    .jt-pop-actions { display:flex; gap:8px; padding: 0 14px 12px; }
+    .jt-pop-btn {
+      flex:1; padding:7px 10px; border-radius:8px; font-size:12px; font-weight:600;
+      cursor:pointer; border:none; transition:opacity 0.15s;
     }
-    .jt-btn-secondary:hover:not(:disabled) { background: #f3f4f6; }
-    .jt-btn-primary:disabled, .jt-btn-secondary:disabled { opacity: 0.4; cursor: default; }
-
-    .jt-status {
-      padding: 6px 16px 10px;
-      font-size: 11px;
-      min-height: 22px;
-      background: #f9fafb;
-    }
-    .jt-status-loading { color: #6b7280; }
-    .jt-status-success { color: #16a34a; }
-    .jt-status-error   { color: #dc2626; }
+    .jt-pop-generate { background:#18181b; color:#fff; }
+    .jt-pop-generate:hover:not(:disabled) { opacity:0.85; }
+    .jt-pop-generate:disabled { opacity:0.4; cursor:default; }
+    .jt-pop-inject { background:#f3f4f6; color:#18181b; border:1px solid #e5e7eb; }
+    .jt-pop-inject:hover:not(:disabled) { background:#e5e7eb; }
+    .jt-pop-inject:disabled { opacity:0.4; cursor:default; }
+    .jt-pop-status { padding: 4px 14px 8px; font-size: 11px; min-height: 18px; color: #6b7280; }
+    .jt-pop-status.ok { color: #16a34a; }
+    .jt-pop-status.err { color: #dc2626; }
   `
   document.head.appendChild(style)
 }
 
-// ── 2.7 Initialisation : observer les mutations DOM ──────────────────────────
-// Les formulaires apparaissent souvent dynamiquement (React SPA, modales, etc.)
-function initAutofill() {
-  injectStyles()
-  createAutofillButton()
+// Track per-field state: fieldKey → { btn, popover, answer }
+const fieldState = new Map()
+let activePopover = null
+let cachedJD = null
 
-  let debounceTimer = null
+function fieldKey(el) {
+  return el.name || el.id || el.placeholder || el.closest('form')?.action || Math.random()
+}
 
-  const observer = new MutationObserver(() => {
-    // Reset button reference if it was removed from DOM (modal closed)
-    if (autofillButton && !document.contains(autofillButton)) {
-      autofillButton = null
-      if (autofillPanel && !document.contains(autofillPanel)) autofillPanel = null
+async function getJD() {
+  if (cachedJD !== null) return cachedJD
+  const rawPath = window.location.pathname.replace(/\/(apply|application|form|candidature|submit)(\/.*)$/i, '').replace(/\/+$/, '')
+  const jdKey = 'jd:' + window.location.hostname + rawPath
+  try {
+    const r = await Promise.race([
+      browser.runtime.sendMessage({ type: 'LOAD_JD', key: jdKey }),
+      new Promise((_, rej) => setTimeout(() => rej(), 1500))
+    ])
+    if (r?.text && r.text.length > 80) { cachedJD = r.text; return cachedJD }
+  } catch {}
+  const targeted = getJobDescription()
+  if (targeted && targeted.length > 80) { cachedJD = targeted.slice(0, 6000); return cachedJD }
+  cachedJD = getFullPageText().slice(0, 4000)
+  return cachedJD
+}
+
+function positionNearField(el, popover) {
+  const rect = el.getBoundingClientRect()
+  const pw = 300, ph = 220
+  let left = rect.right + 8
+  let top = rect.top
+  if (left + pw > window.innerWidth - 8) left = rect.left - pw - 8
+  if (left < 8) left = 8
+  if (top + ph > window.innerHeight - 8) top = window.innerHeight - ph - 8
+  if (top < 8) top = 8
+  popover.style.left = left + 'px'
+  popover.style.top = top + 'px'
+}
+
+function openFieldPopover(field, btn) {
+  // Close any open popover
+  if (activePopover) { activePopover.remove(); activePopover = null }
+
+  const state = fieldState.get(field.el) || {}
+  const jobInfo = extractJobInfo()
+
+  const popover = document.createElement('div')
+  popover.className = 'jt-popover'
+  activePopover = popover
+
+  const identVal = field.identityKey ? IDENTITY_VALUES[field.identityKey] : null
+
+  popover.innerHTML = `
+    <div class="jt-pop-header">
+      <span>✦ ${escHtml(field.label.slice(0, 50))}${field.label.length > 50 ? '…' : ''}</span>
+      <button class="jt-pop-close">✕</button>
+    </div>
+    ${identVal !== null ? `
+      <div class="jt-pop-label">Valeur identité</div>
+      <div class="jt-pop-preview">${escHtml(identVal || '—')}</div>
+      <div class="jt-pop-actions">
+        <button class="jt-pop-btn jt-pop-inject" id="jt-pop-inject">↓ Injecter</button>
+      </div>
+    ` : `
+      <div class="jt-pop-label">Réponse générée</div>
+      <div class="jt-pop-preview" id="jt-pop-preview">${state.answer ? escHtml(state.answer) : 'Cliquez Générer pour créer une réponse IA'}</div>
+      <div class="jt-pop-actions">
+        <button class="jt-pop-btn jt-pop-generate" id="jt-pop-gen">${state.answer ? '↺ Regénérer' : '⚡ Générer'}</button>
+        <button class="jt-pop-btn jt-pop-inject" id="jt-pop-inject" ${state.answer ? '' : 'disabled'}>↓ Injecter</button>
+      </div>
+      <div class="jt-pop-status" id="jt-pop-status"></div>
+    `}
+  `
+
+  document.body.appendChild(popover)
+  positionNearField(field.el, popover)
+
+  popover.querySelector('.jt-pop-close').addEventListener('click', () => { popover.remove(); activePopover = null })
+
+  if (identVal !== null) {
+    popover.querySelector('#jt-pop-inject').addEventListener('click', () => {
+      injectAnswer(field.el, identVal)
+      highlightField(field.el, 'success')
+      btn.textContent = '✓'
+      btn.classList.add('jt-done')
+      popover.remove(); activePopover = null
+    })
+    return
+  }
+
+  // AI generate
+  const genBtn = popover.querySelector('#jt-pop-gen')
+  const injectBtn = popover.querySelector('#jt-pop-inject')
+  const preview = popover.querySelector('#jt-pop-preview')
+  const status = popover.querySelector('#jt-pop-status')
+
+  genBtn.addEventListener('click', async () => {
+    genBtn.disabled = true
+    genBtn.textContent = '⏳ Génération…'
+    status.textContent = 'Appel à Claude AI…'
+    status.className = 'jt-pop-status'
+
+    try {
+      const jdText = await getJD()
+      const jobContext = [
+        `Entreprise: ${jobInfo.company}`,
+        `Poste: ${jobInfo.position}`,
+        jdText ? `Description:\n${jdText.slice(0, 3500)}` : ''
+      ].filter(Boolean).join('\n')
+
+      const response = await browser.runtime.sendMessage({
+        type: 'AUTOFILL_REQUEST',
+        fields: [{ label: field.label, type: field.type, maxLength: field.maxLength, placeholder: field.placeholder }],
+        jobContext
+      })
+
+      if (response.error) throw new Error(response.error)
+      const text = response.answers?.[0]?.text || ''
+      if (!text) throw new Error('Réponse vide')
+
+      state.answer = text
+      fieldState.set(field.el, state)
+      preview.textContent = text
+      injectBtn.disabled = false
+      genBtn.textContent = '↺ Regénérer'
+      genBtn.disabled = false
+      status.textContent = '✓ Généré'
+      status.className = 'jt-pop-status ok'
+    } catch (e) {
+      status.textContent = 'Erreur : ' + e.message.slice(0, 60)
+      status.className = 'jt-pop-status err'
+      genBtn.textContent = '⚡ Réessayer'
+      genBtn.disabled = false
     }
-
-    // Debounce — LinkedIn / SPAs render modals in multiple mutation bursts
-    clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(() => {
-      if (!autofillButton) {
-        createAutofillButton()
-      } else {
-        // Refresh field count if DOM changed
-        const newFields = detectFormFields()
-        if (newFields.length !== detectedFields.length) {
-          detectedFields = newFields
-          const label = autofillButton.querySelector('.jt-label')
-          if (label) label.textContent = `Autofill (${detectedFields.length} champ${detectedFields.length > 1 ? 's' : ''})`
-        }
-      }
-    }, 300)
   })
 
+  injectBtn.addEventListener('click', () => {
+    const text = fieldState.get(field.el)?.answer || ''
+    if (!text) return
+    injectAnswer(field.el, text)
+    highlightField(field.el, 'success')
+    btn.textContent = '✓'
+    btn.classList.add('jt-done')
+    status.textContent = '✓ Injecté'
+    status.className = 'jt-pop-status ok'
+    setTimeout(() => { popover.remove(); activePopover = null }, 800)
+  })
+
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', function onOutside(e) {
+      if (!popover.contains(e.target) && e.target !== btn) {
+        popover.remove(); activePopover = null
+        document.removeEventListener('click', onOutside)
+      }
+    })
+  }, 0)
+}
+
+function placeFieldButton(field) {
+  if (fieldState.has(field.el) && document.contains(fieldState.get(field.el).btn)) return
+
+  const btn = document.createElement('button')
+  btn.className = 'jt-field-btn'
+  btn.textContent = '✦'
+  btn.title = 'JobTrackr Autofill'
+  document.body.appendChild(btn)
+
+  fieldState.set(field.el, { btn, answer: null })
+
+  function updatePos() {
+    if (!document.contains(field.el)) { btn.remove(); return }
+    const rect = field.el.getBoundingClientRect()
+    if (rect.width === 0) { btn.style.display = 'none'; return }
+    btn.style.display = ''
+    btn.style.top = (rect.top + 4) + 'px'
+    btn.style.left = (rect.right - 28) + 'px'
+  }
+
+  updatePos()
+  // Reposition on scroll/resize
+  window.addEventListener('scroll', updatePos, { passive: true })
+  window.addEventListener('resize', updatePos, { passive: true })
+
+  btn.addEventListener('click', e => {
+    e.stopPropagation()
+    openFieldPopover(field, btn)
+  })
+}
+
+// ── 2.4 Init + MutationObserver ───────────────────────────────────────────────
+
+let scanTimer = null
+
+function scanAndPlaceButtons() {
+  const fields = detectFormFields()
+  fields.forEach(f => placeFieldButton(f))
+}
+
+function initAutofill() {
+  injectStyles()
+  scanAndPlaceButtons()
+
+  const observer = new MutationObserver(() => {
+    clearTimeout(scanTimer)
+    scanTimer = setTimeout(scanAndPlaceButtons, 350)
+  })
   observer.observe(document.body, { childList: true, subtree: true })
+
+  // Also reposition all buttons on scroll (modal scrolls internally)
+  window.addEventListener('scroll', () => {
+    fieldState.forEach(({ btn }, el) => {
+      if (!document.contains(el)) { btn?.remove(); return }
+      const rect = el.getBoundingClientRect()
+      if (btn && document.contains(btn)) {
+        btn.style.top = (rect.top + 4) + 'px'
+        btn.style.left = (rect.right - 28) + 'px'
+      }
+    })
+  }, { passive: true })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -983,9 +615,8 @@ browser.runtime.onMessage.addListener((msg) => {
   }
   // Déclencher l'autofill depuis le popup
   if (msg.type === 'TRIGGER_AUTOFILL') {
-    if (!autofillButton) createAutofillButton()
-    if (autofillButton && !autofillPanel) openAutofillPanel()
-    return Promise.resolve({ fieldsCount: detectedFields.length })
+    scanAndPlaceButtons()
+    return Promise.resolve({ fieldsCount: fieldState.size })
   }
 })
 
