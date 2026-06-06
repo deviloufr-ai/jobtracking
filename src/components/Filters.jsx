@@ -1,6 +1,6 @@
 import { STATUSES } from '../hooks/useJobs'
 
-export default function Filters({ filters, onChange, onReset, total, filtered }) {
+export default function Filters({ filters, onChange, onReset, total, filtered, showFavOnly, onToggleFav, favCount, showArchived, onToggleArchived, archivedCount }) {
   const statusEntries = Object.entries(filters.statuses || {})
   const hasActive = filters.search || statusEntries.length > 0 || filters.period !== 'all'
 
@@ -36,6 +36,30 @@ export default function Filters({ filters, onChange, onReset, total, filtered })
             >✕</button>
           )}
         </div>
+        {/* Favoris + Archives toggles */}
+        {onToggleFav && (
+          <button
+            onClick={onToggleFav}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
+              showFavOnly ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-white border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <span>{showFavOnly ? '⭐' : '☆'}</span>
+            {favCount > 0 && <span className="text-xs">{favCount}</span>}
+          </button>
+        )}
+        {onToggleArchived && (
+          <button
+            onClick={onToggleArchived}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
+              showArchived ? 'bg-gray-100 border-gray-300 text-gray-700' : 'bg-white border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <span>📦</span>
+            {archivedCount > 0 && <span className="text-xs">{archivedCount}</span>}
+          </button>
+        )}
+
         <select
           className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
           value={filters.period}
