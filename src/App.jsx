@@ -30,7 +30,11 @@ function sortJobs(jobs, sort) {
   const { col, dir } = sort
   sorted.sort((a, b) => {
     let va, vb
-    if (col === 'date')    { va = new Date(a.date); vb = new Date(b.date) }
+    if (col === 'date') {
+      // Sort by last activity date (last history entry), same as what's displayed in the Date column
+      const lastDate = j => j.history?.length ? j.history[j.history.length - 1].date : j.date
+      va = new Date(lastDate(a)); vb = new Date(lastDate(b))
+    }
     if (col === 'company') { va = a.company.toLowerCase(); vb = b.company.toLowerCase() }
     if (col === 'status')  { va = a.status; vb = b.status }
     if (col === 'position'){ va = a.position.toLowerCase(); vb = b.position.toLowerCase() }
