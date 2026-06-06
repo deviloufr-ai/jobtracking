@@ -71,12 +71,6 @@ function getUrgentRules() {
     label: job => `Préparer entretien ${job.company}`,
     tip: () => `Prépare tes réponses STAR, recherche l'entreprise, prépare 5 questions.`,
   },
-  {
-    match: j => ['rejected', 'rejected_ats'].includes(j.status) && daysSince(j) < 7,
-    icon: '💌', urgency: 'low',
-    label: job => `Feedback ${job.company}`,
-    tip: () => `Demande un retour constructif — ça te différencie et maintient la relation.`,
-  },
 ]}
 
 // Next steps — note-aware, contextual. Order = priority shown to user.
