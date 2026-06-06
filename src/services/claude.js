@@ -235,6 +235,9 @@ IGNORER ABSOLUMENT (confidence: 0) :
 - Notifications LinkedIn "votre profil a été consulté", "X personnes ont vu votre profil" (profil, PAS candidature)
 - Alertes emploi de job boards (Indeed Alert, LinkedIn Job Alert, WTTJ Newsletter...)
 - Emails automatiques sans entreprise identifiable
+- Emails marketing/promotionnels (publicités, newsletters de marques, promotions produits)
+- Si aucun poste (position) identifiable dans l'email → confidence: 0, ne pas inventer un poste
+- Si le contenu n'a aucun lien avec une candidature ou un recrutement → confidence: 0
 
 Un email confidence >= 55 = candidature réelle (l'utilisateur A POSTULÉ ou un RECRUTEUR a répondu)
 Un email confidence 35-54 = signal de suivi seulement (mise à jour d'une candidature existante)

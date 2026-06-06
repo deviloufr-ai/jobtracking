@@ -338,6 +338,27 @@ function deduplicateHistory(jobs) {
       seen.add(key)
       return true
     })
+
+    // Collapse multiple "sent" entries into the earliest one — a job is applied to once
+    // per cycle. Multiple sent entries are always job board notification noise (LinkedIn,
+    // Jobgether, etc. sending repeated "application sent/viewed" emails on different dates).
+    const sentEntries = deduped.filter(h => h.status === 'sent').sort((a, b) => new Date(a.date) - new Date(b.date))
+    if (sentEntries.length > 1) {
+      const [keepSent, ...extraSent] = sentEntries
+      const extraSentSet = new Set(extraSent.map(h => h))
+      const collapsed = deduped.filter(h => !extraSentSet.has(h))
+      // Absorb any unique info from discarded entries into the kept one's note
+      const extraNotes = extraSent
+        .map(h => (h.note || '').trim())
+        .filter(n => n && n.toLowerCase() !== (keepSent.note || '').toLowerCase())
+        .filter((n, i, arr) => arr.indexOf(n) === i)
+      if (extraNotes.length) {
+        const idx = collapsed.indexOf(keepSent)
+        collapsed[idx] = { ...keepSent, note: [keepSent.note, ...extraNotes].filter(Boolean).join(' · ') }
+      }
+      return { ...j, history: collapsed }
+    }
+
     return deduped.length === j.history.length ? j : { ...j, history: deduped }
   })
 }

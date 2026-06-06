@@ -329,25 +329,52 @@ async function fetchEmailDetail(id, token) {
     // Drop job-alert / digest emails based on sender + subject patterns
     const fromRaw = get('From').toLowerCase()
     const subjectRaw = get('Subject').toLowerCase()
-    const JOB_ALERT_SENDERS = [
-      // Job board alert/newsletter specific senders only — keep ATS no-reply (greenhouse, lever, etc.)
-      'notification@emails.hellowork', 'jobalerts@', 'jobalertes@',
-      'newsletter@', 'digest@', 'news@', 'mailer@', 'info@emails.',
-      // Indeed match/recommendation emails (not real applications)
-      'donotreply@match.indeed.com', '@match.indeed.com', 'match@indeed.com',
-      'suggested@indeed.com', 'recommendations@indeed.com',
-    ]
-    const JOB_ALERT_SUBJECTS = [
-      'nouvelles offres', 'new jobs', 'offres d\'emploi', 'offres recommand',
-      'emplois recommand', 'job alert', 'jobs you might like', 'candidatures suggest',
-      'suggested job', 'offres suggest', 'new jobs matching', 'emplois correspondant',
-      'offre recommand', 'recommended job', 'jobs matching your', 'recrute un ', 'recrute une ',
-      'votre parcours pourrait correspondre', 'pourrait correspondre pour', 'correspond à votre profil',
-      'your profile matches', 'matches your experience', 'job match',
-    ]
-    const isJobAlert = JOB_ALERT_SENDERS.some(s => fromRaw.includes(s))
-      || JOB_ALERT_SUBJECTS.some(s => subjectRaw.includes(s))
-    if (isJobAlert) return null
+    const snippetRaw = (data.snippet || '').toLowerCase()
+
+    // Known ATS domains always pass through — their no-reply addresses are legit
+    const ATS_DOMAINS = ['greenhouse.io','lever.co','ashbyhq.com','workable.com','teamtailor.com',
+      'recruitee.com','bamboohr.com','smartrecruiters.com','jobvite.com','icims.com',
+      'myworkdayjobs.com','taleo.net']
+    const isATS = ATS_DOMAINS.some(d => fromRaw.includes(d))
+
+    if (!isATS) {
+      // ① Sender blocklist — job board alerts + marketing/CRM bulk senders
+      const JOB_ALERT_SENDERS = [
+        'notification@emails.hellowork', 'jobalerts@', 'jobalertes@',
+        'newsletter@', 'digest@', 'news@', 'mailer@', 'info@emails.',
+        'donotreply@match.indeed.com', '@match.indeed.com', 'match@indeed.com',
+        'suggested@indeed.com', 'recommendations@indeed.com',
+        // Marketing/CRM bulk-sending subdomains — used by brands, never by recruiters
+        '@crm.', '@email.', '@send.', '@promo.', '@marketing.', 'noreply@', 'no-reply@',
+      ]
+      const JOB_ALERT_SUBJECTS = [
+        'nouvelles offres', 'new jobs', 'offres d\'emploi', 'offres recommand',
+        'emplois recommand', 'job alert', 'jobs you might like', 'candidatures suggest',
+        'suggested job', 'offres suggest', 'new jobs matching', 'emplois correspondant',
+        'offre recommand', 'recommended job', 'jobs matching your', 'recrute un ', 'recrute une ',
+        'votre parcours pourrait correspondre', 'pourrait correspondre pour', 'correspond à votre profil',
+        'your profile matches', 'matches your experience', 'job match',
+      ]
+      const isJobAlert = JOB_ALERT_SENDERS.some(s => fromRaw.includes(s))
+        || JOB_ALERT_SUBJECTS.some(s => subjectRaw.includes(s))
+      if (isJobAlert) return null
+
+      // ② Subject/snippet keyword pre-filter — skip Claude if no job signal at all
+      const JOB_SUBJECT_KEYWORDS = [
+        // FR
+        'candidature','postulation','entretien','recrutement','recruteur','recruteuse',
+        'nous avons bien reçu','votre candidature','suite à votre','nous avons le regret',
+        'sans suite','n\'avons pas retenu','offre d\'emploi','poste de','proposition d\'embauche',
+        'test technique','cas pratique','prise de contact','nous serions ravis','opportunité',
+        // EN
+        'application','interview','hiring','recruiter','thank you for applying',
+        'thanks for applying','application received','your application','we regret',
+        'not selected','not moving forward','job offer','offer letter','next steps',
+        'hiring process','we\'d love','inmail','viewed your application',
+      ]
+      const hasJobSignal = JOB_SUBJECT_KEYWORDS.some(k => subjectRaw.includes(k) || snippetRaw.includes(k))
+      if (!hasJobSignal) return null
+    }
     const isSent = labelIds.includes('SENT')
 
     // Detect Gmail category for Claude confidence hint
