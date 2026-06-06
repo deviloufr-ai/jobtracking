@@ -256,40 +256,32 @@ const TEMPLATES = [
   { id: 'executive', label: 'Executive', icon: '💼', desc: 'Sidebar sombre, 2 colonnes' },
 ]
 
-function renderCV(md, templateId, pic) {
+export function renderCV(md, templateId, pic) {
   if (templateId === 'classic')   return renderClassic(md, pic)
   if (templateId === 'executive') return renderExecutive(md, pic)
   return renderModern(md, pic)
 }
 
+// ── Shared one-page scale logic (no print/close) ─────────────────────────────
+export const ONE_PAGE_SCALE_FN = `
+(function scaleToOnePage(){
+  var probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute;visibility:hidden;height:277mm;top:0;left:0';
+  document.body.appendChild(probe);
+  var usable = probe.offsetHeight;
+  document.body.removeChild(probe);
+  var naturalH = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+  if(naturalH > usable && usable > 0){
+    document.documentElement.style.zoom = (usable / naturalH).toFixed(6);
+  }
+})`
+
 // ── Auto-fit to one page: injected script inside print window ─────────────────
-// Uses CSS zoom (Chrome) + transform scale fallback to shrink content to A4 height
-// Strategy: measure A4 usable height using the browser's own mm→px conversion
-// (a probe div with height:277mm), then apply zoom on <html> — zoom affects
-// layout (unlike transform:scale) so Chrome/Edge's print renderer sees one page.
-const ONE_PAGE_SCRIPT = `
+export const ONE_PAGE_SCRIPT = `
 <script>
 (function(){
   window.addEventListener('load', function(){
-    // 1. Measure usable A4 height in the browser's current px unit
-    //    (avoids hardcoding 96dpi which varies by device/browser)
-    var probe = document.createElement('div');
-    probe.style.cssText = 'position:absolute;visibility:hidden;height:277mm;top:0;left:0';
-    document.body.appendChild(probe);
-    var usable = probe.offsetHeight;
-    document.body.removeChild(probe);
-
-    // 2. Natural content height (before any scaling)
-    var naturalH = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
-
-    if(naturalH > usable && usable > 0){
-      var scale = usable / naturalH;
-      // zoom on <html> shrinks everything AND affects layout → browser sees one page
-      // Do NOT set overflow:hidden — that clips content; zoom alone is enough
-      document.documentElement.style.zoom = scale.toFixed(6);
-    }
-
-    // 3. Wait one frame for repaint before printing
+    ${ONE_PAGE_SCALE_FN}();
     requestAnimationFrame(function(){
       requestAnimationFrame(function(){
         window.print();
@@ -300,7 +292,7 @@ const ONE_PAGE_SCRIPT = `
 })();
 <\/script>`
 
-const BASE_PRINT_CSS = `
+export const BASE_PRINT_CSS = `
   @page { margin:10mm 12mm; size:A4 portrait; }
   *{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   html,body{ margin:0; padding:0; font-family:Arial,Helvetica,sans-serif; background:#fff; }
@@ -309,7 +301,7 @@ const BASE_PRINT_CSS = `
 `
 
 // ─────────────────────────────────────────────────────────────────────────────
-export default function CVGenerator({ cv, job, onBack }) {
+export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
   const [step, setStep]             = useState('fetching_jd')
   const [jdText, setJdText]         = useState('')
   const [jdError, setJdError]       = useState(null)
@@ -383,6 +375,16 @@ export default function CVGenerator({ cv, job, onBack }) {
       ${ONE_PAGE_SCRIPT}
     </head><body>${html}</body></html>`)
     win.document.close()
+    if (onSaveCV) {
+      onSaveCV(job.id, {
+        cvSaved: {
+          markdown: editableCV || generatedCV,
+          template,
+          filename,
+          savedAt: new Date().toISOString(),
+        }
+      })
+    }
   }
 
   const currentTpl = TEMPLATES.find(t => t.id === template) || TEMPLATES[0]

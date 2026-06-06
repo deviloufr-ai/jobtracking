@@ -11,7 +11,7 @@ function loadProfile() {
   try { const r = localStorage.getItem(PROFILE_KEY); return r ? JSON.parse(r) : null } catch { return null }
 }
 
-export default function CVManager({ jobs, preselectedJob }) {
+export default function CVManager({ jobs, preselectedJob, onUpdateJob }) {
   const { cvs, addCV, deleteCV, renameCV } = useCVs()
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
@@ -98,6 +98,7 @@ export default function CVManager({ jobs, preselectedJob }) {
         cv={generatorState.cv}
         job={generatorState.job}
         onBack={() => setGeneratorState(null)}
+        onSaveCV={onUpdateJob}
       />
     )
   }

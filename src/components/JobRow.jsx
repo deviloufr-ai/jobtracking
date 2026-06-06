@@ -87,7 +87,7 @@ function getSourceLabel(entry, companyName) {
   return null
 }
 
-export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, forceExpand, onForceExpandDone }) {
+export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, onViewSavedCV, forceExpand, onForceExpandDone }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
   const [showUseCase, setShowUseCase] = useState(false)
@@ -269,7 +269,12 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
             </div>
             {/* Company + Position */}
             <div className="min-w-0">
-              <div className="font-semibold text-gray-800 text-sm truncate leading-tight">{job.company}</div>
+              <div className="font-semibold text-gray-800 text-sm truncate leading-tight flex items-center gap-1.5">
+                {job.company}
+                {job.cvSaved && (
+                  <span title={`CV généré le ${new Date(job.cvSaved.savedAt).toLocaleDateString('fr-FR')}`} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-600 flex-shrink-0">CV</span>
+                )}
+              </div>
               <div className="text-xs text-gray-400 truncate mt-0.5">{job.position}</div>
             </div>
           </div>
@@ -615,6 +620,23 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                       <span className="truncate">{(() => { try { return new URL(job.url).hostname.replace('www.', '') } catch { return job.url } })()}</span>
                     </a>
                   )}
+                  {job.cvSaved && (
+                    <div className="mt-2 pt-2 border-t border-gray-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px]">📄</span>
+                          <span className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wider">CV adapté</span>
+                        </div>
+                        <span className="text-[10px] text-gray-400">{new Date(job.cvSaved.savedAt).toLocaleDateString('fr-FR')}</span>
+                      </div>
+                      <button
+                        onClick={e => { e.stopPropagation(); onViewSavedCV && onViewSavedCV(job) }}
+                        className="mt-1.5 w-full text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors text-left flex items-center gap-1.5"
+                      >
+                        <span>👁</span> Voir le CV
+                      </button>
+                    </div>
+                  )}
                 </div>
 
 
@@ -624,10 +646,10 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                     className="w-full text-xs font-medium text-gray-600 bg-white border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-left">
                     ✏️ Modifier la candidature
                   </button>
-                  {onGenerateCV && job.status === 'todo' && (
+                  {onGenerateCV && (job.status === 'todo' || job.cvSaved) && (
                     <button onClick={() => onGenerateCV(job)}
                       className="w-full text-xs font-medium text-violet-600 bg-white border border-violet-100 px-3 py-2 rounded-lg hover:bg-violet-50 transition-colors text-left">
-                      📄 Générer un CV adapté
+                      {job.cvSaved ? '✏️ Regénérer le CV' : '📄 Générer un CV adapté'}
                     </button>
                   )}
                 </div>

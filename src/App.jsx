@@ -14,6 +14,7 @@ import { useAutoRefresh } from './hooks/useAutoRefresh'
 import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser } from './services/gmail'
 import JobSearch from './components/JobSearch'
 import CVManager from './components/CVManager'
+import { renderCV, ONE_PAGE_SCALE_FN, BASE_PRINT_CSS } from './components/CVGenerator'
 import Settings from './components/Settings'
 import ImageImport from './components/ImageImport'
 import UpcomingMeetings from './components/UpcomingMeetings'
@@ -202,6 +203,45 @@ export default function App() {
   const handleGenerateCV = (job) => {
     setSelectedJobForCV(job)
     setActiveTab('cv')
+  }
+
+  const handleViewSavedCV = (job) => {
+    const { markdown, template, filename } = job.cvSaved
+    const html = renderCV(markdown, template, null)
+    const win  = window.open('', '_blank')
+    if (!win) { alert('Autorisez les pop-ups pour voir le CV.'); return }
+    win.document.write(`<!DOCTYPE html><html><head>
+      <meta charset="utf-8"/>
+      <title>${filename}</title>
+      <style>
+        ${BASE_PRINT_CSS}
+        body{ background:#f3f4f6; }
+        .cv-wrapper{ max-width:794px; margin:24px auto; background:#fff; box-shadow:0 4px 24px rgba(0,0,0,0.10); border-radius:4px; overflow:hidden; }
+        @media print {
+          html,body{ background:#fff; zoom:unset !important; }
+          .cv-wrapper{ box-shadow:none; margin:0; max-width:100%; border-radius:0; }
+          .no-print{ display:none !important; }
+        }
+      </style>
+      <script>
+      ${ONE_PAGE_SCALE_FN}
+      window.addEventListener('load', function(){
+        scaleToOnePage();
+      });
+      function printCV(){
+        // Re-apply scale inside print via beforeprint
+        window.addEventListener('beforeprint', scaleToOnePage, {once:true});
+        window.print();
+      }
+      <\/script>
+    </head><body>
+      <div class="no-print" style="position:sticky;top:0;z-index:99;background:#4f46e5;color:#fff;padding:10px 24px;font-family:Arial,sans-serif;font-size:13px;display:flex;align-items:center;justify-content:space-between;">
+        <span>📄 <strong>${filename}</strong></span>
+        <button onclick="printCV()" style="background:#fff;color:#4f46e5;border:none;border-radius:6px;padding:6px 16px;font-size:12px;font-weight:600;cursor:pointer;">🖨️ Imprimer / Exporter PDF</button>
+      </div>
+      <div class="cv-wrapper">${html}</div>
+    </body></html>`)
+    win.document.close()
   }
 
   const handleBulkImport = (newJobs) => {
@@ -506,7 +546,7 @@ export default function App() {
         {activeTab === 'settings' ? (
           <Settings jobs={jobs} onMergeDuplicates={mergeDuplicates} />
         ) : activeTab === 'cv' ? (
-          <CVManager jobs={jobs} preselectedJob={selectedJobForCV} />
+          <CVManager jobs={jobs} preselectedJob={selectedJobForCV} onUpdateJob={updateJob} />
         ) : activeTab === 'search' ? (
           <JobSearch onAddJob={(job) => { addJob(job); showToast(`${job.company} ajouté !`); setActiveTab('tracker') }} existingJobs={jobs} />
         ) : (
@@ -569,7 +609,7 @@ export default function App() {
                 </thead>
                 <tbody>
                   {filtered.map(job => (
-                    <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} />
+                    <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} onViewSavedCV={handleViewSavedCV} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} />
                   ))}
                 </tbody>
               </table>
