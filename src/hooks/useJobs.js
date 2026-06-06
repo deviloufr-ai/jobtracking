@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { loadSettings } from './useSettings'
 
 const STORAGE_KEY = 'jobtrackr_applications'
@@ -372,9 +372,12 @@ function save(jobs) {
 }
 
 export function useJobs() {
-  const [jobs, setJobs] = useState(load)
+  const [rawJobs, setJobs] = useState(load)
 
-  useEffect(() => { save(jobs) }, [jobs])
+  // Apply autoStale on every render so threshold changes from Settings take effect immediately
+  const jobs = useMemo(() => autoStale(rawJobs), [rawJobs])
+
+  useEffect(() => { save(jobs) }, [jobs])  // save derived (post-autoStale) so archived status persists
 
   const addJob = (data) => {
     const status = (data.status === 'rejected' && isAtsRejection(data.notes || '', data._fromEmail || ''))
