@@ -312,6 +312,24 @@ async function fetchEmailDetail(id, token) {
     const headers = data.payload?.headers || []
     const get = (name) => headers.find(h => h.name === name)?.value || ''
     const body = extractBody(data.payload).slice(0, 2000)
+
+    // Drop job-alert / digest emails based on sender + subject patterns
+    const fromRaw = get('From').toLowerCase()
+    const subjectRaw = get('Subject').toLowerCase()
+    const JOB_ALERT_SENDERS = [
+      'notification@emails.hellowork', 'jobalerts@', 'jobalertes@', 'alert@', 'alerts@',
+      'noreply@', 'no-reply@', 'notification@', 'notifications@', 'newsletter@',
+      'digest@', 'news@', 'mailer@', 'info@emails.', 'no_reply@',
+    ]
+    const JOB_ALERT_SUBJECTS = [
+      'nouvelles offres', 'new jobs', 'offres d\'emploi', 'offres recommand',
+      'emplois recommand', 'job alert', 'jobs you might like', 'candidatures suggest',
+      'suggested job', 'offres suggest', 'new jobs matching', 'emplois correspondant',
+      'offre recommand', 'recommended job', 'jobs matching your', 'recrute un ', 'recrute une ',
+    ]
+    const isJobAlert = JOB_ALERT_SENDERS.some(s => fromRaw.includes(s))
+      || JOB_ALERT_SUBJECTS.some(s => subjectRaw.includes(s))
+    if (isJobAlert) return null
     const isSent = labelIds.includes('SENT')
 
     // Detect Gmail category for Claude confidence hint
