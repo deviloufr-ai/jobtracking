@@ -72,10 +72,19 @@ function getUrgentRules() {
     tip: () => `Offre reçue — négocie et réponds avant qu'elle expire.`,
   },
   {
-    match: j => j.status === 'interview',
+    // Interview prep — only when NO test technique keyword (test takes priority)
+    match: j => j.status === 'interview' && !hasKeyword(j, ...TEST_KWS),
     icon: '🎯', urgency: 'medium',
     label: job => `Préparer entretien ${job.company}`,
     tip: () => `Prépare tes réponses STAR, recherche l'entreprise, prépare 5 questions.`,
+  },
+  {
+    // Test technique — urgent priority when keyword detected
+    match: j => j.status === 'interview' && hasKeyword(j, ...TEST_KWS),
+    icon: '💻', urgency: 'medium',
+    label: job => `Préparer le test technique ${job.company}`,
+    tip: () => `Prépare la documentation, un repo propre, soigne le README et tes explications de choix techniques.`,
+    cta: 'Voir les conseils',
   },
 ]}
 
@@ -190,14 +199,16 @@ function buildAllActions(activeJobs, s) {
     }
   }
 
-  // Deduplicate: same job + same label
-  const seen = new Set()
+  // Sort by priority first
+  items.sort((a, b) => a.sortKey - b.sortKey)
+
+  // Keep only ONE action per job — the highest priority one
+  const seenJobs = new Set()
   return items.filter(item => {
-    const k = `${item.job.id}|${item.rule.label(item.job)}`
-    if (seen.has(k)) return false
-    seen.add(k)
+    if (seenJobs.has(item.job.id)) return false
+    seenJobs.add(item.job.id)
     return true
-  }).sort((a, b) => a.sortKey - b.sortKey).slice(0, 8)
+  }).slice(0, 8)
 }
 
 export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDraftEmail }) {
