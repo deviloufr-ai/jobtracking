@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { enrichJobTimeline } from '../services/enrichTimeline'
 import AdvicePanel from './AdvicePanel'
 import { STATUSES, getStatus } from '../hooks/useJobs'
+import { gmailMessageUrl } from '../services/gmail'
 
 function getTipsFromNote(note = '') {
   const n = note.toLowerCase()
@@ -403,11 +404,12 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                                 <span className="text-xs text-gray-400 mt-0.5 inline-block">📅 Google Calendar</span>
                               )}
                               {entry.gmailId && (
-                                <a href={`https://mail.google.com/mail/u/0/#inbox/${entry.gmailId}`} target="_blank" rel="noopener noreferrer"
+                                <a href={gmailMessageUrl(entry.gmailId, entry.receivedBy)} target="_blank" rel="noopener noreferrer"
                                   onClick={e => e.stopPropagation()}
-                                  className="inline-flex items-center gap-1 mt-1 text-xs text-gray-400 hover:text-red-500 transition-colors">
+                                  className="inline-flex items-center gap-1 mt-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+                                  title={entry.receivedBy ? `Ouvrir dans ${entry.receivedBy}` : 'Voir dans Gmail'}>
                                   <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.909 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>
-                                  Voir l'email
+                                  Voir l'email {entry.receivedBy && <span className="text-[9px] opacity-60">({entry.receivedBy.split('@')[0]})</span>}
                                 </a>
                               )}
                               {getTipsFromNote(entry.note).length > 0 && <StepTips note={entry.note} />}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { connectGmail, disconnectGmail, refreshToken, fetchJobEmails, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser } from '../services/gmail'
+import { connectGmail, disconnectGmail, refreshToken, fetchJobEmails, fetchJobEmailsForAccount, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, getConnectedAccounts } from '../services/gmail'
 import { fetchCalendarEvents } from '../services/calendar'
 import { buildJobsFromEmails } from '../hooks/useAutoRefresh'
 import { getStatus, isAtsRejection } from '../hooks/useJobs'
@@ -16,8 +16,8 @@ const MONTH_OPTIONS = [
 
 export default function GmailImport({ onImport, onUpdate, onClose, existingJobs, onUserChange }) {
   const [step, setStep] = useState(STEPS.idle)
-  const [gmailUser, setGmailUser] = useState(() => getCachedUser())
-  const [connected, setConnected] = useState(isConnected())
+  const [connectedAccounts, setConnectedAccounts] = useState(() => getConnectedAccounts())
+  const [scanAccount, setScanAccount] = useState(null) // null = all accounts
   const [forceImport, setForceImport] = useState(false)
   const [debugInfo, setDebugInfo] = useState(null)
   const [results, setResults] = useState([])
@@ -26,13 +26,23 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
   const [emailCount, setEmailCount] = useState(0)
   const [months, setMonths] = useState(3)
 
-  const handleDisconnect = () => {
-    disconnectGmail()
-    setConnected(false)
-    setGmailUser(null)
-    onUserChange?.(null)
-    setStep(STEPS.idle)
-    setResults([])
+  // backward compat
+  const gmailUser = connectedAccounts[0] || null
+  const connected = connectedAccounts.length > 0
+
+  function refreshAccountList() {
+    const accounts = getConnectedAccounts()
+    setConnectedAccounts(accounts)
+    onUserChange?.(accounts[0] || null)
+  }
+
+  const handleDisconnect = (email) => {
+    disconnectGmail(email)
+    refreshAccountList()
+    if (!isConnected()) {
+      setStep(STEPS.idle)
+      setResults([])
+    }
   }
 
   const handleConnect = async () => {
@@ -44,12 +54,8 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
       setStep(STEPS.connecting)
       setError(null)
       await connectGmail()
-      setConnected(true)
+      refreshAccountList()
       setStep(STEPS.idle)
-      // connectGmail fetches and caches user info; fall back to a direct fetch if it failed
-      const user = getCachedUser() || await getGmailUserInfo()
-      setGmailUser(user)
-      onUserChange?.(user)
     } catch (e) {
       setError('Connexion Gmail annulée ou échouée : ' + e.message)
       setStep(STEPS.idle)
@@ -74,7 +80,8 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         }
       }
 
-      const emails = await fetchJobEmails(100, months)
+      const fetchFn = scanAccount ? () => fetchJobEmailsForAccount(scanAccount, 100, months) : () => fetchJobEmails(100, months)
+      const emails = await fetchFn()
       setEmailCount(emails.length)
 
       if (emails.length === 0) {
@@ -96,7 +103,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         fetchCalendarEvents('', months).catch(() => []),
       ])
       // Stamp every email history entry with the account that received it
-      const account = gmailUser?.email || getCachedUser()?.email || null
+      const account = scanAccount || gmailUser?.email || getCachedUser()?.email || null
       if (account) {
         for (const job of grouped) {
           job.history = (job.history || []).map(h =>
@@ -296,22 +303,39 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
           {/* Connected idle */}
           {connected && step === STEPS.idle && (
             <div className="text-center py-4">
-              {/* Account info */}
-              <div className="flex items-center justify-center gap-3 mb-5">
-                <div className="flex items-center gap-2 bg-green-50 border border-green-100 text-green-700 text-xs font-medium px-3 py-1.5 rounded-full">
-                  {gmailUser?.picture
-                    ? <img src={gmailUser.picture} alt="" className="w-4 h-4 rounded-full" />
-                    : <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
-                  }
-                  <span>{gmailUser?.email || 'Gmail connecté'}</span>
-                </div>
+              {/* Connected accounts */}
+              <div className="mb-5 space-y-2">
+                {connectedAccounts.map(acct => (
+                  <div key={acct.email} className="flex items-center gap-2 bg-green-50 border border-green-100 rounded-xl px-3 py-2">
+                    {acct.picture
+                      ? <img src={acct.picture} alt="" className="w-6 h-6 rounded-full flex-shrink-0" />
+                      : <span className="w-6 h-6 rounded-full bg-green-400 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">{acct.email[0].toUpperCase()}</span>
+                    }
+                    <div className="flex-1 text-left min-w-0">
+                      <p className="text-xs font-semibold text-green-800 truncate">{acct.name || acct.email}</p>
+                      <p className="text-[10px] text-green-600 truncate">{acct.email}</p>
+                    </div>
+                    <button
+                      onClick={() => setScanAccount(prev => prev === acct.email ? null : acct.email)}
+                      className={`text-[10px] font-semibold px-2 py-1 rounded-lg border transition-all ${scanAccount === acct.email ? 'bg-indigo-600 text-white border-indigo-600' : 'border-green-200 text-green-700 hover:bg-green-100'}`}
+                    >
+                      {scanAccount === acct.email ? '✓ Sélectionné' : 'Scanner'}
+                    </button>
+                    <button onClick={() => handleDisconnect(acct.email)} className="text-[10px] text-gray-400 hover:text-red-500 transition-colors ml-1" title="Déconnecter">✕</button>
+                  </div>
+                ))}
                 <button
-                  onClick={handleDisconnect}
-                  className="text-xs text-gray-400 hover:text-red-500 transition-colors"
-                  title="Déconnecter"
+                  onClick={handleConnect}
+                  className="w-full flex items-center justify-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 border border-dashed border-indigo-200 hover:border-indigo-400 rounded-xl py-2 transition-all"
                 >
-                  Déconnecter
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                  Ajouter un compte Gmail
                 </button>
+                {connectedAccounts.length > 1 && (
+                  <p className="text-[10px] text-gray-400 text-center">
+                    {scanAccount ? `Scan : ${scanAccount}` : `Scan : tous les comptes (${connectedAccounts.length})`}
+                  </p>
+                )}
               </div>
 
               {/* Month selector */}

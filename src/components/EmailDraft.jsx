@@ -155,7 +155,7 @@ export default function EmailDraft({ job, type = 'remerciement', onClose }) {
       ? (type === 'remerciement' ? `${job.position} application — Thank you` : `${job.position} application — Following up`)
       : (type === 'remerciement' ? `Candidature ${job.position} — Merci` : `Suivi candidature — ${job.position}`)
     try {
-      await sendEmail({ to: to.trim(), subject, body: draft })
+      await sendEmail({ to: to.trim(), subject, body: draft, fromAccount: receivedBy || undefined })
       setSendStatus('sent')
       setTimeout(() => setSendStatus(null), 4000)
     } catch (e) {

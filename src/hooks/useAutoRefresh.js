@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { isConnected, fetchJobEmails, getCachedUser } from '../services/gmail'
+import { isConnected, fetchJobEmails, fetchJobEmailsForAccount, getConnectedAccounts, getCachedUser } from '../services/gmail'
 import { parseEmailsForJobs } from '../services/claude'
 import { fetchCalendarEvents } from '../services/calendar'
 import { isAtsRejection } from './useJobs'
@@ -80,7 +80,7 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
         date: e.date, status: e.status, note: e.notes || '',
         gmailId: e.gmailId, from: e.fromEmail, fromMe: e.fromMe || false,
         source: 'email',
-        receivedBy: getCachedUser()?.email || null,
+        receivedBy: orig?._account || getCachedUser()?.email || null,
         ...(meetingLink && { meetingLink }),
       }
     })
@@ -133,8 +133,29 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
     setRefreshing(true)
     try {
       const months = 3
+      // Fetch from all connected accounts and merge, tagging each email with its account
+      const connectedAccts = getConnectedAccounts()
+      let allEmails = []
+      if (connectedAccts.length > 1) {
+        const perAccount = await Promise.all(
+          connectedAccts.map(acct =>
+            fetchJobEmailsForAccount(acct.email, 100, months)
+              .then(emails => emails.map(e => ({ ...e, _account: acct.email })))
+              .catch(() => [])
+          )
+        )
+        // Deduplicate by id across accounts
+        const seen = new Set()
+        for (const emails of perAccount) {
+          for (const e of emails) {
+            if (!seen.has(e.id)) { seen.add(e.id); allEmails.push(e) }
+          }
+        }
+      } else {
+        allEmails = await fetchJobEmails(100, months)
+      }
       const [emails, calendarEvents] = await Promise.all([
-        fetchJobEmails(100, months),
+        Promise.resolve(allEmails),
         fetchCalendarEvents('', months).catch(() => []),
       ])
       if (!emails.length) { setRefreshing(false); return }
