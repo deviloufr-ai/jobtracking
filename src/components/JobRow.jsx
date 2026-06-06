@@ -230,7 +230,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
         </td>
 
         {/* Status */}
-        <td className="py-3.5 px-4" onClick={e => e.stopPropagation()}>
+        <td className={`py-3.5 px-4 ${showStatusMenu ? 'relative z-[110]' : ''}`} onClick={e => e.stopPropagation()}>
           <div className="relative">
             <button
               onClick={() => setShowStatusMenu(v => !v)}
