@@ -66,10 +66,9 @@ export async function fetchCalendarEvents(companyName, monthsBack = 12) {
   const accounts = getConnectedAccounts()
 
   if (accounts.length > 1) {
-    const { getAccessToken: getToken } = await import('./gmail')
     const perAccount = await Promise.all(
       accounts.map(acct => {
-        const token = getToken(acct.email)
+        const token = getAccessToken(acct.email)
         return fetchCalendarEventsForToken(token, companyName, monthsBack)
       })
     )
