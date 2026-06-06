@@ -73,10 +73,10 @@ export default function Stats({ jobs }) {
   const thisWeek = jobs.filter(j => (new Date() - new Date(j.date)) / 86400000 <= 7).length
 
   return (
-    <div className="grid grid-cols-2 gap-4 h-full">
+    <div className="grid grid-cols-2 grid-rows-2 gap-4 h-full">
 
       {/* Card 1 — Pipeline overview */}
-      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col gap-3">
+      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col gap-3 h-full">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Pipeline</span>
           <span className="text-xs text-gray-400">{thisWeek} cette semaine</span>
@@ -102,7 +102,7 @@ export default function Stats({ jobs }) {
       </div>
 
       {/* Card 2 — Response rate */}
-      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col gap-3">
+      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col gap-3 h-full">
         <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Taux de réponse</span>
         <div className="flex items-center gap-4">
           <RadialProgress value={responseRate} max={100} size={60}
@@ -130,7 +130,7 @@ export default function Stats({ jobs }) {
       </div>
 
       {/* Card 3 — Weekly activity sparkline */}
-      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col gap-3">
+      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col gap-3 h-full">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Activité 7j</span>
           <span className="text-xs text-indigo-600 font-semibold">{thisWeek} ajoutées</span>
@@ -152,7 +152,7 @@ export default function Stats({ jobs }) {
       </div>
 
       {/* Card 4 — Status breakdown */}
-      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col gap-2">
+      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col gap-2 h-full">
         <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Répartition</span>
         <div className="flex flex-col gap-1.5 flex-1">
           {byStatus.length === 0 && <span className="text-xs text-gray-300 mt-2">—</span>}

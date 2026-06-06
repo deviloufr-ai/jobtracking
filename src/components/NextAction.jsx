@@ -203,7 +203,7 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
   if (actions.length === 0) return null
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-4">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-4 h-full flex flex-col">
       <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-2">
         <span className="text-base">🗺️</span>
         <h3 className="text-sm font-semibold text-gray-800">Prochaines étapes</h3>
@@ -213,7 +213,7 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
           </span>
         )}
       </div>
-      <div className="divide-y divide-gray-50">
+      <div className="divide-y divide-gray-50 flex-1 overflow-y-auto">
         {actions.map(({ job, rule, urgency }, i) => (
           <div key={i} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50/50 transition-colors">
             {/* Urgency dot */}
