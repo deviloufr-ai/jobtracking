@@ -96,19 +96,26 @@ export default function CVGenerator({ cv, job, onBack }) {
     }
   }
 
-  const handleExportPDF = async () => {
-    setExporting(true)
-    try {
-      const html2pdf = (await import('html2pdf.js')).default
-      await html2pdf().set({
-        margin: [12, 12, 12, 12],
-        filename: `CV_${job.company}_${job.position.replace(/\s+/g, '_')}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      }).from(afterRef.current).save()
-    } catch (e) { alert('Erreur PDF : ' + e.message) }
-    setExporting(false)
+  const handleExportPDF = () => {
+    const html = cvToHTML(editableCV || generatedCV)
+    const filename = `CV_${job.company}_${job.position.replace(/\s+/g, '_')}`
+    const win = window.open('', '_blank')
+    if (!win) { alert('Autorisez les pop-ups pour exporter le PDF.'); return }
+    win.document.write(`<!DOCTYPE html><html><head>
+      <meta charset="utf-8"/>
+      <title>${filename}</title>
+      <style>
+        @page { margin: 15mm; }
+        body { font-family: Arial, sans-serif; font-size: 10pt; color: #1e293b; line-height: 1.5; }
+        h1 { font-size: 17pt; font-weight: bold; color: #1e293b; border-bottom: 2px solid #6366f1; padding-bottom: 5px; margin: 0 0 10px; }
+        h2 { font-size: 11pt; font-weight: bold; color: #4f46e5; margin: 14px 0 5px; text-transform: uppercase; letter-spacing: 0.06em; }
+        h3 { font-size: 10.5pt; font-weight: bold; color: #1e293b; margin: 8px 0 3px; }
+        @media print { body { margin: 0; } }
+      </style>
+    </head><body>${html}</body></html>`)
+    win.document.close()
+    win.focus()
+    setTimeout(() => { win.print(); win.close() }, 300)
   }
 
   const CVPanel = ({ text, label, accent, ref: panelRef }) => (
