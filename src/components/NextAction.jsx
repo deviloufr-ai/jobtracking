@@ -154,131 +154,113 @@ const NEXT_STEPS_RULES = [
   },
 ]
 
-const URGENCY_COLORS = {
-  high:   'border-l-red-400 bg-red-50/40',
-  medium: 'border-l-orange-300 bg-orange-50/40',
-  low:    'border-l-blue-300 bg-blue-50/40',
+const URGENCY_DOT = {
+  high:   'bg-red-500',
+  medium: 'bg-orange-400',
+  low:    'bg-blue-400',
+  info:   'bg-gray-300',
+}
+
+// Merge urgent + next steps into one sorted list
+function buildAllActions(activeJobs, s) {
+  const items = []
+
+  // From urgent rules
+  for (const job of activeJobs) {
+    for (const rule of getUrgentRules()) {
+      if (rule.match(job)) items.push({ job, rule, urgency: rule.urgency, sortKey: { high: 0, medium: 1, low: 2 }[rule.urgency] ?? 3, source: 'urgent' })
+    }
+  }
+
+  // From next steps rules — avoid duplicating interview prep already in urgent
+  const urgentJobIds = new Set(items.filter(i => i.rule.icon === '🎯').map(i => i.job.id))
+  for (const job of activeJobs) {
+    for (const rule of NEXT_STEPS_RULES) {
+      if (!rule.match(job)) continue
+      // Skip interview prep if already in urgent for same job
+      if (rule.type === 'prep' && !rule.label(job).toLowerCase().includes('test') && urgentJobIds.has(job.id)) continue
+      const urgency = rule.priority === 0 ? 'medium' : rule.type === 'email' ? 'low' : 'info'
+      items.push({ job, rule, urgency, sortKey: (rule.priority ?? 2) + 2, source: 'next' })
+    }
+  }
+
+  // Deduplicate: same job + same label
+  const seen = new Set()
+  return items.filter(item => {
+    const k = `${item.job.id}|${item.rule.label(item.job)}`
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  }).sort((a, b) => a.sortKey - b.sortKey).slice(0, 8)
 }
 
 export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDraftEmail }) {
   const activeJobs = jobs.filter(j => !['cancelled', 'archived'].includes(j.status))
+  const s = loadSettings()
+  const actions = buildAllActions(activeJobs, s)
+  const urgentCount = actions.filter(a => a.urgency === 'high').length
 
-  const urgentActions = activeJobs
-    .flatMap(job => getUrgentRules()
-      .filter(r => r.match(job))
-      .map(r => ({ job, rule: r }))
-    )
-    .sort((a, b) => {
-      const order = { high: 0, medium: 1, low: 2 }
-      return order[a.rule.urgency] - order[b.rule.urgency]
-    })
-    .slice(0, 4)
-
-  const nextSteps = activeJobs
-    .flatMap(job => NEXT_STEPS_RULES
-      .filter(r => r.match(job))
-      .map(r => ({ job, rule: r, priority: r.priority ?? 2 }))
-    )
-    .sort((a, b) => a.priority - b.priority)
-    .slice(0, 6)
-
-  if (urgentActions.length === 0 && nextSteps.length === 0) return null
+  if (actions.length === 0) return null
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-      {/* Urgent Actions */}
-      {urgentActions.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-2">
-            <span className="text-base">⚡</span>
-            <h3 className="text-sm font-semibold text-gray-800">Actions requises</h3>
-            {urgentActions.filter(a => a.rule.urgency === 'high').length > 0 && (
-              <span className="text-xs bg-red-100 text-red-600 font-medium px-2 py-0.5 rounded-full ml-auto">
-                {urgentActions.filter(a => a.rule.urgency === 'high').length} urgent{urgentActions.filter(a => a.rule.urgency === 'high').length > 1 ? 'es' : 'e'}
-              </span>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-4">
+      <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-2">
+        <span className="text-base">🗺️</span>
+        <h3 className="text-sm font-semibold text-gray-800">Prochaines étapes</h3>
+        {urgentCount > 0 && (
+          <span className="text-xs bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full ml-1">
+            {urgentCount} urgent{urgentCount > 1 ? 'es' : 'e'}
+          </span>
+        )}
+      </div>
+      <div className="divide-y divide-gray-50">
+        {actions.map(({ job, rule, urgency }, i) => (
+          <div key={i} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50/50 transition-colors">
+            {/* Urgency dot */}
+            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${URGENCY_DOT[urgency]}`} />
+            <span className="text-sm flex-shrink-0">{rule.icon}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-800 truncate">{rule.label(job)}</p>
+              <p className="text-xs text-gray-400 truncate">{rule.tip(job)}</p>
+            </div>
+            {/* Action buttons */}
+            {rule.type === 'cv' && onGenerateCV && (
+              <button onClick={() => onGenerateCV(job)} className="flex-shrink-0 text-xs font-medium bg-violet-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-violet-600 transition-colors whitespace-nowrap">
+                {rule.cta}
+              </button>
+            )}
+            {rule.type === 'prep' && !rule.label(job).toLowerCase().includes('test') && onSTAR && (
+              <button onClick={() => onSTAR(job)} className="flex-shrink-0 text-xs font-medium bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-indigo-600 transition-colors whitespace-nowrap">
+                STAR ✦
+              </button>
+            )}
+            {(rule.source === 'urgent' || rule.type === 'email') && rule.label(job).toLowerCase().includes('remerciement') && onDraftEmail && hasRealEmail(job) && (
+              <button onClick={() => onDraftEmail(job, 'remerciement')} className="flex-shrink-0 text-xs font-medium bg-pink-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-pink-600 transition-colors whitespace-nowrap">
+                Rédiger ✦
+              </button>
+            )}
+            {(rule.source === 'urgent' || rule.type === 'email') && rule.label(job).toLowerCase().includes('relancer') && onDraftEmail && hasRealEmail(job) && (
+              <button onClick={() => onDraftEmail(job, 'relance')} className="flex-shrink-0 text-xs font-medium bg-blue-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap">
+                Rédiger ✦
+              </button>
+            )}
+            {rule.source === 'urgent' && rule.icon === '🎯' && onSTAR && !rule.label(job).toLowerCase().includes('test') && (
+              <button onClick={() => onSTAR(job)} className="flex-shrink-0 text-xs font-medium bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-indigo-600 transition-colors whitespace-nowrap">
+                STAR ✦
+              </button>
+            )}
+            {rule.type === 'usecase' && (
+              <button onClick={() => onOpenJob && onOpenJob(job)} className="flex-shrink-0 text-xs font-medium bg-amber-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-amber-600 transition-colors whitespace-nowrap">
+                {rule.cta}
+              </button>
+            )}
+            {rule.cta && !['cv', 'prep', 'email', 'usecase'].includes(rule.type) && rule.source !== 'urgent' && (
+              <button onClick={() => onOpenJob && onOpenJob(job)} className="flex-shrink-0 text-xs font-medium border border-gray-200 text-gray-600 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">
+                {rule.cta}
+              </button>
             )}
           </div>
-          <div className="divide-y divide-gray-50">
-            {urgentActions.map(({ job, rule }, i) => (
-              <div key={i} className={`flex items-start gap-3 px-4 py-3 border-l-4 ${URGENCY_COLORS[rule.urgency]}`}>
-                <span className="text-base mt-0.5 flex-shrink-0">{rule.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{rule.label(job)}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{rule.tip(job)}</p>
-                </div>
-                {rule.icon === '🎯' && onSTAR && !rule.label(job).toLowerCase().includes('test') && (
-                  <button onClick={() => onSTAR(job)} className="flex-shrink-0 text-xs font-medium bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-indigo-600 transition-colors whitespace-nowrap">
-                    STAR ✦
-                  </button>
-                )}
-                {rule.icon === '💌' && onDraftEmail && hasRealEmail(job) && (
-                  <button onClick={() => onDraftEmail(job, 'remerciement')} className="flex-shrink-0 text-xs font-medium bg-pink-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-pink-600 transition-colors whitespace-nowrap">
-                    Rédiger ✦
-                  </button>
-                )}
-                {rule.icon === '📨' && onDraftEmail && hasRealEmail(job) && (
-                  <button onClick={() => onDraftEmail(job, 'relance')} className="flex-shrink-0 text-xs font-medium bg-blue-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap">
-                    Rédiger ✦
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Next Steps */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-2">
-            <span className="text-base">🗺️</span>
-            <h3 className="text-sm font-semibold text-gray-800">Prochaines étapes</h3>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {nextSteps.map(({ job, rule }, i) => (
-              <div key={i} className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50/60 transition-colors">
-                <span className="text-base mt-0.5 flex-shrink-0">{rule.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{rule.label(job)}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{rule.tip(job)}</p>
-                </div>
-                {rule.type === 'cv' && onGenerateCV && (
-                  <button onClick={() => onGenerateCV(job)} className="flex-shrink-0 text-xs font-medium bg-violet-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-violet-600 transition-colors whitespace-nowrap">
-                    {rule.cta}
-                  </button>
-                )}
-                {rule.type === 'prep' && !rule.label(job).toLowerCase().includes('test') && onSTAR && (
-                  <button onClick={() => onSTAR(job)} className="flex-shrink-0 text-xs font-medium bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-indigo-600 transition-colors whitespace-nowrap">
-                    STAR ✦
-                  </button>
-                )}
-                {rule.type === 'email' && rule.label(job).toLowerCase().includes('remerciement') && onDraftEmail && hasRealEmail(job) && (
-                  <button onClick={() => onDraftEmail(job, 'remerciement')} className="flex-shrink-0 text-xs font-medium bg-pink-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-pink-600 transition-colors whitespace-nowrap">
-                    Rédiger ✦
-                  </button>
-                )}
-                {rule.type === 'email' && rule.label(job).toLowerCase().includes('relancer') && onDraftEmail && hasRealEmail(job) && (
-                  <button onClick={() => onDraftEmail(job, 'relance')} className="flex-shrink-0 text-xs font-medium bg-blue-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap">
-                    Rédiger ✦
-                  </button>
-                )}
-                {rule.type === 'usecase' && (
-                  <button onClick={() => onOpenJob && onOpenJob(job)} className="flex-shrink-0 text-xs font-medium bg-amber-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-amber-600 transition-colors whitespace-nowrap">
-                    {rule.cta}
-                  </button>
-                )}
-                {!['cv', 'prep', 'email', 'usecase'].includes(rule.type) && (
-                  <button onClick={() => onOpenJob && onOpenJob(job)} className="flex-shrink-0 text-xs font-medium border border-gray-200 text-gray-600 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">
-                    {rule.cta}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        {nextSteps.length === 0 && (
-          <div className="px-4 py-6 text-center text-gray-400">
-            <p className="text-sm">✅ Aucune étape prioritaire pour l'instant</p>
-          </div>
-        )}
+        ))}
       </div>
     </div>
   )

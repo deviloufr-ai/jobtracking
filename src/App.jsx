@@ -430,14 +430,17 @@ export default function App() {
           <>
         <div className="flex gap-6 items-start">
         <div className="flex-1 min-w-0">
-        <Stats jobs={jobs} />
-        <NextAction
-          jobs={jobs}
-          onGenerateCV={handleGenerateCV}
-          onOpenJob={(job) => { setFilters(f => ({ ...f, search: job.company })) }}
-          onSTAR={(job) => setStarJob(job)}
-          onDraftEmail={(job, type) => setEmailDraft({ job, type })}
-        />
+        {/* Top 2-col: Stats left, Prochaines étapes right */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4 mb-4">
+          <Stats jobs={jobs} />
+          <NextAction
+            jobs={jobs}
+            onGenerateCV={handleGenerateCV}
+            onOpenJob={(job) => { setFilters(f => ({ ...f, search: job.company })) }}
+            onSTAR={(job) => setStarJob(job)}
+            onDraftEmail={(job, type) => setEmailDraft({ job, type })}
+          />
+        </div>
         <div className="flex items-center gap-2 mt-4 mb-1">
           <div className="flex-1"><Filters filters={filters} onChange={setFilters} onReset={() => setFilters(DEFAULT_FILTERS)} total={jobs.length} filtered={filtered.length} /></div>
           <button
