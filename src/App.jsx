@@ -395,7 +395,14 @@ export default function App() {
             )}
 
             {/* Notifications */}
-            <NotificationBell notifications={notifications} unreadCount={unreadCount} onMarkAllRead={markAllRead} onClear={clearNotifs} />
+            <NotificationBell
+              notifications={notifications} unreadCount={unreadCount}
+              onMarkAllRead={markAllRead} onClear={clearNotifs}
+              onNavigate={({ jobId, company }) => {
+                setActiveTab('tracker')
+                if (company) setFilters(f => ({ ...f, search: company }))
+              }}
+            />
 
             <div className="h-5 w-px bg-gray-200 mx-0.5 hidden sm:block" />
 

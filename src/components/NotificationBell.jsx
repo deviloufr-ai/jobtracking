@@ -16,7 +16,7 @@ function timeAgo(dateStr) {
   return `il y a ${Math.round(diff / 86400)}j`
 }
 
-export default function NotificationBell({ notifications, unreadCount, onMarkAllRead, onClear }) {
+export default function NotificationBell({ notifications, unreadCount, onMarkAllRead, onClear, onNavigate }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -75,7 +75,19 @@ export default function NotificationBell({ notifications, unreadCount, onMarkAll
               notifications.map(n => {
                 const cfg = TYPE_CONFIG[n.type] || TYPE_CONFIG.info
                 return (
-                  <div key={n.id} className={`flex items-start gap-3 px-4 py-3 border-b border-gray-50 last:border-0 ${!n.read ? 'bg-blue-50/30' : ''}`}>
+                  <div
+                    key={n.id}
+                    onClick={() => {
+                      if (n.meta?.jobId || n.meta?.company) {
+                        onNavigate?.(n.meta)
+                        setOpen(false)
+                      }
+                    }}
+                    className={`flex items-start gap-3 px-4 py-3 border-b border-gray-50 last:border-0 transition-colors
+                      ${!n.read ? 'bg-blue-50/30' : ''}
+                      ${(n.meta?.jobId || n.meta?.company) ? 'cursor-pointer hover:bg-indigo-50/50' : ''}
+                    `}
+                  >
                     <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-sm ${cfg.bg}`}>
                       {cfg.icon}
                     </div>
@@ -86,7 +98,12 @@ export default function NotificationBell({ notifications, unreadCount, onMarkAll
                       )}
                       <p className="text-[10px] text-gray-300 mt-1">{timeAgo(n.date)}</p>
                     </div>
-                    {!n.read && <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-1" />}
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      {!n.read && <span className="w-2 h-2 rounded-full bg-blue-500 mt-1" />}
+                      {(n.meta?.jobId || n.meta?.company) && (
+                        <span className="text-[10px] text-gray-300">→</span>
+                      )}
+                    </div>
                   </div>
                 )
               })
