@@ -86,12 +86,41 @@ export default function Settings({ jobs, onMergeDuplicates }) {
   // Profile state
   const [profile, setProfile] = useState(loadProfile)
   const [profileSaved, setProfileSaved] = useState(false)
+  const [extracting, setExtracting] = useState(false)
+  const [extractError, setExtractError] = useState(null)
 
   const updateProfile = (key, value) => setProfile(p => ({ ...p, [key]: value }))
   const handleSaveProfile = () => {
     saveProfile(profile)
     setProfileSaved(true)
     setTimeout(() => setProfileSaved(false), 2000)
+  }
+
+  async function handleExtractFromCV() {
+    try {
+      const rawCVs = localStorage.getItem('jobtrackr_cvs')
+      const cvs = rawCVs ? JSON.parse(rawCVs) : []
+      if (!cvs.length) { setExtractError('Aucun CV uploadé — va dans Mon CV pour en ajouter un.'); return }
+      // Pick the base CV (oldest = original, not tailored)
+      const cv = cvs.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))[0]
+      setExtracting(true)
+      setExtractError(null)
+      const res = await fetch('/api/extract-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cvText: cv.text })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erreur extraction')
+      const extracted = { ...data.profile, extractedFrom: cv.name }
+      saveProfile(extracted)
+      setProfile(extracted)
+      setProfileSaved(true)
+      setTimeout(() => setProfileSaved(false), 3000)
+    } catch (e) {
+      setExtractError(e.message)
+    }
+    setExtracting(false)
   }
 
   function handleExport() {
@@ -145,7 +174,29 @@ export default function Settings({ jobs, onMergeDuplicates }) {
 
       {/* Profile — used by extension autofill */}
       <Section title="Profil candidat" icon="👤">
-        <p className="text-xs text-gray-400 -mt-2">Ces données sont utilisées par l'extension Firefox pour l'autofill des formulaires de candidature.</p>
+        <p className="text-xs text-gray-400 -mt-2">Ces données alimentent le générateur STAR, les emails automatiques et l'autofill de l'extension Firefox.</p>
+
+        {/* Extract from CV CTA */}
+        <div className="flex items-center gap-3 bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 rounded-xl px-4 py-3">
+          <span className="text-xl shrink-0">✨</span>
+          <div className="flex-1 min-w-0">
+            {profile?.extractedFrom
+              ? <p className="text-xs text-indigo-700">Profil extrait depuis <strong>{profile.extractedFrom}</strong>{profile.extractedAt ? ` · ${new Date(profile.extractedAt).toLocaleDateString('fr-FR')}` : ''}</p>
+              : <p className="text-xs text-indigo-700 font-medium">Rempli automatiquement depuis ton CV uploadé — zéro saisie manuelle.</p>
+            }
+          </div>
+          <button
+            onClick={handleExtractFromCV}
+            disabled={extracting}
+            className="shrink-0 text-xs font-semibold bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
+          >
+            {extracting
+              ? <><span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin inline-block" /> Extraction…</>
+              : profile?.extractedFrom ? '🔄 Ré-extraire' : '✦ Extraire depuis mon CV'
+            }
+          </button>
+        </div>
+        {extractError && <p className="text-xs text-red-500">{extractError}</p>}
 
         <Row label="Nom complet" hint="Tel qu'il apparaîtra sur les formulaires">
           <TextInput value={profile.name} onChange={v => updateProfile('name', v)} placeholder="Alexandre Leblanc" />
@@ -175,6 +226,33 @@ export default function Settings({ jobs, onMergeDuplicates }) {
           <p className="text-sm font-medium text-gray-700 mb-1.5">Motivation / Pitch par défaut</p>
           <TextInput multiline rows={2} value={profile.motivation} onChange={v => updateProfile('motivation', v)} placeholder="Passionné par les produits qui résolvent de vrais problèmes..." />
         </div>
+
+        {/* Read-only enriched fields from extraction */}
+        {(profile?.key_achievements?.length > 0 || profile?.companies?.length > 0) && (
+          <div className="space-y-3 pt-1 border-t border-gray-100">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Données extraites (lecture seule)</p>
+            {profile?.companies?.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-gray-600 mb-1">Entreprises</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {profile.companies.map((c, i) => (
+                    <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{c}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {profile?.key_achievements?.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-gray-600 mb-1">Réalisations clés</p>
+                <ul className="space-y-1">
+                  {profile.key_achievements.map((a, i) => (
+                    <li key={i} className="text-xs text-gray-600 flex gap-2"><span className="text-indigo-400">·</span>{a}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center justify-between pt-1">
           <p className="text-xs text-gray-400">💡 Sync le CV depuis l'onglet Réglages de l'extension Firefox pour enrichir l'autofill</p>

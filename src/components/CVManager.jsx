@@ -2,12 +2,46 @@ import { useState, useRef } from 'react'
 import { useCVs } from '../hooks/useCVs'
 import CVGenerator from './CVGenerator'
 
+const PROFILE_KEY = 'jobtrackr_profile'
+
+function saveProfile(p) {
+  try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)) } catch {}
+}
+function loadProfile() {
+  try { const r = localStorage.getItem(PROFILE_KEY); return r ? JSON.parse(r) : null } catch { return null }
+}
+
 export default function CVManager({ jobs, preselectedJob }) {
   const { cvs, addCV, deleteCV, renameCV } = useCVs()
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
-  const [generatorState, setGeneratorState] = useState(null) // { cv, job }
+  const [generatorState, setGeneratorState] = useState(null)
+  const [extractingId, setExtractingId] = useState(null)
+  const [extractedCvName, setExtractedCvName] = useState(() => loadProfile()?.extractedFrom || null)
+  const [justExtracted, setJustExtracted] = useState(false)
+  const [newCvId, setNewCvId] = useState(null) // CV just uploaded — prompt extraction
   const fileRef = useRef()
+
+  async function handleExtractProfile(cv) {
+    setExtractingId(cv.id)
+    try {
+      const res = await fetch('/api/extract-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cvText: cv.text })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erreur extraction')
+      saveProfile({ ...data.profile, extractedFrom: cv.name })
+      setExtractedCvName(cv.name)
+      setJustExtracted(true)
+      setNewCvId(null)
+      setTimeout(() => setJustExtracted(false), 4000)
+    } catch (e) {
+      alert('Erreur : ' + e.message)
+    }
+    setExtractingId(null)
+  }
 
   const handleUpload = async (file) => {
     if (!file || file.type !== 'application/pdf') {
@@ -39,12 +73,13 @@ export default function CVManager({ jobs, preselectedJob }) {
       if (!res.ok) throw new Error('Erreur lors de la lecture du PDF')
       const data = await res.json()
 
-      addCV({
+      const entry = addCV({
         name: file.name.replace('.pdf', ''),
         text: data.text,
         pages: data.pages,
         size: file.size,
       })
+      setNewCvId(entry?.id || 'new')
     } catch (e) {
       setError(e.message)
     }
@@ -102,6 +137,38 @@ export default function CVManager({ jobs, preselectedJob }) {
           </div>
           <input ref={fileRef} type="file" accept="application/pdf" className="hidden" onChange={e => handleUpload(e.target.files[0])} />
           {error && <p className="text-xs text-red-500 bg-red-50 rounded-lg p-2 mt-2">{error}</p>}
+
+          {/* Post-upload extraction prompt */}
+          {newCvId && cvs.length > 0 && (() => {
+            const cv = cvs.find(c => c.id === newCvId) || cvs[0]
+            return (
+              <div className="mt-3 flex items-center gap-3 bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 rounded-xl px-4 py-3">
+                <span className="text-xl">✨</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-indigo-800">CV uploadé !</p>
+                  <p className="text-xs text-indigo-600 mt-0.5">Extraire ton profil automatiquement pour améliorer STAR, emails et autofill ?</p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={() => setNewCvId(null)} className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1.5 rounded-lg hover:bg-white transition-colors">Plus tard</button>
+                  <button
+                    onClick={() => handleExtractProfile(cv)}
+                    disabled={extractingId === cv.id}
+                    className="text-xs font-semibold bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {extractingId === cv.id ? <><span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" /> Extraction…</> : '✦ Extraire le profil'}
+                  </button>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Success feedback */}
+          {justExtracted && (
+            <div className="mt-3 flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+              <span className="text-green-600">✓</span>
+              <p className="text-sm text-green-700 font-medium">Profil extrait depuis <strong>{extractedCvName}</strong> — visible dans <strong>Réglages → Profil candidat</strong></p>
+            </div>
+          )}
         </div>
 
         {/* CV list */}
@@ -118,11 +185,24 @@ export default function CVManager({ jobs, preselectedJob }) {
                 </div>
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
+                    onClick={() => handleExtractProfile(cv)}
+                    disabled={!!extractingId}
+                    className="text-xs font-medium text-indigo-600 hover:text-white hover:bg-indigo-500 border border-indigo-200 hover:border-indigo-500 px-2.5 py-1 rounded-lg transition-all disabled:opacity-40 flex items-center gap-1 whitespace-nowrap"
+                    title="Extraire le profil depuis ce CV"
+                  >
+                    {extractingId === cv.id
+                      ? <><span className="w-2.5 h-2.5 border border-indigo-400 border-t-indigo-600 rounded-full animate-spin" /> Extraction…</>
+                      : '✦ Profil'}
+                  </button>
+                  <button
                     onClick={() => deleteCV(cv.id)}
                     className="text-xs text-gray-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
                     title="Supprimer"
                   >🗑️</button>
                 </div>
+                {extractedCvName === cv.name && !justExtracted && (
+                  <span className="text-[10px] font-semibold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full ml-1 shrink-0">profil ✓</span>
+                )}
               </div>
             ))}
           </div>

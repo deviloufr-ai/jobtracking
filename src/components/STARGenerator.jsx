@@ -55,8 +55,11 @@ export default function STARGenerator({ job, onClose }) {
       ? [
           profile.name && `Nom : ${profile.name}`,
           profile.title && `Titre : ${profile.title}`,
-          profile.experience && `Expérience : ${profile.experience}`,
+          profile.experience && `Parcours : ${profile.experience}`,
           profile.skills && `Compétences : ${profile.skills}`,
+          profile.companies?.length && `Entreprises : ${profile.companies.slice(0,5).join(', ')}`,
+          profile.key_achievements?.length && `Réalisations clés : ${profile.key_achievements.join(' | ')}`,
+          profile.languages && `Langues : ${profile.languages}`,
         ].filter(Boolean).join('\n')
       : 'Candidat senior en product management'
 
