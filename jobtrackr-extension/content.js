@@ -153,15 +153,17 @@ function detectFormFields() {
   ]
 
   for (const el of candidates) {
-    // Ignorer les champs cachés, désactivés, déjà remplis (> 20 chars)
-    if (el.offsetParent === null) continue
     if (el.disabled || el.readOnly) continue
     if ((el.value || '').length > 20) continue
     // Ignorer les éléments appartenant à l'UI de l'extension
-    if (el.closest('#jt-autofill-panel, #jt-autofill-btn')) continue
+    if (el.closest('[id^="jt-"]')) continue
+    // Visibilité via bounding rect (offsetParent === null fails inside fixed modals in Firefox)
+    const rect = el.getBoundingClientRect()
+    if (rect.width === 0 && rect.height === 0) continue
 
-    const label = resolveLabel(el)
-    if (!label) continue  // on ignore les champs sans label (ex: barre de recherche)
+    const label = resolveLabel(el) || el.placeholder || el.name || el.type || 'Champ'
+    // Ignorer les barres de recherche sans label réel
+    if (label === 'Champ' && el.type !== 'textarea') continue
 
     // Detect identity fields — injected directly without Claude
     const lowerLabel = label.toLowerCase()
