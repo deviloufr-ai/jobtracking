@@ -8,15 +8,22 @@ function loadProfile() {
   try { const r = localStorage.getItem('jobtrackr_profile'); return r ? JSON.parse(r) : null } catch { return null }
 }
 
-// Try to extract an email address from job notes and history
+// Extract recruiter email from job history (entry.from) or notes text
 function extractRecipientEmail(job) {
+  // 1. Parse entry.from fields from inbound emails — most reliable source
+  for (const h of (job?.history || [])) {
+    if (h.fromMe || !h.from) continue
+    const raw = h.from.trim()
+    // "Name <email@domain.com>"
+    const angleMatch = raw.match(/<([^>]+@[^>]+)>/)
+    if (angleMatch) return angleMatch[1].trim()
+    // bare "email@domain.com"
+    if (raw.includes('@') && !raw.includes(' ')) return raw
+  }
+  // 2. Fallback: regex scan notes
   const EMAIL_RE = /[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}/g
-  const corpus = [
-    job?.notes || '',
-    ...(job?.history || []).map(h => h.note || ''),
-  ].join(' ')
-  const matches = corpus.match(EMAIL_RE)
-  return matches?.[0] || ''
+  const corpus = [job?.notes || '', ...(job?.history || []).map(h => h.note || '')].join(' ')
+  return corpus.match(EMAIL_RE)?.[0] || ''
 }
 
 const PROMPTS = {
