@@ -553,7 +553,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                     className="w-full text-xs font-medium text-gray-600 bg-white border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-left">
                     ✏️ Modifier la candidature
                   </button>
-                  {onGenerateCV && (
+                  {onGenerateCV && job.status === 'todo' && (
                     <button onClick={() => onGenerateCV(job)}
                       className="w-full text-xs font-medium text-violet-600 bg-white border border-violet-100 px-3 py-2 rounded-lg hover:bg-violet-50 transition-colors text-left">
                       📄 Générer un CV adapté

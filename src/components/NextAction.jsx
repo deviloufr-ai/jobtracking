@@ -161,7 +161,7 @@ const NEXT_STEPS_RULES = [
   },
   // Remerciement after rejection
   {
-    match: j => j.status === 'rejected' && daysSince(j) < 5,
+    match: j => j.status === 'rejected' && daysSince(j) < 5 && hasRealEmail(j),
     icon: '💌', type: 'email',
     label: job => `Envoyer remerciement ${job.company}`,
     tip: () => `Un email de remerciement te différencie et maintient la relation pour l'avenir.`,
