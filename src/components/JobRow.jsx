@@ -289,12 +289,13 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                   <span className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">Historique</span>
                   <div className="flex items-center gap-2">
                     <button onClick={handleEnrich} disabled={enriching}
-                      className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1 hover:bg-purple-100 px-2 py-1 rounded-lg transition-colors disabled:opacity-50">
-                      {enriching ? '⏳' : '📅'} {enriching ? 'Synchro...' : 'Sync Calendar'}
+                      className="text-xs text-gray-400 hover:text-purple-700 flex items-center gap-1 hover:bg-purple-50 px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
+                      title="Forcer la synchronisation Calendar">
+                      {enriching ? '⏳' : '📅'} {enriching ? 'Synchro...' : 'Sync'}
                     </button>
                     {enrichResult && (
                       <span className={`text-xs px-2 py-0.5 rounded-full ${enrichResult.success ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {enrichResult.success ? `+${enrichResult.count} événement${enrichResult.count > 1 ? 's' : ''}` : 'Rien de nouveau'}
+                        {enrichResult.success ? `+${enrichResult.count}` : '—'}
                       </span>
                     )}
                     <button onClick={() => setShowAddStep(v => !v)}

@@ -1,5 +1,5 @@
 // Google Calendar service - reuses Gmail OAuth token (same scope request)
-import { getAccessToken } from './gmail'
+import { getAccessToken, getConnectedAccounts } from './gmail'
 
 function extractLink(text = '') {
   const patterns = [
@@ -17,8 +17,8 @@ export function isCalendarConnected() {
   return !!getAccessToken()
 }
 
-export async function fetchCalendarEvents(companyName, monthsBack = 12) {
-  const token = getAccessToken()
+// Fetch from a single token
+async function fetchCalendarEventsForToken(token, companyName, monthsBack = 12) {
   if (!token) return []
 
   const timeMin = new Date()
@@ -31,41 +31,61 @@ export async function fetchCalendarEvents(companyName, monthsBack = 12) {
     timeMax: timeMax.toISOString(),
     singleEvents: 'true',
     orderBy: 'startTime',
-    maxResults: '100',
+    maxResults: '250',
   })
-  // When a company name is given, restrict the search (single-company lookup)
   if (companyName) params.set('q', companyName)
 
-  const res = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  )
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    if (!res.ok) return []
+    const data = await res.json()
+    return (data.items || []).map(e => {
+      const start = e.start?.dateTime || e.start?.date || ''
+      const date = start ? new Date(start).toISOString().split('T')[0] : ''
+      const isUpcoming = start && new Date(start) > new Date()
+      const desc = e.description || ''
+      const loc = e.location || ''
+      const meetingLink = extractLink(desc) || extractLink(loc) || extractLink(e.hangoutLink || '')
+      return {
+        id: e.id,
+        title: e.summary || 'Événement',
+        date, rawStart: start, description: desc, location: loc,
+        isUpcoming, source: 'calendar',
+        type: detectEventType(e.summary || ''),
+        meetingLink: meetingLink || undefined,
+      }
+    }).filter(e => e.date)
+  } catch { return [] }
+}
 
-  if (!res.ok) return []
+// Fetch from all connected accounts and merge (deduplicated by event id)
+export async function fetchCalendarEvents(companyName, monthsBack = 12) {
+  const accounts = getConnectedAccounts()
 
-  const data = await res.json()
-  const events = data.items || []
-
-  return events.map(e => {
-    const start = e.start?.dateTime || e.start?.date || ''
-    const date = start ? new Date(start).toISOString().split('T')[0] : ''
-    const isUpcoming = start && new Date(start) > new Date()
-    const desc = e.description || ''
-    const loc = e.location || ''
-    const meetingLink = extractLink(desc) || extractLink(loc) || extractLink(e.hangoutLink || '')
-    return {
-      id: e.id,
-      title: e.summary || 'Événement',
-      date,
-      rawStart: start,
-      description: desc,
-      location: loc,
-      isUpcoming,
-      source: 'calendar',
-      type: detectEventType(e.summary || ''),
-      meetingLink: meetingLink || undefined,
+  if (accounts.length > 1) {
+    const { getAccessToken: getToken } = await import('./gmail')
+    const perAccount = await Promise.all(
+      accounts.map(acct => {
+        const token = getToken(acct.email)
+        return fetchCalendarEventsForToken(token, companyName, monthsBack)
+      })
+    )
+    const seen = new Set()
+    const merged = []
+    for (const events of perAccount) {
+      for (const e of events) {
+        if (!seen.has(e.id)) { seen.add(e.id); merged.push(e) }
+      }
     }
-  }).filter(e => e.date)
+    return merged.sort((a, b) => a.date.localeCompare(b.date))
+  }
+
+  // Single account
+  const token = getAccessToken()
+  return fetchCalendarEventsForToken(token, companyName, monthsBack)
 }
 
 function detectEventType(title) {
