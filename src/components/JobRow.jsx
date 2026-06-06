@@ -3,6 +3,7 @@ import { enrichJobTimeline } from '../services/enrichTimeline'
 import AdvicePanel from './AdvicePanel'
 import { STATUSES, getStatus } from '../hooks/useJobs'
 import { gmailMessageUrl } from '../services/gmail'
+import { isNoReply } from './EmailDraft'
 
 function getTipsFromNote(note = '') {
   const n = note.toLowerCase()
@@ -118,7 +119,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
       const raw = h.from.trim()
       const fullMatch = raw.match(/^([^<]+)<([^>]+)>/)
       const email = fullMatch ? fullMatch[2].trim() : (raw.includes('@') ? raw : null)
-      if (!email) continue
+      if (!email || isNoReply(email)) continue
       if (!seen.has(email)) {
         seen.set(email, { name: fullMatch ? fullMatch[1].trim() : raw.split('@')[0], email, date: h.date, receivedBy: h.receivedBy || null })
       } else if (h.receivedBy && !seen.get(email).receivedBy) {
@@ -365,16 +366,11 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${st.color}`}>{st.label}</span>
                                 <span className="text-xs text-gray-400">{formatDate(entry.date)}</span>
-                                {entry.source === 'email' && !entry.fromMe && entry.from && (
-                                  <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                                {entry.source === 'email' && !entry.fromMe && entry.from && !isNoReply(entry.from.match(/<([^>]+)>/)?.[1] || entry.from) && (
+                                  <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full truncate max-w-[100px]">
                                     {entry.from.match(/^([^<]+)</)?.[1]?.trim().split(' ')[0] || entry.from.split('@')[0]}
                                   </span>
                                 )}
-                              {entry.receivedBy && (
-                                <span className="text-[10px] text-indigo-400 bg-indigo-50 px-1.5 py-0.5 rounded-full" title={`Reçu sur ${entry.receivedBy}`}>
-                                  📬 {entry.receivedBy.split('@')[0]}
-                                </span>
-                              )}
                                 <div className="ml-auto opacity-0 group-hover/step:opacity-100 transition-opacity flex gap-1">
                                   <button onClick={() => { setEditingStep(i); setEditForm({ status: entry.status, date: entry.date, note: entry.note || '', meetingLink: entry.meetingLink || '' }) }}
                                     className="text-gray-300 hover:text-indigo-500 text-xs p-0.5 rounded">✏️</button>
@@ -449,9 +445,9 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                           )}
                         </div>
                         <a href={`mailto:${c.email}`} onClick={e => e.stopPropagation()}
-                          className="shrink-0 text-[10px] font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2 py-1 rounded-lg transition-colors border border-indigo-100"
+                          className="shrink-0 flex items-center justify-center w-7 h-7 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-gray-100"
                           title={`Écrire à ${c.email}`}>
-                          ✉️
+                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                         </a>
                       </div>
                     ))}
