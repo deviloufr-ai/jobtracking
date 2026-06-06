@@ -1,10 +1,22 @@
 import { useState, useEffect } from 'react'
 import { detectLanguage } from '../utils/detectLanguage'
+import { isConnected, sendEmail, connectGmail, getCachedUser } from '../services/gmail'
 
 const IS_DEV = import.meta.env.DEV
 
 function loadProfile() {
   try { const r = localStorage.getItem('jobtrackr_profile'); return r ? JSON.parse(r) : null } catch { return null }
+}
+
+// Try to extract an email address from job notes and history
+function extractRecipientEmail(job) {
+  const EMAIL_RE = /[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}/g
+  const corpus = [
+    job?.notes || '',
+    ...(job?.history || []).map(h => h.note || ''),
+  ].join(' ')
+  const matches = corpus.match(EMAIL_RE)
+  return matches?.[0] || ''
 }
 
 const PROMPTS = {
@@ -89,12 +101,53 @@ export default function EmailDraft({ job, type = 'remerciement', onClose }) {
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [to, setTo] = useState(() => extractRecipientEmail(job))
+  const [sending, setSending] = useState(false)
+  const [sendStatus, setSendStatus] = useState(null) // 'sent' | 'error' | null
+  const [gmailConnected, setGmailConnected] = useState(isConnected)
 
   const lang = detectLanguage(job)
   const cfg = EMAIL_TYPES[type] || EMAIL_TYPES.remerciement
   const title = typeof cfg.title === 'object' ? cfg.title[lang] : cfg.title
 
   useEffect(() => { generate() }, [])
+
+  async function handleConnectGmail() {
+    try {
+      await connectGmail()
+      setGmailConnected(true)
+    } catch (e) {
+      setError(lang === 'en' ? 'Gmail connection failed: ' + e.message : 'Connexion Gmail échouée : ' + e.message)
+    }
+  }
+
+  async function handleSendViaGmail() {
+    if (!to.trim()) {
+      setError(lang === 'en' ? 'Please enter a recipient email address.' : 'Veuillez entrer l\'adresse email du destinataire.')
+      return
+    }
+    setSending(true)
+    setSendStatus(null)
+    setError(null)
+    const subject = lang === 'en'
+      ? (type === 'remerciement' ? `${job.position} application — Thank you` : `${job.position} application — Following up`)
+      : (type === 'remerciement' ? `Candidature ${job.position} — Merci` : `Suivi candidature — ${job.position}`)
+    try {
+      await sendEmail({ to: to.trim(), subject, body: draft })
+      setSendStatus('sent')
+      setTimeout(() => setSendStatus(null), 4000)
+    } catch (e) {
+      // Token expired — try reconnecting
+      if (e.message.includes('401') || e.message.includes('Non connecté')) {
+        setGmailConnected(false)
+        setError(lang === 'en' ? 'Gmail session expired — reconnect below.' : 'Session Gmail expirée — reconnecte-toi ci-dessous.')
+      } else {
+        setSendStatus('error')
+        setError(e.message)
+      }
+    }
+    setSending(false)
+  }
 
   async function generate() {
     setLoading(true)
@@ -213,30 +266,71 @@ export default function EmailDraft({ job, type = 'remerciement', onClose }) {
           )}
         </div>
 
-        {/* Footer actions */}
+        {/* To field + send actions */}
         {!loading && draft && (
-          <div className="flex items-center gap-2 px-5 pb-4">
-            <button
-              onClick={generate}
-              className="text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-all"
-            >
-              🔄 Régénérer
-            </button>
-            <div className="flex-1" />
-            <button
-              onClick={handleCopy}
-              className={`text-sm font-semibold px-4 py-2 rounded-xl border transition-all ${
-                copied ? 'bg-green-50 border-green-200 text-green-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {copied ? '✓ Copié !' : '📋 Copier'}
-            </button>
-            <button
-              onClick={handleMailto}
-              className="text-sm font-semibold px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:opacity-90 active:scale-95 transition-all shadow-sm"
-            >
-              ✉️ Ouvrir dans Mail
-            </button>
+          <div className="px-5 pb-4 space-y-3 border-t border-gray-50 pt-3">
+
+            {/* To: input */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold text-gray-500 w-6 shrink-0">To</label>
+              <input
+                type="email"
+                value={to}
+                onChange={e => setTo(e.target.value)}
+                placeholder={lang === 'en' ? 'recruiter@company.com' : 'recruteur@entreprise.com'}
+                className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all"
+              />
+            </div>
+
+            {/* Action row */}
+            <div className="flex items-center gap-2">
+              <button onClick={generate} className="text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-all">
+                🔄
+              </button>
+              <button
+                onClick={handleCopy}
+                className={`text-sm font-semibold px-3 py-2 rounded-xl border transition-all ${copied ? 'bg-green-50 border-green-200 text-green-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+              >
+                {copied ? '✓' : '📋'}
+              </button>
+              <button onClick={handleMailto} className="text-sm px-3 py-2 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition-all" title={lang === 'en' ? 'Open in Mail app' : 'Ouvrir dans Mail'}>
+                📬
+              </button>
+
+              <div className="flex-1" />
+
+              {/* Gmail send — primary CTA */}
+              {gmailConnected ? (
+                <button
+                  onClick={handleSendViaGmail}
+                  disabled={sending || !to.trim()}
+                  className={`flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    sendStatus === 'sent'
+                      ? 'bg-green-500 text-white'
+                      : sendStatus === 'error'
+                      ? 'bg-red-500 text-white'
+                      : 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:opacity-90'
+                  }`}
+                >
+                  {sending
+                    ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />{lang === 'en' ? 'Sending…' : 'Envoi…'}</>
+                    : sendStatus === 'sent'
+                    ? (lang === 'en' ? '✓ Sent!' : '✓ Envoyé !')
+                    : sendStatus === 'error'
+                    ? (lang === 'en' ? '✗ Failed' : '✗ Échec')
+                    : <><span>✉️</span>{lang === 'en' ? 'Send via Gmail' : 'Envoyer via Gmail'}</>
+                  }
+                </button>
+              ) : (
+                <button
+                  onClick={handleConnectGmail}
+                  className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl bg-gray-800 text-white hover:bg-gray-700 active:scale-95 transition-all shadow-sm"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                  {lang === 'en' ? 'Connect Gmail to send' : 'Connecter Gmail pour envoyer'}
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

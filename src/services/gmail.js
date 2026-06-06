@@ -1,5 +1,5 @@
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
-const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
+const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
 
 let tokenClient = null
 
@@ -79,6 +79,44 @@ export function disconnectGmail() {
   cachedUser = null
   saveToken(null)
   saveUser(null)
+}
+
+// ── Send email via Gmail API ──────────────────────────────────────────────────
+export async function sendEmail({ to, subject, body }) {
+  if (!accessToken) throw new Error('Non connecté à Gmail')
+
+  // Build RFC 2822 message
+  const from = cachedUser?.email ? `${cachedUser.name || ''} <${cachedUser.email}>`.trim() : 'me'
+  const mime = [
+    `From: ${from}`,
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    `Content-Type: text/plain; charset=utf-8`,
+    `MIME-Version: 1.0`,
+    '',
+    body,
+  ].join('\r\n')
+
+  // Base64url encode (Gmail API requirement)
+  const encoded = btoa(unescape(encodeURIComponent(mime)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+
+  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ raw: encoded }),
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) { accessToken = null; saveToken(null) }
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err?.error?.message || `Gmail send error ${res.status}`)
+  }
+
+  return await res.json() // { id, threadId, labelIds }
 }
 
 // Silent re-auth — requests a new token without showing consent screen
