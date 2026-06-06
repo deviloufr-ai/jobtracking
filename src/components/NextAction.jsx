@@ -212,7 +212,7 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
                   <p className="text-sm font-medium text-gray-800 truncate">{rule.label(job)}</p>
                   <p className="text-xs text-gray-500 mt-0.5">{rule.tip(job)}</p>
                 </div>
-                {rule.icon === '🎯' && onSTAR && (
+                {rule.icon === '🎯' && onSTAR && !rule.label(job).toLowerCase().includes('test') && (
                   <button onClick={() => onSTAR(job)} className="flex-shrink-0 text-xs font-medium bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-indigo-600 transition-colors whitespace-nowrap">
                     STAR ✦
                   </button>
@@ -252,7 +252,7 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
                     {rule.cta}
                   </button>
                 )}
-                {rule.type === 'prep' && onSTAR && (
+                {rule.type === 'prep' && !rule.label(job).toLowerCase().includes('test') && onSTAR && (
                   <button onClick={() => onSTAR(job)} className="flex-shrink-0 text-xs font-medium bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-indigo-600 transition-colors whitespace-nowrap">
                     STAR ✦
                   </button>
