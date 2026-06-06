@@ -8,22 +8,28 @@ function loadProfile() {
   try { const r = localStorage.getItem('jobtrackr_profile'); return r ? JSON.parse(r) : null } catch { return null }
 }
 
+const NO_REPLY_RE = /^(no[-_.]?reply|noreply|do[-_.]?not[-_.]?reply|donotreply|notifications?|alerts?|mailer[-_.]?daemon|postmaster|bounce|auto[-_.]?reply|automessage)@/i
+
+function isNoReply(email) {
+  return NO_REPLY_RE.test(email) || email.includes('ats.') || email.includes('@ashbyhq') || email.includes('@greenhouse') || email.includes('@lever.co') || email.includes('@workable') || email.includes('@teamtailor')
+}
+
 // Extract recruiter email from job history (entry.from) or notes text
+// Skips no-reply and ATS system addresses
 function extractRecipientEmail(job) {
   // 1. Parse entry.from fields from inbound emails — most reliable source
   for (const h of (job?.history || [])) {
     if (h.fromMe || !h.from) continue
     const raw = h.from.trim()
-    // "Name <email@domain.com>"
     const angleMatch = raw.match(/<([^>]+@[^>]+)>/)
-    if (angleMatch) return angleMatch[1].trim()
-    // bare "email@domain.com"
-    if (raw.includes('@') && !raw.includes(' ')) return raw
+    const email = angleMatch ? angleMatch[1].trim() : (raw.includes('@') && !raw.includes(' ') ? raw : null)
+    if (email && !isNoReply(email)) return email
   }
-  // 2. Fallback: regex scan notes
+  // 2. Fallback: regex scan notes, also filter no-reply
   const EMAIL_RE = /[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}/g
   const corpus = [job?.notes || '', ...(job?.history || []).map(h => h.note || '')].join(' ')
-  return corpus.match(EMAIL_RE)?.[0] || ''
+  const matches = corpus.match(EMAIL_RE) || []
+  return matches.find(e => !isNoReply(e)) || ''
 }
 
 const PROMPTS = {
