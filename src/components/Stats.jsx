@@ -73,7 +73,7 @@ export default function Stats({ jobs }) {
   const thisWeek = jobs.filter(j => (new Date() - new Date(j.date)) / 86400000 <= 7).length
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-2 gap-4 h-full">
 
       {/* Card 1 — Pipeline overview */}
       <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col gap-3">
