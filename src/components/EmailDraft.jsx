@@ -14,6 +14,14 @@ export function isNoReply(email) {
   return NO_REPLY_RE.test(email) || email.includes('ats.') || email.includes('@ashbyhq') || email.includes('@greenhouse') || email.includes('@lever.co') || email.includes('@workable') || email.includes('@teamtailor')
 }
 
+// Extract which Gmail account received the emails for this job
+export function extractReceivedByAccount(job) {
+  for (const h of (job?.history || [])) {
+    if (h.source === 'email' && h.receivedBy) return h.receivedBy
+  }
+  return null
+}
+
 // Extract recruiter email from job history (entry.from) or notes text
 // Skips no-reply and ATS system addresses
 function extractRecipientEmail(job) {
@@ -122,6 +130,7 @@ export default function EmailDraft({ job, type = 'remerciement', onClose }) {
   const lang = detectLanguage(job)
   const cfg = EMAIL_TYPES[type] || EMAIL_TYPES.remerciement
   const title = typeof cfg.title === 'object' ? cfg.title[lang] : cfg.title
+  const receivedBy = extractReceivedByAccount(job)
 
   useEffect(() => { generate() }, [])
 
@@ -233,6 +242,11 @@ export default function EmailDraft({ job, type = 'remerciement', onClose }) {
               </span>
             </div>
             <p className="text-xs text-gray-400">{job.position} · {job.company}</p>
+            {receivedBy && (
+              <p className="text-[11px] text-indigo-600 mt-0.5 flex items-center gap-1">
+                <span>📬</span> Répondre depuis <strong>{receivedBy}</strong>
+              </p>
+            )}
           </div>
           <button onClick={onClose} className="ml-auto w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">✕</button>
         </div>

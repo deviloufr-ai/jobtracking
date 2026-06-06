@@ -95,6 +95,15 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         buildJobsFromEmails(emails, []),
         fetchCalendarEvents('', months).catch(() => []),
       ])
+      // Stamp every email history entry with the account that received it
+      const account = gmailUser?.email || getCachedUser()?.email || null
+      if (account) {
+        for (const job of grouped) {
+          job.history = (job.history || []).map(h =>
+            h.source === 'email' ? { ...h, receivedBy: h.receivedBy || account } : h
+          )
+        }
+      }
       // Merge calendar events per company into existing history
       if (calendarEvents.length > 0) {
         for (const job of grouped) {

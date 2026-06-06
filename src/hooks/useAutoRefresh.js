@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { isConnected, fetchJobEmails } from '../services/gmail'
+import { isConnected, fetchJobEmails, getCachedUser } from '../services/gmail'
 import { parseEmailsForJobs } from '../services/claude'
 import { fetchCalendarEvents } from '../services/calendar'
 import { isAtsRejection } from './useJobs'
@@ -80,6 +80,7 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
         date: e.date, status: e.status, note: e.notes || '',
         gmailId: e.gmailId, from: e.fromEmail, fromMe: e.fromMe || false,
         source: 'email',
+        receivedBy: getCachedUser()?.email || null,
         ...(meetingLink && { meetingLink }),
       }
     })

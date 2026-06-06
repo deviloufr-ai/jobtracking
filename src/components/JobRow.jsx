@@ -109,20 +109,22 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
   })()
   const recruiter = recruiterContact?.name || null
 
-  // All inbound email contacts (deduplicated by email)
+  // All inbound email contacts (deduplicated by email), with which account received them
   const allContacts = (() => {
-    const seen = new Set()
-    const contacts = []
+    const seen = new Map() // email → contact
     for (const h of history) {
       if (h.fromMe || !h.from) continue
       const raw = h.from.trim()
       const fullMatch = raw.match(/^([^<]+)<([^>]+)>/)
       const email = fullMatch ? fullMatch[2].trim() : (raw.includes('@') ? raw : null)
-      if (!email || seen.has(email)) continue
-      seen.add(email)
-      contacts.push({ name: fullMatch ? fullMatch[1].trim() : raw.split('@')[0], email, date: h.date })
+      if (!email) continue
+      if (!seen.has(email)) {
+        seen.set(email, { name: fullMatch ? fullMatch[1].trim() : raw.split('@')[0], email, date: h.date, receivedBy: h.receivedBy || null })
+      } else if (h.receivedBy && !seen.get(email).receivedBy) {
+        seen.get(email).receivedBy = h.receivedBy
+      }
     }
-    return contacts
+    return [...seen.values()]
   })()
 
   // Upcoming calendar events
@@ -367,6 +369,11 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                                     {entry.from.match(/^([^<]+)</)?.[1]?.trim().split(' ')[0] || entry.from.split('@')[0]}
                                   </span>
                                 )}
+                              {entry.receivedBy && (
+                                <span className="text-[10px] text-indigo-400 bg-indigo-50 px-1.5 py-0.5 rounded-full" title={`Reçu sur ${entry.receivedBy}`}>
+                                  📬 {entry.receivedBy.split('@')[0]}
+                                </span>
+                              )}
                                 <div className="ml-auto opacity-0 group-hover/step:opacity-100 transition-opacity flex gap-1">
                                   <button onClick={() => { setEditingStep(i); setEditForm({ status: entry.status, date: entry.date, note: entry.note || '', meetingLink: entry.meetingLink || '' }) }}
                                     className="text-gray-300 hover:text-indigo-500 text-xs p-0.5 rounded">✏️</button>
@@ -428,6 +435,11 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-medium text-gray-800 truncate">{c.name}</p>
                           <p className="text-[10px] text-gray-400 truncate">{c.email}</p>
+                          {c.receivedBy && (
+                            <p className="text-[10px] text-indigo-500 truncate mt-0.5" title={`Reçu sur ${c.receivedBy}`}>
+                              📬 {c.receivedBy}
+                            </p>
+                          )}
                         </div>
                         <a href={`mailto:${c.email}`} onClick={e => e.stopPropagation()}
                           className="shrink-0 text-[10px] font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2 py-1 rounded-lg transition-colors border border-indigo-100"
