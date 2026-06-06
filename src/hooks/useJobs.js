@@ -449,11 +449,15 @@ export function useJobs() {
   const addHistoryEntry = (id, entry) => {
     setJobs(prev => prev.map(j => {
       if (j.id !== id) return j
+      // Auto-set status to 'done' when adding a past interview/meeting entry
+      const entryDate = new Date(entry.date)
+      const isPast = entryDate < new Date()
+      const resolvedStatus = entry.status === 'interview' && isPast ? 'done' : entry.status
       return {
         ...j,
-        status: entry.status,
+        status: resolvedStatus,
         updatedAt: new Date().toISOString(),
-        history: [...(j.history || []), entry]
+        history: [...(j.history || []), { ...entry, status: resolvedStatus }]
       }
     }))
   }

@@ -154,8 +154,11 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
 
   const handleSaveEdit = (displayIdx) => {
     const idx = toOriginalIdx(displayIdx)
+    const merged = { ...history[idx], ...editForm }
+    // Auto-resolve interview → done when date is in the past
+    if (merged.status === 'interview' && new Date(merged.date) < new Date()) merged.status = 'done'
     const updated = [...history]
-    updated[idx] = { ...updated[idx], ...editForm }
+    updated[idx] = merged
     onUpdateHistory(job.id, updated)
     setEditingStep(null)
     setEditForm({})
@@ -403,30 +406,35 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                               ) : entry.note ? (
                                 <p className={`text-xs mt-0.5 ${entry.source === 'calendar' ? 'text-gray-400 italic' : 'text-gray-600'}`}>{entry.note}</p>
                               ) : null}
-                              {entry.meetingLink && (
-                                <a href={entry.meetingLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                                  className="inline-flex items-center gap-1.5 mt-1 text-xs font-medium text-white bg-indigo-500 hover:bg-indigo-600 px-2.5 py-1 rounded-lg transition-colors">
-                                  <span>{entry.meetingEmoji || '📹'}</span>
-                                  Rejoindre {entry.meetingPlatform || 'la visio'} ↗
-                                </a>
+                              {/* Action links row */}
+                              {(entry.meetingLink || entry.gmailId || (entry.source === 'calendar' && !entry.meetingLink)) && (
+                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                  {entry.meetingLink && (
+                                    <a href={entry.meetingLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                                      className="inline-flex items-center gap-1.5 text-xs font-medium text-white bg-indigo-500 hover:bg-indigo-600 px-2.5 py-1 rounded-lg transition-colors">
+                                      <span>{entry.meetingEmoji || '📹'}</span>
+                                      Rejoindre {entry.meetingPlatform || 'la visio'} ↗
+                                    </a>
+                                  )}
+                                  {entry.source === 'calendar' && !entry.meetingLink && (
+                                    <span className="text-xs text-gray-400">📅 Google Calendar</span>
+                                  )}
+                                  {entry.gmailId && (() => {
+                                    const { url, account, uncertain } = gmailMessageUrl(entry.gmailId, entry.receivedBy)
+                                    return (
+                                      <a href={url} target="_blank" rel="noopener noreferrer"
+                                        onClick={e => e.stopPropagation()}
+                                        className={`inline-flex items-center gap-1 text-xs transition-colors ${uncertain ? 'text-amber-400 hover:text-amber-600' : 'text-gray-400 hover:text-red-500'}`}
+                                        title={uncertain ? '⚠ Compte incertain' : `Ouvrir dans ${account || 'Gmail'}`}>
+                                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.909 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>
+                                        Voir l'email
+                                        {account && <span className="text-[9px] opacity-60">({account.split('@')[0]})</span>}
+                                        {uncertain && <span className="text-[9px]">⚠</span>}
+                                      </a>
+                                    )
+                                  })()}
+                                </div>
                               )}
-                              {entry.source === 'calendar' && !entry.meetingLink && (
-                                <span className="text-xs text-gray-400 mt-0.5 inline-block">📅 Google Calendar</span>
-                              )}
-                              {entry.gmailId && (() => {
-                                const { url, account, uncertain } = gmailMessageUrl(entry.gmailId, entry.receivedBy)
-                                return (
-                                  <a href={url} target="_blank" rel="noopener noreferrer"
-                                    onClick={e => e.stopPropagation()}
-                                    className={`inline-flex items-center gap-1 mt-1 text-xs transition-colors ${uncertain ? 'text-amber-400 hover:text-amber-600' : 'text-gray-400 hover:text-red-500'}`}
-                                    title={uncertain ? '⚠ Compte incertain — re-scanner Gmail pour tagger cet email' : `Ouvrir dans ${account || 'Gmail'}`}>
-                                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.909 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>
-                                    Voir l'email
-                                    {account && <span className="text-[9px] opacity-60">({account.split('@')[0]})</span>}
-                                    {uncertain && <span className="text-[9px]">⚠</span>}
-                                  </a>
-                                )
-                              })()}
                               {getTipsFromNote(entry.note).length > 0 && <StepTips note={entry.note} />}
                             </>
                           )}
