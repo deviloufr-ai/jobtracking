@@ -201,17 +201,17 @@ async function gmailFetch(url, token) {
 }
 
 // ── Fetch job emails for a specific account ───────────────────────────────────
-export async function fetchJobEmailsForAccount(accountEmail, maxResults = null, months = 3) {
+export async function fetchJobEmailsForAccount(accountEmail, maxResults = null, months = 3, dateRange = null) {
   const acct = accounts[accountEmail]
   if (!acct?.token) throw new Error(`Non connecté : ${accountEmail}`)
-  return _fetchJobEmails(acct.token, maxResults, months)
+  return _fetchJobEmails(acct.token, maxResults, months, dateRange)
 }
 
 // Backward-compat: fetch from first connected account
-export async function fetchJobEmails(maxResults = null, months = 3) {
+export async function fetchJobEmails(maxResults = null, months = 3, dateRange = null) {
   const first = Object.entries(accounts)[0]
   if (!first) throw new Error('Non connecté à Gmail')
-  return _fetchJobEmails(first[1].token, maxResults, months)
+  return _fetchJobEmails(first[1].token, maxResults, months, dateRange)
 }
 
 // Gmail category labels returned by the API
@@ -223,10 +223,23 @@ const GMAIL_CAT_MAP = {
   CATEGORY_FORUMS: 'forums',
 }
 
-async function _fetchJobEmails(token, maxResults, months) {
-  const autoLimit = Math.min(months * 60, 500)
+async function _fetchJobEmails(token, maxResults, months, dateRange = null) {
+  // Build date filter: either explicit range or relative months
+  let dateFilter
+  let effectiveMonths = months
+  if (dateRange?.startDate && dateRange?.endDate) {
+    const fmt = d => d.replace(/-/g, '/')
+    dateFilter = `after:${fmt(dateRange.startDate)} before:${fmt(dateRange.endDate)}`
+    // Estimate months for maxResults calculation
+    const ms = new Date(dateRange.endDate) - new Date(dateRange.startDate)
+    effectiveMonths = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24 * 30)))
+  } else {
+    const days = months * 30
+    dateFilter = `newer_than:${days}d`
+  }
+
+  const autoLimit = Math.min(effectiveMonths * 60, 500)
   maxResults = maxResults ?? autoLimit
-  const days = months * 30
 
   // Gmail-native category filter — "promotions" = newsletters/job alerts → skip entirely
   const noPromo = `-category:promotions -category:forums`
@@ -235,19 +248,19 @@ async function _fetchJobEmails(token, maxResults, months) {
 
   const queries = [
     // ① Gmail "Updates" category = transactional — best signal for ATS/confirmations
-    `category:updates (candidature OR application OR entretien OR interview OR recrutement OR recruteur OR recruiter OR "votre candidature" OR "thank you for applying" OR "application received" OR "your application" OR "we regret" OR "not selected" OR "job offer" OR "next steps") newer_than:${days}d`,
+    `category:updates (candidature OR application OR entretien OR interview OR recrutement OR recruteur OR recruiter OR "votre candidature" OR "thank you for applying" OR "application received" OR "your application" OR "we regret" OR "not selected" OR "job offer" OR "next steps") ${dateFilter}`,
     // ② Personal inbox keywords (FR)
-    `in:inbox category:personal (candidature OR postulation OR entretien OR recrutement OR "votre candidature" OR "nous avons bien reçu" OR "suite à votre candidature" OR "nous avons le regret" OR "sans suite" OR "n'avons pas retenu") newer_than:${days}d`,
+    `in:inbox category:personal (candidature OR postulation OR entretien OR recrutement OR "votre candidature" OR "nous avons bien reçu" OR "suite à votre candidature" OR "nous avons le regret" OR "sans suite" OR "n'avons pas retenu") ${dateFilter}`,
     // ③ Personal inbox keywords (EN)
-    `in:inbox category:personal (interview OR "thank you for applying" OR "thanks for applying" OR "application received" OR "your application" OR "we have received" OR "we regret" OR "not selected" OR "not moving forward" OR "job offer" OR "offer letter" OR "next steps" OR "hiring process") newer_than:${days}d`,
+    `in:inbox category:personal (interview OR "thank you for applying" OR "thanks for applying" OR "application received" OR "your application" OR "we have received" OR "we regret" OR "not selected" OR "not moving forward" OR "job offer" OR "offer letter" OR "next steps" OR "hiring process") ${dateFilter}`,
     // ④ ATS platforms — always relevant regardless of category
-    `in:all (from:ashbyhq.com OR from:greenhouse.io OR from:lever.co OR from:workable.com OR from:teamtailor.com OR from:recruitee.com OR from:bamboohr.com OR from:smartrecruiters.com OR from:jobvite.com OR from:icims.com OR from:myworkdayjobs.com OR from:taleo.net) newer_than:${days}d`,
+    `in:all (from:ashbyhq.com OR from:greenhouse.io OR from:lever.co OR from:workable.com OR from:teamtailor.com OR from:recruitee.com OR from:bamboohr.com OR from:smartrecruiters.com OR from:jobvite.com OR from:icims.com OR from:myworkdayjobs.com OR from:taleo.net) ${dateFilter}`,
     // ⑤ Job boards — only when accompanied by real action keywords
-    `in:all (from:linkedin.com OR from:welcometothejungle.com OR from:apec.fr OR from:indeed.com OR from:monster.fr OR from:cadremploi.fr OR from:hellowork.com OR from:jobteaser.com) (candidature OR application OR entretien OR interview OR "InMail" OR recruteur OR recruiter OR "was viewed" OR "viewed") ${noAlerts} newer_than:${days}d`,
+    `in:all (from:linkedin.com OR from:welcometothejungle.com OR from:apec.fr OR from:indeed.com OR from:monster.fr OR from:cadremploi.fr OR from:hellowork.com OR from:jobteaser.com) (candidature OR application OR entretien OR interview OR "InMail" OR recruteur OR recruiter OR "was viewed" OR "viewed") ${noAlerts} ${dateFilter}`,
     // ⑥ Recruiter-pattern senders in inbox
-    `in:inbox (from:talent@ OR from:recrutement@ OR from:rh@ OR from:careers@ OR from:jobs@ OR from:hiring@ OR from:recruiter@) ${baseExclude} newer_than:${days}d`,
+    `in:inbox (from:talent@ OR from:recrutement@ OR from:rh@ OR from:careers@ OR from:jobs@ OR from:hiring@ OR from:recruiter@) ${baseExclude} ${dateFilter}`,
     // ⑦ Sent emails (outbound applications)
-    `in:sent (has:attachment OR subject:candidature OR subject:postulation OR "je postule" OR "je vous contacte" OR "je me permets" OR "I am applying" OR "please find my CV" OR "please find attached my resume") newer_than:${days}d`,
+    `in:sent (has:attachment OR subject:candidature OR subject:postulation OR "je postule" OR "je vous contacte" OR "je me permets" OR "I am applying" OR "please find my CV" OR "please find attached my resume") ${dateFilter}`,
   ]
 
   const allMessageIds = new Set()
@@ -256,7 +269,7 @@ async function _fetchJobEmails(token, maxResults, months) {
   const runQuery = async (query) => {
     try {
       const data = await gmailFetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${Math.min(months * 20, 100)}&q=${encodeURIComponent(query)}`,
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${Math.min(effectiveMonths * 20, 100)}&q=${encodeURIComponent(query)}`,
         token
       )
       for (const m of (data.messages || [])) {

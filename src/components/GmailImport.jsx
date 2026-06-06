@@ -25,6 +25,12 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
   const [error, setError] = useState(null)
   const [emailCount, setEmailCount] = useState(0)
   const [months, setMonths] = useState(3)
+  const [dateMode, setDateMode] = useState('relative') // 'relative' | 'range'
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date(); d.setMonth(d.getMonth() - 3)
+    return d.toISOString().split('T')[0]
+  })
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0])
 
   // backward compat
   const gmailUser = connectedAccounts[0] || null
@@ -80,16 +86,21 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         }
       }
 
+      // Build date range param
+      const dateRange = dateMode === 'range' && startDate && endDate
+        ? { startDate, endDate: endDate < new Date().toISOString().split('T')[0] ? endDate : new Date().toISOString().split('T')[0] }
+        : null
+
       // Fetch from selected account or ALL connected accounts
       let emails = []
       if (scanAccount) {
-        emails = await fetchJobEmailsForAccount(scanAccount, null, months)
+        emails = await fetchJobEmailsForAccount(scanAccount, null, months, dateRange)
       } else if (connectedAccounts.length > 1) {
         // Fetch from all accounts in parallel, deduplicate by id
         setStep(STEPS.fetching)
         const perAccount = await Promise.all(
           connectedAccounts.map(acct =>
-            fetchJobEmailsForAccount(acct.email, null, months)
+            fetchJobEmailsForAccount(acct.email, null, months, dateRange)
               .then(res => res.map(e => ({ ...e, _account: acct.email })))
               .catch(() => [])
           )
@@ -101,7 +112,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
           }
         }
       } else {
-        emails = await fetchJobEmails(null, months)
+        emails = await fetchJobEmails(null, months, dateRange)
       }
       setEmailCount(emails.length)
 
@@ -123,7 +134,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
       let calendarError = null
       const [grouped] = await Promise.all([
         buildJobsFromEmails(emails, []),
-        fetchCalendarEvents('', months)
+        fetchCalendarEvents('', dateRange ? Math.max(1, Math.ceil((new Date(dateRange.endDate) - new Date(dateRange.startDate)) / (1000 * 60 * 60 * 24 * 30))) : months)
           .then(evts => { calendarEvents = evts; console.log(`📅 Calendar: ${evts.length} events fetched`) })
           .catch(e => { calendarError = e.message; console.error('Calendar fetch failed during scan:', e) }),
       ])
@@ -350,7 +361,9 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
                 {
                   id: STEPS.fetching,
                   icon: '📬',
-                  label: `Lecture des emails (${months} mois)`,
+                  label: dateMode === 'range' && startDate && endDate
+                    ? `Lecture des emails (${startDate} → ${endDate})`
+                    : `Lecture des emails (${months} mois)`,
                   detail: connectedAccounts.length > 1
                     ? `Scan de ${connectedAccounts.length} comptes en parallèle — 7 requêtes par compte…`
                     : 'Scan multi-sources : recruteurs, ATS, LinkedIn, WTTJ…',
@@ -471,24 +484,69 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
                 </button>
               </div>
 
-              {/* Month selector */}
+              {/* Period selector */}
               <div className="mb-6">
-                <p className="text-sm text-gray-600 mb-3">Combien de mois voulez-vous scanner ?</p>
-                <div className="flex gap-2 justify-center flex-wrap">
-                  {MONTH_OPTIONS.map(o => (
-                    <button
-                      key={o.value}
-                      onClick={() => setMonths(o.value)}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
-                        months === o.value
-                          ? 'bg-indigo-600 text-white border-indigo-600'
-                          : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
-                      }`}
-                    >
-                      {o.label}
-                    </button>
-                  ))}
+                {/* Mode toggle */}
+                <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 mb-3">
+                  <button
+                    onClick={() => setDateMode('relative')}
+                    className={`flex-1 text-xs font-medium py-1.5 rounded-lg transition-all ${dateMode === 'relative' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    Période rapide
+                  </button>
+                  <button
+                    onClick={() => setDateMode('range')}
+                    className={`flex-1 text-xs font-medium py-1.5 rounded-lg transition-all ${dateMode === 'range' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    Dates précises
+                  </button>
                 </div>
+
+                {dateMode === 'relative' ? (
+                  <>
+                    <p className="text-xs text-gray-500 mb-2 text-center">Combien de mois en arrière ?</p>
+                    <div className="flex gap-2 justify-center flex-wrap">
+                      {MONTH_OPTIONS.map(o => (
+                        <button
+                          key={o.value}
+                          onClick={() => setMonths(o.value)}
+                          className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
+                            months === o.value
+                              ? 'bg-indigo-600 text-white border-indigo-600'
+                              : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
+                          }`}
+                        >
+                          {o.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <label className="block text-[10px] text-gray-400 mb-1 font-medium uppercase tracking-wide">Début</label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        max={endDate}
+                        onChange={e => setStartDate(e.target.value)}
+                        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200"
+                      />
+                    </div>
+                    <div className="text-gray-300 mt-4">→</div>
+                    <div className="flex-1">
+                      <label className="block text-[10px] text-gray-400 mb-1 font-medium uppercase tracking-wide">Fin</label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        min={startDate}
+                        max={new Date().toISOString().split('T')[0]}
+                        onChange={e => setEndDate(e.target.value)}
+                        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {error && <p className="text-xs text-red-500 bg-red-50 rounded-lg p-3 mb-4">{error}</p>}
