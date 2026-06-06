@@ -11,7 +11,17 @@ function loadProfile() {
 export const NO_REPLY_RE = /^(no[-_.]?reply|noreply|do[-_.]?not[-_.]?reply|donotreply|notifications?|alerts?|mailer[-_.]?daemon|postmaster|bounce|auto[-_.]?reply|automessage)@/i
 
 export function isNoReply(email) {
-  return NO_REPLY_RE.test(email) || email.includes('ats.') || email.includes('@ashbyhq') || email.includes('@greenhouse') || email.includes('@lever.co') || email.includes('@workable') || email.includes('@teamtailor')
+  if (!email) return true
+  return NO_REPLY_RE.test(email)
+    || email.includes('ats.')
+    || email.includes('@ashbyhq') || email.includes('@greenhouse') || email.includes('@lever.co')
+    || email.includes('@workable') || email.includes('@teamtailor')
+    // Job board automated senders — never a real recruiter contact
+    || email.includes('@linkedin.com') || email.includes('@indeedemail.com') || email.includes('@indeed.com')
+    || email.includes('@welcometothejungle') || email.includes('@wttj.') || email.includes('@apec.fr')
+    || email.includes('@monster.') || email.includes('@cadremploi') || email.includes('@hellowork')
+    || email.includes('@jobteaser') || email.includes('@smartrecruiters') || email.includes('@jobvite')
+    || email.includes('@myworkdayjobs') || email.includes('@taleo.')
 }
 
 // Extract which Gmail account received the emails for this job
