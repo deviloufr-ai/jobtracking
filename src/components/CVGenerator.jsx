@@ -312,6 +312,7 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
   const [template, setTemplate]     = useState('modern')
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const [profilePic, setProfilePic] = useState(() => localStorage.getItem('cv_profile_picture') || null)
+  const [saved, setSaved]           = useState(false)
   const picInputRef = useRef()
 
   useEffect(() => { fetchJobDescription() }, [])
@@ -364,9 +365,25 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
 
   // ── Export PDF (one page auto-fit) ────────────────────────────────────────
   const handleExportPDF = () => {
-    const html     = renderCV(editableCV || generatedCV, template, profilePic)
+    const md       = editableCV || generatedCV
+    const html     = renderCV(md, template, profilePic)
     const filename = `CV_${job.company}_${job.position.replace(/\s+/g,'_')}`
-    const win      = window.open('', '_blank')
+
+    // Save to candidature FIRST — independent of popup success
+    if (onSaveCV) {
+      onSaveCV(job.id, {
+        cvSaved: {
+          markdown: md,
+          template,
+          filename,
+          savedAt: new Date().toISOString(),
+        }
+      })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    }
+
+    const win = window.open('', '_blank')
     if (!win) { alert('Autorisez les pop-ups pour exporter le PDF.'); return }
     win.document.write(`<!DOCTYPE html><html><head>
       <meta charset="utf-8"/>
@@ -375,16 +392,6 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
       ${ONE_PAGE_SCRIPT}
     </head><body>${html}</body></html>`)
     win.document.close()
-    if (onSaveCV) {
-      onSaveCV(job.id, {
-        cvSaved: {
-          markdown: editableCV || generatedCV,
-          template,
-          filename,
-          savedAt: new Date().toISOString(),
-        }
-      })
-    }
   }
 
   const currentTpl = TEMPLATES.find(t => t.id === template) || TEMPLATES[0]
@@ -463,8 +470,8 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
             </button>
             <button onClick={generateCV} className="text-xs font-medium border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50">↺ Regénérer</button>
             <button onClick={handleExportPDF}
-              className="text-xs font-medium bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 flex items-center gap-1.5">
-              ⬇️ Exporter PDF
+              className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${saved ? 'bg-indigo-600 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}`}>
+              {saved ? '✓ Sauvegardé dans la candidature' : '⬇️ Exporter PDF'}
             </button>
           </div>
         )}

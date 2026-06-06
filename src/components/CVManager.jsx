@@ -212,7 +212,7 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob }) {
 
       {/* Generate CV for a job */}
       {/* Auto-open for preselected job */}
-      {preselectedJob && preselectedJob.status === 'todo' && cvs.length > 0 && !generatorState && (
+      {preselectedJob && cvs.length > 0 && !generatorState && (
         <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-indigo-800">✨ Générer un CV pour {preselectedJob.company}</p>
