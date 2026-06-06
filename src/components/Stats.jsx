@@ -88,10 +88,10 @@ export default function Stats({ jobs }) {
   const rateColor = responseRate >= 30 ? '#10b981' : responseRate >= 15 ? '#f59e0b' : '#6366f1'
 
   return (
-    <div className="grid grid-cols-2 grid-rows-2 gap-4 h-full">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
 
       {/* ── Card 1 — Pipeline ─────────────────────────────────── */}
-      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col h-full">
+      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Pipeline</span>
           <span className="text-[11px] text-gray-400">{thisWeek} cette semaine</span>
@@ -126,7 +126,7 @@ export default function Stats({ jobs }) {
       </div>
 
       {/* ── Card 2 — Taux de réponse ──────────────────────────── */}
-      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col h-full">
+      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col">
         <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Taux de réponse</span>
 
         {/* Radial + legend */}
@@ -164,7 +164,7 @@ export default function Stats({ jobs }) {
       </div>
 
       {/* ── Card 3 — Activité 7j ──────────────────────────────── */}
-      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col h-full">
+      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Activité 7j</span>
           <span className="text-[11px] text-indigo-600 font-semibold">{thisWeek} ajoutées</span>
@@ -187,7 +187,7 @@ export default function Stats({ jobs }) {
       </div>
 
       {/* ── Card 4 — Répartition ──────────────────────────────── */}
-      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col h-full">
+      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col">
         <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Répartition</span>
 
         <div className="flex flex-col gap-2.5 flex-1">
@@ -203,13 +203,13 @@ export default function Stats({ jobs }) {
             }
             const barColor = colorMap[s.dot] || '#6366f1'
             return (
-              <div key={s.key} className="flex items-center gap-2.5 group">
+              <div key={s.key} className="flex items-center gap-2 group">
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: barColor }} />
-                <span className="text-xs text-gray-600 flex-1 truncate">{s.label}</span>
-                <div className="w-24 h-2 rounded-full bg-gray-100 overflow-hidden flex-shrink-0">
+                <span className="text-xs text-gray-600 w-28 flex-shrink-0">{s.label}</span>
+                <div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden min-w-0">
                   <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
                 </div>
-                <span className="text-sm font-bold text-gray-700 w-5 text-right">{s.count}</span>
+                <span className="text-sm font-bold text-gray-700 w-6 text-right flex-shrink-0">{s.count}</span>
               </div>
             )
           })}
