@@ -216,24 +216,29 @@ function resolveLabel(el) {
       }
     }
   }
-  // 6. Heading précédant le champ dans le DOM — cherche d'abord les headings
-  // seulement, ignore les labels courts type "X" (réseaux sociaux)
+  // 6. Heading ou paragraphe précédant le champ dans le DOM
+  // Priorité : h1-h5 > p/span/div avec texte > ignorer les labels trop courts (ex: "X")
   let node = el
   for (let i = 0; i < 5; i++) {
     let sibling = node.previousElementSibling
     while (sibling) {
-      // Heading direct
       const tag = sibling.tagName?.toLowerCase()
+      // Heading direct
       if (['h1','h2','h3','h4','h5'].includes(tag)) {
         const t = sibling.textContent?.trim()
-        if (t && t.length > 3 && t.length < 100) return t.replace(/\s+/g, ' ')
+        if (t && t.length > 3 && t.length < 300) return t.replace(/\s+/g, ' ')
       }
-      // Heading imbriqué dans un sibling conteneur
+      // Heading imbriqué
       const nested = sibling.querySelectorAll ? [...sibling.querySelectorAll('h1,h2,h3,h4,h5')] : []
       const lastHeading = nested[nested.length - 1]
       if (lastHeading) {
         const t = lastHeading.textContent?.trim()
-        if (t && t.length > 3 && t.length < 100) return t.replace(/\s+/g, ' ')
+        if (t && t.length > 3 && t.length < 300) return t.replace(/\s+/g, ' ')
+      }
+      // Paragraphe/span avec texte suffisamment long (labels LinkedIn modal)
+      if (['p','span','div','strong'].includes(tag)) {
+        const t = sibling.textContent?.trim()
+        if (t && t.length > 8 && t.length < 400) return t.replace(/\s+/g, ' ')
       }
       sibling = sibling.previousElementSibling
     }
@@ -281,20 +286,39 @@ let autofillButton = null
 let autofillPanel = null
 let detectedFields = []
 
+function getModalContainer() {
+  // If detected fields live inside a modal/dialog, inject UI there to avoid z-index issues
+  if (detectedFields.length > 0) {
+    const modal = detectedFields[0].el.closest(
+      '[role="dialog"], dialog, .artdeco-modal, [class*="jobs-easy-apply-modal"], [class*="modal__content"], [class*="overlay-container"]'
+    )
+    if (modal) return modal
+  }
+  return document.body
+}
+
 function createAutofillButton() {
   if (autofillButton) return
   detectedFields = detectFormFields()
   if (detectedFields.length === 0) return
 
-  // Bouton flottant
+  const container = getModalContainer()
+  const insideModal = container !== document.body
+
   autofillButton = document.createElement('div')
   autofillButton.id = 'jt-autofill-btn'
+  if (insideModal) {
+    // Inside modal: use sticky positioning at the bottom of the scroll container
+    autofillButton.style.cssText = 'position:sticky;bottom:16px;z-index:9999;margin:8px 16px 0;display:inline-flex;align-items:center;gap:7px;padding:8px 14px;background:#18181b;color:#fff;border-radius:24px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;font-weight:500;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.3);'
+    container.appendChild(autofillButton)
+  } else {
+    container.appendChild(autofillButton)
+  }
   autofillButton.innerHTML = `
     <span class="jt-icon">✦</span>
     <span class="jt-label">Autofill (${detectedFields.length} champ${detectedFields.length > 1 ? 's' : ''})</span>
   `
   autofillButton.addEventListener('click', openAutofillPanel)
-  document.body.appendChild(autofillButton)
 }
 
 async function openAutofillPanel() {
