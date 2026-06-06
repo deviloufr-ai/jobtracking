@@ -354,8 +354,14 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                     return (
                       <div key={i} className="flex gap-3 relative group/step">
                         {!isLast && <div className="absolute left-[7px] top-5 bottom-0 w-px bg-indigo-200" />}
-                        <div className={`w-3.5 h-3.5 rounded-full flex-shrink-0 mt-1 border-2 border-white shadow-sm ${st.dot}`} />
-                        <div className="pb-3 flex-1">
+                        {(() => {
+                          const isMeeting = entry.source === 'calendar' || !!entry.meetingLink
+                          const isPastMeeting = isMeeting && new Date(entry.date) < new Date()
+                          const isUpcomingMeeting = isMeeting && !isPastMeeting
+                          return (
+                        <>
+                        <div className={`w-3.5 h-3.5 rounded-full flex-shrink-0 mt-1 border-2 border-white shadow-sm ${isPastMeeting ? 'bg-gray-300' : isUpcomingMeeting ? 'bg-amber-400' : st.dot}`} />
+                        <div className={`pb-3 flex-1 ${isPastMeeting ? 'opacity-50' : ''}`}>
                           {editingStep === i ? (
                             <div className="bg-white border border-indigo-200 rounded-xl p-3 space-y-2">
                               <div className="grid grid-cols-2 gap-2">
@@ -381,8 +387,8 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                           ) : (
                             <>
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${st.color}`}>{st.label}</span>
-                                <span className="text-xs text-gray-400">{formatDate(entry.date)}</span>
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isPastMeeting ? 'bg-gray-100 text-gray-400' : isUpcomingMeeting ? 'bg-amber-100 text-amber-700' : st.color}`}>{isPastMeeting ? '✓ Passé' : isUpcomingMeeting ? '📅 À venir' : st.label}</span>
+                                <span className={`text-xs text-gray-400 ${isPastMeeting ? 'line-through' : ''}`}>{formatDate(entry.date)}</span>
                                 {entry.source === 'email' && !entry.fromMe && entry.from && !isNoReply(entry.from.match(/<([^>]+)>/)?.[1] || entry.from) && (
                                   <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full truncate max-w-[100px]">
                                     {entry.from.match(/^([^<]+)</)?.[1]?.trim().split(' ')[0] || entry.from.split('@')[0]}
@@ -409,10 +415,10 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                               {/* Action links row */}
                               {(entry.meetingLink || entry.gmailId || (entry.source === 'calendar' && !entry.meetingLink)) && (
                                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                  {entry.meetingLink && (
+                                  {entry.meetingLink && !isPastMeeting && (
                                     <a href={entry.meetingLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                                      className="inline-flex items-center gap-1.5 text-xs font-medium text-white bg-indigo-500 hover:bg-indigo-600 px-2.5 py-1 rounded-lg transition-colors">
-                                      <span>{entry.meetingEmoji || '📹'}</span>
+                                      className="inline-flex items-center gap-1.5 text-xs font-medium text-white bg-amber-500 hover:bg-amber-600 px-2.5 py-1 rounded-lg transition-colors">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                                       Rejoindre {entry.meetingPlatform || 'la visio'} ↗
                                     </a>
                                   )}
@@ -439,6 +445,9 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                             </>
                           )}
                         </div>
+                        </>
+                          )
+                        })()}
                       </div>
                     )
                   })}
