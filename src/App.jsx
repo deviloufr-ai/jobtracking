@@ -431,7 +431,7 @@ export default function App() {
         <div className="flex gap-6 items-start">
         <div className="flex-1 min-w-0">
         {/* Top 2-col: Stats left, Prochaines étapes right */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4 mb-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
           <Stats jobs={jobs} />
           <NextAction
             jobs={jobs}
