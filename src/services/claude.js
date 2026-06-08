@@ -249,8 +249,13 @@ DÉTECTION STATUS (PRIORISER LA RÉALITÉ)
   "no further", "no next steps", "application was studied", "will not continue", "not proceeding",
   "we will not", "cannot move forward", "pas de suite"
 
-  HELLOWORK SPECIAL RULE:
-  If email from HelloWork with status="reviewing" and low confidence (< 70), LIKELY ERROR.
+  HELLOWORK SPECIAL RULE (CRITICAL):
+  If email from HelloWork says "Réponse reçue de l'entreprise" OR "Response received from company":
+  - Check if notes mention "entretien", "interview", "next steps", "visio" → keep reviewing
+  - If NONE of those → LIKELY REJECTION, change status to "rejected" with confidence 85
+  - HelloWork "response received" emails are usually either acceptance or rejection, rarely neutral updates
+
+  If email from HelloWork with status="reviewing" and low confidence (< 75), LIKELY ERROR.
   Re-evaluate: Does it say application was received/studied? → confidence should be higher OR status should be rejected.
 
   ❌ JAMAIS "rejected" si l'email contient :
