@@ -59,11 +59,22 @@ function deduplicateHistoryBySemantics(history) {
       if (!foundGroup) groups.push([entry])
     }
 
-    // For each group, keep the longest/most informative entry
+    // For each group, keep the longest/most informative entry but preserve all gmailIds
     for (const group of groups) {
       const best = group.reduce((a, b) =>
         ((a.note || '').length > (b.note || '').length ? a : b)
       )
+      // Collect all unique gmailIds from the entire group
+      const allIds = new Set()
+      for (const entry of group) {
+        if (entry.gmailId) allIds.add(entry.gmailId)
+      }
+      // Store multiple IDs if they exist
+      if (allIds.size > 1) {
+        best.gmailIds = [...allIds]
+      } else if (allIds.size === 1) {
+        best.gmailId = [...allIds][0]
+      }
       result.push(best)
     }
   }
