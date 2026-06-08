@@ -179,80 +179,168 @@ export async function parseEmailsForJobs(emails) {
       return `[${j + 1}] De: ${e.from}\nSujet: ${e.subject}\nDate: ${dateStr}${catHint ? '\n' + catHint : ''}\n${bodySection}`
     }).join('\n\n---\n\n')
 
-    const prompt = `Tu analyses des emails pour extraire des candidatures d'emploi.
+    const prompt = `Tu analyses des emails pour extraire des candidatures d'emploi avec HAUTE PRÉCISION.
 
-REGLES ABSOLUES :
-1. Chaque email [N] = 1 objet JSON avec SA PROPRE date
-2. La date = exactement la date du champ "Date:" converti en YYYY-MM-DD
-3. Ne JAMAIS fusionner deux emails en un seul objet
-4. Ne JAMAIS mettre la meme date pour deux emails differents
+═══════════════════════════════════════════════════════════════════════════
+RÈGLES ABSOLUES STRICTES
+═══════════════════════════════════════════════════════════════════════════
+1. 1 email [N] = 1 objet JSON UNIQUE avec sa propre date exacte (YYYY-MM-DD)
+2. Ne JAMAIS fusionner, dupliquer, ou modifier les dates
+3. Extraire COMPANY et POSITION avec précision maximale (voir patterns ci-dessous)
+4. STATUS = déterminé UNIQUEMENT par le contenu réel de l'email
+5. CONFIDENCE = basée sur clarté + complétude, pas sur optimisme
 
-Correspondance date:
-[1] Date: 2026-06-01 -> "date": "2026-06-01"
-[2] Date: 2026-06-02 -> "date": "2026-06-02"
+═══════════════════════════════════════════════════════════════════════════
+EXTRACTION COMPANY (PRIORITÉ ABSOLUE)
+═══════════════════════════════════════════════════════════════════════════
+PATTERNS À CHERCHER (dans cet ordre) :
+1️⃣ Entre guillemets : "Responsable Projects IT H/F" dans l'entreprise [COMPANY] → COMPANY = [COMPANY]
+2️⃣ "dans l'entreprise [X]" / "at [X]" / "for [X]" / "chez [X]"
+3️⃣ "Your application was viewed by [X]"
+4️⃣ "You applied to [POSITION] at [X]"
+5️⃣ "[POSITION] · [X] · [Country]" (LinkedI/Indeed pattern)
+6️⃣ Sujet : "Re: Candidature [POSITION] - [COMPANY]"
+7️⃣ De: [firstname]@[company].com ou recruiter.company.fr
+8️⃣ Si job board (Indeed/LinkedIn/WTTJ) : TOUJOURS extraire la vraie compagnie, pas le job board
 
-Statuts selon LE CONTENU de chaque email:
-- "sent"      : candidature envoyée par l'utilisateur
-- "reviewing" : accusé réception, profil en cours d'examen
-- "interview" : invitation entretien, échange sur le process, négociation salariale, test technique proposé, questions posées
-- "done"      : entretien terminé, test technique complété, discussion clôturée — en attente du résultat
-- "waiting"   : en attente de décision finale
-- "offer"     : proposition d'embauche formelle
-- "rejected"  : refus DÉFINITIF explicite ("nous n'irons pas plus loin", "not moving forward", "not selected")
-- "cancelled" : processus annulé À L'INITIATIVE DE L'ENTREPRISE (pas d'accord sur salaire ≠ annulation)
+EXEMPLES :
+✅ "Vous avez reçu une réponse à l'offre : \"Responsable Projects IT H/F\" dans l'entreprise OpenSourcing" → company: "OpenSourcing"
+✅ "GojiberryAI · France" → company: "GojiberryAI"
+✅ "You applied to Senior Dev at Acme Corp" → company: "Acme Corp"
+❌ Ne JAMAIS : company: "Indeed" ou "LinkedIn" ou "WTTJ"
+
+═══════════════════════════════════════════════════════════════════════════
+EXTRACTION POSITION (TRÈS PRÉCIS)
+═══════════════════════════════════════════════════════════════════════════
+PATTERNS À CHERCHER :
+1️⃣ GUILLEMETS : "Responsable Projects IT H/F" → position: "Responsable Projects IT H/F" (EXACT)
+2️⃣ Après "offre :" / "position :" / "rôle :" → extraire le titre exact
+3️⃣ "You applied to [POSITION]" → [POSITION] = la position
+4️⃣ "Entretien pour [POSITION]"
+5️⃣ Si aucun titre clair : confidence: 0 (ne pas inventer)
 
 RÈGLES CRITIQUES :
-- Négociation salariale en cours = "interview" (même si désaccord provisoire)
-- "Processus annulé" dans une négociation = "interview" ou "waiting", PAS "cancelled" ni "rejected"
-- "cancelled" uniquement si l'entreprise dit explicitement qu'elle arrête le processus
-- "rejected" uniquement si l'entreprise dit explicitement qu'elle ne retient pas la candidature
+- "Lead Product Manager" ≠ "Product Manager" ≠ "Senior PM" (DISTINCTIONS ABSOLUES)
+- Garder les qualificatifs : "Senior Developer", "Junior Designer", "H/F", "CDI", "CDD"
+- JAMAIS normaliser ou abréger : "PM" → "Project Manager" (inventer), "IT Specialist" → garder exact
+- Si plusieurs positions dans l'email → extraire LA PLUS SPÉCIFIQUE
 
-Notes : max 60 chars, UNE seule info par note, concis (ex: "Test technique proposé le 08/06" pas de répétitions)
+EXEMPLES :
+✅ "Responsable Projects IT H/F" → position: "Responsable Projects IT H/F"
+✅ "Data Scientist - Paris" → position: "Data Scientist"
+❌ "Senior PM" → position: "Senior Project Manager" (inventer ❌), garder "Senior PM" si c'est ce qui est écrit
+❌ "IT" → confidence: 0 (trop vague)
 
-IMPORTANT — POSITION EXACTE :
-- Extraire LE TITRE EXACT du email : "Lead Product Manager" ≠ "Product Manager" ≠ "Senior Product Manager"
-- Si l'email dit "Lead Product Manager role", le position = "Lead Product Manager" (PAS juste "Product Manager")
-- Chercher: "role at", "position of", "applying for", "you applied to", "[title] role", "[title] position"
+═══════════════════════════════════════════════════════════════════════════
+DÉTECTION STATUS (PRIORISER LA RÉALITÉ)
+═══════════════════════════════════════════════════════════════════════════
 
-Champs JSON: emailId (entier, ex: 1 pas "[1]"), company, position, status, date (YYYY-MM-DD), notes (max 80 chars), confidence (0-100)
+🔴 REJECTED (refus définitif) :
+  Chercher: "ne retient pas", "n'avons pas retenu", "nous n'irons pas plus loin", "not moving forward",
+  "not selected", "we regret", "not a fit", "candidature rejetée", "refus explicite", "final decision"
+  Exemple: "Votre candidature a bien été étudiée mais le recruteur n'y donnera pas suite" → REJECTED
+  NOTE: Pas besoin d'autre contexte - c'est un refus clair
 
-RÈGLE ENTREPRISE :
-- L'email peut être ENVOYÉ PAR un job board mais CONCERNER une vraie entreprise — toujours extraire la vraie entreprise.
-- PATTERN CLÉ Indeed/LinkedIn : le nom d'entreprise apparaît juste AVANT le pays :
-  "Publidata - France" → company = "Publidata"
-  "GojiberryAI · France" → company = "GojiberryAI"
-  "Hublo, France" → company = "Hublo"
-- Autres exemples :
-  "Your application was viewed by GojiberryAI" → company = "GojiberryAI"
-  "Candidature envoyée chez Publidata" → company = "Publidata"
-  "You applied to Product Manager at Yeita" → company = "Yeita"
-- Ne JAMAIS mettre LinkedIn / Indeed / Free-Work / Malt / WTTJ / Apec / Monster comme company.
-- Si vraiment aucune entreprise identifiable : confidence: 0.
+🟢 OFFER (offre formelle) :
+  "offer letter", "job offer", "proposition d'embauche", "nous serions ravis de vous accueillir"
 
-EMAILS À TRAITER AVEC CONFIDENCE 40 (mise à jour uniquement, pas nouvelle candidature) :
-- "Your application was viewed" / "votre candidature a été consultée" → status: "reviewing", note: "Candidature consultée", confidence: 40
-- LinkedIn "application viewed by [Company]" → même traitement
-- Accusés de réception automatiques sans vrai message recruteur → confidence: 40
+🟣 INTERVIEW (rendez-vous, test, négociation) :
+  "Entretien", "visio", "call", "meeting", "interview", "test technique", "case study",
+  "négociation salariale", "questions pour vous", "process suivant", "next steps is..."
 
-IGNORER ABSOLUMENT (confidence: 0) :
-- Newsletters, digests, "jobs you might like", "new jobs matching", "offres recommandées"
-- "Candidature suggérée" ou offre recommandée sans action de l'utilisateur
-- Notifications LinkedIn "votre profil a été consulté", "X personnes ont vu votre profil" (profil, PAS candidature)
-- Alertes emploi de job boards (Indeed Alert, LinkedIn Job Alert, WTTJ Newsletter...)
-- Emails automatiques sans entreprise identifiable
-- Emails marketing/promotionnels (publicités, newsletters de marques, promotions produits)
-- Si aucun poste (position) identifiable dans l'email → confidence: 0, ne pas inventer un poste
-- Si le contenu n'a aucun lien avec une candidature ou un recrutement → confidence: 0
+🟠 DONE (entretien passé, test complété) :
+  "merci de votre entretien", "suite à votre entretien", "nous avons discuté",
+  "test technique complété", "entretien terminé"
 
-Un email confidence >= 55 = candidature réelle (l'utilisateur A POSTULÉ ou un RECRUTEUR a répondu)
-Un email confidence 35-54 = signal de suivi seulement (mise à jour d'une candidature existante)
+🟡 WAITING (en attente passive) :
+  "en attente", "on va vous recontacter", "we'll get back to you", "sans nouvelle = candidature rejetée"
 
-BONUS CATÉGORIE GMAIL (si CatégGmail est présent) :
-- CatégGmail: UPDATES → +10 à la confidence (email transactionnel = très probablement lié à une candidature)
-- CatégGmail: PERSONAL → +5 à la confidence (contact direct = probablement un recruteur)
-- CatégGmail: SOCIAL → -5 à la confidence (réseau social = souvent notification LinkedIn pas actionnable)
+🟢 REVIEWING (profil en cours d'examen) :
+  "profil en cours d'examen", "application received", "merci de votre candidature",
+  "we've received your application", "en cours de traitement"
 
-Emails:
+📨 SENT (candidature envoyée par vous) :
+  Emails du dossier SENT, ou "I am applying", "Please find my CV", "Je vous contacte"
+
+═══════════════════════════════════════════════════════════════════════════
+SCORING CONFIDENCE
+═══════════════════════════════════════════════════════════════════════════
+95-100 : Company CLAIR + Position CLAIRE + Status ÉVIDENT (ex: offre formelle HelloWork)
+85-94  : Company CLAIR + Position CLAIRE + Status CLAIR (ex: refus d'une vraie entreprise)
+75-84  : Company ou Position légèrement ambigu mais déterminable
+55-74  : Mise à jour mineure (visio programmée, test reçu) OU Company/Position partiellement vague
+40-54  : Notification automatique ("application viewed"), signaux très faibles
+0-39   : Ignorer (job board alert, newsletter, signature profile, invitation suggérée, trop ambigu)
+
+JAMAIS confidence > 0 si :
+- Company non identifiable OU
+- Position non identifiable OU
+- Email = newsletter/alert/suggestion sans action réelle
+
+═══════════════════════════════════════════════════════════════════════════
+NOTES (40-80 CHARS MAX)
+═══════════════════════════════════════════════════════════════════════════
+UNE SEULE info principale + contexte clé si utile
+✅ "Refus explicite, candidat non retenu"
+✅ "Entretien confirmé 08/06 à 14h30"
+✅ "Test technique proposé"
+❌ "Email from recruiter about the position saying they reviewed CV and want meeting" (trop long)
+
+═══════════════════════════════════════════════════════════════════════════
+IGNORER ABSOLUMENT (confidence: 0)
+═══════════════════════════════════════════════════════════════════════════
+- Newsletters / "jobs you might like" / "offres recommandées" / "alerte emploi"
+- "Votre profil a été consulté" (profil, PAS candidature)
+- Marketing / promotions / publicités
+- Aucune entreprise identifiable
+- Aucune position identifiable
+- Aucun lien avec une candidature ou un recrutement
+
+═══════════════════════════════════════════════════════════════════════════
+BONUS GMAIL CATEGORY
+═══════════════════════════════════════════════════════════════════════════
++ 10 : UPDATES (transactionnel = très probablement candidature)
++ 5  : PERSONAL (contact direct = recruteur)
+- 5  : SOCIAL (LinkedIn = souvent notification non-actionnable)
+
+═══════════════════════════════════════════════════════════════════════════
+EXAMPLE PARSING : HelloWork Rejection
+═══════════════════════════════════════════════════════════════════════════
+Email:
+De: emploi@emails.hellowork.com
+Sujet: Vous avez reçu une réponse à l'offre
+"Hello Alexandre!
+You received a response to the offer:
+\"Responsable Projects IT H/F\" dans l'entreprise OpenSourcing
+Your application was studied but the recruiter will not follow up."
+
+✅ CORRECT OUTPUT:
+{
+  "emailId": 1,
+  "company": "OpenSourcing",
+  "position": "Responsable Projects IT H/F",
+  "status": "rejected",
+  "date": "2026-01-15",
+  "notes": "Refus explicite, candidat non retenu",
+  "confidence": 90
+}
+
+═══════════════════════════════════════════════════════════════════════════
+OUTPUT JSON FORMAT
+═══════════════════════════════════════════════════════════════════════════
+[
+  {
+    "emailId": 1,
+    "company": "...",
+    "position": "...",
+    "status": "...",
+    "date": "YYYY-MM-DD",
+    "notes": "...",
+    "confidence": 0-100
+  }
+]
+
+EMAILS À TRAITER :
 ${emailsText}`
 
     const raw = await callClaude(system, prompt)
