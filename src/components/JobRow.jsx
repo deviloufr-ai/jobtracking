@@ -222,17 +222,18 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
     try {
       // Auto-enrichir = Calendar only (emails are already fetched during Gmail import)
       const result = await enrichJobTimeline(job, { calendarOnly: true })
-      if (result) {
+      if (result && result.newCount > 0) {
+        // Only show notification if there are actually new items
         onUpdateHistory(job.id, result.history)
         setEnrichResult({ success: true, count: result.newCount })
-      } else {
-        setEnrichResult({ success: false })
+        enrichTimerRef.current = setTimeout(() => setEnrichResult(null), 3000) // Fix #6
       }
+      // No notification if nothing new found (already imported before)
     } catch (e) {
       setEnrichResult({ success: false, error: e.message })
+      enrichTimerRef.current = setTimeout(() => setEnrichResult(null), 3000)
     }
     setEnriching(false)
-    enrichTimerRef.current = setTimeout(() => setEnrichResult(null), 3000) // Fix #6
   }
 
   // Deterministic avatar color from company name
