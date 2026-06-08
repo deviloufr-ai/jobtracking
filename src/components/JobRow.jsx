@@ -416,15 +416,15 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                         {!isLast && <div className="absolute left-[7px] top-5 bottom-0 w-px bg-indigo-200" />}
                         {(() => {
                           const isMeeting = entry.source === 'calendar' || !!entry.meetingLink
-                          // Fix: use rawStart if available (precise time), otherwise use date-only comparison (not past until next day)
+                          // Fix: use rawStart if available (precise time), otherwise check if date is in the past
                           const isPastMeeting = isMeeting && (() => {
                             if (entry.rawStart) {
                               return new Date(entry.rawStart) < new Date()
                             }
-                            const tomorrow = new Date()
-                            tomorrow.setDate(tomorrow.getDate() + 1)
-                            tomorrow.setHours(0, 0, 0, 0)
-                            return new Date(entry.date) < tomorrow
+                            // For date-only: meeting is past only if the date is before today
+                            const today = new Date()
+                            today.setHours(0, 0, 0, 0)
+                            return new Date(entry.date) < today
                           })()
                           const isUpcomingMeeting = isMeeting && !isPastMeeting
                           // Fix #8 — proper email extraction before isNoReply check
