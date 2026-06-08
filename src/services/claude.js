@@ -235,18 +235,41 @@ EXEMPLES :
 DÉTECTION STATUS (PRIORISER LA RÉALITÉ)
 ═══════════════════════════════════════════════════════════════════════════
 
-🔴 REJECTED (refus définitif) :
+🔴 REJECTED (refus DÉFINITIF - très strict) :
+  ⚠️ CRITICAL: Vérifier qu'il n'y a PAS de "négociation salariale en cours", "entretien confirmé", "discussion processus" dans le même email
+
   Chercher: "ne retient pas", "n'avons pas retenu", "nous n'irons pas plus loin", "not moving forward",
-  "not selected", "we regret", "not a fit", "candidature rejetée", "refus explicite", "final decision"
-  Exemple: "Votre candidature a bien été étudiée mais le recruteur n'y donnera pas suite" → REJECTED
-  NOTE: Pas besoin d'autre contexte - c'est un refus clair
+  "not selected", "we regret", "not a fit", "candidature rejetée", "refus explicite", "final decision",
+  "candidature rejetée définitivement", "without further discussion"
+
+  ❌ JAMAIS "rejected" si l'email contient :
+  - "négociation salariale en cours" → status: "interview"
+  - "entretien confirmé" + "négociation" → status: "interview"
+  - "salary negotiation ongoing" → status: "interview"
+  - "discussion ongoing" → status: "interview"
+  - "écart salarial [discussion]" → status: "interview" si négociation continue
+
+  Exemple CORRECT:
+  "Refus implicite : écart salarial trop important" BUT ALSO "Négociation salariale en cours"
+  → status: "interview" (négociation = interview, pas refus!)
+
+  Exemple REFUSÉ:
+  "Nous n'irons pas plus loin, nous avons choisi un autre candidat" → REJECTED
 
 🟢 OFFER (offre formelle) :
   "offer letter", "job offer", "proposition d'embauche", "nous serions ravis de vous accueillir"
 
-🟣 INTERVIEW (rendez-vous, test, négociation) :
-  "Entretien", "visio", "call", "meeting", "interview", "test technique", "case study",
-  "négociation salariale", "questions pour vous", "process suivant", "next steps is..."
+🟣 INTERVIEW (rendez-vous, test, négociation - TRÈS LARGE) :
+  Chercher: "Entretien", "visio", "call", "meeting", "interview", "test technique", "case study",
+  "négociation salariale" (TOUJOURS interview, jamais rejected!), "questions pour vous", "process suivant",
+  "next steps is...", "discussion", "échange", "entretien confirmé", "discussion salariale"
+
+  ✅ INCLURE :
+  - Toute mention de "négociation salariale" ou "salary negotiation" → INTERVIEW (not rejected!)
+  - "Écart salarial [discussion]" → INTERVIEW (negotiation ongoing)
+  - Invitation à discuter / "discussion process" → INTERVIEW
+  - "Questions de qualification" + future actions → INTERVIEW
+  - Étapes du processus proposées → INTERVIEW
 
 🟠 DONE (entretien passé, test complété) :
   "merci de votre entretien", "suite à votre entretien", "nous avons discuté",
@@ -304,7 +327,7 @@ BONUS GMAIL CATEGORY
 - 5  : SOCIAL (LinkedIn = souvent notification non-actionnable)
 
 ═══════════════════════════════════════════════════════════════════════════
-EXAMPLE PARSING : HelloWork Rejection
+EXAMPLE 1 : HelloWork Rejection (définitif)
 ═══════════════════════════════════════════════════════════════════════════
 Email:
 De: emploi@emails.hellowork.com
@@ -314,16 +337,21 @@ You received a response to the offer:
 \"Responsable Projects IT H/F\" dans l'entreprise OpenSourcing
 Your application was studied but the recruiter will not follow up."
 
-✅ CORRECT OUTPUT:
-{
-  "emailId": 1,
-  "company": "OpenSourcing",
-  "position": "Responsable Projects IT H/F",
-  "status": "rejected",
-  "date": "2026-01-15",
-  "notes": "Refus explicite, candidat non retenu",
-  "confidence": 90
-}
+✅ OUTPUT: status = "rejected" (car: "will not follow up" = refus définitif, AUCUNE négociation)
+
+═══════════════════════════════════════════════════════════════════════════
+EXAMPLE 2 : Publidata Salary Negotiation (NOT REJECTED!)
+═══════════════════════════════════════════════════════════════════════════
+Email (simplified):
+"Refus implicite : écart salarial (40-42k vs prétentions) trop important
+Mais : Négociation salariale en cours
+Entretien confirmé 02/06 à 14h30
+Échange avec recruteur, discussion projet"
+
+❌ WRONG: status = "rejected" (car contient "refus")
+✅ CORRECT: status = "interview" (car contient "négociation salariale en cours" + "entretien confirmé")
+
+PRIORITÉ: "négociation salariale en cours" = ALWAYS "interview", override any "refus" mention!
 
 ═══════════════════════════════════════════════════════════════════════════
 OUTPUT JSON FORMAT
