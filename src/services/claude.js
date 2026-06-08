@@ -240,7 +240,8 @@ DÉTECTION STATUS (PRIORISER LA RÉALITÉ)
 
   Chercher: "ne retient pas", "n'avons pas retenu", "nous n'irons pas plus loin", "not moving forward",
   "not selected", "we regret", "not a fit", "candidature rejetée", "refus explicite", "final decision",
-  "candidature rejetée définitivement", "without further discussion"
+  "candidature rejetée définitivement", "without further discussion", "will not follow up", "n'y donnera pas suite",
+  "no further", "no next steps", "application was studied but", "will not continue", "not proceeding"
 
   ❌ JAMAIS "rejected" si l'email contient :
   - "négociation salariale en cours" → status: "interview"
@@ -327,7 +328,7 @@ BONUS GMAIL CATEGORY
 - 5  : SOCIAL (LinkedIn = souvent notification non-actionnable)
 
 ═══════════════════════════════════════════════════════════════════════════
-EXAMPLE 1 : HelloWork Rejection (définitif)
+EXAMPLE 1 : HelloWork Rejection - "will not follow up"
 ═══════════════════════════════════════════════════════════════════════════
 Email:
 De: emploi@emails.hellowork.com
@@ -337,7 +338,12 @@ You received a response to the offer:
 \"Responsable Projects IT H/F\" dans l'entreprise OpenSourcing
 Your application was studied but the recruiter will not follow up."
 
-✅ OUTPUT: status = "rejected" (car: "will not follow up" = refus définitif, AUCUNE négociation)
+✅ CORRECT OUTPUT:
+  status = "rejected" (car: "will not follow up" = refus définitif)
+  notes = "Refus explicite, pas de suite donnée"
+  confidence = 95
+
+❌ WRONG: status = "reviewing" (missed "will not follow up" keyword)
 
 ═══════════════════════════════════════════════════════════════════════════
 EXAMPLE 2 : Publidata Salary Negotiation (NOT REJECTED!)
