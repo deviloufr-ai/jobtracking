@@ -238,10 +238,20 @@ DÉTECTION STATUS (PRIORISER LA RÉALITÉ)
 🔴 REJECTED (refus DÉFINITIF - très strict) :
   ⚠️ CRITICAL: Vérifier qu'il n'y a PAS de "négociation salariale en cours", "entretien confirmé", "discussion processus" dans le même email
 
+  ⚠️ CRITICAL HELLOWORK PATTERN: If email is from HelloWork and says:
+  - "Réponse reçue de l'entreprise via HelloWork" + "candidature rejetée" = REJECTED
+  - "Your application was studied but" = ALMOST ALWAYS REJECTED
+  - If HelloWork says anything about the application being received/processed but no action → likely REJECTED
+
   Chercher: "ne retient pas", "n'avons pas retenu", "nous n'irons pas plus loin", "not moving forward",
   "not selected", "we regret", "not a fit", "candidature rejetée", "refus explicite", "final decision",
   "candidature rejetée définitivement", "without further discussion", "will not follow up", "n'y donnera pas suite",
-  "no further", "no next steps", "application was studied but", "will not continue", "not proceeding"
+  "no further", "no next steps", "application was studied", "will not continue", "not proceeding",
+  "we will not", "cannot move forward", "pas de suite"
+
+  HELLOWORK SPECIAL RULE:
+  If email from HelloWork with status="reviewing" and low confidence (< 70), LIKELY ERROR.
+  Re-evaluate: Does it say application was received/studied? → confidence should be higher OR status should be rejected.
 
   ❌ JAMAIS "rejected" si l'email contient :
   - "négociation salariale en cours" → status: "interview"
@@ -256,6 +266,9 @@ DÉTECTION STATUS (PRIORISER LA RÉALITÉ)
 
   Exemple REFUSÉ:
   "Nous n'irons pas plus loin, nous avons choisi un autre candidat" → REJECTED
+
+  Exemple HelloWork REJECTION:
+  "Réponse reçue de l'entreprise via HelloWork" + "Your application was studied but..." → REJECTED (confidence 95)
 
 🟢 OFFER (offre formelle) :
   "offer letter", "job offer", "proposition d'embauche", "nous serions ravis de vous accueillir"
