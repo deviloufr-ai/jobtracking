@@ -94,10 +94,10 @@ export default function UpcomingMeetings({ jobs }) {
       }
     }
 
-    // Sort by date, deduplicate by date+company+note
+    // Sort by date (newest first), deduplicate by date+company+note
     const seen = new Set()
     return events
-      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
       .filter(e => {
         const k = `${e.date}-${e.company}-${e.note}`
         if (seen.has(k)) return false
