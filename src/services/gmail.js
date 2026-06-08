@@ -244,8 +244,7 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null) {
   // Gmail-native category filter — "promotions" = newsletters/job alerts → skip entirely
   const noPromo = `-category:promotions -category:forums`
   const noAlerts = `-subject:"job alert" -subject:"jobs you might like" -subject:"recommended jobs" -subject:"new jobs for you" -subject:"offres d'emploi" -subject:"nouvelles offres" -subject:"alertes emploi" -subject:"emplois recommandés" -subject:"suggested job" -subject:"candidature suggérée" -subject:"jobs suggested" -subject:"offres suggérées" -subject:"new jobs matching" -subject:"emplois correspondant" -subject:"offre recommandée" -subject:"recommended job for you"`
-  const noBlockedSenders = `-from:emploi@emails.hellowork.com`
-  const baseExclude = `${noPromo} ${noAlerts} ${noBlockedSenders}`
+  const baseExclude = `${noPromo} ${noAlerts}`
 
   const queries = [
     // ① Gmail "Updates" category = transactional — best signal for ATS/confirmations
