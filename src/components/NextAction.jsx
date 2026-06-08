@@ -167,9 +167,9 @@ const NEXT_STEPS_RULES = [
     tip: () => `Négocie avant d'accepter. Demande un délai de 48-72h si besoin.`,
     cta: 'Voir les conseils',
   },
-  // Todo — generate CV
+  // Todo — generate CV (only if not already generated)
   {
-    match: j => j.status === 'todo',
+    match: j => j.status === 'todo' && !j.cvSaved,
     icon: '📄', type: 'cv',
     label: job => `Générer un CV pour ${job.company}`,
     tip: job => `Adapte ton CV à l'offre ${job.position} avant de postuler.`,
