@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSettings, SETTINGS_DEFAULTS } from '../hooks/useSettings'
+import { useExtensionDetect } from '../hooks/useExtensionDetect'
 
 const PROFILE_KEY = 'jobtrackr_profile'
 const PROFILE_DEFAULTS = {
@@ -79,6 +80,7 @@ function TextInput({ value, onChange, placeholder, multiline = false, rows = 2 }
 
 export default function Settings({ jobs, onMergeDuplicates }) {
   const { settings, updateSetting, resetSettings } = useSettings()
+  const extensionInstalled = useExtensionDetect()
   const [confirmReset, setConfirmReset] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
   const [exportDone, setExportDone] = useState(false)
@@ -397,13 +399,24 @@ export default function Settings({ jobs, onMergeDuplicates }) {
         </div>
       </Section>
 
-      <Section title="Extension Firefox" icon="🦊">
-        <Row label="JobTrackr Extension" hint="Installe l'extension Firefox pour importer les offres d'emploi directement">
-          <a href="/jobtracker-addon-1.5.0.xpi" className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-all">
-            📥 Installer
-          </a>
-        </Row>
-      </Section>
+      {extensionInstalled === false && (
+        <Section title="Extension Firefox" icon="🦊">
+          <Row label="JobTrackr Extension" hint="Installe l'extension Firefox pour importer les offres d'emploi directement">
+            <a href="/jobtracker-addon-1.5.0.xpi" className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-all">
+              📥 Installer
+            </a>
+          </Row>
+        </Section>
+      )}
+      {extensionInstalled === true && (
+        <Section title="Extension Firefox" icon="🦊">
+          <Row label="JobTrackr Extension" hint="L'extension Firefox est installée et active">
+            <span className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-green-100 text-green-700">
+              ✓ Activée
+            </span>
+          </Row>
+        </Section>
+      )}
 
     </div>
   )

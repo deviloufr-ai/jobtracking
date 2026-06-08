@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useJobs, getStatus } from './hooks/useJobs'
 import { useExtensionImport } from './hooks/useExtensionImport'
+import { useExtensionDetect } from './hooks/useExtensionDetect'
 import Stats from './components/Stats'
 import Filters from './components/Filters'
 import JobRow from './components/JobRow'
@@ -86,6 +87,7 @@ function ExtensionButton() {
 
 export default function App() {
   const { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, reprocessJobs } = useJobs()
+  const extensionInstalled = useExtensionDetect()
   const [modal, setModal] = useState(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -483,12 +485,26 @@ export default function App() {
                       <span className="text-base">🖼️</span>
                       <div className="text-left"><div className="font-medium">Screenshot</div><div className="text-[11px] text-gray-400">Colle une capture d'écran</div></div>
                     </button>
-                    <button onClick={() => { setShowAddMenu(false); const a = document.createElement('a'); a.href = '/jobtracker-addon-1.4.1.xpi'; a.download = ''; a.click() }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-700 transition-colors">
-                      <span className="text-base">🦊</span>
-                      <div className="text-left"><div className="font-medium">Extension Firefox</div><div className="text-[11px] text-gray-400">Import depuis n'importe quelle offre</div></div>
-                    </button>
-                    <div className="mx-4 my-1.5 border-t border-gray-100" />
+                    {extensionInstalled === false && (
+                      <>
+                        <a href="/jobtracker-addon-1.5.0.xpi"
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-orange-700 hover:bg-orange-50 transition-colors">
+                          <span className="text-base">🦊</span>
+                          <div className="text-left"><div className="font-medium">Installer Extension</div><div className="text-[11px] text-gray-400">Importer depuis n'importe quelle offre</div></div>
+                        </a>
+                        <div className="mx-4 my-1.5 border-t border-gray-100" />
+                      </>
+                    )}
+                    {extensionInstalled === true && (
+                      <>
+                        <button disabled
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-green-700 bg-green-50 cursor-default">
+                          <span className="text-base">🦊</span>
+                          <div className="text-left"><div className="font-medium">Extension Firefox</div><div className="text-[11px] text-gray-400">Importation activée ✓</div></div>
+                        </button>
+                        <div className="mx-4 my-1.5 border-t border-gray-100" />
+                      </>
+                    )}
                     <button onClick={() => { setShowAddMenu(false); setModal('add') }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors">
                       <span className="text-base">✏️</span>
