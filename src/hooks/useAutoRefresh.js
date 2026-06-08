@@ -11,6 +11,66 @@ const STATUS_ORDER = ['todo','sent','reviewing','interview','done','waiting','of
 
 function normalize(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '') }
 
+// ─── Semantic deduplication for history entries ───────────────────────────────
+// Group similar entries on same date by keyword overlap (e.g., multiple "test technique" notes)
+function deduplicateHistoryBySemantics(history) {
+  if (!history || history.length <= 1) return history
+
+  // Extract keywords from a note (words > 3 chars)
+  const getKeywords = note => {
+    const text = (note || '').toLowerCase()
+    const stopwords = new Set(['test', 'technique', 'proposé', 'proposed', 'email', 'entretien', 'interview', 'demande', 'request'])
+    return text.split(/\s+/).filter(w => w.length >= 4 && !stopwords.has(w))
+  }
+
+  // Group by date
+  const byDate = new Map()
+  for (const entry of history) {
+    const date = entry.date || 'unknown'
+    if (!byDate.has(date)) byDate.set(date, [])
+    byDate.get(date).push(entry)
+  }
+
+  const result = []
+  for (const [, entries] of byDate) {
+    if (entries.length <= 1) {
+      result.push(...entries)
+      continue
+    }
+
+    // For entries on same date, group by semantic similarity
+    const groups = []
+    for (const entry of entries) {
+      const kw = getKeywords(entry.note)
+      let foundGroup = false
+
+      // Check if this entry is similar to any existing group
+      for (const group of groups) {
+        const groupKw = getKeywords(group[0].note)
+        // At least 2 shared keywords = likely same topic
+        const shared = [...kw].filter(k => groupKw.includes(k)).length
+        if (shared >= 2 || (kw.length > 0 && shared / Math.max(kw.length, groupKw.length) > 0.4)) {
+          group.push(entry)
+          foundGroup = true
+          break
+        }
+      }
+
+      if (!foundGroup) groups.push([entry])
+    }
+
+    // For each group, keep the longest/most informative entry
+    for (const group of groups) {
+      const best = group.reduce((a, b) =>
+        ((a.note || '').length > (b.note || '').length ? a : b)
+      )
+      result.push(best)
+    }
+  }
+
+  return result.sort((a, b) => new Date(a.date) - new Date(b.date))
+}
+
 const JOB_BOARDS = new Set([
   'linkedin','indeed','welcometothejungle','wttj','apec','monster','cadremploi',
   'hellowork','freework','malt','jobteaser','glassdoor','meteojob','regionsjob',
@@ -106,7 +166,9 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
 
     const existingKeys = new Set(history.map(h => `${h.date}-${h.status}`))
     const newCalEntries = calEntries.filter(e => !existingKeys.has(`${e.date}-${e.status}`))
-    const mergedHistory = [...history, ...newCalEntries].sort((a, b) => new Date(a.date) - new Date(b.date))
+    const mergedHistory = deduplicateHistoryBySemantics(
+      [...history, ...newCalEntries].sort((a, b) => new Date(a.date) - new Date(b.date))
+    )
 
     const latest = sorted[sorted.length - 1]
     // Pick best position: prefer non-generic over "Unknown"
@@ -205,8 +267,10 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
           )
           const newEntries = (p.history || []).filter(h => !existingHistKeys.has(`${h.date}_${normNote(h.note)}`))
           if (newEntries.length > 0) {
-            const mergedHistory = [...(existing.history || []), ...newEntries]
-              .sort((a, b) => new Date(a.date) - new Date(b.date))
+            const mergedHistory = deduplicateHistoryBySemantics(
+              [...(existing.history || []), ...newEntries]
+                .sort((a, b) => new Date(a.date) - new Date(b.date))
+            )
             // Upgrade status if new emails show a higher-priority status
             const newStatus = STATUS_ORDER.indexOf(p.status) > STATUS_ORDER.indexOf(existing.status)
               ? p.status : existing.status
