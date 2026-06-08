@@ -306,7 +306,11 @@ function autoStale(jobs) {
         status: 'archived',
         note: `Archivée automatiquement — aucune mise à jour depuis ${Math.round(daysSince)} jours`
       }
-      return { ...j, status: 'archived', updatedAt: now.toISOString(), history: [...(j.history || []), newEntry] }
+      const archived = { ...j, status: 'archived', updatedAt: now.toISOString(), history: [...(j.history || []), newEntry] }
+      if (j.company?.includes('Teamis') || j.company?.includes('OpenSourcing')) {
+        console.log(`🔵 autoStale: ${j.company} ${daysSince.toFixed(0)}d > ${threshold}d → ARCHIVING`, archived.status)
+      }
+      return archived
     }
 
     return j
