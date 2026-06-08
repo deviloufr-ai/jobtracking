@@ -298,12 +298,6 @@ function autoStale(jobs) {
     const daysSince = (now - refDate) / (1000 * 60 * 60 * 24)
 
     const threshold = ['rejected', 'rejected_ats', 'cancelled'].includes(j.status) ? archiveRejectedDays : archiveSentDays
-
-    // Debug: check Teamis specifically
-    if (j.company?.includes('Teamis') || j.company?.includes('OpenSourcing')) {
-      console.log(`⏱️ ${j.company} (${j.status}): ${daysSince.toFixed(0)}d vs ${threshold}d threshold → ${daysSince >= threshold ? 'ARCHIVE' : 'KEEP'}`)
-    }
-
     if (daysSince >= threshold) {
       const newEntry = {
         date: now.toISOString().split('T')[0],
@@ -408,10 +402,6 @@ function load() {
 }
 
 function save(jobs) {
-  const archived = jobs.filter(j => j.status === 'archived')
-  if (archived.length > 0) {
-    console.log(`💾 Saving ${jobs.length} jobs, ${archived.length} archived:`, archived.map(j => j.company))
-  }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs))
 }
 
