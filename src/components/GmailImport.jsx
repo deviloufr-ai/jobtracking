@@ -431,6 +431,19 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
               <div className="mb-5 space-y-1.5">
                 <p className="text-xs font-semibold text-gray-500 text-left mb-2">Compte à scanner</p>
 
+                {!connected && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 text-center mb-3">
+                    <p className="text-xs text-orange-700 font-medium">Vous êtes déconnecté</p>
+                    <p className="text-[11px] text-orange-600 mt-1">Reconnectez-vous pour scanner vos emails</p>
+                    <button
+                      onClick={handleConnect}
+                      className="mt-2 w-full bg-orange-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-orange-700 transition-all"
+                    >
+                      Reconnecter
+                    </button>
+                  </div>
+                )}
+
                 {/* "Tous" option — shown when multiple accounts */}
                 {connectedAccounts.length > 1 && (
                   <button
@@ -605,7 +618,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
                 <button onClick={() => handleDisconnect()} className="text-xs text-gray-400 hover:text-gray-600 hover:underline">
                   Tout déconnecter
                 </button>
-                <button onClick={handleScan} className="bg-indigo-600 text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-indigo-700 active:scale-95 transition-all flex items-center gap-2">
+                <button onClick={handleScan} disabled={!connected} className={`text-white text-sm font-semibold px-6 py-2.5 rounded-xl active:scale-95 transition-all flex items-center gap-2 ${connected ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-400 cursor-not-allowed'}`}>
                   <span>🔍</span>
                   <span>
                     Scanner {months} mois
