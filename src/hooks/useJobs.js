@@ -117,7 +117,8 @@ const STATUS_PRIORITY = {
 
 export function deduplicateJobs(jobs) {
   const GENERIC_POS_SET = new Set(['unknown', 'unknown position', 'poste non précisé', 'non spécifié', 'inconnu', ''])
-  const normPos = p => (p || '').toLowerCase().trim()
+  // Normalize position: lowercase, trim, and remove gender markers (H/F, M/F, F/H, etc.)
+  const normPos = p => (p || '').toLowerCase().trim().replace(/\s*[hf]\/[hf]\s*/gi, '').trim()
   const isGenericPos = p => GENERIC_POS_SET.has(normPos(p))
 
   // Group by company + normalized position so different roles at the same company
