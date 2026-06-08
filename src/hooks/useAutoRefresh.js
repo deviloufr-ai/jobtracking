@@ -240,6 +240,7 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
 
       const grouped = await buildJobsFromEmails(emails, calendarEvents)
       if (!grouped.length) { setRefreshing(false); return }
+      console.log(`📊 buildJobsFromEmails returned ${grouped.length} jobs:`, grouped.map(j => ({ company: j.company, position: j.position })))
 
       const GENERIC_POS = ['unknown', 'unknown position', 'poste non précisé', 'non spécifié', 'inconnu', '']
       const isGenericPos = pos => GENERIC_POS.includes((pos || '').toLowerCase().trim())
