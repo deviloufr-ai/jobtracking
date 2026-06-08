@@ -141,6 +141,23 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
   const grouped = []
   for (const [, emailsForJob] of jobGroups) {
     const sorted = [...emailsForJob].sort((a, b) => new Date(a.date) - new Date(b.date))
+
+    // FIX: Post-process HelloWork rejection emails that Claude mis-parses
+    // If notes say "Réponse reçue de l'entreprise via HelloWork" + no positive keywords → force rejection
+    const hasHelloWorkResponse = sorted.some(e =>
+      (e.notes || '').includes('Réponse reçue de l\'entreprise via HelloWork') ||
+      (e.notes || '').includes('Response received from company') ||
+      (e.notes || '').includes('response from OpenSourcing via HelloWork')
+    )
+    const hasPositiveKeywords = sorted.some(e => {
+      const text = (e.notes || '').toLowerCase()
+      return /entretien|interview|call|visio|meeting|next steps|process suivant|interested|intéressé|pleased|heureux/.test(text)
+    })
+
+    if (hasHelloWorkResponse && !hasPositiveKeywords && sorted[sorted.length - 1].status === 'reviewing') {
+      // Override to rejection
+      sorted[sorted.length - 1].status = 'rejected'
+    }
     // Group is updateOnly if ALL its emails are updateOnly (e.g. only "viewed" notifications)
     const allUpdateOnly = sorted.every(e => e._updateOnly)
     const highestStatus = sorted.reduce((best, e) =>
