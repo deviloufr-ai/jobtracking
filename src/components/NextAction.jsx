@@ -289,7 +289,7 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
                 Rédiger ✦
               </button>
             )}
-            {(rule.source === 'urgent' || rule.type === 'email') && rule.label(job).toLowerCase().includes('relancer') && onDraftEmail && hasRealEmail(job) && (
+            {rule.label(job).toLowerCase().includes('relancer') && onDraftEmail && (
               <button onClick={e => { e.stopPropagation(); onDraftEmail(job, 'relance') }} className="flex-shrink-0 text-xs font-medium bg-blue-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap">
                 Rédiger ✦
               </button>
