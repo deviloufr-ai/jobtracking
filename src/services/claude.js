@@ -165,7 +165,7 @@ export async function parseEmailsForJobs(emails) {
     console.log(`Batch ${Math.floor(i/BATCH) + 1}: ${uncached.length} new emails → Claude (${cachedResults.length} from cache)`)
 
     const emailsText = uncached.map((e, j) => {
-      const bodySection = e.body?.trim() ? `Contenu: ${e.body.slice(0, 300)}` : `Aperçu: ${e.snippet?.slice(0, 150) || ''}`
+      const bodySection = e.body?.trim() ? `Contenu: ${e.body.slice(0, 500)}` : `Aperçu: ${e.snippet?.slice(0, 250) || ''}`
       let dateStr = e.date || ''
       try {
         const parsed = new Date(e.date)
@@ -246,8 +246,8 @@ DÉTECTION STATUS (PRIORISER LA RÉALITÉ)
   Chercher: "ne retient pas", "n'avons pas retenu", "nous n'irons pas plus loin", "not moving forward",
   "not selected", "we regret", "not a fit", "candidature rejetée", "refus explicite", "final decision",
   "candidature rejetée définitivement", "without further discussion", "will not follow up", "n'y donnera pas suite",
-  "no further", "no next steps", "application was studied", "will not continue", "not proceeding",
-  "we will not", "cannot move forward", "pas de suite"
+  "no further", "no next steps", "application was studied but", "will not continue", "not proceeding",
+  "we will not", "cannot move forward", "pas de suite", "a bien été étudiée mais", "studied but recruiter"
 
   HELLOWORK SPECIAL RULE (CRITICAL):
   If email from HelloWork says "Réponse reçue de l'entreprise" OR "Response received from company":
