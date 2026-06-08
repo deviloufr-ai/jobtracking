@@ -530,7 +530,18 @@ export function useJobs() {
   const reprocessJobs = () => {
     setJobs(prev => {
       const processed = autoStale(deduplicateJobs(mergeSameDateEntries(splitPipeNotes(deduplicateHistory(prev)))))
-      return processed
+
+      // FIX: Post-process HelloWork rejections that Claude mis-parses as reviewing
+      return processed.map(job => {
+        const hasHelloWorkResponse = (job.notes || '').includes('Réponse reçue de l\'entreprise via HelloWork') ||
+                                     (job.notes || '').includes('Response received from company')
+        const hasPositiveKeywords = /entretien|interview|call|visio|meeting|next steps|interested|pleased/i.test(job.notes || '')
+
+        if (hasHelloWorkResponse && !hasPositiveKeywords && job.status === 'reviewing') {
+          return { ...job, status: 'rejected' }
+        }
+        return job
+      })
     })
   }
 
