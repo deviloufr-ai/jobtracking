@@ -209,6 +209,11 @@ RÈGLES CRITIQUES :
 
 Notes : max 60 chars, UNE seule info par note, concis (ex: "Test technique proposé le 08/06" pas de répétitions)
 
+IMPORTANT — POSITION EXACTE :
+- Extraire LE TITRE EXACT du email : "Lead Product Manager" ≠ "Product Manager" ≠ "Senior Product Manager"
+- Si l'email dit "Lead Product Manager role", le position = "Lead Product Manager" (PAS juste "Product Manager")
+- Chercher: "role at", "position of", "applying for", "you applied to", "[title] role", "[title] position"
+
 Champs JSON: emailId (entier, ex: 1 pas "[1]"), company, position, status, date (YYYY-MM-DD), notes (max 80 chars), confidence (0-100)
 
 RÈGLE ENTREPRISE :
