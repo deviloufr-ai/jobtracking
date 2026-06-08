@@ -404,6 +404,10 @@ function load() {
 }
 
 function save(jobs) {
+  const archived = jobs.filter(j => j.status === 'archived')
+  if (archived.length > 0) {
+    console.log(`💾 Saving ${jobs.length} jobs, ${archived.length} archived:`, archived.map(j => j.company))
+  }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs))
 }
 
