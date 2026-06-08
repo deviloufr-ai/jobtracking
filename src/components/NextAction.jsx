@@ -72,13 +72,13 @@ function getUrgentRules() {
     },
   },
   {
-    match: j => j.status === 'sent' && daysSince(j) > s.followUpSentDays,
+    match: j => j.status === 'sent' && daysSince(j) > s.followUpSentDays && hasRealEmail(j),
     icon: '📨', urgency: 'high',
     label: job => `Relancer ${job.company}`,
     tip: job => `Aucune réponse depuis ${Math.round(daysSince(job))} jours. Un email de relance s'impose.`,
   },
   {
-    match: j => j.status === 'reviewing' && daysSince(j) > s.followUpReviewingDays,
+    match: j => j.status === 'reviewing' && daysSince(j) > s.followUpReviewingDays && hasRealEmail(j),
     icon: '📨', urgency: 'medium',
     label: job => `Relancer ${job.company}`,
     tip: job => `Profil en examen depuis ${Math.round(daysSince(job))} jours sans retour.`,
@@ -175,9 +175,9 @@ const NEXT_STEPS_RULES = [
     tip: job => `Adapte ton CV à l'offre ${job.position} avant de postuler.`,
     cta: 'Générer le CV',
   },
-  // Follow-up overdue
+  // Follow-up overdue (only if there's a real email to respond to)
   {
-    match: j => j.status === 'sent' && daysSince(j) > 14,
+    match: j => j.status === 'sent' && daysSince(j) > 14 && hasRealEmail(j),
     icon: '✉️', type: 'email',
     label: job => `Relancer ${job.company}`,
     tip: () => `Email court et poli : rappel de ta candidature + réaffirmation de ton intérêt.`,
