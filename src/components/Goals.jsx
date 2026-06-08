@@ -23,11 +23,17 @@ export default function Goals({ jobs }) {
   const stats = useMemo(() => {
     const now = new Date()
 
-    // Candidatures this week
-    const weeklyApps = jobs.filter(j => {
-      const diff = (now - new Date(j.date)) / 86400000
-      return diff <= 7
-    }).length
+    // Candidatures this week (calendar week: Monday-Sunday, resets each Monday)
+    const getWeekStart = () => {
+      const date = new Date(now)
+      const day = date.getDay()
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1) // adjust when day is Sunday
+      const weekStart = new Date(date.setDate(diff))
+      weekStart.setHours(0, 0, 0, 0)
+      return weekStart
+    }
+    const weekStart = getWeekStart()
+    const weeklyApps = jobs.filter(j => new Date(j.date) >= weekStart).length
 
     // Response rate (non-archived)
     const active = jobs.filter(j => j.status !== 'archived')
