@@ -58,9 +58,11 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
   for (const p of enriched) {
     if (!p.company) continue
     if (isSuggestion(p)) continue
-    // Group by company-only so "Publidata/ProductManager" and "Publidata/Unknown"
-    // don't create two groups that both update the same job with duplicate history
-    const key = normalize(p.company)
+    // Group by company + position so different roles at same company stay separate
+    // "Joko/Lead Product Manager" ≠ "Joko/Product Manager"
+    const companyKey = normalize(p.company)
+    const posKey = (p.position || '').toLowerCase().trim()
+    const key = isGenericPos(p.position) ? companyKey : `${companyKey}|||${posKey}`
     if (!jobGroups.has(key)) jobGroups.set(key, [])
     jobGroups.get(key).push(p)
   }
