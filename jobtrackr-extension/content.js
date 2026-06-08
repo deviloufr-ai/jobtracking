@@ -563,9 +563,15 @@ function placeFieldButton(field) {
   fieldState.set(field.el, { btn, answer: null })
 
   // Position loop — runs every frame, keeps button glued to field
+  let frameCount = 0
   function tick() {
-    if (!document.contains(field.el) || !document.contains(btn)) return
+    if (!document.contains(field.el) || !document.contains(btn)) {
+      if (frameCount < 5) console.log('[JT] tick bail — el in doc:', document.contains(field.el), 'btn in doc:', document.contains(btn))
+      return
+    }
     const rect = field.el.getBoundingClientRect()
+    if (frameCount < 5) console.log('[JT] tick rect:', rect.width, rect.height, rect.top, rect.left, 'label:', field.label?.slice(0,30))
+    frameCount++
     if (rect.width > 0 && rect.height > 0) {
       btn.style.display = 'block'
       btn.style.top = (rect.bottom - 28) + 'px'
@@ -590,6 +596,7 @@ let scanTimer = null
 
 function scanAndPlaceButtons() {
   const fields = detectFormFields()
+  console.log('[JT] scanAndPlaceButtons — fields detected:', fields.length, fields.map(f => f.label))
   fields.forEach(f => placeFieldButton(f))
 }
 
@@ -628,10 +635,12 @@ browser.runtime.onMessage.addListener((msg) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Attendre que le DOM soit stable avant de scanner les champs
+// Expose flag on window so page console can verify script is loaded
+window.__jtLoaded = true
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initAutofill)
 } else {
-  // Petit délai pour les SPA qui injectent le form après le DOMContentLoaded
   setTimeout(initAutofill, 800)
 }
 

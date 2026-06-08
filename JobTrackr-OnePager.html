@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>JobTrackr — One Pager Produit</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{font-family:'Inter',Arial,sans-serif;background:#e8edf2;display:flex;justify-content:center;padding:20px 16px;}
+
+  .page{
+    background:#fff;
+    width:210mm;
+    height:297mm;
+    overflow:hidden;
+    box-shadow:0 6px 40px rgba(0,0,0,.18);
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* HEADER */
+  .hd{background:linear-gradient(135deg,#1a3558 0%,#1e4a7a 100%);padding:14px 22px 12px;flex-shrink:0;}
+  .hd-top{display:flex;align-items:center;gap:8px;}
+  .hd h1{font-size:22px;font-weight:800;color:#fff;letter-spacing:-.5px;}
+  .hd-tag{background:#ffffff22;color:#a8cce8;font-size:9.5px;font-weight:600;padding:2px 7px;border-radius:20px;letter-spacing:.4px;}
+  .hd-sub{margin-top:3px;font-size:11px;color:#7fb3d4;font-style:italic;}
+  .hd-meta{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;}
+  .hd-pill{background:#ffffff18;border:1px solid #ffffff22;color:#c0d8f0;font-size:9px;padding:2px 7px;border-radius:20px;}
+
+  /* BODY */
+  .body{padding:11px 22px 0;flex:1;display:flex;flex-direction:column;justify-content:space-between;min-height:0;}
+
+  /* SECTION TITLE */
+  .st{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+  .st-icon{font-size:11px;}
+  .st-label{font-size:9px;font-weight:700;color:#1a3558;text-transform:uppercase;letter-spacing:.8px;border-bottom:2px solid #2d5986;padding-bottom:2px;flex:1;}
+
+  /* PAIN POINTS */
+  .pain-box{background:#f0f4f9;border-left:3px solid #2d5986;border-radius:0 4px 4px 0;padding:9px 13px;}
+  .pain-intro{font-size:10.5px;color:#556;font-style:italic;margin-bottom:6px;}
+  .pain-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 18px;}
+  .pain-item{font-size:10.5px;color:#333;padding-left:13px;position:relative;line-height:1.45;}
+  .pain-item::before{content:"✕";color:#c0392b;font-size:8px;font-weight:700;position:absolute;left:1px;top:1px;}
+  .pain-item strong{color:#1a3558;font-weight:600;}
+
+  /* OVERVIEW */
+  .overview{font-size:11px;color:#444;line-height:1.6;}
+  .overview strong{color:#1a3558;}
+
+  /* FEATURES */
+  .feat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+  .feat-card{background:#f7f9fc;border:1px solid #dde6f0;border-radius:5px;padding:8px 9px;}
+  .feat-card-title{font-size:10px;font-weight:700;color:#1a3558;margin-bottom:3px;display:flex;align-items:center;gap:4px;}
+  .feat-card-icon{font-size:12px;}
+  .feat-card-body{font-size:9.5px;color:#555;line-height:1.45;}
+
+  /* AI LAYER */
+  .ai-strip{background:linear-gradient(135deg,#eef3f9,#e4edf8);border:1px solid #c5d8ef;border-radius:5px;padding:9px 13px;display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;}
+  .ai-strip-icon{font-size:20px;}
+  .ai-strip-body{font-size:10.5px;color:#334;line-height:1.5;}
+  .ai-strip-body strong{color:#1a3558;}
+  .ai-tags{margin-top:5px;display:flex;flex-wrap:wrap;gap:4px;}
+  .ai-tag{background:#1a3558;color:#c0d8f0;font-size:9px;padding:2px 7px;border-radius:20px;font-weight:500;}
+
+  /* WHO */
+  .who-box{background:#fff8e6;border-left:3px solid #e8a020;border-radius:0 4px 4px 0;padding:8px 13px;font-size:10.5px;color:#444;line-height:1.55;}
+  .who-box strong{color:#7a4a00;}
+
+  /* FOOTER */
+  .footer{display:grid;grid-template-columns:1.2fr 1fr;flex-shrink:0;}
+  .f-left{background:#1a3558;padding:11px 18px;}
+  .f-right{background:#2d5986;padding:11px 18px;}
+  .f-label{font-size:8.5px;font-weight:700;color:#7fb3d4;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;}
+  .f-left p,.f-right p{font-size:10px;color:#fff;line-height:1.6;}
+  .f-right a{color:#aed1f0;text-decoration:none;}
+
+  @media print{
+    body{background:#fff;padding:0;}
+    .page{box-shadow:none;width:100%;height:100vh;}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="hd">
+    <div class="hd-top">
+      <h1>JobTrackr</h1>
+      <span class="hd-tag">Product One Pager · Juin 2026</span>
+    </div>
+    <p class="hd-sub">Centraliser, automatiser et piloter sa recherche d'emploi — avec l'IA comme copilote</p>
+    <div class="hd-meta">
+      <span class="hd-pill">🌐 App web React + Vite</span>
+      <span class="hd-pill">🤖 Claude Haiku (Anthropic)</span>
+      <span class="hd-pill">📧 Gmail OAuth</span>
+      <span class="hd-pill">📅 Google Calendar</span>
+      <span class="hd-pill">☁️ Vercel · localStorage → Supabase v1.0</span>
+      <span class="hd-pill">🦊 Extension Firefox</span>
+    </div>
+  </div>
+
+  <div class="body">
+
+    <!-- PROBLÈME -->
+    <div>
+      <div class="st"><span class="st-icon">⚠️</span><span class="st-label">Le problème — Chercher un emploi sans outil adapté, c'est ingérable</span></div>
+      <div class="pain-box">
+        <p class="pain-intro">Après 20+ candidatures en parallèle, tout chercheur d'emploi sérieux se retrouve face aux mêmes blocages :</p>
+        <div class="pain-grid">
+          <div class="pain-item"><strong>Dispersion</strong> — LinkedIn, Indeed, WTTJ, emails directs, réseaux : zéro hub centralisé.</div>
+          <div class="pain-item"><strong>Perte de contexte</strong> — Impossible de retrouver où on en est, qui relancer, ce qui a été dit.</div>
+          <div class="pain-item"><strong>Emails invisibles</strong> — Refus ATS, confirmations et relances se noient dans la boîte mail.</div>
+          <div class="pain-item"><strong>Pas de priorités</strong> — Quoi faire aujourd'hui ? Qui rappeler ? Qu'est-ce qui est mort ?</div>
+          <div class="pain-item"><strong>CV rigide</strong> — Même CV envoyé partout, sans adaptation à la fiche de poste.</div>
+          <div class="pain-item"><strong>Outils inadaptés</strong> — CRM trop lourds, Excel ingérable dès 30 lignes.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div>
+      <div class="st"><span class="st-icon">🎯</span><span class="st-label">Ce qu'est JobTrackr</span></div>
+      <p class="overview">
+        <strong>Application web full-stack</strong> qui centralise le suivi de candidatures et automatise les tâches répétitives grâce à l'IA. Un tableau de bord unique — statuts, historiques, priorités, outils de préparation — alimenté automatiquement par la synchronisation Gmail. Conçu pour le chercheur d'emploi actif qui gère <strong>15 à 50+ candidatures en parallèle</strong> et a besoin de rigueur sans friction.
+      </p>
+    </div>
+
+    <!-- FEATURES -->
+    <div>
+      <div class="st"><span class="st-icon">⚙️</span><span class="st-label">Fonctionnalités</span></div>
+      <div class="feat-grid">
+
+        <div class="feat-card">
+          <div class="feat-card-title"><span class="feat-card-icon">📋</span>Tableau de bord</div>
+          <div class="feat-card-body">Vue synthétique de toutes les candidatures. Filtrage statut/période/mot-clé. Tri multi-colonnes. 4 cartes stats + sparklines d'activité.</div>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-card-title"><span class="feat-card-icon">📧</span>Import Gmail auto</div>
+          <div class="feat-card-body">OAuth Google. 6 requêtes parallèles. L'IA parse les emails et crée ou met à jour chaque candidature — sans saisie. Refresh auto à l'ouverture.</div>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-card-title"><span class="feat-card-icon">🔄</span>Statuts & timeline</div>
+          <div class="feat-card-body">10 statuts métier. Détection auto des refus ATS (Greenhouse, Lever, Ashby…). Timeline complète par candidature avec dates et sources.</div>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-card-title"><span class="feat-card-icon">⚡</span>Prochaines actions</div>
+          <div class="feat-card-body">Moteur de règles : candidatures à relancer, entretiens imminents, délais use-case. Alertes urgentes différenciées, dismissables par session.</div>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-card-title"><span class="feat-card-icon">📅</span>Calendrier & réunions</div>
+          <div class="feat-card-body">Intégration Google Calendar (OAuth). Widget agenda, regroupement par date, détection aujourd'hui/demain. Vue des prochains entretiens.</div>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-card-title"><span class="feat-card-icon">📨</span>Email de relance</div>
+          <div class="feat-card-body">Génération IA d'un brouillon contextualisé. Envoi direct via Gmail si vrai recruteur détecté — jamais vers un no-reply ATS.</div>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-card-title"><span class="feat-card-icon">⭐</span>Générateur STAR</div>
+          <div class="feat-card-body">3 réponses STAR contextualisées (Situation/Tâche/Action/Résultat) générées par l'IA. Préparation entretien en 1 clic, copie rapide par bloc.</div>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-card-title"><span class="feat-card-icon">📄</span>CV adaptatif</div>
+          <div class="feat-card-body">Upload PDF. L'IA réécrit le CV selon la fiche de poste. Éditeur markdown + export PDF. Vue avant/après côte à côte.</div>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-card-title"><span class="feat-card-icon">📦</span>Use Case & livrables</div>
+          <div class="feat-card-body">Suivi test technique : deadline, livrables (GitHub, Notion, Figma, App…), statut par item, compte à rebours. Remontée automatique dans les actions urgentes.</div>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-card-title"><span class="feat-card-icon">🎯</span>Objectifs & KPIs</div>
+          <div class="feat-card-body">3 KPIs configurables : candidatures/semaine, taux de réponse, entretiens/mois. Barres de progression temps réel.</div>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-card-title"><span class="feat-card-icon">🔍</span>Recherche d'offres</div>
+          <div class="feat-card-body">Recherche intégrée via API Adzuna. Filtres localisation + mots-clés. Ajout direct en candidature depuis les résultats.</div>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-card-title"><span class="feat-card-icon">🦊</span>Extension Firefox</div>
+          <div class="feat-card-body">Capture une offre sur n'importe quelle page. Analyse par Claude Vision. Pré-remplit le formulaire via URL params. Installation en 1 clic.</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- AI LAYER -->
+    <div class="ai-strip">
+      <div class="ai-strip-icon">🤖</div>
+      <div class="ai-strip-body">
+        <strong>Couche IA — Claude Haiku (Anthropic) via proxy Vercel Serverless</strong> — Clé API jamais exposée côté client. L'IA intervient à 6 niveaux :
+        <div class="ai-tags">
+          <span class="ai-tag">Parse d'emails (batch 15)</span>
+          <span class="ai-tag">Détection statut & entreprise</span>
+          <span class="ai-tag">Génération STAR</span>
+          <span class="ai-tag">Brouillon email de relance</span>
+          <span class="ai-tag">Adaptation CV sur mesure</span>
+          <span class="ai-tag">Analyse offre via extension (Vision)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUI -->
+    <div class="who-box">
+      <strong>Origine du projet.</strong> Construit par Alexandre Leblanc — PM Senior 18 ans d'exp., trilingue FR/EN/JP — pour répondre à ses propres frustrations en recherche active d'emploi. JobTrackr démontre ce qu'un PM peut livrer seul à l'intersection du <em>product thinking</em>, du no-code/low-code et de l'IA générative. Support du test technique réalisé pour Publidata (Rémi Wetteren).
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="f-left">
+      <div class="f-label">Stack technique</div>
+      <p>React · Tailwind · Vite · Vercel Serverless · Claude Haiku (Anthropic)<br>Gmail API · Google Calendar API · Adzuna API · localStorage → Supabase (v1.0)</p>
+    </div>
+    <div class="f-right">
+      <div class="f-label">Accès</div>
+      <p>
+        🌐 <a href="https://jobtracking-three.vercel.app">jobtracking-three.vercel.app</a><br>
+        💻 <a href="https://github.com/deviloufr-ai/jobtracking">github.com/deviloufr-ai/jobtracking</a><br>
+        📋 Notion · Backlog · Roadmap sur demande
+      </p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

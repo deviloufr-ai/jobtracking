@@ -92,7 +92,17 @@ export default function Stats({ jobs }) {
     count: jobs.filter(j => j.status === s.key).length
   })).filter(s => s.count > 0 && s.key !== 'archived')
 
-  const thisWeek = jobs.filter(j => (new Date() - new Date(j.date)) / 86400000 <= 7).length
+  // Calendar week: Monday 00:00 to Sunday 23:59 (resets each Monday)
+  const getWeekStart = () => {
+    const now = new Date()
+    const day = now.getDay()
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1) // adjust when day is Sunday
+    const weekStart = new Date(now.setDate(diff))
+    weekStart.setHours(0, 0, 0, 0)
+    return weekStart
+  }
+  const weekStart = getWeekStart()
+  const thisWeek = jobs.filter(j => new Date(j.date) >= weekStart).length
   const rateColor = responseRate >= 30 ? '#10b981' : responseRate >= 15 ? '#f59e0b' : '#6366f1'
 
   const [open, setOpen] = useState(false)
