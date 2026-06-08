@@ -241,15 +241,21 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
       const grouped = await buildJobsFromEmails(emails, calendarEvents)
       if (!grouped.length) { setRefreshing(false); return }
 
+      const GENERIC_POS = ['unknown', 'unknown position', 'poste non précisé', 'non spécifié', 'inconnu', '']
+      const isGenericPos = pos => GENERIC_POS.includes((pos || '').toLowerCase().trim())
+
       const jobByKey = new Map(jobs.map(j => [`${normalize(j.company)}_${normalize(j.position)}`, j]))
       const jobByCompany = new Map(jobs.map(j => [normalize(j.company), j]))
       const findExisting = p => {
         // Exact company+position match first
         const key = `${normalize(p.company)}_${normalize(p.position)}`
         if (jobByKey.has(key)) return jobByKey.get(key)
-        // Fall back to company-only: LinkedIn/job boards often give a different
-        // position title than what was originally imported — still the same application
-        return jobByCompany.get(normalize(p.company)) || null
+        // Fall back to company-only ONLY if position is generic
+        // Don't merge "Product Manager" + "Lead Product Manager" at same company
+        if (isGenericPos(p.position)) {
+          return jobByCompany.get(normalize(p.company)) || null
+        }
+        return null
       }
 
       let added = 0, updated = 0
