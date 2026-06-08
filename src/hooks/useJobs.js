@@ -135,6 +135,40 @@ export function deduplicateJobs(jobs) {
     }
   }
 
+  // Second pass: merge generic-position entries with real-position entries at same company
+  // (e.g., "OpenSourcing/Poste non précisé" merges with "OpenSourcing/Responsible Projects")
+  const realGroups = new Map()
+  const genericByCompany = new Map()
+  for (const [key, group] of groups) {
+    if (key.includes('|||')) {
+      realGroups.set(key, group)
+    } else {
+      // This is a company-only key (generic position)
+      const existing = genericByCompany.get(key)
+      genericByCompany.set(key, existing ? [...existing, ...group] : group)
+    }
+  }
+
+  // Merge generic entries into their corresponding real-position groups
+  for (const [co, genericJobs] of genericByCompany) {
+    let merged = false
+    for (const [key, realJobs] of realGroups) {
+      if (key.startsWith(co + '|||')) {
+        realJobs.push(...genericJobs)
+        merged = true
+        break
+      }
+    }
+    if (!merged) {
+      // No real position entry found, keep the generic one
+      realGroups.set(co, genericJobs)
+    }
+  }
+  groups.clear()
+  for (const [key, group] of realGroups) {
+    groups.set(key, group)
+  }
+
   const result = []
   for (const [, group] of groups) {
     if (group.length === 1) {
