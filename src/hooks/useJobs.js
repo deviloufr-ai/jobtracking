@@ -341,19 +341,13 @@ function mergeSameDateEntries(jobs) {
       }
     })
 
-    // Merge meetings and non-meetings back together in original order
-    const combined = []
-    for (const entry of j.history) {
-      if (isMeetingEntry(entry)) {
-        combined.push(entry)
-      } else {
-        // Find the merged version of this non-meeting entry
-        const mergedEntry = merged.find(m => m.date === entry.date)
-        if (mergedEntry && !combined.some(c => c === mergedEntry)) {
-          combined.push(mergedEntry)
-        }
-      }
-    }
+    // Merge meetings and non-meetings back together, sorted by date (newest first)
+    const combined = [...meetings, ...merged]
+    combined.sort((a, b) => {
+      const dateA = new Date(a.rawStart || a.date || 0)
+      const dateB = new Date(b.rawStart || b.date || 0)
+      return dateB - dateA // Newest first
+    })
     return { ...j, history: combined }
   })
 }
