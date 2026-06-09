@@ -5,6 +5,7 @@ import { STATUSES, getStatus } from '../hooks/useJobs'
 import { gmailMessageUrl } from '../services/gmail'
 import { isNoReply } from './EmailDraft'
 import UseCasePanel from './UseCasePanel'
+import RowActions from './RowActions'
 
 // Fix #7 — NOTE_TIPS moved above getTipsFromNote (was referenced before definition)
 const NOTE_TIPS = {
@@ -340,9 +341,17 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
 
         {/* Actions */}
         <td className="py-3.5 px-4" onClick={e => e.stopPropagation()}>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={() => onEdit(job)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Modifier">✏️</button>
-            <button onClick={() => onDelete(job)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Supprimer">🗑️</button>
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+            <RowActions
+              expanded={expanded}
+              onAddStep={() => setShowAddStep(v => !v)}
+              onSync={handleEnrich}
+              onUseCase={() => { setShowUseCase(v => !v); setShowAddStep(false) }}
+              onEdit={() => onEdit(job)}
+              onDelete={() => onDelete(job.id)}
+              enriching={enriching}
+              hasUseCase={!!job.useCase?.title}
+            />
           </div>
         </td>
       </tr>
@@ -355,29 +364,14 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
 
               {/* ── LEFT: Timeline ──────────────────────────────────────── */}
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">Historique</span>
-                  <div className="flex items-center gap-2">
-                    <button onClick={handleEnrich} disabled={enriching}
-                      className="text-xs text-gray-400 hover:text-purple-700 flex items-center gap-1 hover:bg-purple-50 px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
-                      title="Forcer la synchronisation Calendar">
-                      {enriching ? '⏳' : '📅'} {enriching ? 'Synchro...' : 'Sync'}
-                    </button>
-                    {enrichResult && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${enrichResult.success ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {enrichResult.success ? `+${enrichResult.count}` : '—'}
-                      </span>
-                    )}
-                    <button onClick={() => { setShowUseCase(v => !v); setShowAddStep(false) }}
-                      className={`text-xs flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${job.useCase?.title ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-50' : 'text-gray-400 hover:text-purple-600 hover:bg-purple-50'}`}
-                      title="Cas pratique">
-                      📝 {job.useCase?.title ? 'Cas pratique' : '+ Cas pratique'}
-                    </button>
-                    <button onClick={() => setShowAddStep(v => !v)}
-                      className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1 hover:bg-indigo-100 px-2 py-1 rounded-lg transition-colors">
-                      {showAddStep ? '✕ Annuler' : '+ Ajouter une étape'}
-                    </button>
-                  </div>
+                {/* Timeline title */}
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Historique</h3>
+                  {enrichResult && (
+                    <span className={`text-xs px-2 py-1 rounded-full ${enrichResult.success ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {enrichResult.success ? `✓ +${enrichResult.count}` : '—'}
+                    </span>
+                  )}
                 </div>
 
                 {showAddStep && (
@@ -461,41 +455,48 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                             </div>
                           ) : (
                             <>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isPastMeeting ? 'bg-gray-100 text-gray-400' : isUpcomingMeeting ? 'bg-amber-100 text-amber-700' : st.color}`}>{isPastMeeting ? '✓ Passé' : isUpcomingMeeting ? '📅 À venir' : st.label}</span>
-                                <span className={`text-xs text-gray-400 ${isPastMeeting ? 'line-through' : ''}`}>{formatDate(entry.date)}</span>
-                                {showSender && (
-                                  <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full truncate max-w-[100px]">
-                                    {angleMatch ? rawFrom.match(/^([^<]+)/)?.[1]?.trim().split(' ')[0] : fromEmail.split('@')[0]}
-                                  </span>
-                                )}
-                                <div className="ml-auto opacity-0 group-hover/step:opacity-100 transition-opacity flex gap-1 items-center">
-                                  <button onClick={() => { setEditingStep(i); setEditForm({ status: entry.status, date: entry.date, note: entry.note || '', meetingLink: entry.meetingLink || '' }) }}
-                                    className="text-gray-300 hover:text-indigo-500 text-xs p-0.5 rounded">✏️</button>
-                                  {/* Fix #18 — two-step delete instead of window.confirm */}
+                              {/* Header: Status, Date, Sender, Actions */}
+                              <div className="flex items-center justify-between gap-3 mb-2">
+                                <div className="flex items-center gap-2 flex-wrap flex-1">
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isPastMeeting ? 'bg-gray-100 text-gray-400' : isUpcomingMeeting ? 'bg-amber-100 text-amber-700' : st.color}`}>{isPastMeeting ? '✓ Passé' : isUpcomingMeeting ? '📅 À venir' : st.label}</span>
+                                  <span className={`text-xs text-gray-400 ${isPastMeeting ? 'line-through' : ''}`}>{formatDate(entry.date)}</span>
+                                  {showSender && (
+                                    <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                                      {angleMatch ? rawFrom.match(/^([^<]+)/)?.[1]?.trim().split(' ')[0] : fromEmail.split('@')[0]}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex gap-1 items-center flex-shrink-0">
                                   {confirmDeleteIdx === i ? (
                                     <>
                                       <button onClick={() => { handleDeleteStep(i); setConfirmDeleteIdx(null) }}
-                                        className="text-[10px] font-semibold text-white bg-red-500 hover:bg-red-600 px-1.5 py-0.5 rounded transition-colors">Supprimer</button>
+                                        className="text-[10px] font-semibold text-white bg-red-500 hover:bg-red-600 px-2 py-0.5 rounded transition-colors">Supprimer</button>
                                       <button onClick={() => setConfirmDeleteIdx(null)}
-                                        className="text-[10px] text-gray-400 hover:text-gray-600 px-1 py-0.5 rounded">✕</button>
+                                        className="text-[10px] text-gray-400 hover:text-gray-600 px-1.5 py-0.5 rounded">✕</button>
                                     </>
                                   ) : (
-                                    <button onClick={() => setConfirmDeleteIdx(i)} className="text-gray-300 hover:text-red-400 text-xs p-0.5 rounded">🗑️</button>
+                                    <>
+                                      <button onClick={() => { setEditingStep(i); setEditForm({ status: entry.status, date: entry.date, note: entry.note || '', meetingLink: entry.meetingLink || '' }) }}
+                                        className="text-[10px] font-medium text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 px-2 py-0.5 rounded transition-colors">✏️</button>
+                                      <button onClick={() => setConfirmDeleteIdx(i)}
+                                        className="text-[10px] font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 px-2 py-0.5 rounded transition-colors">🗑️</button>
+                                    </>
                                   )}
                                 </div>
                               </div>
+
+                              {/* Notes: Full width */}
                               {entry.note && entry.note.includes(' · ') ? (
-                                <ul className="mt-1 space-y-0.5">
+                                <div className="grid grid-cols-2 gap-3">
                                   {entry.note.split(' · ').filter(Boolean).map((line, li) => (
-                                    <li key={li} className="flex gap-1.5 text-xs text-gray-600">
+                                    <div key={li} className="flex gap-1.5 text-xs text-gray-600">
                                       <span className="text-gray-300 flex-shrink-0 mt-0.5">•</span>
                                       <span>{line.trim()}</span>
-                                    </li>
+                                    </div>
                                   ))}
-                                </ul>
+                                </div>
                               ) : entry.note ? (
-                                <p className={`text-xs mt-0.5 ${entry.source === 'calendar' ? 'text-gray-400 italic' : 'text-gray-600'}`}>{entry.note}</p>
+                                <p className={`text-xs ${entry.source === 'calendar' ? 'text-gray-400 italic' : 'text-gray-600'}`}>{entry.note}</p>
                               ) : null}
                               {/* Action links row — Fix #10: render extra gmailIds too */}
                               {(entry.meetingLink || entry.gmailId || entry.gmailIds?.length || (entry.source === 'calendar' && !entry.meetingLink)) && (
