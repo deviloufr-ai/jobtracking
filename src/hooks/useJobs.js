@@ -291,8 +291,13 @@ function mergeSameDateEntries(jobs) {
     if (!j.history || j.history.length <= 1) return j
 
     // Separate meetings from other entries
-    const isMeetingEntry = (entry) => entry.source === 'calendar' || !!entry.meetingLink ||
-                                       (entry.note && entry.note.startsWith('📅'))
+    const isMeetingEntry = (entry) => {
+      if (entry.source === 'calendar' || !!entry.meetingLink) return true
+      if (!entry.note) return false
+      const note = entry.note.toLowerCase()
+      // Detect meetings by keywords or emoji
+      return note.startsWith('📅') || /\bmeeting\b|entretien|visio|call|rdv|rendez-vous|zoom|teams|meet/.test(note)
+    }
 
     const meetings = []
     const byDate = {}
