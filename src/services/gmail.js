@@ -137,43 +137,15 @@ export function disconnectGmail(email) {
   saveAccounts(accounts)
 }
 
-// Try to silently reconnect to stored accounts at app startup
-export async function autoReconnectSilent() {
-  if (!CLIENT_ID || Object.keys(accounts).length === 0) return
+// Validate and reuse stored tokens on app startup
+// Tokens are kept in localStorage as long as they're valid
+export function autoReuseStoredTokens() {
+  const stored = loadAccounts()
+  if (Object.keys(stored).length === 0) return
 
-  await waitForGoogle()
-
-  // Try to refresh tokens silently for each account
-  for (const email of Object.keys(accounts)) {
-    try {
-      const client = window.google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: SCOPES,
-        hint: email,
-        callback: async (response) => {
-          if (response.error) {
-            console.log(`Silent reconnect failed for ${email}, user will need to reconnect manually`)
-            return
-          }
-          const token = response.access_token
-          const user = accounts[email]?.user
-          if (token && user) {
-            accounts[email] = {
-              token,
-              user,
-              tokenExpiry: new Date(Date.now() + 3600000).toISOString()
-            }
-            saveAccounts(accounts)
-            console.log(`Auto-reconnected to ${email}`)
-          }
-        },
-      })
-      // Use prompt: 'none' for silent reconnection (no UI if session exists)
-      client.requestAccessToken({ prompt: 'none' })
-    } catch (e) {
-      console.log(`Auto-reconnect attempt for ${email} failed:`, e.message)
-    }
-  }
+  // Restore accounts from localStorage - tokens will be reused if valid
+  // If tokens expire, user will be asked to reconnect on next Gmail action
+  accounts = stored
 }
 
 // ── User info ─────────────────────────────────────────────────────────────────
