@@ -473,6 +473,17 @@ export function useJobs() {
 
   useEffect(() => { save(jobs) }, [jobs])  // save derived (post-autoStale) so archived status persists
 
+  // Listen for localStorage changes (from other tabs/windows or background processes)
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === STORAGE_KEY || e.key === null) {
+        setJobs(load())
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
   const addJob = (data) => {
     const status = (data.status === 'rejected' && isAtsRejection(data.notes || '', data._fromEmail || ''))
       ? 'rejected_ats'

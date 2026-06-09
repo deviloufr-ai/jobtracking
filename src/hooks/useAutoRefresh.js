@@ -5,7 +5,7 @@ import { fetchCalendarEvents } from '../services/calendar'
 import { isAtsRejection } from './useJobs'
 
 const REFRESH_KEY = 'jobtrackr_last_refresh'
-const REFRESH_INTERVAL_HOURS = 6
+const REFRESH_INTERVAL_HOURS = 1
 
 const STATUS_ORDER = ['todo','sent','reviewing','interview','done','waiting','offer','rejected','rejected_ats','cancelled','archived']
 
@@ -352,16 +352,33 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
   }
 
   useEffect(() => {
-    if (hasRunRef.current) return
-    hasRunRef.current = true
     if (!isConnected()) return
+
+    // Check if refresh is needed
     const hoursSinceRefresh = lastRefresh
       ? (new Date() - lastRefresh) / (1000 * 60 * 60)
       : Infinity
+
     if (hoursSinceRefresh >= REFRESH_INTERVAL_HOURS) {
-      setTimeout(() => doRefresh(true), 2000)
+      const timeout = setTimeout(() => doRefresh(true), 2000)
+      return () => clearTimeout(timeout)
     }
-  }, [])
+
+    // Set up periodic polling every 10 minutes to check if refresh is due
+    const interval = setInterval(() => {
+      const now = new Date()
+      const lastRefreshTime = lastRefresh ? new Date(lastRefresh) : null
+      const hoursSince = lastRefreshTime
+        ? (now - lastRefreshTime) / (1000 * 60 * 60)
+        : Infinity
+
+      if (hoursSince >= REFRESH_INTERVAL_HOURS) {
+        doRefresh(true)
+      }
+    }, 10 * 60 * 1000) // Check every 10 minutes
+
+    return () => clearInterval(interval)
+  }, [lastRefresh, doRefresh])
 
   const formatLastRefresh = () => {
     if (!lastRefresh) return null
