@@ -492,18 +492,18 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                                 </div>
                               </div>
 
-                              {/* Notes: Full width */}
+                              {/* Notes: Full width single column */}
                               {entry.note && entry.note.includes(' · ') ? (
-                                <div className="grid grid-cols-2 gap-3">
+                                <ul className="mt-1 space-y-0.5">
                                   {entry.note.split(' · ').filter(Boolean).map((line, li) => (
-                                    <div key={li} className="flex gap-1.5 text-xs text-gray-600">
+                                    <li key={li} className="flex gap-1.5 text-xs text-gray-600">
                                       <span className="text-gray-300 flex-shrink-0 mt-0.5">•</span>
                                       <span>{line.trim()}</span>
-                                    </div>
+                                    </li>
                                   ))}
-                                </div>
+                                </ul>
                               ) : entry.note ? (
-                                <p className={`text-xs ${entry.source === 'calendar' ? 'text-gray-400 italic' : 'text-gray-600'}`}>{entry.note}</p>
+                                <p className={`text-xs mt-0.5 ${entry.source === 'calendar' ? 'text-gray-400 italic' : 'text-gray-600'}`}>{entry.note}</p>
                               ) : null}
                               {/* Action links row — Fix #10: render extra gmailIds too */}
                               {(entry.meetingLink || entry.gmailId || entry.gmailIds?.length || (entry.source === 'calendar' && !entry.meetingLink)) && (
