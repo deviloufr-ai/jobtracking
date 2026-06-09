@@ -188,7 +188,20 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
       const findExisting = p => {
         const key = `${normalize(p.company)}_${normalize(p.position)}`
         if (jobByKey.has(key)) return jobByKey.get(key)
-        return jobByCompany.get(normalize(p.company)) || null
+
+        const normCo = normalize(p.company)
+        // Try exact company match
+        if (jobByCompany.has(normCo)) return jobByCompany.get(normCo)
+
+        // Fallback: partial match (one is substring of other)
+        // e.g., "cognite" matches "cognite project" or vice versa
+        for (const existing of existingJobs) {
+          const existingNorm = normalize(existing.company)
+          if (normCo.includes(existingNorm) || existingNorm.includes(normCo)) {
+            return existing
+          }
+        }
+        return null
       }
 
       const TERMINAL = ['rejected', 'rejected_ats', 'cancelled', 'archived']
