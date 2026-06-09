@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import html2pdf from 'html2pdf.js'
 
 const IS_DEV = import.meta.env.DEV
 
@@ -262,7 +263,8 @@ export function renderCV(md, templateId, pic) {
   return renderModern(md, pic)
 }
 
-// ── Shared one-page scale logic (no print/close) ─────────────────────────────
+// ── Legacy: Shared one-page scale logic (no longer used — using html2pdf instead) ───
+// Kept for backward compatibility only
 export const ONE_PAGE_SCALE_FN = `
 (function scaleToOnePage(){
   var probe = document.createElement('div');
@@ -364,16 +366,15 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
     } catch(e) { setJdError(e.message); setStep('ready_to_generate') }
   }
 
-  // ── Export PDF (one page auto-fit) ────────────────────────────────────────
+  // ── Export PDF (direct generation, no A4 limit) ───────────────────────────
   const handleExportPDF = () => {
     const md       = editableCV || generatedCV
     const html     = renderCV(md, template, profilePic)
-    // Extract candidate name from CV and format filename: "Name - Position"
     const cvData   = parseCV(md)
     const candidateName = cvData.name || 'CV'
     const filename = `${candidateName} - ${job.position}`
 
-    // Save to candidature FIRST — independent of popup success
+    // Save to candidature FIRST
     if (onSaveCV) {
       onSaveCV(job.id, {
         cvSaved: {
@@ -387,15 +388,31 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
       setTimeout(() => setSaved(false), 3000)
     }
 
-    const win = window.open('', '_blank')
-    if (!win) { alert('Autorisez les pop-ups pour exporter le PDF.'); return }
-    win.document.write(`<!DOCTYPE html><html><head>
-      <meta charset="utf-8"/>
-      <title>${filename}</title>
-      <style>${BASE_PRINT_CSS}</style>
-      ${ONE_PAGE_SCRIPT}
-    </head><body>${html}</body></html>`)
-    win.document.close()
+    // Create temporary container with PDF content
+    const element = document.createElement('div')
+    element.innerHTML = html
+    element.style.padding = '20px'
+    element.style.fontFamily = 'Arial, Helvetica, sans-serif'
+    element.style.lineHeight = '1.5'
+    element.style.color = '#000'
+    element.style.backgroundColor = '#fff'
+
+    // Configure html2pdf options for full content (no A4 constraint)
+    const options = {
+      margin: [10, 10, 10, 10],  // margins in mm
+      filename: `${filename}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, allowTaint: true },
+      jsPDF: {
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true
+      },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }  // Allow multiple pages
+    }
+
+    html2pdf().set(options).from(element).save()
   }
 
   const currentTpl = TEMPLATES.find(t => t.id === template) || TEMPLATES[0]
