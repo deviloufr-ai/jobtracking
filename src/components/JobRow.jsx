@@ -332,11 +332,17 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
           })()}
         </td>
 
-        {/* Notes — hidden on mobile */}
-        <td className="hidden md:table-cell py-3.5 px-4 max-w-xs">
-          {job.notes
-            ? <span className="text-xs text-gray-500 line-clamp-1">{job.notes}</span>
-            : <span className="text-xs text-gray-300">—</span>}
+        {/* Notes — hidden on mobile, shows latest history entry */}
+        <td className="hidden md:table-cell py-3.5 px-4 max-w-sm">
+          {(() => {
+            const lastStep = history?.length ? history[history.length - 1] : null
+            const noteText = lastStep?.note || job.notes
+            return noteText ? (
+              <span className="text-xs text-gray-600 line-clamp-2">{noteText}</span>
+            ) : (
+              <span className="text-xs text-gray-300">—</span>
+            )
+          })()}
         </td>
 
         {/* Actions */}
