@@ -1,11 +1,12 @@
 import { useState, useRef } from 'react'
 import html2pdf from 'html2pdf.js'
 
-export default function MotivationLetterGenerator({ job, onClose, cvText }) {
-  const [letterText, setLetterText] = useState('')
+export default function MotivationLetterGenerator({ job, onClose, cvText, initialContent, onSaveLetter }) {
+  const [letterText, setLetterText] = useState(initialContent || '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [language, setLanguage] = useState('auto')
+  const [saved, setSaved] = useState(false)
   const editorRef = useRef(null)
 
   const generateLetter = async () => {
@@ -71,8 +72,23 @@ export default function MotivationLetterGenerator({ job, onClose, cvText }) {
     }
   }
 
+  const saveLetter = () => {
+    if (!letterText || !onSaveLetter) return
+    onSaveLetter(job.id, {
+      letterSaved: {
+        content: letterText,
+        savedAt: new Date().toISOString(),
+      }
+    })
+    setSaved(true)
+    setTimeout(() => setSaved(false), 3000)
+  }
+
   const exportPDF = () => {
     if (!letterText) return
+
+    // Save letter first
+    saveLetter()
 
     const element = document.createElement('div')
     element.innerHTML = letterText
@@ -173,6 +189,7 @@ export default function MotivationLetterGenerator({ job, onClose, cvText }) {
 
               <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
                 <p>📝 Vous pouvez éditer le contenu ci-dessus avant d'exporter en PDF</p>
+                {saved && <p className="text-green-600 mt-2">✅ Lettre sauvegardée</p>}
               </div>
             </div>
           )}
@@ -188,6 +205,12 @@ export default function MotivationLetterGenerator({ job, onClose, cvText }) {
           </button>
           {letterText && (
             <div className="flex gap-2">
+              <button
+                onClick={saveLetter}
+                className="text-sm text-gray-600 hover:text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-100"
+              >
+                💾 Sauvegarder
+              </button>
               <button
                 onClick={generateLetter}
                 disabled={loading}

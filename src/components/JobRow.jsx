@@ -672,6 +672,15 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                       </div>
                     )}
                   </div>
+                  {job.letterSaved && (
+                    <div className="mt-2 pt-2 border-t border-gray-100">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px]">📝</span>
+                        <span className="text-[10px] font-semibold text-orange-600 uppercase tracking-wider">Lettre générée</span>
+                      </div>
+                      <span className="text-[10px] text-gray-400">{new Date(job.letterSaved.savedAt).toLocaleDateString('fr-FR')}</span>
+                    </div>
+                  )}
                   {job.url && (
                     // Fix #1 — try/catch: new URL() throws if url is malformed
                     <a href={job.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
@@ -715,7 +724,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                   {job.cvSaved && (job.status === 'todo' || job.status === 'sent') && (
                     <button onClick={() => setShowMotivationLetter(true)}
                       className="w-full text-xs font-medium text-orange-600 bg-white border border-orange-100 px-3 py-2 rounded-lg hover:bg-orange-50 transition-colors text-left">
-                      ✍️ Lettre de motivation
+                      {job.letterSaved ? '✏️ Éditer la lettre' : '✍️ Générer une lettre'}
                     </button>
                   )}
                 </div>
@@ -736,7 +745,9 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
         <MotivationLetterGenerator
           job={job}
           cvText={job.cvSaved?.markdown || ''}
+          initialContent={job.letterSaved?.content || ''}
           onClose={() => setShowMotivationLetter(false)}
+          onSaveLetter={onUpdateJob}
         />
       )}
     </>
