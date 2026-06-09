@@ -224,15 +224,22 @@ export async function fetchJobEmails(maxResults = null, months = null, dateRange
     accountEntries.map(([email, acct]) => _fetchJobEmails(acct.token, maxResults, actualMonths, dateRange, lastSyncTime))
   )
 
-  // Merge and deduplicate by email ID
-  const seen = new Set()
+  // Merge and deduplicate by email ID + data (prevents same email from multiple queries)
+  const seenIds = new Set()
+  const seenData = new Set()
   const merged = []
   for (const emails of results) {
     for (const e of emails) {
-      if (!seen.has(e.id)) {
-        seen.add(e.id)
-        merged.push(e)
-      }
+      // Primary dedup: email ID
+      if (seenIds.has(e.id)) continue
+      // Secondary dedup: prevent same email from appearing via different queries
+      // e.g., query ⑤ and ⑤b both returning the same Winside email
+      const dataKey = `${e.from || ''}_${e.subject || ''}_${e.date || ''}`
+      if (seenData.has(dataKey)) continue
+
+      seenIds.add(e.id)
+      seenData.add(dataKey)
+      merged.push(e)
     }
   }
   return merged
