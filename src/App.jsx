@@ -608,23 +608,56 @@ export default function App() {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50/60">
-                    <ThHeader col="company" label="Entreprise / Poste" />
-                    <ThHeader col="status" label="Statut" />
-                    <ThHeader col="date" label="Date" />
-                    <th className="hidden md:table-cell py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Notes</th>
-                    <th className="py-3 px-2 w-12"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(job => (
-                    <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} onViewSavedCV={handleViewSavedCV} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} />
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-6">
+              {/* Favorites table */}
+              {filtered.some(j => j.favorite) && (
+                <div className="overflow-x-auto">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-sm font-semibold text-yellow-600">⭐ Favoris ({filtered.filter(j => j.favorite).length})</span>
+                  </div>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-yellow-100 bg-yellow-50/60">
+                        <ThHeader col="company" label="Entreprise / Poste" />
+                        <ThHeader col="status" label="Statut" />
+                        <ThHeader col="date" label="Date" />
+                        <th className="hidden md:table-cell py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Notes</th>
+                        <th className="py-3 px-2 w-12"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.filter(j => j.favorite).map(job => (
+                        <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} onViewSavedCV={handleViewSavedCV} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Main table */}
+              <div className="overflow-x-auto">
+                {filtered.some(j => j.favorite) && (
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-sm font-semibold text-gray-600">Autres candidatures ({filtered.filter(j => !j.favorite).length})</span>
+                  </div>
+                )}
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50/60">
+                      <ThHeader col="company" label="Entreprise / Poste" />
+                      <ThHeader col="status" label="Statut" />
+                      <ThHeader col="date" label="Date" />
+                      <th className="hidden md:table-cell py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Notes</th>
+                      <th className="py-3 px-2 w-12"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.filter(j => !j.favorite).map(job => (
+                      <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} onViewSavedCV={handleViewSavedCV} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
