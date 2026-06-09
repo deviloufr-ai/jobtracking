@@ -408,16 +408,18 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
     element.appendChild(style)
 
     // Configure html2pdf options for full content (seamless pages, no visual breaks)
+    // Optimized for file size: reduced quality, scale, and aggressive compression
     const options = {
       margin: 0,  // no margins - content uses full page
       filename: `${filename}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff' },
+      image: { type: 'jpeg', quality: 0.75 },  // Reduced from 0.98 for smaller file size
+      html2canvas: { scale: 1, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false },  // Scale 1 instead of 2
       jsPDF: {
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4',
         compress: true,
+        precision: 10,
         hotfixes: ['px_scaling']  // Fix scaling issues
       },
       pagebreak: {

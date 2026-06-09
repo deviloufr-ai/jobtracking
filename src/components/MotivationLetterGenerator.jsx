@@ -112,9 +112,9 @@ export default function MotivationLetterGenerator({ job, onClose, cvText, initia
     const opt = {
       margin: 10,
       filename: `lettre-motivation-${job.company}-${new Date().toISOString().split('T')[0]}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      image: { type: 'jpeg', quality: 0.75 },  // Reduced from 0.98 for smaller file size
+      html2canvas: { scale: 1, logging: false },  // Scale 1 instead of 2
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true, precision: 10 }
     }
 
     html2pdf().set(opt).from(element).save()

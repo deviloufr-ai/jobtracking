@@ -715,12 +715,29 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                     className="w-full text-xs font-medium text-gray-600 bg-white border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-left">
                     ✏️ Modifier la candidature
                   </button>
+
+                  {/* CV section */}
                   {onGenerateCV && (job.status === 'todo' || job.cvSaved) && (
-                    <button onClick={() => onGenerateCV(job)}
-                      className="w-full text-xs font-medium text-violet-600 bg-white border border-violet-100 px-3 py-2 rounded-lg hover:bg-violet-50 transition-colors text-left">
-                      {job.cvSaved ? '✏️ Regénérer le CV' : '📄 Générer un CV adapté'}
-                    </button>
+                    !job.cvSaved ? (
+                      <button onClick={() => onGenerateCV(job)}
+                        className="w-full text-xs font-medium text-violet-600 bg-white border border-violet-100 px-3 py-2 rounded-lg hover:bg-violet-50 transition-colors text-left">
+                        📄 Générer un CV adapté
+                      </button>
+                    ) : (
+                      <div className="flex gap-1.5">
+                        <button onClick={() => onViewSavedCV && onViewSavedCV(job)}
+                          className="flex-1 text-xs font-medium text-indigo-600 bg-white border border-indigo-100 px-3 py-2 rounded-lg hover:bg-indigo-50 transition-colors text-left">
+                          👁 CV
+                        </button>
+                        <button onClick={() => onGenerateCV(job)}
+                          className="flex-1 text-xs font-medium text-violet-600 bg-white border border-violet-100 px-3 py-2 rounded-lg hover:bg-violet-50 transition-colors text-left">
+                          🔄 Regénérer
+                        </button>
+                      </div>
+                    )
                   )}
+
+                  {/* Motivation Letter section */}
                   {job.cvSaved && (job.status === 'todo' || job.status === 'sent') && (
                     <button onClick={() => setShowMotivationLetter(true)}
                       className="w-full text-xs font-medium text-orange-600 bg-white border border-orange-100 px-3 py-2 rounded-lg hover:bg-orange-50 transition-colors text-left">
