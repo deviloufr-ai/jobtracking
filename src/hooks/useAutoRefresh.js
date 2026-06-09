@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { isConnected, fetchJobEmails, fetchJobEmailsForAccount, getConnectedAccounts, getCachedUser } from '../services/gmail'
 import { parseEmailsForJobs } from '../services/claude'
 import { fetchCalendarEvents } from '../services/calendar'
@@ -222,9 +222,23 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
     return stored ? new Date(stored) : null
   })
   const hasRunRef = useRef(false)
+  const jobsRef = useRef(jobs)
+  const refreshingRef = useRef(refreshing)
+  const reprocessJobsRef = useRef(reprocessJobs)
 
-  const doRefresh = async (silent = false) => {
-    if (!isConnected() || refreshing) return
+  // Keep refs in sync
+  useEffect(() => {
+    jobsRef.current = jobs
+  }, [jobs])
+  useEffect(() => {
+    refreshingRef.current = refreshing
+  }, [refreshing])
+  useEffect(() => {
+    reprocessJobsRef.current = reprocessJobs
+  }, [reprocessJobs])
+
+  const doRefresh = useCallback(async (silent = false) => {
+    if (!isConnected() || refreshingRef.current) return
     setRefreshing(true)
 
     // Safety timeout: stop spinner after 30 seconds to avoid infinite animation
@@ -237,7 +251,7 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
       // Smart incremental sync: find oldest lastSyncTime across all jobs
       // This enables fetching only new emails since the last refresh
       let oldestSyncTime = null
-      for (const job of jobs) {
+      for (const job of jobsRef.current) {
         if (job.lastSyncTime) {
           const time = new Date(job.lastSyncTime)
           if (!oldestSyncTime || time < oldestSyncTime) {
@@ -351,40 +365,34 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
       setLastRefresh(nowDate)
 
       // Re-run dedup/merge pipeline so duplicates disappear immediately
-      if (reprocessJobs) reprocessJobs()
+      if (reprocessJobsRef.current) reprocessJobsRef.current()
     } catch (e) {
       console.warn('Auto-refresh failed:', e.message)
     } finally {
       clearTimeout(timeoutId)
       setRefreshing(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     if (!isConnected()) return
 
     // Check if refresh is needed
-    const hoursSinceRefresh = lastRefresh
-      ? (new Date() - lastRefresh) / (1000 * 60 * 60)
-      : Infinity
-
-    if (hoursSinceRefresh >= REFRESH_INTERVAL_HOURS) {
-      const timeout = setTimeout(() => doRefresh(true), 2000)
-      return () => clearTimeout(timeout)
-    }
-
-    // Set up periodic polling every 10 minutes to check if refresh is due
-    const interval = setInterval(() => {
-      const now = new Date()
-      const lastRefreshTime = lastRefresh ? new Date(lastRefresh) : null
-      const hoursSince = lastRefreshTime
-        ? (now - lastRefreshTime) / (1000 * 60 * 60)
+    const checkAndRefresh = () => {
+      const hoursSinceRefresh = lastRefresh
+        ? (new Date() - lastRefresh) / (1000 * 60 * 60)
         : Infinity
 
-      if (hoursSince >= REFRESH_INTERVAL_HOURS) {
+      if (hoursSinceRefresh >= REFRESH_INTERVAL_HOURS) {
         doRefresh(true)
       }
-    }, 10 * 60 * 1000) // Check every 10 minutes
+    }
+
+    // Immediate check if needed
+    checkAndRefresh()
+
+    // Set up periodic polling every 10 minutes to check if refresh is due
+    const interval = setInterval(checkAndRefresh, 10 * 60 * 1000)
 
     return () => clearInterval(interval)
   }, [lastRefresh, doRefresh])
