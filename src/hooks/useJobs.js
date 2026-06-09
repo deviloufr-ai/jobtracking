@@ -105,7 +105,7 @@ function normalizeCompany(name = '') {
     // Strip trailing TLD suffixes (.io .com .fr etc.) only when at end
     .replace(/\.(io|com|fr|co|net|org|app|ai|eu|de|uk|be|ch|ca|us|tech|dev)\s*$/i, '')
     // Strip truly generic STANDALONE suffixes only — NOT 'ai' or 'app' (part of many brand names)
-    .replace(/\b(technologies|digital|solutions|group|labs|studio|hq|services|consulting|innovation|ventures)\b/gi, '')
+    .replace(/\b(technologies|digital|solutions|group|labs|studio|hq|services|consulting|innovation|ventures|project|projects)\b/gi, '')
     // Strip everything non-alphanumeric
     .replace(/[^a-z0-9]/g, '')
 }
