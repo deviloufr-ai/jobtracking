@@ -140,7 +140,17 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
   const [enrichResult, setEnrichResult] = useState(null)
   const [editingStep, setEditingStep] = useState(null) // index of step being edited
   const [editForm, setEditForm] = useState({})
-  const [newStep, setNewStep] = useState({ status: job.status, note: '', date: new Date().toISOString().split('T')[0] })
+  const [newStep, setNewStep] = useState(() => {
+    const now = new Date()
+    const hh = String(now.getHours()).padStart(2, '0')
+    const mm = String(now.getMinutes()).padStart(2, '0')
+    return {
+      status: job.status,
+      note: '',
+      date: now.toISOString().split('T')[0],
+      time: `${hh}:${mm}`
+    }
+  })
   const status = getStatus(job.status)
   const history = job.history || []
 
@@ -188,10 +198,25 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
     return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
   }
 
+  const formatDateTime = (d) => {
+    if (!d) return '—'
+    const date = new Date(d)
+    const dateStr = date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+    const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    return `${dateStr} à ${timeStr}`
+  }
+
   const handleAddStep = () => {
     if (!newStep.note.trim()) return
-    onAddStep(job.id, newStep)
-    setNewStep({ status: job.status, note: '', date: new Date().toISOString().split('T')[0] })
+    const stepToAdd = {
+      ...newStep,
+      date: newStep.time ? `${newStep.date}T${newStep.time}:00` : newStep.date
+    }
+    onAddStep(job.id, stepToAdd)
+    const now = new Date()
+    const hh = String(now.getHours()).padStart(2, '0')
+    const mm = String(now.getMinutes()).padStart(2, '0')
+    setNewStep({ status: job.status, note: '', date: now.toISOString().split('T')[0], time: `${hh}:${mm}` })
     setShowAddStep(false)
   }
 
@@ -382,13 +407,15 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
 
                 {showAddStep && (
                   <div className="mb-3 bg-white rounded-xl p-3 border border-indigo-100 space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       <select className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300"
                         value={newStep.status} onChange={e => setNewStep(s => ({ ...s, status: e.target.value }))}>
                         {STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
                       </select>
                       <input type="date" className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
                         value={newStep.date} onChange={e => setNewStep(s => ({ ...s, date: e.target.value }))} />
+                      <input type="time" className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                        value={newStep.time || ''} onChange={e => setNewStep(s => ({ ...s, time: e.target.value }))} />
                     </div>
                     <input className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
                       placeholder="Note (ex: Entretien RH - 45min avec Marie)"
@@ -439,13 +466,23 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                         <div className={`pb-3 flex-1 ${isPastMeeting ? 'opacity-50' : ''}`}>
                           {editingStep === i ? (
                             <div className="bg-white border border-indigo-200 rounded-xl p-3 space-y-2">
-                              <div className="grid grid-cols-2 gap-2">
+                              <div className="grid grid-cols-3 gap-2">
                                 <select className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300"
                                   value={editForm.status || entry.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
                                   {STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
                                 </select>
                                 <input type="date" className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
-                                  value={editForm.date || entry.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} />
+                                  value={(editForm.date || entry.date)?.split('T')[0] || ''} onChange={e => setEditForm(f => {
+                                    const currentDate = editForm.date || entry.date
+                                    const time = currentDate?.split('T')[1] || ''
+                                    return { ...f, date: time ? `${e.target.value}T${time}` : e.target.value }
+                                  })} />
+                                <input type="time" className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                                  value={((editForm.date || entry.date)?.split('T')[1] || '').slice(0, 5)} onChange={e => setEditForm(f => {
+                                    const currentDate = editForm.date || entry.date
+                                    const datePart = currentDate?.split('T')[0] || ''
+                                    return { ...f, date: e.target.value ? `${datePart}T${e.target.value}:00` : datePart }
+                                  })} />
                               </div>
                               <input className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
                                 placeholder="Note" value={editForm.note !== undefined ? editForm.note : (entry.note || '')}
@@ -465,7 +502,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                               <div className="flex items-center justify-between gap-3 mb-2">
                                 <div className="flex items-center gap-2 flex-wrap flex-1">
                                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isPastMeeting ? 'bg-gray-100 text-gray-400' : isUpcomingMeeting ? 'bg-amber-100 text-amber-700' : st.color}`}>{isPastMeeting ? '✓ Passé' : isUpcomingMeeting ? '📅 À venir' : st.label}</span>
-                                  <span className={`text-xs text-gray-400 ${isPastMeeting ? 'line-through' : ''}`}>{formatDate(entry.date)}</span>
+                                  <span className={`text-xs text-gray-400 ${isPastMeeting ? 'line-through' : ''}`}>{entry.date && entry.date.includes('T') ? formatDateTime(entry.date) : formatDate(entry.date)}</span>
                                   {showSender && (
                                     <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
                                       {angleMatch ? rawFrom.match(/^([^<]+)/)?.[1]?.trim().split(' ')[0] : fromEmail.split('@')[0]}
@@ -483,7 +520,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                                   ) : (
                                     <>
                                       <button onClick={() => { setEditingStep(i); setEditForm({ status: entry.status, date: entry.date, note: entry.note || '', meetingLink: entry.meetingLink || '' }) }}
-                                        className="text-[10px] font-medium text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 px-2 py-0.5 rounded transition-colors">✏️</button>
+                                        className="text-[10px] font-medium text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 px-2 py-0.5 rounded transition-colors">✏️ </button>
                                       <button onClick={() => setConfirmDeleteIdx(i)}
                                         className="text-[10px] font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 px-2 py-0.5 rounded transition-colors">🗑️</button>
                                     </>
