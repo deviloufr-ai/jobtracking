@@ -305,6 +305,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
     const selected_ = results.filter((_, i) => selected.has(i))
 
     // New jobs → addJob via onImport
+    const now = new Date().toISOString()
     const toImport = selected_
       .filter(r => !r._isUpdate)
       .map(r => ({
@@ -313,6 +314,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         url: '', status: r.status || 'sent',
         date: r.date || new Date().toISOString().split('T')[0],
         notes: r.notes || '',
+        lastSyncTime: now,
         _gmailId: r.gmailId, _fromEmail: r.fromEmail, _fromMe: r.fromMe,
         _history: r.history?.length > 0 ? r.history : undefined,
       }))
@@ -327,7 +329,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         .sort((a, b) => new Date(a.date) - new Date(b.date))
       const newStatus = STATUS_ORDER.indexOf(r.status) > STATUS_ORDER.indexOf(existing.status)
         ? r.status : existing.status
-      onUpdate(existing.id, { history: mergedHistory, status: newStatus })
+      onUpdate(existing.id, { history: mergedHistory, status: newStatus, lastSyncTime: now })
     })
 
     if (toImport.length > 0) onImport(toImport)
