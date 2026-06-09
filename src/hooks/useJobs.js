@@ -341,8 +341,19 @@ function mergeSameDateEntries(jobs) {
       }
     })
 
-    // Merge meetings and non-meetings back together, keeping them separate
-    const combined = [...meetings, ...merged].sort((a, b) => new Date(b.date) - new Date(a.date))
+    // Merge meetings and non-meetings back together in original order
+    const combined = []
+    for (const entry of j.history) {
+      if (isMeetingEntry(entry)) {
+        combined.push(entry)
+      } else {
+        // Find the merged version of this non-meeting entry
+        const mergedEntry = merged.find(m => m.date === entry.date)
+        if (mergedEntry && !combined.some(c => c === mergedEntry)) {
+          combined.push(mergedEntry)
+        }
+      }
+    }
     return { ...j, history: combined }
   })
 }
