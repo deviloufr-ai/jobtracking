@@ -97,7 +97,7 @@ function expBlock(block, styles) {
 
   return `
     <div style="${styles.block}">
-      ${block.title ? `<div style="${styles.title};padding-bottom:6px;margin-bottom:6px;border-bottom:0.5px solid rgba(0,0,0,0.08)">${fmt(block.title)}</div>` : ''}
+      ${block.title ? `<div style="${styles.title}">${fmt(block.title)}</div>` : ''}
       ${metaRow}
       ${extra.map(t => `<div style="${styles.p}">${fmt(t)}</div>`).join('')}
       ${bullets.map(t => `<div style="${styles.li}">${styles.bullet} ${fmt(t)}</div>`).join('')}
