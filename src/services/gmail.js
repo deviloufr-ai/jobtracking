@@ -201,14 +201,14 @@ async function gmailFetch(url, token) {
 }
 
 // ── Fetch job emails for a specific account ───────────────────────────────────
-export async function fetchJobEmailsForAccount(accountEmail, maxResults = null, months = 3, dateRange = null) {
+export async function fetchJobEmailsForAccount(accountEmail, maxResults = null, months = 1/30, dateRange = null) {
   const acct = accounts[accountEmail]
   if (!acct?.token) throw new Error(`Non connecté : ${accountEmail}`)
   return _fetchJobEmails(acct.token, maxResults, months, dateRange)
 }
 
 // Backward-compat: fetch from first connected account
-export async function fetchJobEmails(maxResults = null, months = 3, dateRange = null) {
+export async function fetchJobEmails(maxResults = null, months = 1/30, dateRange = null) {
   const first = Object.entries(accounts)[0]
   if (!first) throw new Error('Non connecté à Gmail')
   return _fetchJobEmails(first[1].token, maxResults, months, dateRange)
