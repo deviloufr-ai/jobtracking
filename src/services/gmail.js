@@ -379,7 +379,10 @@ async function fetchEmailDetail(id, token) {
     const ATS_DOMAINS = ['greenhouse.io','lever.co','ashbyhq.com','workable.com','teamtailor.com',
       'recruitee.com','bamboohr.com','smartrecruiters.com','jobvite.com','icims.com',
       'myworkdayjobs.com','taleo.net']
-    const isATS = ATS_DOMAINS.some(d => fromRaw.includes(d))
+    // LinkedIn application confirmations are legitimate, not job alerts
+    const LINKEDIN_APP_CONFIRMATION = subjectRaw.includes('your application was sent') &&
+                                       fromRaw.includes('jobs-noreply@linkedin.com')
+    const isATS = ATS_DOMAINS.some(d => fromRaw.includes(d)) || LINKEDIN_APP_CONFIRMATION
 
     if (!isATS) {
       // ① Sender blocklist — job board alerts + marketing/CRM bulk senders
