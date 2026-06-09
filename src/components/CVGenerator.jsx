@@ -109,7 +109,7 @@ function renderModern(md, pic) {
   const { name, contact, sections } = parseCV(md)
 
   const expStyles = {
-    block:   'page-break-inside:avoid;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #eef2ff',
+    block:   'page-break-inside:avoid;margin-bottom:12px;padding-bottom:12px',
     title:   'font-size:11pt;font-weight:900;color:#0f172a;margin:0;page-break-after:avoid;letter-spacing:-0.01em',
     company: 'font-size:9.5pt;font-weight:700;color:#4f46e5;letter-spacing:0.01em',
     dates:   'font-size:8pt;color:#fff;background:#94a3b8;border-radius:999px;padding:1px 8px;white-space:nowrap;font-style:normal',
@@ -149,7 +149,7 @@ function renderClassic(md, pic) {
   const { name, contact, sections } = parseCV(md)
 
   const expStyles = {
-    block:   'page-break-inside:avoid;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #e2e8f0',
+    block:   'page-break-inside:avoid;margin-bottom:12px;padding-bottom:12px',
     title:   'font-size:11pt;font-weight:900;color:#0f172a;margin:0;page-break-after:avoid;letter-spacing:-0.01em',
     company: 'font-size:9.5pt;font-weight:700;color:#1e40af;letter-spacing:0.01em',
     dates:   'font-size:8pt;color:#64748b;background:#f1f5f9;border-radius:999px;padding:1px 8px;white-space:nowrap;border:1px solid #e2e8f0',
@@ -194,7 +194,7 @@ function renderExecutive(md, pic) {
   const effectiveMain    = sidebarSecs.length > 0 ? mainSecs    : sections.slice(1)
 
   const sidebarExpStyles = {
-    block:   'margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #2d3f55',
+    block:   'margin-bottom:10px;padding-bottom:10px',
     title:   'font-size:8.5pt;font-weight:800;color:#f1f5f9;margin:0;page-break-after:avoid',
     company: 'font-size:8pt;font-weight:700;color:#818cf8;letter-spacing:0.01em',
     dates:   'font-size:7.5pt;color:#475569;background:#0f172a;border-radius:999px;padding:1px 6px;white-space:nowrap;border:1px solid #334155',
@@ -204,7 +204,7 @@ function renderExecutive(md, pic) {
   }
 
   const mainExpStyles = {
-    block:   'page-break-inside:avoid;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #eef2ff',
+    block:   'page-break-inside:avoid;margin-bottom:12px;padding-bottom:12px',
     title:   'font-size:11pt;font-weight:900;color:#0f172a;margin:0;page-break-after:avoid;letter-spacing:-0.01em',
     company: 'font-size:9.5pt;font-weight:700;color:#4338ca;letter-spacing:0.01em',
     dates:   'font-size:8pt;color:#fff;background:#94a3b8;border-radius:999px;padding:1px 8px;white-space:nowrap',
@@ -217,7 +217,7 @@ function renderExecutive(md, pic) {
     const blocks = groupBlocks(s.items)
     return `
       <div style="margin-bottom:16px">
-        <div style="font-size:7pt;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:#818cf8;padding-bottom:5px;border-bottom:1px solid #334155;margin-bottom:7px">${s.title}</div>
+        <div style="font-size:7pt;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:#818cf8;padding-bottom:5px;margin-bottom:7px">${s.title}</div>
         ${blocks.map(b => expBlock(b, sidebarExpStyles)).join('')}
       </div>`
   }
@@ -226,7 +226,7 @@ function renderExecutive(md, pic) {
     const blocks = groupBlocks(s.items)
     return `
       <div style="margin-bottom:4px">
-        <div style="font-size:8pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.1em;margin:16px 0 10px;padding-bottom:4px;border-bottom:1.5px solid #e0e7ff;page-break-after:avoid">${s.title}</div>
+        <div style="font-size:8pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.1em;margin:16px 0 10px;padding-bottom:4px;page-break-after:avoid">${s.title}</div>
         ${blocks.map(b => expBlock(b, mainExpStyles)).join('')}
       </div>`
   }
