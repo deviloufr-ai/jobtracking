@@ -237,8 +237,21 @@ export function deduplicateJobs(jobs) {
       .sort()
       .pop()
 
+    // Preserve all non-empty fields from all merged jobs to avoid data loss
+    const merged = { ...primary }
+    for (const job of group.slice(1)) {
+      for (const [key, value] of Object.entries(job)) {
+        // Skip system/metadata fields and ones we'll set explicitly below
+        if (['id', 'position', 'notes', 'history', 'enrichedAt', 'updatedAt'].includes(key)) continue
+        // Preserve non-empty values that don't exist in primary
+        if (!merged[key] && value) {
+          merged[key] = value
+        }
+      }
+    }
+
     result.push({
-      ...primary,
+      ...merged,
       position: bestPosition,
       notes: allNotes || primary.notes,
       history: mergedHistory,
