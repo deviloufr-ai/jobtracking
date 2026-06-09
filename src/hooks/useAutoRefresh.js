@@ -339,9 +339,9 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
         showToast(`✨ ${parts.join(' · ')} !`, 4000)
       }
 
-      const now = new Date()
-      localStorage.setItem(REFRESH_KEY, now.toISOString())
-      setLastRefresh(now)
+      const nowDate = new Date()
+      localStorage.setItem(REFRESH_KEY, nowDate.toISOString())
+      setLastRefresh(nowDate)
 
       // Re-run dedup/merge pipeline so duplicates disappear immediately
       if (reprocessJobs) reprocessJobs()
