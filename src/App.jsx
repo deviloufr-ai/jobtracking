@@ -13,7 +13,7 @@ import NextAction from './components/NextAction'
 import STARGenerator from './components/STARGenerator'
 import EmailDraft from './components/EmailDraft'
 import { useAutoRefresh } from './hooks/useAutoRefresh'
-import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser } from './services/gmail'
+import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, autoReconnectSilent } from './services/gmail'
 import JobSearch from './components/JobSearch'
 import CVManager from './components/CVManager'
 import CVViewer from './components/CVViewer'
@@ -107,8 +107,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('tracker')
   const [expandedJobId, setExpandedJobId] = useState(null)
 
-  // On load: if token exists but no cached profile, fetch it so the header shows the account
+  // On load: try to auto-reconnect to Google silently
   useEffect(() => {
+    autoReconnectSilent().catch(() => {})
     if (!gmailUser && isConnected()) {
       getGmailUserInfo().then(user => { if (user) setGmailUser(user) })
     }

@@ -76,19 +76,50 @@ export async function connectGmail(hint = '') {
       client_id: CLIENT_ID,
       scope: SCOPES,
       hint,
+      // Use 'select_account' to allow persistence + 'consent' only if needed
       callback: async (response) => {
         if (response.error) { reject(new Error(response.error)); return }
         const token = response.access_token
         // Fetch user info for this token
         const user = await fetchUserInfo(token)
         if (!user) { reject(new Error('Impossible de récupérer le profil')); return }
-        accounts[user.email] = { token, user }
+        accounts[user.email] = {
+          token,
+          user,
+          tokenExpiry: new Date(Date.now() + 3600000).toISOString() // 1 hour from now
+        }
         saveAccounts(accounts)
         resolve({ token, user })
       },
     })
+    // Request token with select_account prompt for persistence
     client.requestAccessToken({ prompt: hint ? '' : 'select_account' })
   })
+}
+
+// Auto-refresh token if expired
+export async function ensureValidToken(email = '') {
+  const targetEmail = email || getAccessToken(email) ? Object.keys(accounts)[0] : null
+  if (!targetEmail) return null
+
+  const acct = accounts[targetEmail]
+  if (!acct) return null
+
+  // Check if token is expired or about to expire (within 5 minutes)
+  const expiry = acct.tokenExpiry ? new Date(acct.tokenExpiry) : null
+  const now = new Date()
+
+  if (expiry && now >= new Date(expiry.getTime() - 5 * 60000)) {
+    // Token expired, need to refresh
+    try {
+      await connectGmail(targetEmail)
+    } catch (e) {
+      console.warn('Token refresh failed:', e.message)
+      return acct.token
+    }
+  }
+
+  return acct.token
 }
 
 export function disconnectGmail(email) {
@@ -104,6 +135,45 @@ export function disconnectGmail(email) {
     accounts = {}
   }
   saveAccounts(accounts)
+}
+
+// Try to silently reconnect to stored accounts at app startup
+export async function autoReconnectSilent() {
+  if (!CLIENT_ID || Object.keys(accounts).length === 0) return
+
+  await waitForGoogle()
+
+  // Try to refresh tokens silently for each account
+  for (const email of Object.keys(accounts)) {
+    try {
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        hint: email,
+        callback: async (response) => {
+          if (response.error) {
+            console.log(`Silent reconnect failed for ${email}, user will need to reconnect manually`)
+            return
+          }
+          const token = response.access_token
+          const user = accounts[email]?.user
+          if (token && user) {
+            accounts[email] = {
+              token,
+              user,
+              tokenExpiry: new Date(Date.now() + 3600000).toISOString()
+            }
+            saveAccounts(accounts)
+            console.log(`Auto-reconnected to ${email}`)
+          }
+        },
+      })
+      // Use prompt: 'none' for silent reconnection (no UI if session exists)
+      client.requestAccessToken({ prompt: 'none' })
+    } catch (e) {
+      console.log(`Auto-reconnect attempt for ${email} failed:`, e.message)
+    }
+  }
 }
 
 // ── User info ─────────────────────────────────────────────────────────────────
