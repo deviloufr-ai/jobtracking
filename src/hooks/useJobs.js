@@ -467,9 +467,10 @@ function save(jobs) {
 
 export function useJobs() {
   const [rawJobs, setJobs] = useState(load)
+  const [settingsKey, setSettingsKey] = useState(0) // Force re-evaluation when settings change
 
   // Apply autoStale on every render so threshold changes from Settings take effect immediately
-  const jobs = useMemo(() => autoStale(rawJobs), [rawJobs])
+  const jobs = useMemo(() => autoStale(rawJobs), [rawJobs, settingsKey])
 
   useEffect(() => { save(jobs) }, [jobs])  // save derived (post-autoStale) so archived status persists
 
@@ -478,6 +479,10 @@ export function useJobs() {
     const handleStorageChange = (e) => {
       if (e.key === STORAGE_KEY || e.key === null) {
         setJobs(load())
+      }
+      // Also trigger re-evaluation when settings change
+      if (e.key === 'jobtrackr_settings') {
+        setSettingsKey(k => k + 1)
       }
     }
     window.addEventListener('storage', handleStorageChange)

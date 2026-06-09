@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useJobs, getStatus } from './hooks/useJobs'
 import { useExtensionImport } from './hooks/useExtensionImport'
 import { useExtensionDetect } from './hooks/useExtensionDetect'
+import { useSettings } from './hooks/useSettings'
 import Stats from './components/Stats'
 import Filters from './components/Filters'
 import JobRow from './components/JobRow'
@@ -88,8 +89,10 @@ function ExtensionButton() {
 
 export default function App() {
   const { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, reprocessJobs } = useJobs()
+  const { settings } = useSettings()
   const extensionInstalled = useExtensionDetect()
   const [modal, setModal] = useState(null)
+  const prevArchiveSettingsRef = useRef(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [starJob, setStarJob] = useState(null)
@@ -143,6 +146,33 @@ export default function App() {
     showToast(msg, duration)
   }, reprocessJobs)
   useExtensionImport(addJobWithNotif, showToast)
+
+  // Re-evaluate jobs when archive settings change
+  useEffect(() => {
+    if (!prevArchiveSettingsRef.current) {
+      prevArchiveSettingsRef.current = {
+        enableAutoArchive: settings.enableAutoArchive,
+        archiveSentDays: settings.archiveSentDays,
+        archiveRejectedDays: settings.archiveRejectedDays
+      }
+      return
+    }
+
+    const archiveSettingsChanged = (
+      prevArchiveSettingsRef.current.enableAutoArchive !== settings.enableAutoArchive ||
+      prevArchiveSettingsRef.current.archiveSentDays !== settings.archiveSentDays ||
+      prevArchiveSettingsRef.current.archiveRejectedDays !== settings.archiveRejectedDays
+    )
+
+    if (archiveSettingsChanged) {
+      prevArchiveSettingsRef.current = {
+        enableAutoArchive: settings.enableAutoArchive,
+        archiveSentDays: settings.archiveSentDays,
+        archiveRejectedDays: settings.archiveRejectedDays
+      }
+      reprocessJobs()
+    }
+  }, [settings.enableAutoArchive, settings.archiveSentDays, settings.archiveRejectedDays, reprocessJobs])
 
   const handleSort = (col) => {
     setSort(prev => ({
