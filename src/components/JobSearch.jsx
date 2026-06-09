@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { searchJobs, isAdzunaConfigured } from '../services/adzuna'
 
 const CONTRACT_LABELS = {
@@ -8,6 +8,9 @@ const CONTRACT_LABELS = {
   temporary: 'Intérim',
 }
 
+const STORAGE_KEY_HISTORY = 'jobSearch_history'
+const STORAGE_KEY_LAST = 'jobSearch_last'
+
 export default function JobSearch({ onAddJob, existingJobs }) {
   const [query, setQuery] = useState('Product Manager')
   const [location, setLocation] = useState('france')
@@ -16,20 +19,50 @@ export default function JobSearch({ onAddJob, existingJobs }) {
   const [error, setError] = useState(null)
   const [page, setPage] = useState(1)
   const [added, setAdded] = useState(new Set())
+  const [sortOrder, setSortOrder] = useState('newest') // newest | oldest
+  const [showQueryHistory, setShowQueryHistory] = useState(false)
+  const [showLocationHistory, setShowLocationHistory] = useState(false)
+  const queryInputRef = useRef(null)
+  const locationInputRef = useRef(null)
 
-  const handleSearch = useCallback(async (p = 1) => {
-    if (!query.trim()) return
+  const getSearchHistory = () => {
+    const stored = localStorage.getItem(STORAGE_KEY_HISTORY)
+    return stored ? JSON.parse(stored) : []
+  }
+
+  const saveSearchToHistory = (q, loc) => {
+    const history = getSearchHistory()
+    const newSearch = { query: q, location: loc, timestamp: new Date().toISOString() }
+    const filtered = history.filter(s => !(s.query === q && s.location === loc))
+    const updated = [newSearch, ...filtered].slice(0, 10) // Keep last 10
+    localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(updated))
+    localStorage.setItem(STORAGE_KEY_LAST, JSON.stringify(newSearch))
+  }
+
+  const handleSearch = useCallback(async (p = 1, q = query, loc = location) => {
+    if (!q.trim()) return
     setLoading(true)
     setError(null)
     setPage(p)
     try {
-      const data = await searchJobs({ query, location, page: p })
+      const data = await searchJobs({ query: q, location: loc, page: p })
       setResults(data)
+      if (p === 1) saveSearchToHistory(q, loc)
     } catch (e) {
       setError('Erreur lors de la recherche : ' + e.message)
     }
     setLoading(false)
-  }, [query, location])
+  }, [])
+
+  useEffect(() => {
+    const last = localStorage.getItem(STORAGE_KEY_LAST)
+    if (last) {
+      const { query: lastQuery, location: lastLocation } = JSON.parse(last)
+      setQuery(lastQuery)
+      setLocation(lastLocation)
+      handleSearch(1, lastQuery, lastLocation)
+    }
+  }, [])
 
   const handleAdd = (job) => {
     onAddJob({
@@ -53,6 +86,24 @@ export default function JobSearch({ onAddJob, existingJobs }) {
     return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
   }
 
+  const getSortedJobs = () => {
+    if (!results?.jobs) return []
+    const sorted = [...results.jobs]
+    return sorted.sort((a, b) => {
+      const dateA = new Date(a.date || 0)
+      const dateB = new Date(b.date || 0)
+      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB
+    })
+  }
+
+  const handleSelectHistory = (h) => {
+    setQuery(h.query)
+    setLocation(h.location)
+    setShowQueryHistory(false)
+    setShowLocationHistory(false)
+    handleSearch(1, h.query, h.location)
+  }
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       {/* Header */}
@@ -72,25 +123,61 @@ export default function JobSearch({ onAddJob, existingJobs }) {
           <div className="relative flex-1 min-w-[200px]">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">💼</span>
             <input
+              ref={queryInputRef}
               className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
               placeholder="Product Manager, UX Designer..."
               value={query}
               onChange={e => setQuery(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSearch(1)}
+              onKeyDown={e => e.key === 'Enter' && handleSearch(1, query, location)}
+              onFocus={() => setShowQueryHistory(true)}
+              onBlur={() => setTimeout(() => setShowQueryHistory(false), 150)}
             />
+            {showQueryHistory && getSearchHistory().length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                {getSearchHistory().map((h, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSelectHistory(h)}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-indigo-50 border-b border-gray-100 last:border-0 flex items-center gap-2"
+                  >
+                    <span className="text-xs text-gray-400">💼</span>
+                    <span>{h.query}</span>
+                    <span className="ml-auto text-xs text-gray-400">{h.location}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div className="relative min-w-[160px]">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">📍</span>
             <input
+              ref={locationInputRef}
               className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
               placeholder="Paris, Remote, France..."
               value={location}
               onChange={e => setLocation(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSearch(1)}
+              onKeyDown={e => e.key === 'Enter' && handleSearch(1, query, location)}
+              onFocus={() => setShowLocationHistory(true)}
+              onBlur={() => setTimeout(() => setShowLocationHistory(false), 150)}
             />
+            {showLocationHistory && getSearchHistory().length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                {[...new Map(getSearchHistory().map(h => [h.location, h])).values()].map((h, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSelectHistory(h)}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-indigo-50 border-b border-gray-100 last:border-0 flex items-center gap-2"
+                  >
+                    <span className="text-xs text-gray-400">📍</span>
+                    <span>{h.location}</span>
+                    <span className="ml-auto text-xs text-gray-400">{h.query}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <button
-            onClick={() => handleSearch(1)}
+            onClick={() => handleSearch(1, query, location)}
             disabled={loading}
             className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
           >
@@ -112,10 +199,23 @@ export default function JobSearch({ onAddJob, existingJobs }) {
 
       {results && (
         <>
-          <div className="px-4 py-2 bg-gray-50/60 border-b border-gray-100">
+          <div className="px-4 py-2 bg-gray-50/60 border-b border-gray-100 flex items-center justify-between">
             <span className="text-xs text-gray-500">
               {results.total.toLocaleString('fr-FR')} offre{results.total > 1 ? 's' : ''} trouvée{results.total > 1 ? 's' : ''}
             </span>
+            {results.jobs.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">Tri:</span>
+                <select
+                  value={sortOrder}
+                  onChange={e => setSortOrder(e.target.value)}
+                  className="text-xs border border-gray-200 rounded px-2 py-1 bg-white hover:bg-gray-50 cursor-pointer"
+                >
+                  <option value="newest">📅 Plus récent</option>
+                  <option value="oldest">📅 Plus ancien</option>
+                </select>
+              </div>
+            )}
           </div>
 
           {results.jobs.length === 0 ? (
@@ -125,7 +225,7 @@ export default function JobSearch({ onAddJob, existingJobs }) {
             </div>
           ) : (
             <div className="divide-y divide-gray-50 max-h-[480px] overflow-y-auto">
-              {results.jobs.map(job => {
+              {getSortedJobs().map(job => {
                 const alreadyAdded = isAlreadyAdded(job)
                 return (
                   <div key={job.id} className="px-4 py-3 hover:bg-gray-50/60 transition-colors">
