@@ -57,7 +57,13 @@ async function fetchCalendarEventsForToken(token, companyName, monthsBack = 12) 
         type: detectEventType(e.summary || ''),
         meetingLink: meetingLink || undefined,
       }
-    }).filter(e => e.date)
+    }).filter(e => {
+      // Exclude birthdays, anniversaries, and personal events
+      const title = (e.summary || '').toLowerCase()
+      const isBirthday = title.includes('birthday') || title.includes('anniversaire') ||
+                         title.includes('anniversary') || e.eventType === 'birthday'
+      return e.date && !isBirthday
+    })
   } catch { return [] }
 }
 
