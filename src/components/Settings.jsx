@@ -289,10 +289,10 @@ export default function Settings({ jobs, onMergeDuplicates }) {
       {/* Automation */}
       <Section title="Automatisation & Archives" icon="⚙️">
         <Row label="Auto-archiver après X jours sans réponse" hint="Candidatures envoyées / en examen / en attente">
-          <NumInput value={settings.archiveSentDays} onChange={v => updateSetting('archiveSentDays', v)} min={7} max={365} suffix="jours" />
+          <NumInput value={settings.archiveSentDays} onChange={v => updateSetting('archiveSentDays', v)} min={0} max={365} suffix="jours" />
         </Row>
         <Row label="Auto-archiver les refus après X jours" hint="Statuts : Refusée, Refus ATS, Annulée">
-          <NumInput value={settings.archiveRejectedDays} onChange={v => updateSetting('archiveRejectedDays', v)} min={7} max={365} suffix="jours" />
+          <NumInput value={settings.archiveRejectedDays} onChange={v => updateSetting('archiveRejectedDays', v)} min={0} max={365} suffix="jours" />
         </Row>
         <Row label="Sync Gmail automatique" hint="Intervalle entre deux synchronisations Gmail">
           <NumInput value={settings.autoRefreshHours} onChange={v => updateSetting('autoRefreshHours', v)} min={1} max={72} suffix="h" />
