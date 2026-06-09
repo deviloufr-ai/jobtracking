@@ -201,17 +201,18 @@ async function gmailFetch(url, token) {
 }
 
 // ── Fetch job emails for a specific account ───────────────────────────────────
-export async function fetchJobEmailsForAccount(accountEmail, maxResults = null, months = 1/30, dateRange = null) {
+export async function fetchJobEmailsForAccount(accountEmail, maxResults = null, months = 1/30, dateRange = null, lastSyncTime = null) {
   const acct = accounts[accountEmail]
   if (!acct?.token) throw new Error(`Non connecté : ${accountEmail}`)
-  return _fetchJobEmails(acct.token, maxResults, months, dateRange)
+  return _fetchJobEmails(acct.token, maxResults, months, dateRange, lastSyncTime)
 }
 
 // Backward-compat: fetch from first connected account
-export async function fetchJobEmails(maxResults = null, months = 1/30, dateRange = null) {
+// lastSyncTime: optional ISO timestamp - if provided, only fetch emails after this time
+export async function fetchJobEmails(maxResults = null, months = 1/30, dateRange = null, lastSyncTime = null) {
   const first = Object.entries(accounts)[0]
   if (!first) throw new Error('Non connecté à Gmail')
-  return _fetchJobEmails(first[1].token, maxResults, months, dateRange)
+  return _fetchJobEmails(first[1].token, maxResults, months, dateRange, lastSyncTime)
 }
 
 // Gmail category labels returned by the API
@@ -223,11 +224,22 @@ const GMAIL_CAT_MAP = {
   CATEGORY_FORUMS: 'forums',
 }
 
-async function _fetchJobEmails(token, maxResults, months, dateRange = null) {
-  // Build date filter: either explicit range or relative months
+async function _fetchJobEmails(token, maxResults, months, dateRange = null, lastSyncTime = null) {
+  // Build date filter: smart incremental sync if lastSyncTime provided
   let dateFilter
   let effectiveMonths = months
-  if (dateRange?.startDate && dateRange?.endDate) {
+
+  if (lastSyncTime) {
+    // Incremental sync: only fetch emails after last sync
+    const lastSync = new Date(lastSyncTime)
+    const year = lastSync.getFullYear()
+    const month = String(lastSync.getMonth() + 1).padStart(2, '0')
+    const day = String(lastSync.getDate()).padStart(2, '0')
+    const hours = String(lastSync.getHours()).padStart(2, '0')
+    const mins = String(lastSync.getMinutes()).padStart(2, '0')
+    dateFilter = `after:${year}/${month}/${day} ${hours}:${mins}`
+    effectiveMonths = 1  // Focus on recent results
+  } else if (dateRange?.startDate && dateRange?.endDate) {
     const fmt = d => d.replace(/-/g, '/')
     dateFilter = `after:${fmt(dateRange.startDate)} before:${fmt(dateRange.endDate)}`
     // Estimate months for maxResults calculation

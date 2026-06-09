@@ -248,11 +248,16 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
     setEnriching(true)
     setEnrichResult(null)
     try {
-      // Auto-enrichir = Calendar only (emails are already fetched during Gmail import)
-      const result = await enrichJobTimeline(job, { calendarOnly: true })
+      // Smart sync: fetch only NEW emails since lastSyncTime, plus calendar events
+      const result = await enrichJobTimeline(job, { calendarOnly: false })
       if (result && result.newCount > 0) {
-        // Only show notification if there are actually new items
+        // Update history and lastSyncTime for incremental sync
+        const updatedJob = {
+          ...job,
+          lastSyncTime: new Date().toISOString()
+        }
         onUpdateHistory(job.id, result.history)
+        onUpdateJob?.(job.id, { lastSyncTime: updatedJob.lastSyncTime })
         setEnrichResult({ success: true, count: result.newCount })
         enrichTimerRef.current = setTimeout(() => setEnrichResult(null), 3000) // Fix #6
       }

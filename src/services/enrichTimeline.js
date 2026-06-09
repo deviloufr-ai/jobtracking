@@ -104,7 +104,8 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
   // 1. Email enrichment — skipped when calendarOnly (already done during Gmail import)
   if (!calendarOnly) {
     try {
-      const emails = await fetchEmailsForCompany(job.company)
+      // Use smart incremental sync: only fetch emails since last sync
+      const emails = await fetchJobEmails(null, 1/30, null, job.lastSyncTime)
       if (emails.length > 0) {
         const emailEvents = await analyzeEmailsForTimeline(emails, job.company)
         events.push(...emailEvents.map(e => ({ ...e, source: 'email' })))
