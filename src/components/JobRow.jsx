@@ -6,7 +6,6 @@ import { gmailMessageUrl } from '../services/gmail'
 import { isNoReply } from './EmailDraft'
 import UseCasePanel from './UseCasePanel'
 import RowActions from './RowActions'
-import StepSidebar from './StepSidebar'
 
 // Fix #7 — NOTE_TIPS moved above getTipsFromNote (was referenced before definition)
 const NOTE_TIPS = {
@@ -142,7 +141,6 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
   const [editingStep, setEditingStep] = useState(null) // index of step being edited
   const [editForm, setEditForm] = useState({})
   const [newStep, setNewStep] = useState({ status: job.status, note: '', date: new Date().toISOString().split('T')[0] })
-  const [selectedStepIndex, setSelectedStepIndex] = useState(null) // for sidebar metadata
   const status = getStatus(job.status)
   const history = job.history || []
 
@@ -362,7 +360,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
       {expanded && (
         <tr className="bg-slate-50/60 border-b border-indigo-100">
           <td colSpan={6} className="px-4 py-4">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_250px_300px] gap-4 ml-7">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4 ml-7">
 
               {/* ── LEFT: Timeline ──────────────────────────────────────── */}
               <div>
@@ -409,12 +407,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                     // Fix #19 — stable key: date + status + note prefix (not just index)
                     const entryKey = `${entry.date}-${entry.status}-${(entry.note || '').slice(0, 20)}-${i}`
                     return (
-                      <div
-                        key={entryKey}
-                        className="flex gap-3 relative group/step cursor-pointer transition-opacity hover:opacity-80"
-                        onMouseEnter={() => setSelectedStepIndex(arr.length - 1 - i)}
-                        onMouseLeave={() => setSelectedStepIndex(null)}
-                      >
+                      <div key={entryKey} className="flex gap-3 relative group/step">
                         {!isLast && <div className="absolute left-[7px] top-5 bottom-0 w-px bg-indigo-200" />}
                         {(() => {
                           const isMeeting = entry.source === 'calendar' || !!entry.meetingLink
@@ -550,13 +543,6 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                   })}
                 </div>
               </div>
-
-              {/* ── CENTER: Step Sidebar ──────────────────────────────────── */}
-              <StepSidebar
-                job={job}
-                history={history}
-                selectedStepIndex={selectedStepIndex}
-              />
 
               {/* ── RIGHT: Info Panel ────────────────────────────────────── */}
               <div className="space-y-3">
