@@ -109,7 +109,7 @@ function renderModern(md, pic) {
   const { name, contact, sections } = parseCV(md)
 
   const expStyles = {
-    block:   'page-break-inside:avoid;margin-bottom:12px;padding-bottom:12px',
+    block:   'page-break-inside:avoid;margin-bottom:8px;padding-bottom:8px',
     title:   'font-size:11pt;font-weight:900;color:#0f172a;margin:0;page-break-after:avoid;letter-spacing:-0.01em',
     company: 'font-size:9.5pt;font-weight:700;color:#4f46e5;letter-spacing:0.01em',
     dates:   'font-size:8pt;color:#fff;background:#94a3b8;border-radius:999px;padding:1px 8px;white-space:nowrap;font-style:normal',
@@ -131,8 +131,8 @@ function renderModern(md, pic) {
     const blocks = groupBlocks(s.items)
     const inner  = blocks.map(b => expBlock(b, expStyles)).join('')
     return `
-      <div style="margin-bottom:6px">
-        <div style="display:flex;align-items:center;gap:10px;margin:16px 0 10px;page-break-after:avoid">
+      <div style="margin-bottom:4px">
+        <div style="display:flex;align-items:center;gap:10px;margin:8px 0 6px;page-break-after:avoid">
           <div style="width:4px;height:16px;background:linear-gradient(180deg,#6366f1,#818cf8);border-radius:2px;flex-shrink:0"></div>
           <div style="font-size:8pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.1em">${s.title}</div>
           <div style="flex:1;height:1px;background:#e0e7ff"></div>
@@ -149,7 +149,7 @@ function renderClassic(md, pic) {
   const { name, contact, sections } = parseCV(md)
 
   const expStyles = {
-    block:   'page-break-inside:avoid;margin-bottom:12px;padding-bottom:12px',
+    block:   'page-break-inside:avoid;margin-bottom:8px;padding-bottom:8px',
     title:   'font-size:11pt;font-weight:900;color:#0f172a;margin:0;page-break-after:avoid;letter-spacing:-0.01em',
     company: 'font-size:9.5pt;font-weight:700;color:#1e40af;letter-spacing:0.01em',
     dates:   'font-size:8pt;color:#64748b;background:#f1f5f9;border-radius:999px;padding:1px 8px;white-space:nowrap;border:1px solid #e2e8f0',
@@ -204,7 +204,7 @@ function renderExecutive(md, pic) {
   }
 
   const mainExpStyles = {
-    block:   'page-break-inside:avoid;margin-bottom:12px;padding-bottom:12px',
+    block:   'page-break-inside:avoid;margin-bottom:8px;padding-bottom:8px',
     title:   'font-size:11pt;font-weight:900;color:#0f172a;margin:0;page-break-after:avoid;letter-spacing:-0.01em',
     company: 'font-size:9.5pt;font-weight:700;color:#4338ca;letter-spacing:0.01em',
     dates:   'font-size:8pt;color:#fff;background:#94a3b8;border-radius:999px;padding:1px 8px;white-space:nowrap',
