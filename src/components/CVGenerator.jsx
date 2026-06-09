@@ -119,7 +119,7 @@ function renderModern(md, pic) {
   }
 
   const header = `
-    <div style="background:linear-gradient(135deg,#4338ca 0%,#6366f1 60%,#818cf8 100%);padding:28px 32px;display:flex;align-items:center;justify-content:space-between;gap:20px">
+    <div style="background:linear-gradient(135deg,#4338ca 0%,#6366f1 60%,#818cf8 100%);padding:28px 32px;display:flex;align-items:center;justify-content:space-between;gap:20px;margin:-20px -20px 0 -20px;width:calc(100% + 40px)">
       <div style="flex:1;min-width:0">
         <div style="font-size:22pt;font-weight:900;color:#fff;letter-spacing:-0.02em;line-height:1.15;margin-bottom:7px">${name}</div>
         ${contact ? `<div style="font-size:8.5pt;color:#c7d2fe;letter-spacing:0.03em">${contact}</div>` : ''}
@@ -159,7 +159,7 @@ function renderClassic(md, pic) {
   }
 
   const header = `
-    <div style="text-align:center;padding:28px 36px 18px;border-bottom:2.5px solid #0f172a">
+    <div style="text-align:center;padding:28px 36px 18px;border-bottom:2.5px solid #0f172a;margin:-20px -20px 0 -20px;width:calc(100% + 40px)">
       ${pic ? `<div style="display:flex;justify-content:center;margin-bottom:12px">${picHTML(pic, 76, '#94a3b8')}</div>` : ''}
       <div style="font-size:21pt;font-weight:900;color:#0f172a;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:7px">${name}</div>
       ${contact ? `<div style="font-size:8.5pt;color:#64748b;letter-spacing:0.06em">${contact}</div>` : ''}
@@ -232,7 +232,7 @@ function renderExecutive(md, pic) {
   }
 
   return `
-    <table style="width:100%;border-collapse:collapse;table-layout:fixed">
+    <table style="width:calc(100% + 40px);border-collapse:collapse;table-layout:fixed;margin:-20px -20px 0 -20px">
       <colgroup><col style="width:205px"/><col/></colgroup>
       <tr>
         <td style="background:#1e293b;padding:26px 18px 28px;vertical-align:top">
