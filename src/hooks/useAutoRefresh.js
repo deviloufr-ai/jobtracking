@@ -227,14 +227,27 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
     if (!isConnected() || refreshing) return
     setRefreshing(true)
     try {
-      const months = 3
+      // Smart incremental sync: find oldest lastSyncTime across all jobs
+      // This enables fetching only new emails since the last refresh
+      let oldestSyncTime = null
+      for (const job of jobs) {
+        if (job.lastSyncTime) {
+          const time = new Date(job.lastSyncTime)
+          if (!oldestSyncTime || time < oldestSyncTime) {
+            oldestSyncTime = time
+          }
+        }
+      }
+      // First import (no lastSyncTime) → fetch 3 months; afterwards → incremental
+      const months = oldestSyncTime ? null : 3
+
       // Fetch from all connected accounts and merge, tagging each email with its account
       const connectedAccts = getConnectedAccounts()
       let allEmails = []
       if (connectedAccts.length > 1) {
         const perAccount = await Promise.all(
           connectedAccts.map(acct =>
-            fetchJobEmailsForAccount(acct.email, 100, months)
+            fetchJobEmailsForAccount(acct.email, 100, months, null, oldestSyncTime?.toISOString())
               .then(emails => emails.map(e => ({ ...e, _account: acct.email })))
               .catch(() => [])
           )
@@ -247,7 +260,7 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
           }
         }
       } else {
-        allEmails = await fetchJobEmails(100, months)
+        allEmails = await fetchJobEmails(100, months, null, oldestSyncTime?.toISOString())
       }
       const [emails, calendarEvents] = await Promise.all([
         Promise.resolve(allEmails),
@@ -276,17 +289,19 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
       }
 
       let added = 0, updated = 0
+      const now = new Date().toISOString()
       for (const p of grouped) {
         const existing = findExisting(p)
 
         if (!existing) {
-          // New job — add it
+          // New job — add it with lastSyncTime
           addJob({
             company: p.company || 'Inconnu',
             position: p.position || 'Poste non précisé',
             url: '', status: p.status || 'sent',
             date: p.date || new Date().toISOString().split('T')[0],
             notes: p.notes || '',
+            lastSyncTime: now,
             _history: p.history?.length > 0 ? p.history : undefined,
           })
           added++
@@ -308,8 +323,11 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
             // Upgrade status if new emails show a higher-priority status
             const newStatus = STATUS_ORDER.indexOf(p.status) > STATUS_ORDER.indexOf(existing.status)
               ? p.status : existing.status
-            updateJob(existing.id, { history: mergedHistory, status: newStatus })
+            updateJob(existing.id, { history: mergedHistory, status: newStatus, lastSyncTime: now })
             updated++
+          } else {
+            // No new entries but still update lastSyncTime to avoid re-fetching same emails
+            updateJob(existing.id, { lastSyncTime: now })
           }
         }
       }
