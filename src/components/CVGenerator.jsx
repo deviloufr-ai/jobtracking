@@ -368,7 +368,10 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
   const handleExportPDF = () => {
     const md       = editableCV || generatedCV
     const html     = renderCV(md, template, profilePic)
-    const filename = `CV_${job.company}_${job.position.replace(/\s+/g,'_')}`
+    // Extract candidate name from CV and format filename: "Name - Position"
+    const cvData   = parseCV(md)
+    const candidateName = cvData.name || 'CV'
+    const filename = `${candidateName} - ${job.position}`
 
     // Save to candidature FIRST — independent of popup success
     if (onSaveCV) {
