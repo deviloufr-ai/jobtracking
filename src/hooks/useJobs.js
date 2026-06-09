@@ -475,18 +475,30 @@ export function useJobs() {
   useEffect(() => { save(jobs) }, [jobs])  // save derived (post-autoStale) so archived status persists
 
   // Listen for localStorage changes (from other tabs/windows or background processes)
+  // Also listen for settings changes to re-evaluate archive thresholds
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === STORAGE_KEY || e.key === null) {
         setJobs(load())
       }
-      // Also trigger re-evaluation when settings change
-      if (e.key === 'jobtrackr_settings') {
+      if (e.key === 'jobtrackr_settings' || e.key === null) {
         setSettingsKey(k => k + 1)
       }
     }
     window.addEventListener('storage', handleStorageChange)
-    return () => window.removeEventListener('storage', handleStorageChange)
+
+    // Also listen for changes on the same tab via beforeunload (settings saved in same tab)
+    const checkSettingsChange = () => {
+      setSettingsKey(k => k + 1)
+    }
+
+    // Create a custom event to notify settings changes in the same tab
+    window.addEventListener('jobtrackr-settings-changed', checkSettingsChange)
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('jobtrackr-settings-changed', checkSettingsChange)
+    }
   }, [])
 
   const addJob = (data) => {

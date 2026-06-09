@@ -30,7 +30,11 @@ export function loadSettings() {
 }
 
 function saveSettings(s) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)) } catch {}
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s))
+    // Notify that settings changed (for same-tab reactivity)
+    window.dispatchEvent(new CustomEvent('jobtrackr-settings-changed', { detail: s }))
+  } catch {}
 }
 
 export function useSettings() {

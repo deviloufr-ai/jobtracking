@@ -151,7 +151,6 @@ export default function App() {
   useEffect(() => {
     if (!prevArchiveSettingsRef.current) {
       prevArchiveSettingsRef.current = {
-        enableAutoArchive: settings.enableAutoArchive,
         archiveSentDays: settings.archiveSentDays,
         archiveRejectedDays: settings.archiveRejectedDays
       }
@@ -159,20 +158,19 @@ export default function App() {
     }
 
     const archiveSettingsChanged = (
-      prevArchiveSettingsRef.current.enableAutoArchive !== settings.enableAutoArchive ||
       prevArchiveSettingsRef.current.archiveSentDays !== settings.archiveSentDays ||
       prevArchiveSettingsRef.current.archiveRejectedDays !== settings.archiveRejectedDays
     )
 
     if (archiveSettingsChanged) {
       prevArchiveSettingsRef.current = {
-        enableAutoArchive: settings.enableAutoArchive,
         archiveSentDays: settings.archiveSentDays,
         archiveRejectedDays: settings.archiveRejectedDays
       }
+      console.log('Archive settings changed, reprocessing jobs...', { sent: settings.archiveSentDays, rejected: settings.archiveRejectedDays })
       reprocessJobs()
     }
-  }, [settings.enableAutoArchive, settings.archiveSentDays, settings.archiveRejectedDays, reprocessJobs])
+  }, [settings.archiveSentDays, settings.archiveRejectedDays, reprocessJobs])
 
   const handleSort = (col) => {
     setSort(prev => ({
