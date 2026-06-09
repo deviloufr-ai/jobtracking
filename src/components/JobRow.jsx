@@ -6,6 +6,7 @@ import { gmailMessageUrl } from '../services/gmail'
 import { isNoReply } from './EmailDraft'
 import UseCasePanel from './UseCasePanel'
 import RowActions from './RowActions'
+import MotivationLetterGenerator from './MotivationLetterGenerator'
 
 // Fix #7 — NOTE_TIPS moved above getTipsFromNote (was referenced before definition)
 const NOTE_TIPS = {
@@ -92,6 +93,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
   const [showUseCase, setShowUseCase] = useState(false)
+  const [showMotivationLetter, setShowMotivationLetter] = useState(false)
   const [confirmDeleteIdx, setConfirmDeleteIdx] = useState(null) // Fix #18
   const statusBtnRef = useRef(null)
   const enrichTimerRef = useRef(null) // Fix #6
@@ -710,6 +712,12 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                       {job.cvSaved ? '✏️ Regénérer le CV' : '📄 Générer un CV adapté'}
                     </button>
                   )}
+                  {job.cvSaved && (job.status === 'todo' || job.status === 'sent') && (
+                    <button onClick={() => setShowMotivationLetter(true)}
+                      className="w-full text-xs font-medium text-orange-600 bg-white border border-orange-100 px-3 py-2 rounded-lg hover:bg-orange-50 transition-colors text-left">
+                      ✍️ Lettre de motivation
+                    </button>
+                  )}
                 </div>
 
               </div>
@@ -721,6 +729,15 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
             )}
           </td>
         </tr>
+      )}
+
+      {/* Motivation Letter Generator Modal */}
+      {showMotivationLetter && (
+        <MotivationLetterGenerator
+          job={job}
+          cvText={job.cvSaved?.markdown || ''}
+          onClose={() => setShowMotivationLetter(false)}
+        />
       )}
     </>
   )
