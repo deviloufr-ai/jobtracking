@@ -291,8 +291,10 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
   const queries = [
     // ① Gmail "Updates" category = transactional — best signal for ATS/confirmations
     `category:updates (candidature OR application OR entretien OR interview OR recrutement OR recruteur OR recruiter OR "votre candidature" OR "thank you for applying" OR "application received" OR "your application" OR "we regret" OR "not selected" OR "job offer" OR "next steps") ${dateFilter}`,
-    // ①b PRIMARY inbox (no category filter) — catches forwarded/manual job emails
-    `in:inbox (candidature OR application OR entretien OR interview OR "job offer" OR "job application" OR "offer letter") ${dateFilter}`,
+    // ①b Catch-all for inbox job keywords (any category) — manual/forwarded emails
+    `in:inbox "job offer" ${dateFilter}`,
+    // ①c Inbox emails with common job keywords (broader net)
+    `in:inbox (job AND (offer OR application OR candidature)) ${dateFilter}`,
     // ② Personal inbox keywords (FR)
     `in:inbox category:personal (candidature OR postulation OR entretien OR recrutement OR "votre candidature" OR "nous avons bien reçu" OR "suite à votre candidature" OR "nous avons le regret" OR "sans suite" OR "n'avons pas retenu") ${dateFilter}`,
     // ③ Personal inbox keywords (EN)
