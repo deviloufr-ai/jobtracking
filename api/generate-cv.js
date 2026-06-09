@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) { res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' }); return }
 
-  const { cvText, jobDescription, company, position } = req.body
+  const { cvText, jobDescription, company, position, language } = req.body
   if (!cvText || !jobDescription) {
     res.status(400).json({ error: 'cvText and jobDescription required' }); return
   }
@@ -27,8 +27,11 @@ export default async function handler(req, res) {
           role: 'user',
           content: `You are an expert CV writer and recruiter. Adapt this CV for the "${position}" role at "${company}".
 
-DETECT the language of the job description and write the ENTIRE CV in THAT language.
-French JD → French CV. English JD → English CV.
+${language === 'auto'
+  ? 'DETECT the language of the job description and write the ENTIRE CV in THAT language.\nFrench JD → French CV. English JD → English CV.'
+  : language === 'fr'
+  ? 'Write the ENTIRE CV in FRENCH.'
+  : 'Write the ENTIRE CV in ENGLISH.'}
 
 STRICT FORMAT RULES — follow EXACTLY:
 1. # Full Name  (h1, one line)
