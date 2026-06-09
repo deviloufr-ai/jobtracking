@@ -15,6 +15,7 @@ import { useAutoRefresh } from './hooks/useAutoRefresh'
 import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser } from './services/gmail'
 import JobSearch from './components/JobSearch'
 import CVManager from './components/CVManager'
+import CVViewer from './components/CVViewer'
 import { renderCV, ONE_PAGE_SCALE_FN, BASE_PRINT_CSS } from './components/CVGenerator'
 import Settings from './components/Settings'
 import ImageImport from './components/ImageImport'
@@ -113,6 +114,7 @@ export default function App() {
   const [showArchived, setShowArchived] = useState(false)
   const [selectedJobForCV, setSelectedJobForCV] = useState(null) // 'tracker' | 'search' | 'cv'
   const [showImageImport, setShowImageImport] = useState(false)
+  const [viewingCV, setViewingCV] = useState(null) // job with cvSaved to view
 
   const { notifications, push: pushNotif, markAllRead, clear: clearNotifs, unreadCount } = useNotifications()
 
@@ -208,42 +210,7 @@ export default function App() {
   }
 
   const handleViewSavedCV = (job) => {
-    const { markdown, template, filename } = job.cvSaved
-    const html = renderCV(markdown, template, null)
-    const win  = window.open('', '_blank')
-    if (!win) { alert('Autorisez les pop-ups pour voir le CV.'); return }
-    win.document.write(`<!DOCTYPE html><html><head>
-      <meta charset="utf-8"/>
-      <title>${filename}</title>
-      <style>
-        ${BASE_PRINT_CSS}
-        body{ background:#f3f4f6; }
-        .cv-wrapper{ max-width:794px; margin:24px auto; background:#fff; box-shadow:0 4px 24px rgba(0,0,0,0.10); border-radius:4px; overflow:hidden; }
-        @media print {
-          html,body{ background:#fff; zoom:unset !important; }
-          .cv-wrapper{ box-shadow:none; margin:0; max-width:100%; border-radius:0; }
-          .no-print{ display:none !important; }
-        }
-      </style>
-      <script>
-      ${ONE_PAGE_SCALE_FN}
-      window.addEventListener('load', function(){
-        scaleToOnePage();
-      });
-      function printCV(){
-        // Re-apply scale inside print via beforeprint
-        window.addEventListener('beforeprint', scaleToOnePage, {once:true});
-        window.print();
-      }
-      <\/script>
-    </head><body>
-      <div class="no-print" style="position:sticky;top:0;z-index:99;background:#4f46e5;color:#fff;padding:10px 24px;font-family:Arial,sans-serif;font-size:13px;display:flex;align-items:center;justify-content:space-between;">
-        <span>📄 <strong>${filename}</strong></span>
-        <button onclick="printCV()" style="background:#fff;color:#4f46e5;border:none;border-radius:6px;padding:6px 16px;font-size:12px;font-weight:600;cursor:pointer;">🖨️ Imprimer / Exporter PDF</button>
-      </div>
-      <div class="cv-wrapper">${html}</div>
-    </body></html>`)
-    win.document.close()
+    setViewingCV(job)
   }
 
   const handleBulkImport = (newJobs) => {
@@ -696,6 +663,7 @@ export default function App() {
       {showImageImport && <ImageImport onImport={handleBulkImport} onClose={() => setShowImageImport(false)} existingJobs={jobs} />}
       {starJob && <STARGenerator job={starJob} onClose={() => setStarJob(null)} />}
       {emailDraft && <EmailDraft job={emailDraft.job} type={emailDraft.type} onClose={() => setEmailDraft(null)} />}
+      {viewingCV && <CVViewer job={viewingCV} onClose={() => setViewingCV(null)} />}
 
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-5 py-2.5 rounded-full shadow-lg z-50">
