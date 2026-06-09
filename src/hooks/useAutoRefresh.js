@@ -226,7 +226,14 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
   const doRefresh = async (silent = false) => {
     if (!isConnected() || refreshing) return
     setRefreshing(true)
+
+    // Safety timeout: stop spinner after 30 seconds to avoid infinite animation
+    let timeoutId
     try {
+      timeoutId = setTimeout(() => {
+        setRefreshing(false)
+        console.warn('Refresh timeout - stopping spinner')
+      }, 30000)
       // Smart incremental sync: find oldest lastSyncTime across all jobs
       // This enables fetching only new emails since the last refresh
       let oldestSyncTime = null
@@ -266,10 +273,10 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
         Promise.resolve(allEmails),
         fetchCalendarEvents('', months).catch(() => []),
       ])
-      if (!emails.length) { setRefreshing(false); return }
+      if (!emails.length) return
 
       const grouped = await buildJobsFromEmails(emails, calendarEvents)
-      if (!grouped.length) { setRefreshing(false); return }
+      if (!grouped.length) return
 
       const GENERIC_POS = ['unknown', 'unknown position', 'poste non précisé', 'non spécifié', 'inconnu', '']
       const isGenericPos = pos => GENERIC_POS.includes((pos || '').toLowerCase().trim())
@@ -347,8 +354,10 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
       if (reprocessJobs) reprocessJobs()
     } catch (e) {
       console.warn('Auto-refresh failed:', e.message)
+    } finally {
+      clearTimeout(timeoutId)
+      setRefreshing(false)
     }
-    setRefreshing(false)
   }
 
   useEffect(() => {
