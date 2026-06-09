@@ -183,6 +183,10 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
       const jobByKey = new Map(existingJobs.map(j => [`${normalize(j.company)}_${normalize(j.position)}`, j]))
       const jobByCompany = new Map(existingJobs.map(j => [normalize(j.company), j]))
 
+      // Also track newly parsed jobs in this batch to prevent duplicates within same scan
+      // e.g., two Winside emails parsed as separate jobs but should merge
+      const newJobsByCompany = new Map()
+
       // Exact match first, then company-only fallback — job boards often give
       // a different position title than what was originally imported
       const findExisting = p => {
@@ -190,8 +194,11 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         if (jobByKey.has(key)) return jobByKey.get(key)
 
         const normCo = normalize(p.company)
-        // Try exact company match
+        // Try exact company match in existing jobs
         if (jobByCompany.has(normCo)) return jobByCompany.get(normCo)
+
+        // Try exact company match in newly parsed jobs from THIS scan
+        if (newJobsByCompany.has(normCo)) return newJobsByCompany.get(normCo)
 
         // Fallback: partial match (one is substring of other)
         // e.g., "cognite" matches "cognite project" or vice versa
@@ -199,6 +206,12 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
           const existingNorm = normalize(existing.company)
           if (normCo.includes(existingNorm) || existingNorm.includes(normCo)) {
             return existing
+          }
+        }
+        // Also check newly parsed jobs for substring match
+        for (const [newNormCo, newJob] of newJobsByCompany) {
+          if (normCo.includes(newNormCo) || newNormCo.includes(normCo)) {
+            return newJob
           }
         }
         return null
@@ -218,8 +231,20 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
       }
 
       // Split into new jobs + updates to existing jobs
+      // Also track newly identified jobs so Winside #2 can find Winside #1 in same batch
       // _updateOnly jobs (low confidence, e.g. "viewed" notifications) never create new entries
-      const newJobs = grouped.filter(p => (!findExisting(p) || isReApplication(p)) && !p._updateOnly)
+      const newJobs = []
+      for (const p of grouped) {
+        if (!p._updateOnly && (!findExisting(p) || isReApplication(p))) {
+          newJobs.push(p)
+          // Add to newJobsByCompany so next job in batch can find this one
+          const normCo = normalize(p.company)
+          if (!newJobsByCompany.has(normCo)) {
+            newJobsByCompany.set(normCo, p)
+          }
+        }
+      }
+
       const updates = forceImport ? [] : grouped
         .filter(p => !!findExisting(p) && !isReApplication(p))
         .map(p => {
