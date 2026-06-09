@@ -507,9 +507,13 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                                 <div className="flex items-center gap-2 flex-wrap flex-1">
                                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isPastMeeting ? 'bg-gray-100 text-gray-400' : isUpcomingMeeting ? 'bg-amber-100 text-amber-700' : st.color}`}>{isPastMeeting ? '✓ Passé' : isUpcomingMeeting ? '📅 À venir' : st.label}</span>
                                   <span className={`text-xs text-gray-400 ${isPastMeeting ? 'line-through' : ''}`}>
-                                    {isMeeting && entry.rawStart
-                                      ? formatDateTime(entry.rawStart)
-                                      : entry.date && entry.date.includes('T') ? formatDateTime(entry.date) : formatDate(entry.date)}
+                                    {isMeeting ? (
+                                      entry.rawStart ? formatDateTime(entry.rawStart) :
+                                      entry.date && entry.date.includes('T') ? formatDateTime(entry.date) :
+                                      `📅 ${formatDate(entry.date)}`
+                                    ) : (
+                                      entry.date && entry.date.includes('T') ? formatDateTime(entry.date) : formatDate(entry.date)
+                                    )}
                                   </span>
                                   {showSender && (
                                     <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
