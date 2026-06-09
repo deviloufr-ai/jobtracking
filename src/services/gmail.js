@@ -201,18 +201,23 @@ async function gmailFetch(url, token) {
 }
 
 // ── Fetch job emails for a specific account ───────────────────────────────────
-export async function fetchJobEmailsForAccount(accountEmail, maxResults = null, months = 1/30, dateRange = null, lastSyncTime = null) {
+export async function fetchJobEmailsForAccount(accountEmail, maxResults = null, months = null, dateRange = null, lastSyncTime = null) {
   const acct = accounts[accountEmail]
   if (!acct?.token) throw new Error(`Non connecté : ${accountEmail}`)
-  return _fetchJobEmails(acct.token, maxResults, months, dateRange, lastSyncTime)
+  // Smart period: 3 months on first import, 1 day on refreshes with lastSyncTime
+  const actualMonths = months !== null ? months : (lastSyncTime ? 1/30 : 3)
+  return _fetchJobEmails(acct.token, maxResults, actualMonths, dateRange, lastSyncTime)
 }
 
 // Backward-compat: fetch from first connected account
 // lastSyncTime: optional ISO timestamp - if provided, only fetch emails after this time
-export async function fetchJobEmails(maxResults = null, months = 1/30, dateRange = null, lastSyncTime = null) {
+// If no lastSyncTime: fetch 3 months (first import), otherwise use 1 day incremental
+export async function fetchJobEmails(maxResults = null, months = null, dateRange = null, lastSyncTime = null) {
   const first = Object.entries(accounts)[0]
   if (!first) throw new Error('Non connecté à Gmail')
-  return _fetchJobEmails(first[1].token, maxResults, months, dateRange, lastSyncTime)
+  // Smart period: 3 months on first import, 1 day on refreshes with lastSyncTime
+  const actualMonths = months !== null ? months : (lastSyncTime ? 1/30 : 3)
+  return _fetchJobEmails(first[1].token, maxResults, actualMonths, dateRange, lastSyncTime)
 }
 
 // Gmail category labels returned by the API
