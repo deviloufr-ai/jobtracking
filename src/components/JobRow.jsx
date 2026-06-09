@@ -383,7 +383,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
               onSync={handleEnrich}
               onUseCase={() => { setShowUseCase(v => !v); setShowAddStep(false) }}
               onEdit={() => onEdit(job)}
-              onDelete={() => onDelete(job.id)}
+              onDelete={() => onDelete(job)}
               enriching={enriching}
               hasUseCase={!!job.useCase?.title}
             />
