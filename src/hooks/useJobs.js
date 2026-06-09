@@ -341,12 +341,12 @@ function mergeSameDateEntries(jobs) {
       }
     })
 
-    // Merge meetings and non-meetings back together, sorted by date (newest first)
+    // Merge meetings and non-meetings back together, sorted by date (oldest first, since JobRow will reverse)
     const combined = [...meetings, ...merged]
     combined.sort((a, b) => {
       const dateA = new Date(a.rawStart || a.date || 0)
       const dateB = new Date(b.rawStart || b.date || 0)
-      return dateB - dateA // Newest first
+      return dateA - dateB // Oldest first (will be reversed in JobRow)
     })
     return { ...j, history: combined }
   })
