@@ -124,7 +124,7 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
         const meetLink = e.meetingLink || extractMeetingLink(e.description) || extractMeetingLink(e.location)
         const platform = meetLink ? detectMeetingPlatform(meetLink) : null
         return {
-          date: e.date,
+          date: e.rawStart || e.date,
           status: e.type === 'interview' ? 'interview' : e.type === 'offer' ? 'offer' : 'waiting',
           note: `📅 ${e.title}${e.location && !meetLink ? ` — ${e.location}` : ''}${e.isUpcoming ? ' (à venir)' : ''}`,
           source: 'calendar',
