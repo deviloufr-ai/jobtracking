@@ -33,22 +33,37 @@ ${language === 'auto'
   ? 'Write the ENTIRE CV in FRENCH.'
   : 'Write the ENTIRE CV in ENGLISH.'}
 
-STRICT FORMAT RULES — follow EXACTLY:
-1. # Full Name  (h1, one line)
-2. Contact line(s) as plain text  (no # prefix)
-3. ## Section Title  (h2 for each section: Profil, Expérience Professionnelle, Compétences, Formation…)
-4. ### Job Title  (h3 for each position — title only, NO company or dates on this line)
-5. Company Name  (plain text line immediately after ### — company name only)
-6. Dates | Location  (plain text line — e.g. "Jan 2021 – May 2023 | Remote, Tokyo")
-7. - Bullet point  (one achievement per line, starting with -)
-8. Leave a blank line between each experience block
+STRICT FORMAT RULES — ATS-Compatible:
+1. # Full Name  (h1, one line only)
+2. Contact: Email · Phone · Location · LinkedIn (plain text, no # prefix)
+3. ## Section Title  (h2 for each section — use standard names)
+4. ### Job Title  (h3 for each role — e.g., "Senior Product Manager")
+5. Company Name | Dates | Location  (single plain text line, pipe-separated)
+6. - Achievement bullet  (start each with action verb + metric/result when possible)
+7. Blank line between each experience block
+8. Use ONLY standard fonts (no icons, no boxes, no colors except text/bold)
 
-CONTENT RULES:
-- Rewrite bullet points to highlight skills required in the job offer
-- Integrate important keywords from the offer into relevant experiences
-- Do NOT invent new experiences or skills
-- Use strong action verbs and quantified results where the original has numbers
-- Adapt the profile/summary paragraph to match the role
+CONTENT RULES — ATS & Recruiter Optimized:
+- **Profile/Summary**: Write 2-3 lines targeting the exact role. Lead with title match (e.g., "Senior Product Manager with 8+ years…")
+- **Keywords**: Front-load job description keywords into the profile, experience titles, and bullets
+- **Bullets**: Use action verbs (Led, Drove, Built, Scaled, Improved) + quantified results (%, revenue, users, time saved)
+- **Experience**: For each role, include: Job Title | Company | Dates | Location on separate lines, then 3-5 achievement bullets
+- **Match Job Requirements**: Prioritize bullets that match top 5 keywords/skills from the job offer
+- **Skills Section**: List technical & soft skills separately; include tools/frameworks mentioned in the JD
+- **Formatting for ATS**: No special characters, images, or complex styling. Standard fonts only
+- **Length**: Aim for 1 page (prefer) or max 2 pages. Cut weak bullets, keep only top achievements
+- **Do NOT**:
+  - Invent new experiences, skills, or certifications
+  - Use graphics, icons, or columns (ATS cannot parse)
+  - Repeat the same achievement twice
+  - Leave vague descriptions (always quantify: 25% vs "improved")
+
+RECRUITER SPEED-READ (First 10 seconds):
+- Name at top
+- Profile line: 1-2 sentences with role title + experience level + top 2-3 differentiators
+- Most recent/relevant experience first
+- Highlight 2-3 biggest wins (revenue growth, user acquisition, efficiency gains, etc.)
+- Skills list: put required JD skills at the top
 
 ORIGINAL CV:
 ${cvText.slice(0, 4000)}
