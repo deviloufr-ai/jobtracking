@@ -427,6 +427,18 @@ function load() {
           history: (j.history || [{ date: j.date, status: j.status, note: 'Candidature ajoutée' }])
             .map(h => ({ ...h, note: deduplicateNoteFragments(h.note) }))
         }))
+
+      // Migration: Set lastSyncTime on jobs that don't have it
+      // This enables incremental sync on next refresh
+      // If any job is missing lastSyncTime, set all to now-1h (catches recent emails without re-fetching 3mo)
+      const hasAnyLastSyncTime = migrated.some(j => j.lastSyncTime)
+      if (!hasAnyLastSyncTime) {
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+        migrated.forEach(j => {
+          if (!j.lastSyncTime) j.lastSyncTime = oneHourAgo
+        })
+      }
+
       // Fix #5 — autoStale removed from load(); it runs in useMemo on every render instead,
       // avoiding double-archival and stale-threshold drift on initial load.
       const processed = deduplicateJobs(mergeSameDateEntries(splitPipeNotes(deduplicateHistory(migrated))))
