@@ -398,19 +398,33 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
     element.style.color = '#000'
     element.style.backgroundColor = '#fff'
 
-    // Configure html2pdf options for full content (no margins, full page bleed)
+    // Add style to remove page break visual separators
+    const style = document.createElement('style')
+    style.innerHTML = `
+      @page { margin: 0; padding: 0; }
+      * { page-break-after: auto; }
+      body { margin: 0; padding: 0; }
+    `
+    element.appendChild(style)
+
+    // Configure html2pdf options for full content (seamless pages, no visual breaks)
     const options = {
       margin: 0,  // no margins - content uses full page
       filename: `${filename}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, allowTaint: true },
+      html2canvas: { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff' },
       jsPDF: {
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4',
-        compress: true
+        compress: true,
+        hotfixes: ['px_scaling']  // Fix scaling issues
       },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }  // Allow multiple pages
+      pagebreak: {
+        mode: ['avoid-all', 'css', 'legacy'],
+        before: false,  // No visual break before page
+        after: false    // No visual break after page
+      }
     }
 
     html2pdf().set(options).from(element).save()
