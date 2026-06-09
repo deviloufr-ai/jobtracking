@@ -294,7 +294,8 @@ function mergeSameDateEntries(jobs) {
     const order = []
     for (const entry of j.history) {
       // Keep meetings separate from other entries even on same date
-      const isMeeting = entry.source === 'calendar' || !!entry.meetingLink
+      const isMeeting = entry.source === 'calendar' || !!entry.meetingLink ||
+                        (entry.note && entry.note.startsWith('📅')) // Also detect old meetings by emoji
       const key = isMeeting ? `${entry.date}|meeting` : entry.date || 'unknown'
       if (!byDate[key]) {
         byDate[key] = { ...entry, _notes: entry.note ? [entry.note] : [], _gmailIds: entry.gmailId ? [entry.gmailId] : [] }
