@@ -247,17 +247,14 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
   const handleEnrich = async () => {
     setEnriching(true)
     setEnrichResult(null)
+    const syncStartTime = new Date().toISOString()
     try {
       // Smart sync: fetch only NEW emails since lastSyncTime, plus calendar events
       const result = await enrichJobTimeline(job, { calendarOnly: false })
       if (result && result.newCount > 0) {
         // Update history and lastSyncTime for incremental sync
-        const updatedJob = {
-          ...job,
-          lastSyncTime: new Date().toISOString()
-        }
         onUpdateHistory(job.id, result.history)
-        onUpdateJob?.(job.id, { lastSyncTime: updatedJob.lastSyncTime })
+        onUpdateJob?.(job.id, { lastSyncTime: syncStartTime })
         setEnrichResult({ success: true, count: result.newCount })
         enrichTimerRef.current = setTimeout(() => setEnrichResult(null), 3000) // Fix #6
       }
