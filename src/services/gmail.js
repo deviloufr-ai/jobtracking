@@ -209,15 +209,33 @@ export async function fetchJobEmailsForAccount(accountEmail, maxResults = null, 
   return _fetchJobEmails(acct.token, maxResults, actualMonths, dateRange, lastSyncTime)
 }
 
-// Backward-compat: fetch from first connected account
+// Fetch from ALL connected accounts (merged + deduplicated)
 // lastSyncTime: optional ISO timestamp - if provided, only fetch emails after this time
 // If no lastSyncTime: fetch 3 months (first import), otherwise use 1 day incremental
 export async function fetchJobEmails(maxResults = null, months = null, dateRange = null, lastSyncTime = null) {
-  const first = Object.entries(accounts)[0]
-  if (!first) throw new Error('Non connecté à Gmail')
+  const accountEntries = Object.entries(accounts)
+  if (accountEntries.length === 0) throw new Error('Non connecté à Gmail')
+
   // Smart period: 3 months on first import, 1 day on refreshes with lastSyncTime
   const actualMonths = months !== null ? months : (lastSyncTime ? 1/30 : 3)
-  return _fetchJobEmails(first[1].token, maxResults, actualMonths, dateRange, lastSyncTime)
+
+  // Fetch from all accounts in parallel
+  const results = await Promise.all(
+    accountEntries.map(([email, acct]) => _fetchJobEmails(acct.token, maxResults, actualMonths, dateRange, lastSyncTime))
+  )
+
+  // Merge and deduplicate by email ID
+  const seen = new Set()
+  const merged = []
+  for (const emails of results) {
+    for (const e of emails) {
+      if (!seen.has(e.id)) {
+        seen.add(e.id)
+        merged.push(e)
+      }
+    }
+  }
+  return merged
 }
 
 // Gmail category labels returned by the API
