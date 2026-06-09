@@ -6,10 +6,10 @@ const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googl
 const ACCOUNTS_KEY = 'jt_gmail_accounts'
 
 function loadAccounts() {
-  try { const raw = sessionStorage.getItem(ACCOUNTS_KEY); return raw ? JSON.parse(raw) : {} } catch { return {} }
+  try { const raw = localStorage.getItem(ACCOUNTS_KEY); return raw ? JSON.parse(raw) : {} } catch { return {} }
 }
 function saveAccounts(map) {
-  try { sessionStorage.setItem(ACCOUNTS_KEY, JSON.stringify(map)) } catch {}
+  try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(map)) } catch {}
 }
 
 let accounts = loadAccounts() // { email: { token, user } }
