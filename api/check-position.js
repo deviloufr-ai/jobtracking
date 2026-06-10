@@ -9,6 +9,14 @@ const CLOSED_INDICATORS = [
   'we are no longer accepting', 'we\'re no longer accepting',
   'position not available', 'not available',
   'offre pourvue', 'poste pourvu', 'candidature close', 'recrutement terminé',
+  // LinkedIn-specific patterns
+  'no longer accepting',
+  'not accepting applications',
+  'positions filled', 'all positions filled',
+  // Generic patterns
+  'hiring has closed', 'recruitment closed', 'job posting closed',
+  'this posting is no longer active', 'posting is no longer active',
+  'no open positions', 'no openings', 'currently hiring: false',
 ]
 
 const OPEN_INDICATORS = [
@@ -30,16 +38,15 @@ function stripHtml(html) {
 function detectAvailability(content) {
   const lower = content.toLowerCase()
 
-  // Check for closed indicators (high confidence)
-  for (const indicator of CLOSED_INDICATORS) {
-    if (lower.includes(indicator)) {
-      return { available: false, reason: `Detected: "${indicator}"` }
-    }
-  }
-
-  // Check for 404 or similar in content
+  // Check for 404 or similar in content (strong closed signal)
   if (lower.includes('404') || lower.includes('not found') || lower.includes('page not found')) {
     return { available: false, reason: 'Page not found (404)' }
+  }
+
+  // Check for closed indicators (high confidence)
+  let closedScore = 0
+  for (const indicator of CLOSED_INDICATORS) {
+    if (lower.includes(indicator)) closedScore++
   }
 
   // Check for open indicators
@@ -48,9 +55,23 @@ function detectAvailability(content) {
     if (lower.includes(indicator)) openScore++
   }
 
-  // If we found open indicators, likely still available
+  // Decision logic
+  if (closedScore >= 1) {
+    // If we found ANY closed indicator, assume closed (conservative approach)
+    return { available: false, reason: `Detected: position closed` }
+  }
+
   if (openScore >= 2) {
-    return { available: true, reason: 'Found open indicators' }
+    // Need at least 2 open indicators to confirm available
+    return { available: true, reason: 'Found apply/career indicators' }
+  }
+
+  // Heuristic: if page has job title/description but no apply button, likely closed
+  const hasJobContent = /job|position|role|title|description|requirement/i.test(content)
+  const hasApply = /apply|candidate|apply now|apply here|easy apply|apply to|candidat/i.test(content)
+
+  if (hasJobContent && !hasApply) {
+    return { available: false, reason: 'No apply button found (likely closed)' }
   }
 
   // Default: unknown (couldn't determine)
