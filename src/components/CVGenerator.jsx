@@ -109,12 +109,12 @@ function renderModern(md, pic) {
   const { name, contact, sections } = parseCV(md)
 
   const expStyles = {
-    block:   'page-break-inside:avoid;margin-bottom:8px;padding-bottom:8px',
+    block:   'page-break-inside:avoid;margin-bottom:4px;padding-bottom:4px',
     title:   'font-size:11pt;font-weight:900;color:#0f172a;margin:0;page-break-after:avoid;letter-spacing:-0.01em',
     company: 'font-size:9.5pt;font-weight:700;color:#4f46e5;letter-spacing:0.01em',
     dates:   'font-size:8pt;color:#fff;background:#94a3b8;border-radius:999px;padding:1px 8px;white-space:nowrap;font-style:normal',
-    p:       'font-size:9pt;color:#475569;margin:2px 0',
-    li:      'font-size:9.5pt;color:#334155;padding-left:14px;margin:2px 0;line-height:1.5',
+    p:       'font-size:9pt;color:#475569;margin:1px 0',
+    li:      'font-size:9.5pt;color:#334155;padding-left:14px;margin:1px 0;line-height:1.5',
     bullet:  '▸',
   }
 
@@ -131,8 +131,8 @@ function renderModern(md, pic) {
     const blocks = groupBlocks(s.items)
     const inner  = blocks.map(b => expBlock(b, expStyles)).join('')
     return `
-      <div style="margin-bottom:4px">
-        <div style="display:flex;align-items:center;gap:10px;margin:8px 0 6px;page-break-after:avoid">
+      <div style="margin-bottom:2px">
+        <div style="display:flex;align-items:center;gap:10px;margin:6px 0 4px;page-break-after:avoid">
           <div style="width:4px;height:16px;background:linear-gradient(180deg,#6366f1,#818cf8);border-radius:2px;flex-shrink:0"></div>
           <div style="font-size:8pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.1em">${s.title}</div>
           <div style="flex:1;height:1px;background:#e0e7ff"></div>
@@ -149,12 +149,12 @@ function renderClassic(md, pic) {
   const { name, contact, sections } = parseCV(md)
 
   const expStyles = {
-    block:   'page-break-inside:avoid;margin-bottom:8px;padding-bottom:8px',
+    block:   'page-break-inside:avoid;margin-bottom:4px;padding-bottom:4px',
     title:   'font-size:11pt;font-weight:900;color:#0f172a;margin:0;page-break-after:avoid;letter-spacing:-0.01em',
     company: 'font-size:9.5pt;font-weight:700;color:#1e40af;letter-spacing:0.01em',
     dates:   'font-size:8pt;color:#64748b;background:#f1f5f9;border-radius:999px;padding:1px 8px;white-space:nowrap;border:1px solid #e2e8f0',
-    p:       'font-size:9pt;color:#475569;margin:2px 0',
-    li:      'font-size:9.5pt;color:#1e293b;padding-left:14px;margin:2px 0;line-height:1.5',
+    p:       'font-size:9pt;color:#475569;margin:1px 0',
+    li:      'font-size:9.5pt;color:#1e293b;padding-left:14px;margin:1px 0;line-height:1.5',
     bullet:  '–',
   }
 
@@ -169,8 +169,8 @@ function renderClassic(md, pic) {
     const blocks = groupBlocks(s.items)
     const inner  = blocks.map(b => expBlock(b, expStyles)).join('')
     return `
-      <div style="margin-bottom:4px">
-        <div style="display:flex;align-items:center;gap:12px;margin:16px 0 10px;page-break-after:avoid">
+      <div style="margin-bottom:2px">
+        <div style="display:flex;align-items:center;gap:12px;margin:12px 0 8px;page-break-after:avoid">
           <div style="font-size:8pt;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.12em;white-space:nowrap">${s.title}</div>
           <div style="flex:1;height:1px;background:#94a3b8"></div>
         </div>
@@ -194,30 +194,30 @@ function renderExecutive(md, pic) {
   const effectiveMain    = sidebarSecs.length > 0 ? mainSecs    : sections.slice(1)
 
   const sidebarExpStyles = {
-    block:   'margin-bottom:10px;padding-bottom:10px',
+    block:   'margin-bottom:6px;padding-bottom:6px',
     title:   'font-size:8.5pt;font-weight:800;color:#f1f5f9;margin:0;page-break-after:avoid',
     company: 'font-size:8pt;font-weight:700;color:#818cf8;letter-spacing:0.01em',
     dates:   'font-size:7.5pt;color:#475569;background:#0f172a;border-radius:999px;padding:1px 6px;white-space:nowrap;border:1px solid #334155',
-    p:       'font-size:8pt;color:#94a3b8;margin:1px 0',
-    li:      'font-size:8pt;color:#cbd5e1;padding-left:8px;margin:2px 0;line-height:1.5',
+    p:       'font-size:8pt;color:#94a3b8;margin:0.5px 0',
+    li:      'font-size:8pt;color:#cbd5e1;padding-left:8px;margin:0.5px 0;line-height:1.5',
     bullet:  '·',
   }
 
   const mainExpStyles = {
-    block:   'page-break-inside:avoid;margin-bottom:8px;padding-bottom:8px',
+    block:   'page-break-inside:avoid;margin-bottom:4px;padding-bottom:4px',
     title:   'font-size:11pt;font-weight:900;color:#0f172a;margin:0;page-break-after:avoid;letter-spacing:-0.01em',
     company: 'font-size:9.5pt;font-weight:700;color:#4338ca;letter-spacing:0.01em',
     dates:   'font-size:8pt;color:#fff;background:#94a3b8;border-radius:999px;padding:1px 8px;white-space:nowrap',
-    p:       'font-size:9pt;color:#475569;margin:2px 0',
-    li:      'font-size:9.5pt;color:#1e293b;padding-left:12px;margin:2px 0;line-height:1.5',
+    p:       'font-size:9pt;color:#475569;margin:1px 0',
+    li:      'font-size:9.5pt;color:#1e293b;padding-left:12px;margin:1px 0;line-height:1.5',
     bullet:  '▹',
   }
 
   const sidebarSection = s => {
     const blocks = groupBlocks(s.items)
     return `
-      <div style="margin-bottom:16px">
-        <div style="font-size:7pt;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:#818cf8;padding-bottom:5px;margin-bottom:7px">${s.title}</div>
+      <div style="margin-bottom:10px">
+        <div style="font-size:7pt;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:#818cf8;padding-bottom:5px;margin-bottom:5px">${s.title}</div>
         ${blocks.map(b => expBlock(b, sidebarExpStyles)).join('')}
       </div>`
   }
@@ -225,8 +225,8 @@ function renderExecutive(md, pic) {
   const mainSection = s => {
     const blocks = groupBlocks(s.items)
     return `
-      <div style="margin-bottom:4px">
-        <div style="font-size:8pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.1em;margin:16px 0 10px;padding-bottom:4px;page-break-after:avoid">${s.title}</div>
+      <div style="margin-bottom:2px">
+        <div style="font-size:8pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.1em;margin:12px 0 8px;padding-bottom:4px;page-break-after:avoid">${s.title}</div>
         ${blocks.map(b => expBlock(b, mainExpStyles)).join('')}
       </div>`
   }
