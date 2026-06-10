@@ -13,8 +13,13 @@ export function useExtensionImport(addJob, showToast) {
 
     // If jdKey is present, request full JD from extension storage
     if (jdKey) {
+      console.log('[JobTrackr] Requesting JD from extension with key:', jdKey)
+      let responseReceived = false
+
       const handleJdResponse = (e) => {
+        console.log('[JobTrackr] Received JD response:', e.detail?.jdKey, 'text length:', e.detail?.text?.length)
         if (e.detail?.jdKey === jdKey) {
+          responseReceived = true
           window.removeEventListener('jobtrackr-jd-response', handleJdResponse)
           createJob(e.detail?.text || '')
         }
@@ -23,13 +28,17 @@ export function useExtensionImport(addJob, showToast) {
       window.addEventListener('jobtrackr-jd-response', handleJdResponse)
       window.dispatchEvent(new CustomEvent('jobtrackr-jd-request', { detail: { jdKey } }))
 
-      // Timeout fallback: if extension doesn't respond in 2 seconds, proceed with empty JD
+      // Timeout fallback: if extension doesn't respond in 3 seconds, proceed with what we have
       setTimeout(() => {
-        window.removeEventListener('jobtrackr-jd-response', handleJdResponse)
-        createJob('')
-      }, 2000)
+        if (!responseReceived) {
+          console.log('[JobTrackr] JD request timeout - creating job without full description')
+          window.removeEventListener('jobtrackr-jd-response', handleJdResponse)
+          createJob('')
+        }
+      }, 3000)
     } else {
       // Use JD from URL param if no jdKey
+      console.log('[JobTrackr] No jdKey found, using URL param JD length:', jdFromUrl.length)
       createJob(jdFromUrl)
     }
 

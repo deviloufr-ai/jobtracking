@@ -636,11 +636,18 @@ browser.runtime.onMessage.addListener((msg) => {
 // ─────────────────────────────────────────────────────────────────────────────
 window.addEventListener('jobtrackr-jd-request', async (e) => {
   const jdKey = e.detail?.jdKey
-  if (!jdKey) return
+  console.log('[JT Content] JD request received with key:', jdKey)
+  if (!jdKey) {
+    console.log('[JT Content] No jdKey provided, ignoring')
+    return
+  }
   try {
+    console.log('[JT Content] Requesting JD from background with key:', jdKey)
     const result = await browser.runtime.sendMessage({ type: 'LOAD_JD', key: jdKey })
+    console.log('[JT Content] Received from background:', { jdKey, textLength: result?.text?.length })
     window.dispatchEvent(new CustomEvent('jobtrackr-jd-response', { detail: { jdKey, text: result?.text || '' } }))
   } catch (err) {
+    console.log('[JT Content] Error loading JD:', err.message)
     window.dispatchEvent(new CustomEvent('jobtrackr-jd-response', { detail: { jdKey, text: '', error: err.message } }))
   }
 })
