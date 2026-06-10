@@ -346,13 +346,10 @@ function mergeSameDateEntries(jobs) {
   return jobs.map(j => {
     if (!j.history || j.history.length <= 1) return j
 
-    // Separate meetings from other entries
+    // Only treat actual calendar events as separate meetings
+    // Email content mentioning meetings should merge by date with other same-date emails
     const isMeetingEntry = (entry) => {
-      if (entry.source === 'calendar' || !!entry.meetingLink) return true
-      if (!entry.note) return false
-      const note = entry.note.toLowerCase()
-      // Detect meetings by keywords or emoji
-      return note.startsWith('📅') || /\bmeeting\b|entretien|visio|call|rdv|rendez-vous|zoom|teams|meet/.test(note)
+      return entry.source === 'calendar' || !!entry.meetingLink
     }
 
     const meetings = j.history.filter(isMeetingEntry)
