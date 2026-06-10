@@ -35,6 +35,12 @@ function lastNote(job) {
   return (hist.find(h => h.source !== 'calendar')?.note || '').toLowerCase()
 }
 
+// Check if a remerciement (thank you) email has already been sent
+function hasRemerciementSent(job) {
+  const hist = (job.history || [])
+  return hist.some(h => h.note && h.note.toLowerCase().includes('email de remerciement envoyé'))
+}
+
 function hasKeyword(job, ...kws) {
   const notes = (job.history || []).map(h => (h.note || '').toLowerCase()).join(' ')
   return kws.some(k => notes.includes(k))
@@ -185,7 +191,7 @@ const NEXT_STEPS_RULES = [
   },
   // Remerciement after rejection
   {
-    match: j => j.status === 'rejected' && daysSince(j) < 5 && hasRealEmail(j),
+    match: j => j.status === 'rejected' && daysSince(j) < 5 && hasRealEmail(j) && !hasRemerciementSent(j),
     icon: '💌', type: 'email',
     label: job => `Envoyer remerciement ${job.company}`,
     tip: () => `Un email de remerciement te différencie et maintient la relation pour l'avenir.`,

@@ -126,7 +126,7 @@ const EMAIL_TYPES = {
   },
 }
 
-export default function EmailDraft({ job, type = 'remerciement', onClose }) {
+export default function EmailDraft({ job, type = 'remerciement', onClose, onEmailSent }) {
   const [draft, setDraft] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -167,7 +167,14 @@ export default function EmailDraft({ job, type = 'remerciement', onClose }) {
     try {
       await sendEmail({ to: to.trim(), subject, body: draft, fromAccount: receivedBy || undefined })
       setSendStatus('sent')
-      setTimeout(() => setSendStatus(null), 4000)
+
+      // Notify parent to update job history
+      if (onEmailSent) {
+        onEmailSent(type, to.trim())
+      }
+
+      // Close modal after brief success feedback
+      setTimeout(() => onClose?.(), 1500)
     } catch (e) {
       // Token expired — try reconnecting
       if (e.message.includes('401') || e.message.includes('Non connecté')) {

@@ -266,6 +266,35 @@ export default function App() {
       pushNotif('update', `${job.company} — historique mis à jour`, { company: job.company, jobId: id })
   }
 
+  const handleEmailSent = (type, to) => {
+    if (!emailDraft?.job) return
+    const job = emailDraft.job
+    const today = new Date().toISOString().split('T')[0]
+
+    let note = ''
+    if (type === 'remerciement') {
+      note = `Email de remerciement envoyé à ${to}`
+    } else if (type === 'relance') {
+      note = `Email de relance envoyé à ${to}`
+    }
+
+    const newEntry = {
+      date: today,
+      status: job.status,
+      note,
+      fromMe: true,
+      source: 'email',
+    }
+
+    const updated = {
+      ...job,
+      history: [...(job.history || []), newEntry]
+    }
+
+    addHistoryEntry(job.id, newEntry)
+    showToast(type === 'remerciement' ? 'Email de remerciement envoyé ✓' : 'Email de relance envoyé ✓')
+  }
+
   const handleClearAll = () => {
     if (!window.confirm(`Effacer toutes les ${jobs.length} candidatures ? Cette action est irreversible.`)) return
     clearAllJobs() // Fix #3 — single state update instead of N deleteJob calls
@@ -734,7 +763,7 @@ export default function App() {
       {showGmail && <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={() => { setShowGmail(false); const connected = isConnected(); setGmailConnected(connected); setGmailUser(connected ? getCachedUser() : null) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u) }} existingJobs={jobs} />}
       {showImageImport && <ImageImport onImport={handleBulkImport} onClose={() => setShowImageImport(false)} existingJobs={jobs} />}
       {starJob && <STARGenerator job={starJob} onClose={() => setStarJob(null)} />}
-      {emailDraft && <EmailDraft job={emailDraft.job} type={emailDraft.type} onClose={() => setEmailDraft(null)} />}
+      {emailDraft && <EmailDraft job={emailDraft.job} type={emailDraft.type} onClose={() => setEmailDraft(null)} onEmailSent={handleEmailSent} />}
       {viewingCV && <CVViewer job={viewingCV} onClose={() => setViewingCV(null)} />}
 
       {toast && (
