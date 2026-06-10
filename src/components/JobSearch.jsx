@@ -112,7 +112,7 @@ export default function JobSearch({ onAddJob, existingJobs }) {
   }
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden ${selectedJob ? 'flex flex-col h-[600px]' : ''}`}>
+    <div className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden ${selectedJob ? 'flex flex-col' : ''}`} style={selectedJob ? { minHeight: '70vh' } : {}}>
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
         <span className="text-base">🔎</span>
