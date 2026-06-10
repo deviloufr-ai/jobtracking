@@ -100,21 +100,15 @@ export function getStatus(key) {
 }
 
 function normalizeCompany(name = '') {
-  let normalized = name.toLowerCase()
+  return name.toLowerCase()
     // Strip trailing legal suffixes (word boundary required — avoids stripping mid-name)
     .replace(/\s+(sas|sasu|sarl|sa|srl|inc|ltd|llc|gmbh|bv|nv|ag|spa|oy|ab)\.?\s*$/i, '')
     // Strip trailing TLD suffixes — but NOT 'ai' or 'app' (brand names: OpenAI, AppFlutter, etc.)
     .replace(/\.(io|com|fr|co|net|org|eu|de|uk|be|ch|ca|us|tech|dev)\s*$/i, '')
     // Strip truly generic STANDALONE suffixes only
     .replace(/\b(technologies|digital|solutions|group|labs|studio|hq|services|consulting|innovation|ventures|project|projects)\b/gi, '')
-
-  // Extract primary brand name (first word) for fuzzy matching
-  // "Manutan Business Technology" → "manutan" (matches "Manutan")
-  const words = normalized.split(/\s+/).filter(Boolean)
-  const primaryBrand = words[0]
-
-  // Return alphanumeric version of primary brand for better fuzzy dedup
-  return primaryBrand.replace(/[^a-z0-9]/g, '')
+    // Strip everything non-alphanumeric
+    .replace(/[^a-z0-9]/g, '')
 }
 
 const STATUS_PRIORITY = {
