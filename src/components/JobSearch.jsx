@@ -229,67 +229,19 @@ export default function JobSearch({ onAddJob, existingJobs }) {
             ) : (
               <div className={`divide-y divide-gray-50 overflow-y-auto ${selectedJob ? 'flex-1' : 'max-h-[480px]'}`}>
                 {getSortedJobs().map(job => {
-                  const alreadyAdded = isAlreadyAdded(job)
                   const isSelected = selectedJob?.id === job.id
                   return (
                     <div
                       key={job.id}
                       onClick={() => setSelectedJob(job)}
-                      className={`px-4 py-3 cursor-pointer transition-colors ${
+                      className={`px-4 py-3 cursor-pointer transition-colors border-l-2 ${
                         isSelected
-                          ? 'bg-indigo-50 border-l-2 border-indigo-600'
-                          : 'hover:bg-gray-50/60'
+                          ? 'bg-indigo-50 border-indigo-600'
+                          : 'hover:bg-gray-50/60 border-transparent'
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm text-gray-800 mb-2">{job.title}</div>
-                          <div className="text-xs text-gray-600 font-medium mb-3">{job.company}</div>
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div className="flex items-center justify-between">
-                              <span className="text-gray-500">Salaire</span>
-                              <span className="font-medium text-gray-900">{job.salary ? job.salary.split(' ')[0] : '—'}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-gray-500">Type</span>
-                              <span className="font-medium text-gray-900">{job.contractType ? CONTRACT_LABELS[job.contractType] || job.contractType : '—'}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-gray-500">Location</span>
-                              <span className="font-medium text-gray-900 text-right truncate">{job.location || '—'}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-gray-500">Catégorie</span>
-                              <span className="font-medium text-gray-900">{job.category || '—'}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex flex-col items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                          <button
-                            onClick={() => handleAdd(job)}
-                            disabled={alreadyAdded}
-                            className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
-                              alreadyAdded
-                                ? 'bg-green-100 text-green-600 cursor-default'
-                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                            }`}
-                          >
-                            {alreadyAdded ? '✓' : '+ Ajouter'}
-                          </button>
-                          {job.url && (
-                            <a
-                              href={job.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-indigo-500 hover:text-indigo-700 hover:underline"
-                            >
-                              Voir ↗
-                            </a>
-                          )}
-                        </div>
-                      </div>
+                      <div className="font-medium text-sm text-gray-800">{job.title}</div>
+                      <div className="text-xs text-gray-600 mt-1">{job.company}{job.salary ? ` • ${job.salary.split(' ')[0]}` : ''}</div>
                     </div>
                   )
                 })}
