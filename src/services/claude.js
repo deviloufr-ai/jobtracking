@@ -70,40 +70,68 @@ async function callClaude(systemPrompt, userContent, retries = 3) {
   // Queue requests to prevent cascading rate limits
   return claudeRequestQueue = claudeRequestQueue.then(async () => {
     claudeRequestCount++
+    const requestId = claudeRequestCount
     try {
+      // Total timeout: 60 seconds max per request (prevent unbounded waits)
+      const totalTimeoutMs = 60000
+      const startTime = Date.now()
+
       for (let attempt = 0; attempt <= retries; attempt++) {
-        const res = await fetch(CLAUDE_ENDPOINT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: MODEL,
-            max_tokens: 1500,
-            system: systemPrompt,
-            messages: [{ role: 'user', content: userContent }],
-          }),
-        })
-        const data = await res.json()
-
-        // Rate limit — wait and retry with exponential backoff
-        if (res.status === 429) {
-          const waitMs = Math.min(5000 * Math.pow(2, attempt), 30000)
-          console.warn(`Claude rate limited (queue pos: ${claudeRequestCount}) — waiting ${waitMs / 1000}s...`)
-          await new Promise(r => setTimeout(r, waitMs))
-          continue
+        const elapsedMs = Date.now() - startTime
+        if (elapsedMs > totalTimeoutMs) {
+          throw new Error(`Request timeout after ${elapsedMs}ms`)
         }
 
-        if (!res.ok) {
-          console.error('Claude API error:', data)
-          throw new Error(data?.error?.message || `Claude API ${res.status}`)
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), totalTimeoutMs - elapsedMs)
+
+        try {
+          const res = await fetch(CLAUDE_ENDPOINT, {
+            method: 'POST',
+            signal: controller.signal,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: MODEL,
+              max_tokens: 1500,
+              system: systemPrompt,
+              messages: [{ role: 'user', content: userContent }],
+            }),
+          })
+          clearTimeout(timeoutId)
+          const data = await res.json()
+
+          // Rate limit — wait and retry with exponential backoff
+          if (res.status === 429) {
+            const waitMs = Math.min(5000 * Math.pow(2, attempt), 30000)
+            const remainingMs = totalTimeoutMs - (Date.now() - startTime)
+            if (remainingMs < waitMs) {
+              throw new Error('Rate limit timeout: not enough time to retry')
+            }
+            console.warn(`Claude rate limited (${requestId}) — waiting ${waitMs / 1000}s...`)
+            await new Promise(r => setTimeout(r, waitMs))
+            continue
+          }
+
+          if (!res.ok) {
+            console.error('Claude API error:', data)
+            throw new Error(data?.error?.message || `Claude API ${res.status}`)
+          }
+          const text = data.content?.[0]?.text || ''
+          return text
+        } catch (e) {
+          clearTimeout(timeoutId)
+          if (e.name === 'AbortError') {
+            throw new Error(`Request aborted (timeout after ${totalTimeoutMs}ms)`)
+          }
+          throw e
         }
-        const text = data.content?.[0]?.text || ''
-        return text
       }
       throw new Error('Rate limit — réessaie dans quelques secondes.')
     } finally {
-      claudeRequestCount--
+      claudeRequestCount = Math.max(0, claudeRequestCount - 1)
     }
   })
+}
 
 function parseJSON(raw) {
   try {

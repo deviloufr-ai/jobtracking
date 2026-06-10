@@ -1,7 +1,7 @@
 import { setupCORS } from './cors-helper.js'
 
 export default async function handler(req, res) {
-  if (setupCORS(req, res)) return
+  if (setupCORS(req, res, 'GET, OPTIONS')) return
 
   const APP_ID = process.env.VITE_ADZUNA_APP_ID
   const APP_KEY = process.env.VITE_ADZUNA_APP_KEY
