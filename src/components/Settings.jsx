@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSettings, SETTINGS_DEFAULTS } from '../hooks/useSettings'
 import { useExtensionDetect } from '../hooks/useExtensionDetect'
+import NotificationSettings from './NotificationSettings'
 
 const PROFILE_KEY = 'jobtrackr_profile'
 const PROFILE_DEFAULTS = {
@@ -304,6 +305,15 @@ export default function Settings({ jobs, onMergeDuplicates }) {
           <NumInput value={settings.checkPositionAfterDays} onChange={v => updateSetting('checkPositionAfterDays', v)} min={0} max={365} suffix="jours" />
         </Row>
       </Section>
+
+      {/* Notifications */}
+      <div>
+        <div className="flex items-center gap-2.5 mb-5 px-0">
+          <span className="text-lg">🔔</span>
+          <h2 className="font-semibold text-gray-800 text-sm">Notifications</h2>
+        </div>
+        <NotificationSettings />
+      </div>
 
       {/* Follow-ups */}
       <Section title="Rappels & Suivi" icon="🔔">

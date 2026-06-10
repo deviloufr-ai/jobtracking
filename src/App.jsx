@@ -26,6 +26,9 @@ import Goals from './components/Goals'
 import CalendarWidget from './components/CalendarWidget'
 import NotificationBell from './components/NotificationBell'
 import { useNotifications } from './hooks/useNotifications'
+import NotificationPermissionBanner from './components/NotificationPermissionBanner'
+import { useNotificationPermission } from './hooks/useNotificationPermission'
+import { useNotificationScenarios } from './hooks/useNotificationScenarios'
 
 const DEFAULT_FILTERS = { search: '', statuses: {}, period: 'all' }
 const DEFAULT_SORT = { col: 'date', dir: 'desc' }
@@ -92,6 +95,8 @@ export default function App() {
   const { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, reprocessJobs, checkAllPositions } = useJobs()
   const { settings } = useSettings()
   const extensionInstalled = useExtensionDetect()
+  const { permission: notificationPermission } = useNotificationPermission()
+  useNotificationScenarios(jobs, notificationPermission)
   const [modal, setModal] = useState(null)
   const prevArchiveSettingsRef = useRef(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
@@ -692,6 +697,9 @@ export default function App() {
           </>
         )}
       </main>
+
+      {/* ── Notification Permission Banner ────────────────────────────────────── */}
+      <NotificationPermissionBanner />
 
       {/* ── Mobile bottom nav bar ─────────────────────────────────────────────── */}
       <nav className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-white border-t border-gray-100 shadow-[0_-2px_12px_0_rgba(0,0,0,0.06)]">
