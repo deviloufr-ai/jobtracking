@@ -17,11 +17,19 @@ export function useExtensionImport(addJob, showToast) {
       let responseReceived = false
 
       const handleJdResponse = (e) => {
-        console.log('[JobTrackr] Received JD response:', e.detail?.jdKey, 'text length:', e.detail?.text?.length)
-        if (e.detail?.jdKey === jdKey) {
+        // Parse JSON string from extension (serialized to avoid cross-origin security errors)
+        let data = {}
+        try {
+          data = typeof e.detail === 'string' ? JSON.parse(e.detail) : e.detail
+        } catch (err) {
+          console.log('[JobTrackr] Failed to parse JD response:', err)
+          return
+        }
+        console.log('[JobTrackr] Received JD response:', data.jdKey, 'text length:', data.text?.length)
+        if (data.jdKey === jdKey) {
           responseReceived = true
           window.removeEventListener('jobtrackr-jd-response', handleJdResponse)
-          createJob(e.detail?.text || '')
+          createJob(data.text || '')
         }
       }
 
