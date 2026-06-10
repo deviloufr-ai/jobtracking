@@ -5,6 +5,39 @@ import { fetchCalendarEvents } from '../services/calendar'
 import { isAtsRejection, isDeletedJob } from './useJobs'
 import { normalize, isJobBoard } from '../constants/jobBoards'
 
+// Auto-mark previous history items as done when their corresponding meeting has finished
+function autoCompletePastMeetings(history) {
+  if (!history || history.length === 0) return history
+
+  const now = new Date()
+  const updated = [...history]
+
+  // For each calendar event that's in the past, check if it's 2+ hours old
+  for (let i = 0; i < updated.length; i++) {
+    const entry = updated[i]
+    if (entry.source !== 'calendar' || !entry.date) continue
+
+    const eventTime = new Date(entry.date)
+    const twoHoursAfter = new Date(eventTime.getTime() + 2 * 60 * 60 * 1000)
+
+    // If meeting happened 2+ hours ago and entry isn't already done
+    if (now > twoHoursAfter && entry.status !== 'done') {
+      // Find the previous non-calendar entry to mark as done
+      for (let j = i - 1; j >= 0; j--) {
+        const prevEntry = updated[j]
+        if (prevEntry.source === 'email' && prevEntry.status !== 'done' && prevEntry.status !== 'rejected' && prevEntry.status !== 'rejected_ats' && prevEntry.status !== 'cancelled') {
+          // Mark previous entry as done since the meeting happened
+          prevEntry.status = 'done'
+          prevEntry.note = `${prevEntry.note} ✓`
+          break
+        }
+      }
+    }
+  }
+
+  return updated
+}
+
 const REFRESH_KEY = 'jobtrackr_last_refresh'
 const REFRESH_INTERVAL_HOURS = 1
 
@@ -171,8 +204,10 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
       .filter(e => e.title.toLowerCase().includes(co) || (e.description || '').toLowerCase().includes(co))
       .map(e => {
         const meetingLink = extractMeetingLink((e.description || '') + ' ' + (e.location || ''))
+        // Use rawStart (full datetime with time) instead of date (date-only) for proper time tracking
+        const eventDateTime = e.rawStart || e.date
         return {
-          date: e.date,
+          date: eventDateTime,
           status: e.type === 'interview' ? 'interview' : e.type === 'offer' ? 'offer' : 'waiting',
           note: `📅 ${e.title}${e.isUpcoming ? ' (à venir)' : ''}`,
           source: 'calendar', isUpcoming: e.isUpcoming,
@@ -182,9 +217,9 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
 
     const existingKeys = new Set(history.map(h => `${h.date}-${h.status}`))
     const newCalEntries = calEntries.filter(e => !existingKeys.has(`${e.date}-${e.status}`))
-    const mergedHistory = deduplicateHistoryBySemantics(
-      [...history, ...newCalEntries].sort((a, b) => new Date(a.date) - new Date(b.date))
-    )
+    const merged = [...history, ...newCalEntries].sort((a, b) => new Date(a.date) - new Date(b.date))
+    const deduplicated = deduplicateHistoryBySemantics(merged)
+    const mergedHistory = autoCompletePastMeetings(deduplicated)
 
     const latest = sorted[sorted.length - 1]
     // Pick best position: prefer non-generic over "Unknown"
@@ -340,10 +375,10 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
           )
           const newEntries = (p.history || []).filter(h => !existingHistKeys.has(`${h.date}_${normNote(h.note)}`))
           if (newEntries.length > 0) {
-            const mergedHistory = deduplicateHistoryBySemantics(
-              [...(existing.history || []), ...newEntries]
-                .sort((a, b) => new Date(a.date) - new Date(b.date))
-            )
+            const merged = [...(existing.history || []), ...newEntries]
+              .sort((a, b) => new Date(a.date) - new Date(b.date))
+            const deduplicated = deduplicateHistoryBySemantics(merged)
+            const mergedHistory = autoCompletePastMeetings(deduplicated)
             // Upgrade status if new emails show a higher-priority status
             const newStatus = STATUS_ORDER.indexOf(p.status) > STATUS_ORDER.indexOf(existing.status)
               ? p.status : existing.status
