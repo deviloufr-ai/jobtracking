@@ -199,7 +199,7 @@ export default function Stats({ jobs }) {
         </div>
         <div>
           <Sparkline values={weeklyActivity} color="#6366f1" />
-          <div className="flex justify-between mt-1 px-0.5">
+          <div className="flex justify-between mt-1" style={{ paddingLeft: '2.5%', paddingRight: '2.5%' }}>
             {['L','M','M','J','V','S','D'].map((d, i) => (
               <span key={i} className="text-[10px] text-gray-300 text-center flex-1">{d}</span>
             ))}
