@@ -358,8 +358,8 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
     `in:inbox category:personal (interview OR "thank you for applying" OR "thanks for applying" OR "application received" OR "your application" OR "we have received" OR "we regret" OR "not selected" OR "not moving forward" OR "job offer" OR "offer letter" OR "next steps" OR "hiring process") ${dateFilter}`,
     // ④ ATS platforms — always relevant regardless of category
     `in:all (from:ashbyhq.com OR from:greenhouse.io OR from:lever.co OR from:workable.com OR from:teamtailor.com OR from:teamtailor-mail.com OR from:recruitee.com OR from:bamboohr.com OR from:smartrecruiters.com OR from:jobvite.com OR from:icims.com OR from:myworkdayjobs.com OR from:taleo.net) ${dateFilter}`,
-    // ④b Teamtailor subdomain pattern — catch specific company subdomains like kolsquaresteamblue@teamtailor-mail.com
-    `in:all ("teamtailor-mail.com" OR "teamtailor.com") (candidature OR application OR entretien OR interview OR confirmation OR offer OR recrutement) ${dateFilter}`,
+    // ④b Broad ATS confirmation pattern — catch "we have received your application" type confirmations
+    `in:all ("we have received" OR "application received" OR "application confirmed" OR "thanks for applying") (application OR candidature OR candidacy) ${dateFilter}`,
     // ⑤ Job boards — only when accompanied by real action keywords
     `in:all (from:linkedin.com OR from:jobs-noreply@linkedin.com OR from:welcometothejungle.com OR from:apec.fr OR from:indeed.com OR from:monster.fr OR from:cadremploi.fr OR from:hellowork.com OR from:jobteaser.com) (candidature OR application OR entretien OR interview OR "InMail" OR recruteur OR recruiter OR "was viewed" OR "viewed" OR sent OR applied OR confirmation OR "application sent" OR "applied to") ${noAlerts} ${dateFilter}`,
     // ⑤b LinkedIn application confirmations — explicit subject match
