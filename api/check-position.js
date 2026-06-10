@@ -1,5 +1,3 @@
-import fetch from 'node-fetch'
-
 const CLOSED_INDICATORS = [
   'position closed', 'job closed', 'this position is closed',
   'application closed', 'applications closed',
