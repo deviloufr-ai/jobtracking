@@ -316,19 +316,32 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
   const [profilePic, setProfilePic] = useState(() => localStorage.getItem('cv_profile_picture') || null)
   const [saved, setSaved]           = useState(false)
   const [selectedLanguage, setSelectedLanguage] = useState('auto')
+  const [isCompressing, setIsCompressing] = useState(false)
   const picInputRef = useRef()
 
   useEffect(() => { fetchJobDescription() }, [])
 
-  // ── Profile picture upload ────────────────────────────────────────────────
+  // ── Profile picture upload + compression ──────────────────────────────────
   const handlePicUpload = e => {
     const file = e.target.files[0]
     if (!file) return
     const reader = new FileReader()
     reader.onload = ev => {
-      const b64 = ev.target.result
-      setProfilePic(b64)
-      localStorage.setItem('cv_profile_picture', b64)
+      const img = new Image()
+      img.onload = () => {
+        // Compress: resize to 200x200px max, convert to webp/jpeg
+        const canvas = document.createElement('canvas')
+        const maxSize = 200
+        let w = img.width, h = img.height
+        if (w > h) { h = Math.round((h * maxSize) / w); w = maxSize }
+        else { w = Math.round((w * maxSize) / h); h = maxSize }
+        canvas.width = w; canvas.height = h
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+        const b64 = canvas.toDataURL('image/jpeg', 0.85)  // JPEG quality 0.85 for good balance
+        setProfilePic(b64)
+        localStorage.setItem('cv_profile_picture', b64)
+      }
+      img.src = ev.target.result
     }
     reader.readAsDataURL(file)
   }
@@ -366,8 +379,8 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
     } catch(e) { setJdError(e.message); setStep('ready_to_generate') }
   }
 
-  // ── Export PDF (direct generation, no A4 limit) ───────────────────────────
-  const handleExportPDF = () => {
+  // ── Export PDF with optional server-side compression ──────────────────────
+  const handleExportPDF = async () => {
     const md       = editableCV || generatedCV
     const html     = renderCV(md, template, profilePic)
     const cvData   = parseCV(md)
@@ -407,29 +420,82 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
     `
     element.appendChild(style)
 
-    // Configure html2pdf options for full content (seamless pages, no visual breaks)
-    // Optimized for file size: reduced quality, scale, and aggressive compression
+    // Configure html2pdf options: balanced quality + file size
+    // Profile pic is pre-compressed, so we can use higher PDF quality
     const options = {
       margin: 0,  // no margins - content uses full page
       filename: `${filename}.pdf`,
-      image: { type: 'jpeg', quality: 0.75 },  // Reduced from 0.98 for smaller file size
-      html2canvas: { scale: 1, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false },  // Scale 1 instead of 2
+      image: { type: 'jpeg', quality: 0.92 },  // Higher quality since profile pic is already compressed
+      html2canvas: {
+        scale: 1,              // Canvas scale (1 = 96 DPI, good for screen/web)
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        imageTimeout: 10000    // Timeout for image loading
+      },
       jsPDF: {
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4',
         compress: true,
-        precision: 10,
-        hotfixes: ['px_scaling']  // Fix scaling issues
+        precision: 2,          // Lower precision = smaller file size
+        hotfixes: ['px_scaling']
       },
       pagebreak: {
         mode: ['avoid-all', 'css', 'legacy'],
-        before: false,  // No visual break before page
-        after: false    // No visual break after page
+        before: false,
+        after: false
       }
     }
 
-    html2pdf().set(options).from(element).save()
+    try {
+      setIsCompressing(true)
+      // Generate PDF as blob, then compress server-side
+      const pdfBlob = await new Promise(resolve => {
+        html2pdf().set(options).from(element).output('blob').then(resolve)
+      })
+
+      // Convert blob to base64
+      const reader = new FileReader()
+      reader.onload = async () => {
+        const pdfBase64 = reader.result
+
+        // Try server-side compression (optional enhancement)
+        try {
+          const compressRes = await fetch('/api/compress-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pdfBase64 })
+          })
+
+          if (compressRes.ok) {
+            const { pdfBase64: compressedPdf, compressionRatio } = await compressRes.json()
+            // Download compressed PDF
+            const link = document.createElement('a')
+            link.href = compressedPdf
+            link.download = `${filename}.pdf`
+            link.click()
+            console.log(`PDF compressed by ${compressionRatio}%`)
+            return
+          }
+        } catch (err) {
+          console.warn('Server compression unavailable, using original:', err.message)
+          // Fall back to original PDF if compression fails
+        }
+
+        // Fallback: download original PDF
+        const link = document.createElement('a')
+        link.href = pdfBase64
+        link.download = `${filename}.pdf`
+        link.click()
+      }
+      reader.readAsDataURL(pdfBlob)
+    } catch (err) {
+      console.error('PDF export error:', err)
+    } finally {
+      setIsCompressing(false)
+    }
   }
 
   const currentTpl = TEMPLATES.find(t => t.id === template) || TEMPLATES[0]
@@ -507,9 +573,9 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
               {isEditing ? '👁️ Aperçu' : '✏️ Éditer'}
             </button>
             <button onClick={generateCV} className="text-xs font-medium border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50">↺ Regénérer</button>
-            <button onClick={handleExportPDF}
-              className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${saved ? 'bg-indigo-600 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}`}>
-              {saved ? '✓ Sauvegardé dans la candidature' : '⬇️ Exporter PDF'}
+            <button onClick={handleExportPDF} disabled={isCompressing}
+              className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${saved ? 'bg-indigo-600 text-white' : 'bg-green-600 hover:bg-green-700 text-white disabled:opacity-60'}`}>
+              {saved ? '✓ Sauvegardé' : isCompressing ? '⏳ Optimisation...' : '⬇️ Exporter PDF'}
             </button>
           </div>
         )}
