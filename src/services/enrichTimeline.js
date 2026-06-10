@@ -87,7 +87,11 @@ async function analyzeEmailsForTimeline(emails, companyName) {
 
   const emailsText = emails
     .slice(0, 30)
-    .map((e, i) => `[${i+1}] De: ${e.from}\nSujet: ${e.subject}\nDate: ${e.date}\nAperçu: ${e.snippet}`)
+    .map((e, i) => {
+      // Use full body if available, otherwise fall back to snippet
+      const content = (e.body || e.snippet || '').slice(0, 1500)
+      return `[${i+1}] De: ${e.from}\nSujet: ${e.subject}\nDate: ${e.date}\nContenu: ${content}`
+    })
     .join('\n\n---\n\n')
 
   const res = await fetch('/api/claude', {
