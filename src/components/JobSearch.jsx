@@ -243,43 +243,30 @@ export default function JobSearch({ onAddJob, existingJobs }) {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-sm text-gray-800">{job.title}</span>
-                            {job.contractType && (
-                              <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
-                                {CONTRACT_LABELS[job.contractType] || job.contractType}
-                              </span>
-                            )}
+                          <div className="font-medium text-sm text-gray-800 mb-2">{job.title}</div>
+                          <div className="text-xs text-gray-600 font-medium mb-3">{job.company}</div>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-500">Salaire</span>
+                              <span className="font-medium text-gray-900">{job.salary ? job.salary.split(' ')[0] : '—'}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-500">Type</span>
+                              <span className="font-medium text-gray-900">{job.contractType ? CONTRACT_LABELS[job.contractType] || job.contractType : '—'}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-500">Location</span>
+                              <span className="font-medium text-gray-900 text-right truncate">{job.location || '—'}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-500">Catégorie</span>
+                              <span className="font-medium text-gray-900">{job.category || '—'}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                            <span className="text-xs text-gray-600 font-medium">{job.company}</span>
-                            {job.location && (
-                              <span className="text-xs text-gray-400">📍 {job.location}</span>
-                            )}
-                            {job.salary && (
-                              <span className="text-xs text-green-600 font-medium">💰 {job.salary}</span>
-                            )}
-                            {job.date && (
-                              <span className="text-xs text-gray-300">{formatDate(job.date)}</span>
-                            )}
-                          </div>
-                          {job.description && (
-                            <p className="text-xs text-gray-400 mt-1 line-clamp-2">{job.description}</p>
-                          )}
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                          {job.url && (
-                            <a
-                              href={job.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-indigo-500 hover:text-indigo-700 hover:underline whitespace-nowrap"
-                            >
-                              Voir ↗
-                            </a>
-                          )}
+                        <div className="flex flex-col items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
                           <button
                             onClick={() => handleAdd(job)}
                             disabled={alreadyAdded}
@@ -289,8 +276,18 @@ export default function JobSearch({ onAddJob, existingJobs }) {
                                 : 'bg-indigo-600 text-white hover:bg-indigo-700'
                             }`}
                           >
-                            {alreadyAdded ? '✓ Ajouté' : '+ Ajouter'}
+                            {alreadyAdded ? '✓' : '+ Ajouter'}
                           </button>
+                          {job.url && (
+                            <a
+                              href={job.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-indigo-500 hover:text-indigo-700 hover:underline"
+                            >
+                              Voir ↗
+                            </a>
+                          )}
                         </div>
                       </div>
                     </div>
