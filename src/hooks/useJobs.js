@@ -383,6 +383,48 @@ function autoStale(jobs) {
   })
 }
 
+// Revalidate archived jobs when auto-archiving settings change
+// Restore jobs that no longer meet the archive threshold with new settings
+export function revalidateArchives(jobs) {
+  const now = new Date()
+  const { archiveSentDays, archiveRejectedDays } = loadSettings()
+
+  return jobs.map(j => {
+    if (j.status !== 'archived') return j
+
+    // Check if this is an auto-archive by looking for the marker in history
+    const lastEntry = j.history?.[j.history.length - 1]
+    const isAutoArchive = lastEntry?.note?.includes('Archivée automatiquement')
+    if (!isAutoArchive) return j // Manual archive, don't touch
+
+    // Find the status before archival (second-to-last entry)
+    const priorEntry = j.history?.length >= 2 ? j.history[j.history.length - 2] : null
+    if (!priorEntry) return j // No prior status, keep archived
+
+    const priorStatus = priorEntry.status
+    const refDate = new Date(j.date || j.updatedAt)
+    const daysSince = (now - refDate) / (1000 * 60 * 60 * 24)
+
+    // Check if job should still be archived with new thresholds
+    const threshold = ['rejected', 'rejected_ats', 'cancelled'].includes(priorStatus)
+      ? archiveRejectedDays
+      : archiveSentDays
+
+    if (daysSince < threshold) {
+      // Job should be restored — remove auto-archive entry and restore prior status
+      const restoredHistory = j.history.slice(0, -1) // Remove auto-archive entry
+      return {
+        ...j,
+        status: priorStatus,
+        updatedAt: now.toISOString(),
+        history: restoredHistory
+      }
+    }
+
+    return j
+  })
+}
+
 // Deduplicate · -separated fragments within a single note string
 function deduplicateNoteFragments(note = '') {
   if (!note.includes(' · ')) return note
@@ -641,7 +683,10 @@ export function useJobs() {
   // Call this after bulk imports/refreshes to clean up duplicates without a page reload
   const reprocessJobs = () => {
     setJobs(prev => {
-      const processed = autoStale(deduplicateJobs(mergeSameDateEntries(splitPipeNotes(deduplicateHistory(prev)))))
+      // First, revalidate auto-archived jobs based on current settings
+      const revalidated = revalidateArchives(prev)
+
+      const processed = autoStale(deduplicateJobs(mergeSameDateEntries(splitPipeNotes(deduplicateHistory(revalidated)))))
 
       // FIX: Post-process HelloWork rejections that Claude mis-parses as reviewing
       return processed.map(job => {
