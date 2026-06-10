@@ -65,6 +65,12 @@ export default function JobSearch({ onAddJob, existingJobs }) {
     }
   }, [])
 
+  useEffect(() => {
+    if (results?.jobs?.length > 0 && !selectedJob) {
+      setSelectedJob(results.jobs[0])
+    }
+  }, [results])
+
   const handleAdd = (job) => {
     onAddJob({
       company: job.company,
@@ -201,7 +207,7 @@ export default function JobSearch({ onAddJob, existingJobs }) {
       {results && (
         <div className={selectedJob ? 'flex-1 min-h-0 flex overflow-hidden' : ''}>
           {/* List side */}
-          <div className={selectedJob ? 'flex-1 flex flex-col border-r border-gray-100' : ''}>
+          <div className={selectedJob ? 'w-80 flex flex-col border-r border-gray-100' : ''}>
             <div className={`px-4 py-2 bg-gray-50/60 border-b border-gray-100 flex items-center justify-between ${selectedJob ? 'flex-shrink-0' : ''}`}>
               <span className="text-xs text-gray-500">
                 {results.total.toLocaleString('fr-FR')} offre{results.total > 1 ? 's' : ''} trouvée{results.total > 1 ? 's' : ''}
@@ -241,7 +247,10 @@ export default function JobSearch({ onAddJob, existingJobs }) {
                       }`}
                     >
                       <div className="font-medium text-sm text-gray-800">{job.title}</div>
-                      <div className="text-xs text-gray-600 mt-1">{job.company}{job.salary ? ` • ${job.salary.split(' ')[0]}` : ''}</div>
+                      <div className="text-xs text-gray-600 mt-1">
+                        {job.company}
+                        {job.salary && <span className="text-green-600 font-medium"> • {job.salary.split(' ')[0]}</span>}
+                      </div>
                     </div>
                   )
                 })}
@@ -272,7 +281,7 @@ export default function JobSearch({ onAddJob, existingJobs }) {
 
           {/* Detail Panel */}
           {selectedJob && (
-            <div className="w-96 bg-white border-l border-gray-100 flex flex-col overflow-hidden">
+            <div className="flex-1 bg-white border-l border-gray-100 flex flex-col overflow-hidden">
               {/* Detail Header */}
               <div className="px-4 py-3 border-b border-gray-100 flex items-start justify-between flex-shrink-0">
                 <div>
