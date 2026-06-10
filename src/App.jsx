@@ -629,7 +629,7 @@ export default function App() {
                     </thead>
                     <tbody>
                       {filtered.filter(j => j.favorite).map(job => (
-                        <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} onViewSavedCV={handleViewSavedCV} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} />
+                        <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} onViewSavedCV={handleViewSavedCV} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} checkAllPositions={checkAllPositions} />
                       ))}
                     </tbody>
                   </table>
@@ -655,7 +655,7 @@ export default function App() {
                   </thead>
                   <tbody>
                     {filtered.filter(j => !j.favorite).map(job => (
-                      <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} onViewSavedCV={handleViewSavedCV} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} />
+                      <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} onViewSavedCV={handleViewSavedCV} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} checkAllPositions={checkAllPositions} />
                     ))}
                   </tbody>
                 </table>

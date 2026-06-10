@@ -18,6 +18,9 @@ export const SETTINGS_DEFAULTS = {
   // Gmail sync
   autoRefreshHours: 6,
   gmailPeriodMonths: 3,
+  // Position availability check
+  checkPositionAfterDays: 14,
+  checkPositionEnabled: true,
 }
 
 export function loadSettings() {

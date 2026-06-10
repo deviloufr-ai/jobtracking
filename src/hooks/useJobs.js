@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { loadSettings } from './useSettings'
+import { extractJobUrlsFromEmail, checkPositionUrl } from '../services/positionChecker'
 
 const STORAGE_KEY = 'jobtrackr_applications'
 
@@ -402,6 +403,7 @@ export function revalidateArchives(jobs) {
     if (!priorEntry) return j // No prior status, keep archived
 
     const priorStatus = priorEntry.status
+    // Use ORIGINAL application date (j.date) not last activity — matches autoStale behavior
     const refDate = new Date(j.date || j.updatedAt)
     const daysSince = (now - refDate) / (1000 * 60 * 60 * 24)
 
@@ -412,6 +414,7 @@ export function revalidateArchives(jobs) {
 
     if (daysSince < threshold) {
       // Job should be restored — remove auto-archive entry and restore prior status
+      // Also remove the job from the archive status so autoStale won't re-archive it
       const restoredHistory = j.history.slice(0, -1) // Remove auto-archive entry
       return {
         ...j,
@@ -579,12 +582,26 @@ export function useJobs() {
         : 'Offre ajoutée — à postuler'
     }
 
+    // Extract position links from email body if available
+    let positionLinks = []
+    if (data._emailBody) {
+      extractJobUrlsFromEmail(data._emailBody, 3).then(urls => {
+        // Update job with extracted links (async)
+        if (urls.length > 0) {
+          setJobs(prev => prev.map(j => j.id === jobId ? { ...j, positionLinks: urls } : j))
+        }
+      }).catch(e => console.warn('Failed to extract URLs:', e.message))
+    }
+
+    const jobId = crypto.randomUUID()
     const job = {
       ...data,
       status,
-      id: crypto.randomUUID(),
+      id: jobId,
       updatedAt: new Date().toISOString(),
       sentAt: ['sent','reviewing','waiting'].includes(status) ? (data.date || new Date().toISOString().split('T')[0]) : undefined,
+      positionLinks: positionLinks || [],
+      positionChecks: {}, // { url: { available, reason, checkedAt } }
       // enrichedAt intentionally absent on creation — will be set after first enrichment
       // Use pre-built history from email import when available (preserves per-email dates)
       history: data._history || [{
@@ -603,6 +620,7 @@ export function useJobs() {
     delete job._fromEmail
     delete job._fromMe
     delete job._history
+    delete job._emailBody
     setJobs(prev => [job, ...prev])
     return job
   }
@@ -702,5 +720,35 @@ export function useJobs() {
     })
   }
 
-  return { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched, reprocessJobs }
+  // Check if a specific position URL is still available
+  const checkPosition = async (jobId, url) => {
+    const result = await checkPositionUrl(url)
+    setJobs(prev => prev.map(j => {
+      if (j.id !== jobId) return j
+      return {
+        ...j,
+        positionChecks: {
+          ...(j.positionChecks || {}),
+          [url]: result
+        }
+      }
+    }))
+    return result
+  }
+
+  // Check all position links for a job (or just the top one if multiple)
+  const checkAllPositions = async (jobId, topN = 1) => {
+    const job = jobs.find(j => j.id === jobId)
+    if (!job || !job.positionLinks?.length) return []
+
+    const urlsToCheck = job.positionLinks.slice(0, topN)
+    const results = []
+    for (const url of urlsToCheck) {
+      const result = await checkPosition(jobId, url)
+      results.push(result)
+    }
+    return results
+  }
+
+  return { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched, reprocessJobs, checkPosition, checkAllPositions }
 }

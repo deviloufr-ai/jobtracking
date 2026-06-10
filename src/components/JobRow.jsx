@@ -89,7 +89,7 @@ function getSourceLabel(entry, companyName) {
   return null
 }
 
-export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, onViewSavedCV, forceExpand, onForceExpandDone }) {
+export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, onViewSavedCV, forceExpand, onForceExpandDone, checkAllPositions }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
   const [showUseCase, setShowUseCase] = useState(false)
@@ -98,6 +98,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
   const statusBtnRef = useRef(null)
   const enrichTimerRef = useRef(null) // Fix #6
   const rowRef = useRef(null)
+  const [checkingPosition, setCheckingPosition] = useState(false)
 
   // Open + scroll when triggered from Prochaines étapes
   useEffect(() => {
@@ -266,6 +267,26 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
     setEnriching(false)
   }
 
+  const handleCheckPosition = async () => {
+    if (!checkAllPositions || !job.positionLinks?.length) return
+    setCheckingPosition(true)
+    try {
+      await checkAllPositions(job.id, 1)
+    } catch (e) {
+      console.error('Position check failed:', e.message)
+    }
+    setCheckingPosition(false)
+  }
+
+  // Get position status from most recent check
+  const getPositionStatus = () => {
+    if (!job.positionChecks || !job.positionLinks?.length) return null
+    const checks = Object.values(job.positionChecks).filter(c => c)
+    if (!checks.length) return null
+    const latest = checks[0] // Most recent check
+    return latest.available
+  }
+
   // Deterministic avatar color from company name
   const avatarColors = [
     'bg-violet-100 text-violet-700','bg-blue-100 text-blue-700','bg-teal-100 text-teal-700',
@@ -384,8 +405,11 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
               onUseCase={() => { setShowUseCase(v => !v); setShowAddStep(false) }}
               onEdit={() => onEdit(job)}
               onDelete={() => onDelete(job)}
+              onCheckPosition={job.positionLinks?.length ? handleCheckPosition : null}
               enriching={enriching}
               hasUseCase={!!job.useCase?.title}
+              checkingPosition={checkingPosition}
+              positionStatus={getPositionStatus()}
             />
           </div>
         </td>

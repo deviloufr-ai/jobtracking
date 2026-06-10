@@ -345,6 +345,14 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
     `in:inbox (job AND (offer OR application OR candidature)) ${dateFilter}`,
     // ② Personal inbox keywords (FR)
     `in:inbox category:personal (candidature OR postulation OR entretien OR recrutement OR "votre candidature" OR "nous avons bien reçu" OR "suite à votre candidature" OR "nous avons le regret" OR "sans suite" OR "n'avons pas retenu") ${dateFilter}`,
+    // ②b Recruiter acknowledgement emails (FR) — "Nous vous remercions" — search in ALL to catch categorized emails
+    `in:all "nous vous remercions" ${dateFilter}`,
+    // ②c Recruiter interview invitation emails (FR) — "faire plus ample connaissance"
+    `in:all "faire plus ample connaissance" ${dateFilter}`,
+    // ②d Recruiter interview invitation alt (FR) — "ample connaissance"
+    `in:all "ample connaissance" ${dateFilter}`,
+    // ②e Talent acquisition emails — "head of talent" or "talent acquisition"
+    `in:all ("head of talent" OR "talent acquisition" OR "talent recruiter") ${dateFilter}`,
     // ③ Personal inbox keywords (EN)
     `in:inbox category:personal (interview OR "thank you for applying" OR "thanks for applying" OR "application received" OR "your application" OR "we have received" OR "we regret" OR "not selected" OR "not moving forward" OR "job offer" OR "offer letter" OR "next steps" OR "hiring process") ${dateFilter}`,
     // ④ ATS platforms — always relevant regardless of category
@@ -438,14 +446,32 @@ async function fetchEmailDetail(id, token) {
 
     if (!isATS) {
       // ① Sender blocklist — job board alerts + marketing/CRM bulk senders
+      // Note: noreply@ from known recruiters is OK (checked separately via isRecruiterNoreply)
       const JOB_ALERT_SENDERS = [
         'notification@emails.hellowork', 'jobalerts@', 'jobalertes@',
         'newsletter@', 'digest@', 'news@', 'mailer@', 'info@emails.',
         'donotreply@match.indeed.com', '@match.indeed.com', 'match@indeed.com',
         'suggested@indeed.com', 'recommendations@indeed.com',
         // Marketing/CRM bulk-sending subdomains — used by brands, never by recruiters
-        '@crm.', '@email.', '@send.', '@promo.', '@marketing.', 'noreply@', 'no-reply@',
+        '@crm.', '@email.', '@send.', '@promo.', '@marketing.', // Removed 'noreply@', 'no-reply@' — checked separately
       ]
+
+      // Recruiter noreply addresses are legitimate (not job alerts)
+      const RECRUITER_NOREPLY_PATTERNS = ['recrutement@', 'recruiting@', 'careers@', 'jobs@', 'hiring@', 'talent@', 'rh@']
+      const RECRUITER_KEYWORDS = ['candidature', 'application', 'entretien', 'interview', 'nous vous remercions',
+                                   'faire plus ample connaissance', 'product owner', 'product manager', 'head of talent']
+      const hasRecruiterSignal = RECRUITER_KEYWORDS.some(k => (subjectRaw.includes(k) || snippetRaw.includes(k)))
+
+      const isRecruiterNoreply = (RECRUITER_NOREPLY_PATTERNS.some(p => fromRaw.includes(p)) ||
+                                   hasRecruiterSignal) &&
+                                  (fromRaw.includes('noreply@') || fromRaw.includes('no-reply@'))
+
+      const isFromBlocklist = JOB_ALERT_SENDERS.some(s => fromRaw.includes(s))
+
+      // Noreply addresses are job alerts UNLESS they're from known recruiter patterns OR have recruiter keywords
+      const noreplyAlert = (fromRaw.includes('noreply@') || fromRaw.includes('no-reply@')) && !isRecruiterNoreply
+
+      if (isFromBlocklist || noreplyAlert) return null
       const JOB_ALERT_SUBJECTS = [
         'nouvelles offres', 'new jobs', 'offres d\'emploi', 'offres recommand',
         'emplois recommand', 'job alert', 'jobs you might like', 'candidatures suggest',
@@ -466,12 +492,21 @@ async function fetchEmailDetail(id, token) {
         'sans suite','n\'avons pas retenu','offre d\'emploi','poste de','proposition d\'embauche',
         'test technique','cas pratique','prise de contact','nous serions ravis','opportunité',
         'postuler','postulé','candidat','négociation salariale','embauche',
+        // FR acknowledgement/recruiter emails
+        'nous vous remercions','nous allons étudier','reprendrons contact','merci de votre',
+        'merci de votre confiance','nous retenons','nous vous contactrons','délai de',
+        'base de données','avons le regret','n\'a pas retenu','reste informé',
+        // FR interview invitation / engagement emails
+        'faire plus ample connaissance','ample connaissance','échange sera l','projeter au sein',
+        'attentes et vous','talent acquisition','head of talent','recrutement','créneau qui vous',
+        'product owner','product manager','chef de projet',
         // EN
         'application','interview','hiring','recruiter','thank you for applying',
         'thanks for applying','application received','your application','we regret',
         'not selected','not moving forward','job offer','offer letter','next steps',
         'hiring process','we\'d love','inmail','viewed your application',
         'applied','applied to','candidate','salary negotiation',
+        'get to know you','meet with you','schedule a call','time slot','available times',
       ]
       const hasJobSignal = JOB_SUBJECT_KEYWORDS.some(k => subjectRaw.includes(k) || snippetRaw.includes(k))
       if (!hasJobSignal) return null

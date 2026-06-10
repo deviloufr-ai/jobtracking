@@ -300,6 +300,9 @@ export default function Settings({ jobs, onMergeDuplicates }) {
         <Row label="Période de recherche Gmail" hint="Fenêtre d'import des emails lors d'un scan">
           <NumInput value={settings.gmailPeriodMonths} onChange={v => updateSetting('gmailPeriodMonths', v)} min={1} max={12} suffix="mois" />
         </Row>
+        <Row label="Vérifier disponibilité du poste après X jours" hint="Auto-détecte si le poste est toujours ouvert dans les emails reçus">
+          <NumInput value={settings.checkPositionAfterDays} onChange={v => updateSetting('checkPositionAfterDays', v)} min={0} max={365} suffix="jours" />
+        </Row>
       </Section>
 
       {/* Follow-ups */}

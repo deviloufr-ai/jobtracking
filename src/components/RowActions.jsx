@@ -9,8 +9,11 @@ export default function RowActions({
   onUseCase,
   onEdit,
   onDelete,
+  onCheckPosition,
   enriching = false,
-  hasUseCase = false
+  hasUseCase = false,
+  checkingPosition = false,
+  positionStatus = null,
 }) {
   const actions = [
     // Timeline actions (only when expanded)
@@ -37,6 +40,16 @@ export default function RowActions({
         onClick: onUseCase,
         color: hasUseCase ? 'text-purple-600 hover:text-purple-700 hover:bg-purple-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
       },
+      ...(onCheckPosition ? [
+        {
+          id: 'check',
+          icon: positionStatus === true ? '✓' : positionStatus === false ? '✗' : '🔍',
+          label: positionStatus === true ? 'Poste ouvert' : positionStatus === false ? 'Poste fermé' : 'Vérifier disponibilité',
+          onClick: onCheckPosition,
+          disabled: checkingPosition,
+          color: positionStatus === true ? 'text-green-600 hover:text-green-700 hover:bg-green-50' : positionStatus === false ? 'text-red-600 hover:text-red-700 hover:bg-red-50' : 'text-orange-600 hover:text-orange-700 hover:bg-orange-50'
+        }
+      ] : []),
       { divider: true }
     ] : []),
 
