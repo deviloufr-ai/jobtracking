@@ -36,6 +36,16 @@ function detectMeetingPlatform(url = '') {
   return { name: 'Visio', emoji: '📹' }
 }
 
+// Merge date + time into ISO datetime string (YYYY-MM-DDTHH:mm:00)
+function mergeDateAndTime(date, time) {
+  if (!date) return date
+  if (!time) return date
+  // If date already has time (contains T), return as-is
+  if (date.includes('T')) return date
+  // Combine date + time into ISO format
+  return `${date}T${time}:00`
+}
+
 // Auto-mark meetings as done when 1+ hour has passed, and remove "À venir" label
 function autoCompletePastMeetings(history) {
   if (!history || history.length === 0) return history
@@ -95,6 +105,7 @@ RÈGLE IMPORTANTE : chaque email = potentiellement plusieurs événements distin
 
 Pour chaque événement retourne un objet JSON avec :
 - date: YYYY-MM-DD (date de l'email ou de l'événement mentionné)
+- time: HH:mm si l'heure est mentionnée (ex: "14:30"), sinon null
 - status: exactement un de : "sent" | "reviewing" | "interview" | "waiting" | "offer" | "rejected" | "rejected_ats" | "cancelled"
 - note: UNE SEULE action ou information courte (max 80 chars, PAS de pipe |, PAS de concaténation)
 - meetingLink: URL du lien visio si présent dans l'email (Google Meet, Zoom, Teams), sinon null
@@ -102,11 +113,11 @@ Pour chaque événement retourne un objet JSON avec :
 
 Exemples CORRECTS (une action par entrée) :
 [
-  {"date":"2026-06-01","status":"sent","note":"Candidature envoyée via LinkedIn","source":"email"},
-  {"date":"2026-06-02","status":"reviewing","note":"Accusé de réception automatique","source":"email"},
-  {"date":"2026-06-03","status":"interview","note":"Invitation call RH 15min","source":"email"},
-  {"date":"2026-06-04","status":"interview","note":"Call RH passé - profil retenu","source":"email"},
-  {"date":"2026-06-05","status":"waiting","note":"Test technique envoyé","source":"email"}
+  {"date":"2026-06-01","time":null,"status":"sent","note":"Candidature envoyée via LinkedIn","source":"email"},
+  {"date":"2026-06-02","time":null,"status":"reviewing","note":"Accusé de réception automatique","source":"email"},
+  {"date":"2026-06-03","time":"14:30","status":"interview","note":"Invitation call RH 15min","source":"email"},
+  {"date":"2026-06-04","time":"14:45","status":"interview","note":"Call RH passé - profil retenu","source":"email","meetingLink":"https://meet.google.com/xyz"},
+  {"date":"2026-06-05","time":null,"status":"waiting","note":"Test technique envoyé","source":"email"}
 ]
 
 Réponds UNIQUEMENT avec un tableau JSON valide, sans texte avant ou après, sans backticks.
@@ -144,7 +155,12 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
       const emails = await fetchJobEmails(null, 1/30, null, job.lastSyncTime)
       if (emails.length > 0) {
         const emailEvents = await analyzeEmailsForTimeline(emails, job.company)
-        events.push(...emailEvents.map(e => ({ ...e, source: 'email' })))
+        // Merge date + time for events that have time information
+        events.push(...emailEvents.map(e => ({
+          ...e,
+          date: mergeDateAndTime(e.date, e.time),
+          source: 'email'
+        })))
       }
     } catch (e) {
       console.warn('Email enrichment failed:', e.message)
