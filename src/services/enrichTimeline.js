@@ -182,8 +182,19 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
   // If a calendar event matches an existing entry by date+status, inject its meeting link
   const existingByKey = new Map((job.history || []).map(h => [`${h.date}-${h.status}`, h]))
 
+  // Build set of existing meeting links to prevent duplicate meetings
+  const existingMeetingLinks = new Set()
+  for (const h of job.history || []) {
+    if (h.meetingLink) existingMeetingLinks.add(h.meetingLink)
+  }
+
   const newEvents = []
   for (const e of events) {
+    // Skip if this exact meeting link already exists in the candidature
+    if (e.meetingLink && existingMeetingLinks.has(e.meetingLink)) {
+      continue
+    }
+
     const key = `${e.date}-${e.status}`
     if (existingByKey.has(key)) {
       // Entry already exists — inject meeting link if we now have one
@@ -192,9 +203,11 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
         existing.meetingLink = e.meetingLink
         existing.meetingPlatform = e.meetingPlatform
         existing.meetingEmoji = e.meetingEmoji
+        existingMeetingLinks.add(e.meetingLink)
       }
     } else {
       newEvents.push(e)
+      if (e.meetingLink) existingMeetingLinks.add(e.meetingLink)
     }
   }
 
