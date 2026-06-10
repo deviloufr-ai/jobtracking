@@ -3,7 +3,6 @@ import { loadSettings } from './useSettings'
 import { extractUrlsFromEmail, rankUrlsByJobRelevance, checkPositionUrl } from '../services/positionChecker'
 
 const STORAGE_KEY = 'jobtrackr_applications'
-const DELETED_JOBS_KEY = 'jobtrackr_deleted'
 
 // ─── enrichedAt helpers ───────────────────────────────────────────────────────
 // Max age before enrichment is considered stale (30 days)
@@ -503,20 +502,6 @@ function isSuggestionJob(j) {
   return notes.every(n => SUGGESTION_NOTE_KEYWORDS.some(k => n.includes(k)))
 }
 
-function loadDeletedJobs() {
-  try {
-    const raw = localStorage.getItem(DELETED_JOBS_KEY)
-    if (raw) {
-      return JSON.parse(raw)
-    }
-  } catch (e) { console.error('JobTrackr: failed to load deleted jobs', e) }
-  return []
-}
-
-function saveDeletedJobs(deleted) {
-  localStorage.setItem(DELETED_JOBS_KEY, JSON.stringify(deleted))
-}
-
 function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -553,12 +538,6 @@ function load() {
 
 function save(jobs) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs))
-}
-
-export function isDeletedJob(company, position) {
-  const deleted = loadDeletedJobs()
-  const key = `${normalizeCompany(company)}_${(position || '').toLowerCase().trim()}`
-  return deleted.some(d => d === key)
 }
 
 export function useJobs() {
@@ -656,18 +635,7 @@ export function useJobs() {
   }
 
   const deleteJob = (id) => {
-    setJobs(prev => {
-      const job = prev.find(j => j.id === id)
-      if (job) {
-        const deleted = loadDeletedJobs()
-        const key = `${normalizeCompany(job.company)}_${(job.position || '').toLowerCase().trim()}`
-        if (!deleted.includes(key)) {
-          deleted.push(key)
-          saveDeletedJobs(deleted)
-        }
-      }
-      return prev.filter(j => j.id !== id)
-    })
+    setJobs(prev => prev.filter(j => j.id !== id))
   }
 
   const updateStatus = (id, status) => {
@@ -784,9 +752,5 @@ export function useJobs() {
     return results
   }
 
-  const clearDeletedJobs = () => {
-    saveDeletedJobs([])
-  }
-
-  return { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched, reprocessJobs, checkPosition, checkAllPositions, clearDeletedJobs }
+  return { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched, reprocessJobs, checkPosition, checkAllPositions }
 }
