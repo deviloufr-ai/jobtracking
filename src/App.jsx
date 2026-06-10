@@ -89,7 +89,7 @@ function ExtensionButton() {
 }
 
 export default function App() {
-  const { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, reprocessJobs } = useJobs()
+  const { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, reprocessJobs, checkAllPositions } = useJobs()
   const { settings } = useSettings()
   const extensionInstalled = useExtensionDetect()
   const [modal, setModal] = useState(null)
