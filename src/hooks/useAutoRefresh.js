@@ -3,13 +3,12 @@ import { isConnected, fetchJobEmails, fetchJobEmailsForAccount, getConnectedAcco
 import { parseEmailsForJobs } from '../services/claude'
 import { fetchCalendarEvents } from '../services/calendar'
 import { isAtsRejection } from './useJobs'
+import { normalize, isJobBoard } from '../constants/jobBoards'
 
 const REFRESH_KEY = 'jobtrackr_last_refresh'
 const REFRESH_INTERVAL_HOURS = 1
 
 const STATUS_ORDER = ['todo','sent','reviewing','interview','done','waiting','offer','rejected','rejected_ats','cancelled','archived']
-
-function normalize(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '') }
 
 // ─── Semantic deduplication for history entries ───────────────────────────────
 // Group similar entries on same date by keyword overlap (e.g., multiple "test technique" notes)
@@ -80,17 +79,6 @@ function deduplicateHistoryBySemantics(history) {
   }
 
   return result.sort((a, b) => new Date(a.date) - new Date(b.date))
-}
-
-const JOB_BOARDS = new Set([
-  'linkedin','indeed','welcometothejungle','wttj','apec','monster','cadremploi',
-  'hellowork','freework','malt','jobteaser','glassdoor','meteojob','regionsjob',
-  'keljob','poleemploi','francetravail','talentio','otta','remixjobs','remotive',
-  'jobboard','smartrecruiters','workday','greenhouse','lever','ashby','jobvite',
-])
-
-function isJobBoard(company) {
-  return JOB_BOARDS.has(normalize(company))
 }
 
 function extractMeetingLink(text = '') {

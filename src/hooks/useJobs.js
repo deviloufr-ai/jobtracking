@@ -102,9 +102,9 @@ function normalizeCompany(name = '') {
   return name.toLowerCase()
     // Strip trailing legal suffixes (word boundary required — avoids stripping mid-name)
     .replace(/\s+(sas|sasu|sarl|sa|srl|inc|ltd|llc|gmbh|bv|nv|ag|spa|oy|ab)\.?\s*$/i, '')
-    // Strip trailing TLD suffixes (.io .com .fr etc.) only when at end
-    .replace(/\.(io|com|fr|co|net|org|app|ai|eu|de|uk|be|ch|ca|us|tech|dev)\s*$/i, '')
-    // Strip truly generic STANDALONE suffixes only — NOT 'ai' or 'app' (part of many brand names)
+    // Strip trailing TLD suffixes — but NOT 'ai' or 'app' (brand names: OpenAI, AppFlutter, etc.)
+    .replace(/\.(io|com|fr|co|net|org|eu|de|uk|be|ch|ca|us|tech|dev)\s*$/i, '')
+    // Strip truly generic STANDALONE suffixes only
     .replace(/\b(technologies|digital|solutions|group|labs|studio|hq|services|consulting|innovation|ventures|project|projects)\b/gi, '')
     // Strip everything non-alphanumeric
     .replace(/[^a-z0-9]/g, '')

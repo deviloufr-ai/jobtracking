@@ -1,14 +1,15 @@
+import { JOB_BOARD_NAMES, normalize, isJobBoard } from '../constants/jobBoards'
+
 const IS_DEV = import.meta.env.DEV
 const CLAUDE_ENDPOINT = IS_DEV ? null : '/api/claude'
-const MODEL = 'claude-haiku-4-5-20251001'
+const MODEL = import.meta.env.VITE_CLAUDE_MODEL || 'claude-haiku-4-5-20251001'
 
-const JOB_BOARD_NAMES = new Set([
-  'linkedin','indeed','welcometothejungle','wttj','apec','monster','cadremploi',
-  'hellowork','freework','malt','jobteaser','glassdoor','meteojob','regionsjob',
-  'keljob','poleemploi','francetravail','talentio','otta','remixjobs','remotive',
-])
-const normCo = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-const isCachedJobBoard = result => JOB_BOARD_NAMES.has(normCo(result?.company))
+// Request queue to prevent cascading rate limits
+let claudeRequestQueue = Promise.resolve()
+let claudeRequestCount = 0
+const MAX_CONCURRENT_REQUESTS = 1
+
+const isCachedJobBoard = result => isJobBoard(result?.company)
 
 // ─── Email parse cache ────────────────────────────────────────────────────────
 const EMAIL_CACHE_KEY = 'jobtrackr_email_cache'
@@ -31,7 +32,20 @@ function loadEmailCache() {
 }
 
 function saveEmailCache(cache) {
-  try { localStorage.setItem(EMAIL_CACHE_KEY, JSON.stringify(cache)) } catch {}
+  try {
+    const json = JSON.stringify(cache)
+    const sizeMB = json.length / (1024 * 1024)
+
+    // Keep cache under 4MB to avoid filling localStorage (5-10MB limit)
+    if (sizeMB > 4) {
+      // Delete oldest 20% of entries
+      const sorted = Object.entries(cache).sort((a, b) => a[1].ts - b[1].ts)
+      const toDelete = Math.ceil(sorted.length * 0.2)
+      sorted.slice(0, toDelete).forEach(([key]) => delete cache[key])
+    }
+
+    localStorage.setItem(EMAIL_CACHE_KEY, JSON.stringify(cache))
+  } catch {}
 }
 
 function emailCacheKey(email) {
@@ -53,36 +67,43 @@ export function getEmailCacheStats() {
 async function callClaude(systemPrompt, userContent, retries = 3) {
   if (!CLAUDE_ENDPOINT) return JSON.stringify(MOCK_PARSE_RESULT)
 
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    const res = await fetch(CLAUDE_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1500,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userContent }],
-      }),
-    })
-    const data = await res.json()
+  // Queue requests to prevent cascading rate limits
+  return claudeRequestQueue = claudeRequestQueue.then(async () => {
+    claudeRequestCount++
+    try {
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        const res = await fetch(CLAUDE_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: MODEL,
+            max_tokens: 1500,
+            system: systemPrompt,
+            messages: [{ role: 'user', content: userContent }],
+          }),
+        })
+        const data = await res.json()
 
-    // Rate limit — wait and retry with exponential backoff
-    if (res.status === 429) {
-      const waitMs = Math.min(5000 * Math.pow(2, attempt), 30000) // 5s, 10s, 20s, 30s max
-      console.warn(`Rate limit hit — waiting ${waitMs / 1000}s before retry ${attempt + 1}/${retries}`)
-      await new Promise(r => setTimeout(r, waitMs))
-      continue
-    }
+        // Rate limit — wait and retry with exponential backoff
+        if (res.status === 429) {
+          const waitMs = Math.min(5000 * Math.pow(2, attempt), 30000)
+          console.warn(`Claude rate limited (queue pos: ${claudeRequestCount}) — waiting ${waitMs / 1000}s...`)
+          await new Promise(r => setTimeout(r, waitMs))
+          continue
+        }
 
-    if (!res.ok) {
-      console.error('Claude API error:', data)
-      throw new Error(data?.error?.message || `Claude API ${res.status}`)
+        if (!res.ok) {
+          console.error('Claude API error:', data)
+          throw new Error(data?.error?.message || `Claude API ${res.status}`)
+        }
+        const text = data.content?.[0]?.text || ''
+        return text
+      }
+      throw new Error('Rate limit — réessaie dans quelques secondes.')
+    } finally {
+      claudeRequestCount--
     }
-    const text = data.content?.[0]?.text || ''
-    return text
-  }
-  throw new Error('Rate limit — réessaie dans quelques secondes.')
-}
+  })
 
 function parseJSON(raw) {
   try {
@@ -98,10 +119,14 @@ function parseJSON(raw) {
       else if (clean[i] === ']') { depth--; if (depth === 0) { end = i; break } }
     }
     if (end === -1) return []
+
     const parsed = JSON.parse(clean.slice(start, end + 1))
-    return Array.isArray(parsed) ? parsed : []
+
+    // Validate schema: ensure all required fields are present
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter(item => item && typeof item === 'object' && item.company && item.status)
   } catch (e) {
-    console.error('Parse error:', e.message, raw.slice(0, 100))
+    console.error('Failed to parse Claude JSON response:', e.message, raw.slice(0, 100))
     return []
   }
 }

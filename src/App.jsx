@@ -3,6 +3,7 @@ import { useJobs, getStatus } from './hooks/useJobs'
 import { useExtensionImport } from './hooks/useExtensionImport'
 import { useExtensionDetect } from './hooks/useExtensionDetect'
 import { useSettings } from './hooks/useSettings'
+import ErrorBoundary from './components/ErrorBoundary'
 import Stats from './components/Stats'
 import Filters from './components/Filters'
 import JobRow from './components/JobRow'
@@ -195,9 +196,9 @@ export default function App() {
       if (included.length > 0 && !included.includes(j.status)) return false
       if (excluded.includes(j.status)) return false
       if (filters.period !== 'all') {
-        // Fix #12 — filter on last activity date (matches Date column) not original application date
-        const lastDate = j.history?.length ? j.history[j.history.length - 1].date : j.date
-        const d = new Date(lastDate)
+        // Fixed: Use ORIGINAL application date (j.date), not last history entry
+        // This avoids re-imports from changing the date filter results
+        const d = new Date(j.date)
         const now = new Date()
         const days = (now - d) / (1000 * 60 * 60 * 24)
         if (filters.period === 'week' && days > 7) return false
@@ -286,7 +287,8 @@ export default function App() {
   const goTab = (id) => { setActiveTab(id); setMobileMenuOpen(false) }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <ErrorBoundary>
+      <div className="min-h-screen bg-slate-50">
 
       {/* ── Mobile drawer overlay ──────────────────────────────────────────── */}
       {mobileMenuOpen && (
@@ -732,6 +734,7 @@ export default function App() {
           {toast}
         </div>
       )}
-    </div>
+      </div>
+    </ErrorBoundary>
   )
 }

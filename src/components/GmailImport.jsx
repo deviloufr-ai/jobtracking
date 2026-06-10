@@ -80,7 +80,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
           await refreshToken()
         } catch {
           setError('Session expirée — veuillez vous reconnecter.')
-          setConnected(false)
+          refreshAccountList()
           setStep(STEPS.idle)
           return
         }

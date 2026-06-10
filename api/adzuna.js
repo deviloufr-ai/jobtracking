@@ -1,9 +1,7 @@
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+import { setupCORS } from './cors-helper.js'
 
-  if (req.method === 'OPTIONS') { res.status(200).end(); return }
+export default async function handler(req, res) {
+  if (setupCORS(req, res)) return
 
   const APP_ID = process.env.VITE_ADZUNA_APP_ID
   const APP_KEY = process.env.VITE_ADZUNA_APP_KEY

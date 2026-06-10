@@ -99,7 +99,8 @@ export async function connectGmail(hint = '') {
 
 // Auto-refresh token if expired
 export async function ensureValidToken(email = '') {
-  const targetEmail = email || getAccessToken(email) ? Object.keys(accounts)[0] : null
+  // Fixed: corrected ternary operator logic
+  const targetEmail = email || Object.keys(accounts)[0] || null
   if (!targetEmail) return null
 
   const acct = accounts[targetEmail]
@@ -216,7 +217,12 @@ export async function refreshToken(email) {
         const token = response.access_token
         const user = await fetchUserInfo(token)
         if (user) {
-          accounts[user.email] = { token, user }
+          // Fixed: add tokenExpiry to refreshed token
+          accounts[user.email] = {
+            token,
+            user,
+            tokenExpiry: new Date(Date.now() + 3600000).toISOString()
+          }
           saveAccounts(accounts)
         }
         resolve(token)

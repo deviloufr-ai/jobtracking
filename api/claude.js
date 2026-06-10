@@ -1,11 +1,10 @@
+import { setupCORS } from './cors-helper.js'
+
 // Vercel Serverless Function — proxy pour l'API Anthropic (évite CORS)
 export default async function handler(req, res) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  // Setup CORS with restricted origins
+  if (setupCORS(req, res)) return
 
-  if (req.method === 'OPTIONS') { res.status(200).end(); return }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
@@ -27,6 +26,15 @@ export default async function handler(req, res) {
       body: JSON.stringify(safeBody),
     })
     const data = await response.json()
+
+    // Log rate limits for monitoring
+    if (response.status === 429) {
+      console.warn('Claude rate limit:', {
+        remaining: response.headers.get('anthropic-ratelimit-remaining-requests'),
+        resetTokens: response.headers.get('anthropic-ratelimit-reset-tokens'),
+      })
+    }
+
     res.status(response.status).json(data)
   } catch (err) {
     res.status(500).json({ error: err.message })
