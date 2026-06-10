@@ -154,26 +154,22 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
           return acct ? { ...h, receivedBy: acct } : h
         })
       }
-      // Merge calendar events per company into existing history
-      const normCo = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+      // Merge calendar events into jobs — during scan, don't filter by company name
+      // (user's calendar events may not mention company explicitly; let enrichTimeline refine later)
       if (calendarEvents.length > 0) {
         for (const job of grouped) {
-          const co = normCo(job.company)
-          const coWords = job.company.toLowerCase().split(/\s+/).filter(w => w.length > 2) // e.g. ["publidata"]
-          const calEntries = calendarEvents
-            .filter(e => {
-              const title = e.title.toLowerCase()
-              const desc = (e.description || '').toLowerCase()
-              // Match if title/desc contains company name OR any significant word from company name
-              return normCo(e.title).includes(co) || normCo(e.description || '').includes(co)
-                || coWords.some(w => title.includes(w) || desc.includes(w))
-            })
-            .map(e => ({
-              date: e.date,
-              status: e.type === 'interview' ? 'interview' : e.type === 'offer' ? 'offer' : 'waiting',
-              note: `📅 ${e.title}${e.isUpcoming ? ' (à venir)' : ''}`,
-              source: 'calendar', isUpcoming: e.isUpcoming,
-            }))
+          // Map raw calendar events to timeline entries
+          const calEntries = calendarEvents.map(e => ({
+            date: e.date,
+            status: e.type === 'interview' ? 'interview' : e.type === 'offer' ? 'offer' : 'waiting',
+            note: `📅 ${e.title}${e.isUpcoming ? ' (à venir)' : ''}`,
+            source: 'calendar', isUpcoming: e.isUpcoming,
+            meetingLink: e.meetingLink,
+            meetingEmoji: e.meetingLink?.includes('meet.google.com') ? '🟢' : e.meetingLink?.includes('zoom') ? '🔵' : e.meetingLink?.includes('teams') ? '🟣' : '📹',
+            meetingPlatform: e.meetingLink?.includes('meet.google.com') ? 'Google Meet' : e.meetingLink?.includes('zoom') ? 'Zoom' : e.meetingLink?.includes('teams') ? 'Teams' : undefined,
+          }))
+
+          // Deduplicate: only add calendar entries that don't already exist by date+status
           const existingCalKeys = new Set(job.history.map(h => `${h.date}-${h.status}`))
           const newCal = calEntries.filter(e => !existingCalKeys.has(`${e.date}-${e.status}`))
           if (newCal.length) job.history = [...job.history, ...newCal].sort((a, b) => new Date(a.date) - new Date(b.date))
