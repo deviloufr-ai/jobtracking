@@ -154,12 +154,28 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
           return acct ? { ...h, receivedBy: acct } : h
         })
       }
-      // Merge calendar events into jobs — during scan, don't filter by company name
-      // (user's calendar events may not mention company explicitly; let enrichTimeline refine later)
-      if (calendarEvents.length > 0) {
+      // Fetch calendar events per company using API query (prevents same event appearing in multiple jobs)
+      // Google Calendar API's company query handles the matching intelligently
+      if (grouped.length > 0) {
+        const uniqueCompanies = [...new Set(grouped.map(j => j.company))]
+        const calEventsByCompany = new Map()
+
+        // Fetch in parallel for all unique companies
+        await Promise.all(
+          uniqueCompanies.map(company =>
+            fetchCalendarEvents(company, dateRange ? Math.max(1, Math.ceil((new Date(dateRange?.endDate || new Date()) - new Date(dateRange?.startDate || new Date())) / (1000 * 60 * 60 * 24 * 30))) : months)
+              .then(events => calEventsByCompany.set(company, events))
+              .catch(e => {
+                console.warn(`Calendar fetch failed for ${company}:`, e.message)
+                calEventsByCompany.set(company, [])
+              })
+          )
+        )
+
+        // Merge company-specific calendar events into jobs
         for (const job of grouped) {
-          // Map raw calendar events to timeline entries
-          const calEntries = calendarEvents.map(e => ({
+          const coEvents = calEventsByCompany.get(job.company) || []
+          const calEntries = coEvents.map(e => ({
             date: e.date,
             status: e.type === 'interview' ? 'interview' : e.type === 'offer' ? 'offer' : 'waiting',
             note: `📅 ${e.title}${e.isUpcoming ? ' (à venir)' : ''}`,
