@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { loadSettings } from './useSettings'
-import { extractJobUrlsFromEmail, checkPositionUrl } from '../services/positionChecker'
+import { extractUrlsFromEmail, rankUrlsByJobRelevance, checkPositionUrl } from '../services/positionChecker'
 
 const STORAGE_KEY = 'jobtrackr_applications'
 
@@ -582,22 +582,18 @@ export function useJobs() {
         : 'Offre ajoutée — à postuler'
     }
 
-    // Extract position links from email body if available
+    // Extract position links from email body if available (synchronous)
     let positionLinks = []
     if (data._emailBody) {
-      extractJobUrlsFromEmail(data._emailBody, 3).then(urls => {
-        // Update job with extracted links (async)
-        if (urls.length > 0) {
-          setJobs(prev => prev.map(j => j.id === jobId ? { ...j, positionLinks: urls } : j))
-        }
-      }).catch(e => console.warn('Failed to extract URLs:', e.message))
+      const allUrls = extractUrlsFromEmail(data._emailBody)
+      const ranked = rankUrlsByJobRelevance(allUrls)
+      positionLinks = ranked.slice(0, 3) // Keep top 3
     }
 
-    const jobId = crypto.randomUUID()
     const job = {
       ...data,
       status,
-      id: jobId,
+      id: crypto.randomUUID(),
       updatedAt: new Date().toISOString(),
       sentAt: ['sent','reviewing','waiting'].includes(status) ? (data.date || new Date().toISOString().split('T')[0]) : undefined,
       positionLinks: positionLinks || [],
