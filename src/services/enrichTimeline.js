@@ -36,28 +36,31 @@ function detectMeetingPlatform(url = '') {
   return { name: 'Visio', emoji: '📹' }
 }
 
-// Auto-mark previous history items as done when their corresponding meeting has finished
+// Auto-mark meetings as done when 1+ hour has passed, and remove "À venir" label
 function autoCompletePastMeetings(history) {
   if (!history || history.length === 0) return history
 
   const now = new Date()
   const updated = [...history]
 
-  // For each calendar event that's in the past, check if it's 2+ hours old
+  // For each calendar event, check if it's 1+ hour past start time
   for (let i = 0; i < updated.length; i++) {
     const entry = updated[i]
     if (entry.source !== 'calendar' || !entry.date) continue
 
     const eventTime = new Date(entry.date)
-    const twoHoursAfter = new Date(eventTime.getTime() + 2 * 60 * 60 * 1000)
+    const oneHourAfter = new Date(eventTime.getTime() + 1 * 60 * 60 * 1000)
 
-    // If meeting happened 2+ hours ago and entry isn't already done
-    if (now > twoHoursAfter && entry.status !== 'done') {
-      // Find the previous non-calendar entry to mark as done
+    // If meeting finished (1+ hour past) and entry is still upcoming
+    if (now > oneHourAfter && entry.status !== 'done') {
+      // Mark this calendar entry as done
+      entry.status = 'done'
+      // Remove "(à venir)" from the note
+      entry.note = entry.note.replace(/\s*\(à venir\)\s*$/i, '')
+      // Also mark the previous non-calendar entry as done if it exists
       for (let j = i - 1; j >= 0; j--) {
         const prevEntry = updated[j]
         if (prevEntry.source === 'email' && prevEntry.status !== 'done' && prevEntry.status !== 'rejected' && prevEntry.status !== 'rejected_ats' && prevEntry.status !== 'cancelled') {
-          // Mark previous entry as done since the meeting happened
           prevEntry.status = 'done'
           prevEntry.note = `${prevEntry.note} ✓`
           break
