@@ -190,6 +190,15 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
     // Pick best position: prefer non-generic over "Unknown"
     const bestPosition = sorted.map(e => e.position || '').find(p => !isGenericPos(p)) || latest.position
 
+    // Collect all email bodies for URL extraction
+    const emailBodies = sorted
+      .map(e => {
+        const orig = emailByGmailId[e.gmailId]
+        return orig?.body || ''
+      })
+      .filter(Boolean)
+      .join('\n\n---\n\n')
+
     grouped.push({
       ...latest,
       position: bestPosition,
@@ -197,6 +206,7 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
       status: highestStatus,
       history: mergedHistory,
       notes: sorted.map(e => e.notes).filter(Boolean).join(' | '),
+      _emailBody: emailBodies || undefined,
       ...(allUpdateOnly && { _updateOnly: true }),
     })
   }

@@ -317,6 +317,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         lastSyncTime: now,
         _gmailId: r.gmailId, _fromEmail: r.fromEmail, _fromMe: r.fromMe,
         _history: r.history?.length > 0 ? r.history : undefined,
+        _emailBody: r._emailBody || undefined,
       }))
 
     // Updates → merge new history entries into existing job
