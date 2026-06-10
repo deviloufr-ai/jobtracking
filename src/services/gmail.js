@@ -459,11 +459,13 @@ async function fetchEmailDetail(id, token) {
         'nous avons bien reçu','votre candidature','suite à votre','nous avons le regret',
         'sans suite','n\'avons pas retenu','offre d\'emploi','poste de','proposition d\'embauche',
         'test technique','cas pratique','prise de contact','nous serions ravis','opportunité',
+        'postuler','postulé','candidat','négociation salariale','embauche',
         // EN
         'application','interview','hiring','recruiter','thank you for applying',
         'thanks for applying','application received','your application','we regret',
         'not selected','not moving forward','job offer','offer letter','next steps',
         'hiring process','we\'d love','inmail','viewed your application',
+        'applied','applied to','candidate','salary negotiation',
       ]
       const hasJobSignal = JOB_SUBJECT_KEYWORDS.some(k => subjectRaw.includes(k) || snippetRaw.includes(k))
       if (!hasJobSignal) return null
