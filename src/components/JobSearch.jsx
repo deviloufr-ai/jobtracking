@@ -106,9 +106,9 @@ export default function JobSearch({ onAddJob, existingJobs }) {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[600px]">
+    <div className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden ${selectedJob ? 'flex flex-col h-[600px]' : ''}`}>
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2 flex-shrink-0">
+      <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
         <span className="text-base">🔎</span>
         <h3 className="text-sm font-semibold text-gray-800">Recherche d'offres</h3>
         {!isAdzunaConfigured() && (
@@ -119,7 +119,7 @@ export default function JobSearch({ onAddJob, existingJobs }) {
       </div>
 
       {/* Search bar */}
-      <div className="px-4 py-3 border-b border-gray-50 flex-shrink-0">
+      <div className="px-4 py-3 border-b border-gray-50">
         <div className="flex gap-2 flex-wrap">
           <div className="relative flex-1 min-w-[200px]">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">💼</span>
@@ -195,14 +195,14 @@ export default function JobSearch({ onAddJob, existingJobs }) {
 
       {/* Results + Detail Panel */}
       {error && (
-        <div className="px-4 py-3 text-sm text-red-500 bg-red-50 flex-shrink-0">{error}</div>
+        <div className="px-4 py-3 text-sm text-red-500 bg-red-50">{error}</div>
       )}
 
       {results && (
-        <div className="flex-1 min-h-0 flex overflow-hidden">
+        <div className={selectedJob ? 'flex-1 min-h-0 flex overflow-hidden' : ''}>
           {/* List side */}
-          <div className="flex-1 flex flex-col border-r border-gray-100">
-            <div className="px-4 py-2 bg-gray-50/60 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+          <div className={selectedJob ? 'flex-1 flex flex-col border-r border-gray-100' : ''}>
+            <div className={`px-4 py-2 bg-gray-50/60 border-b border-gray-100 flex items-center justify-between ${selectedJob ? 'flex-shrink-0' : ''}`}>
               <span className="text-xs text-gray-500">
                 {results.total.toLocaleString('fr-FR')} offre{results.total > 1 ? 's' : ''} trouvée{results.total > 1 ? 's' : ''}
               </span>
@@ -222,12 +222,12 @@ export default function JobSearch({ onAddJob, existingJobs }) {
             </div>
 
             {results.jobs.length === 0 ? (
-              <div className="text-center py-10 text-gray-400 flex-1">
+              <div className={`text-center py-10 text-gray-400 ${selectedJob ? 'flex-1' : ''}`}>
                 <div className="text-3xl mb-2">🔍</div>
                 <p className="text-sm">Aucune offre trouvée</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-50 overflow-y-auto flex-1">
+              <div className={`divide-y divide-gray-50 overflow-y-auto ${selectedJob ? 'flex-1' : 'max-h-[480px]'}`}>
                 {getSortedJobs().map(job => {
                   const alreadyAdded = isAlreadyAdded(job)
                   const isSelected = selectedJob?.id === job.id
@@ -301,7 +301,7 @@ export default function JobSearch({ onAddJob, existingJobs }) {
 
             {/* Pagination */}
             {results.total > 20 && (
-              <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between flex-shrink-0">
+              <div className={`px-4 py-3 border-t border-gray-100 flex items-center justify-between ${selectedJob ? 'flex-shrink-0' : ''}`}>
                 <button
                   onClick={() => handleSearch(page - 1)}
                   disabled={page === 1 || loading}
@@ -414,7 +414,7 @@ export default function JobSearch({ onAddJob, existingJobs }) {
       )}
 
       {!results && !loading && (
-        <div className="flex-1 flex items-center justify-center text-gray-300">
+        <div className={selectedJob ? 'flex-1 flex items-center justify-center text-gray-300' : 'text-center py-10 text-gray-300'}>
           <div className="text-center">
             <div className="text-3xl mb-2">💼</div>
             <p className="text-sm">Lance une recherche pour trouver des offres</p>
