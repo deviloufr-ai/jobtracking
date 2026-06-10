@@ -87,18 +87,14 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   // ── JD persistence ──
   if (msg.type === 'SAVE_JD') {
-    console.log('[JT BG] SAVE_JD called with key:', msg.key, 'text length:', msg.text?.length)
     browser.storage.local.set({ [msg.key]: msg.text }).then(() => {
-      console.log('[JT BG] SAVE_JD completed for key:', msg.key)
       sendResponse({ ok: true })
     })
     return true
   }
   if (msg.type === 'LOAD_JD') {
-    console.log('[JT BG] LOAD_JD called with key:', msg.key)
     browser.storage.local.get(msg.key).then(data => {
       const text = data[msg.key] || ''
-      console.log('[JT BG] LOAD_JD returning text length:', text.length, 'for key:', msg.key)
       sendResponse({ text })
     })
     return true
