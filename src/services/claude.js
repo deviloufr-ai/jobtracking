@@ -300,7 +300,8 @@ DÉTECTION STATUS (PRIORISER LA RÉALITÉ)
   "not selected", "we regret", "not a fit", "candidature rejetée", "refus explicite", "final decision",
   "candidature rejetée définitivement", "without further discussion", "will not follow up", "n'y donnera pas suite",
   "no further", "no next steps", "application was studied but", "will not continue", "not proceeding",
-  "we will not", "cannot move forward", "pas de suite", "a bien été étudiée mais", "studied but recruiter"
+  "we will not", "cannot move forward", "pas de suite", "a bien été étudiée mais", "studied but recruiter",
+  "n'aviez pas été retenu", "vous n'aviez pas", "n'ont pas été retenu", "n'a pas été retenu"
 
   HELLOWORK SPECIAL RULE (CRITICAL - LOGIC OVERRIDE):
   If email from HelloWork says "Réponse reçue de l'entreprise" OR "Response received from company":
