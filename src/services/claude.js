@@ -381,13 +381,17 @@ JAMAIS confidence > 0 si :
 - Email = newsletter/alert/suggestion sans action réelle
 
 ═══════════════════════════════════════════════════════════════════════════
-NOTES (40-80 CHARS MAX)
+NOTES (120-150 CHARS MAX - MERGE-FRIENDLY)
 ═══════════════════════════════════════════════════════════════════════════
-UNE SEULE info principale + contexte clé si utile
-✅ "Refus explicite, candidat non retenu"
-✅ "Entretien confirmé 08/06 à 14h30"
-✅ "Test technique proposé"
-❌ "Email from recruiter about the position saying they reviewed CV and want meeting" (trop long)
+Info principale en PREMIER (sera visible après fusion), puis contexte clé
+Permet de fusionner plusieurs notes du même jour avec " · " et rester lisible
+
+✅ "Candidature envoyée, profil en cours d'examen"
+✅ "Entretien confirmé 08/06 à 14h30 — visio avec Alexandre"
+✅ "Test technique proposé — 2 heures, chez vous"
+✅ "Refus explicite après étude de candidature"
+✅ "Test technique en cours, améliorations demandées"
+❌ "Email from recruiter about position" (trop vague et court)
 
 ═══════════════════════════════════════════════════════════════════════════
 IGNORER ABSOLUMENT (confidence: 0)
