@@ -454,7 +454,7 @@ async function fetchEmailDetail(id, token) {
     const snippetRaw = (data.snippet || '').toLowerCase()
 
     // Known ATS domains always pass through — their no-reply addresses are legit
-    const ATS_DOMAINS = ['greenhouse.io','lever.co','ashbyhq.com','workable.com','teamtailor.com',
+    const ATS_DOMAINS = ['greenhouse.io','lever.co','ashbyhq.com','workable.com','teamtailor.com','teamtailor-mail.com',
       'recruitee.com','bamboohr.com','smartrecruiters.com','jobvite.com','icims.com',
       'myworkdayjobs.com','taleo.net']
     // LinkedIn application confirmations are legitimate, not job alerts
