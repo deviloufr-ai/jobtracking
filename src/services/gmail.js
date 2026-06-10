@@ -392,14 +392,17 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
 
   const runQuery = async (query) => {
     try {
+      console.log(`📨 Running query: ${query.slice(0, 80)}...`)
       const data = await gmailFetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${Math.min(effectiveMonths * 20, 100)}&q=${encodeURIComponent(query)}`,
         token
       )
+      const newCount = (data.messages || []).length
+      console.log(`✅ Query returned ${newCount} emails`)
       for (const m of (data.messages || [])) {
         if (!allMessageIds.has(m.id)) { allMessageIds.add(m.id); allMessages.push(m) }
       }
-    } catch (e) { console.warn('Query failed:', query.slice(0, 60), e.message) }
+    } catch (e) { console.warn('❌ Query failed:', query.slice(0, 60), e.message) }
   }
 
   for (let i = 0; i < queries.length; i += 3) {
@@ -442,12 +445,19 @@ async function fetchEmailDetail(id, token) {
   try {
     const data = await gmailFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=full`, token)
     const labelIds = data.labelIds || []
-
-    // Safety net: drop promotional/forum emails even if they slipped through query filters
-    if (labelIds.includes('CATEGORY_PROMOTIONS') || labelIds.includes('CATEGORY_FORUMS')) return null
-
     const headers = data.payload?.headers || []
     const get = (name) => headers.find(h => h.name === name)?.value || ''
+    const subject = get('Subject')
+    const from = get('From')
+
+    console.log(`📧 Processing email: "${subject}" from ${from}`)
+
+    // Safety net: drop promotional/forum emails even if they slipped through query filters
+    if (labelIds.includes('CATEGORY_PROMOTIONS') || labelIds.includes('CATEGORY_FORUMS')) {
+      console.log(`   ❌ Filtered: Promotional/Forum category`)
+      return null
+    }
+
     const body = extractBody(data.payload).slice(0, 2000)
 
     // Drop job-alert / digest emails based on sender + subject patterns
@@ -463,6 +473,10 @@ async function fetchEmailDetail(id, token) {
     const LINKEDIN_APP_CONFIRMATION = subjectRaw.includes('your application was sent') &&
                                        fromRaw.includes('jobs-noreply@linkedin.com')
     const isATS = ATS_DOMAINS.some(d => fromRaw.includes(d)) || LINKEDIN_APP_CONFIRMATION
+
+    if (isATS) {
+      console.log(`   ✅ Passed: Recognized ATS domain`)
+    }
 
     if (!isATS) {
       // ① Sender blocklist — job board alerts + marketing/CRM bulk senders
@@ -491,7 +505,10 @@ async function fetchEmailDetail(id, token) {
       // Noreply addresses are job alerts UNLESS they're from known recruiter patterns OR have recruiter keywords
       const noreplyAlert = (fromRaw.includes('noreply@') || fromRaw.includes('no-reply@')) && !isRecruiterNoreply
 
-      if (isFromBlocklist || noreplyAlert) return null
+      if (isFromBlocklist || noreplyAlert) {
+        console.log(`   ❌ Filtered: Job alert sender/noreply (blocklist: ${isFromBlocklist}, noreplyAlert: ${noreplyAlert})`)
+        return null
+      }
       const JOB_ALERT_SUBJECTS = [
         'nouvelles offres', 'new jobs', 'offres d\'emploi', 'offres recommand',
         'emplois recommand', 'job alert', 'jobs you might like', 'candidatures suggest',
@@ -502,7 +519,10 @@ async function fetchEmailDetail(id, token) {
       ]
       const isJobAlert = JOB_ALERT_SENDERS.some(s => fromRaw.includes(s))
         || JOB_ALERT_SUBJECTS.some(s => subjectRaw.includes(s))
-      if (isJobAlert) return null
+      if (isJobAlert) {
+        console.log(`   ❌ Filtered: Job alert subject`)
+        return null
+      }
 
       // ② Subject/snippet keyword pre-filter — skip Claude if no job signal at all
       const JOB_SUBJECT_KEYWORDS = [
@@ -529,13 +549,18 @@ async function fetchEmailDetail(id, token) {
         'get to know you','meet with you','schedule a call','time slot','available times',
       ]
       const hasJobSignal = JOB_SUBJECT_KEYWORDS.some(k => subjectRaw.includes(k) || snippetRaw.includes(k))
-      if (!hasJobSignal) return null
+      if (!hasJobSignal) {
+        console.log(`   ❌ Filtered: No job signal keywords found`)
+        return null
+      }
+      console.log(`   ✅ Passed: Has job signal keywords`)
     }
     const isSent = labelIds.includes('SENT')
 
     // Detect Gmail category for Claude confidence hint
     const gmailCategory = Object.entries(GMAIL_CAT_MAP).find(([k]) => labelIds.includes(k))?.[1] || null
 
+    console.log(`   ✅ Email accepted and will be sent to Claude`)
     return {
       id: data.id,
       subject: get('Subject'),
@@ -546,5 +571,8 @@ async function fetchEmailDetail(id, token) {
       body,
       gmailCategory, // 'updates' | 'personal' | 'social' | null
     }
-  } catch { return null }
+  } catch (e) {
+    console.error(`   ❌ Error fetching email detail:`, e.message)
+    return null
+  }
 }
