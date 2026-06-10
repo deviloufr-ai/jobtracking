@@ -381,8 +381,10 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
     for (const company of validCompanies) {
       // Escape special Gmail search characters and quote the company name for exact matching
       const escapedCompany = company.replace(/"/g, '\\"')
+      // Search for company name alone - simpler syntax, more reliable with Gmail API
+      // Other queries will catch the job keywords, this just ensures company emails are found
       queries.push(
-        `in:all "${escapedCompany}" (candidature OR application OR entretien OR interview OR offre OR offer OR recrutement OR recruiter OR recruting) ${dateFilter}`
+        `in:all "${escapedCompany}" ${dateFilter}`
       )
     }
   }
