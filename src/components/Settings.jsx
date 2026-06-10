@@ -25,14 +25,12 @@ function saveProfile(p) {
   try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)) } catch {}
 }
 
-function Section({ title, icon, children }) {
+function Card({ title, subtitle, children }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-50 flex items-center gap-2.5">
-        <span className="text-lg">{icon}</span>
-        <h2 className="font-semibold text-gray-800 text-sm">{title}</h2>
-      </div>
-      <div className="px-6 py-5 space-y-5">{children}</div>
+    <div className="bg-white rounded-xl border border-gray-200 p-6">
+      {title && <h3 className="text-base font-semibold text-gray-900 mb-1">{title}</h3>}
+      {subtitle && <p className="text-sm text-gray-500 mb-4">{subtitle}</p>}
+      <div className="space-y-4">{children}</div>
     </div>
   )
 }
@@ -41,15 +39,15 @@ function Row({ label, hint, children, wide = false }) {
   if (wide) return (
     <div className="space-y-1.5">
       <p className="text-sm font-medium text-gray-700">{label}</p>
-      {hint && <p className="text-xs text-gray-400">{hint}</p>}
+      {hint && <p className="text-xs text-gray-500">{hint}</p>}
       {children}
     </div>
   )
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div className="flex items-start justify-between gap-4">
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-700">{label}</p>
-        {hint && <p className="text-xs text-gray-400 mt-0.5">{hint}</p>}
+        {hint && <p className="text-xs text-gray-500 mt-0.5">{hint}</p>}
       </div>
       <div className="shrink-0">{children}</div>
     </div>
@@ -67,7 +65,7 @@ function NumInput({ value, onChange, min = 1, max = 365, suffix }) {
         onChange={e => onChange(Math.max(min, Math.min(max, parseInt(e.target.value) || min)))}
         className="w-20 text-sm text-center border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all"
       />
-      {suffix && <span className="text-xs text-gray-400">{suffix}</span>}
+      {suffix && <span className="text-xs text-gray-500">{suffix}</span>}
     </div>
   )
 }
@@ -79,9 +77,21 @@ function TextInput({ value, onChange, placeholder, multiline = false, rows = 2 }
     : <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={cls} />
 }
 
+const CATEGORIES = [
+  { id: 'profile', label: 'Profil', icon: '👤' },
+  { id: 'goals', label: 'Objectifs', icon: '🎯' },
+  { id: 'automation', label: 'Automatisation', icon: '⚙️' },
+  { id: 'notifications', label: 'Notifications', icon: '🔔' },
+  { id: 'followups', label: 'Rappels', icon: '⏰' },
+  { id: 'data', label: 'Données', icon: '💾' },
+  { id: 'extension', label: 'Extension', icon: '🦊' },
+]
+
 export default function Settings({ jobs, onMergeDuplicates }) {
   const { settings, updateSetting, resetSettings } = useSettings()
   const extensionInstalled = useExtensionDetect()
+  const [activeTab, setActiveTab] = useState('profile')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
   const [exportDone, setExportDone] = useState(false)
@@ -105,7 +115,6 @@ export default function Settings({ jobs, onMergeDuplicates }) {
       const rawCVs = localStorage.getItem('jobtrackr_cvs')
       const cvs = rawCVs ? JSON.parse(rawCVs) : []
       if (!cvs.length) { setExtractError('Aucun CV uploadé — va dans Mon CV pour en ajouter un.'); return }
-      // Pick the base CV (oldest = original, not tailored)
       const cv = cvs.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))[0]
       setExtracting(true)
       setExtractError(null)
@@ -173,264 +182,335 @@ export default function Settings({ jobs, onMergeDuplicates }) {
     window.location.reload()
   }
 
+  const currentCategory = CATEGORIES.find(c => c.id === activeTab)
+
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
+    <div className="flex h-[calc(100vh-8rem)] bg-white overflow-hidden">
+      {/* Sidebar */}
+      <div className={`fixed inset-0 z-40 sm:relative sm:z-0 ${sidebarOpen ? 'block' : 'hidden'} sm:block sm:w-56 bg-white border-r border-gray-200 flex flex-col overflow-y-auto`}>
+        {/* Close button on mobile */}
+        <button
+          onClick={() => setSidebarOpen(false)}
+          className="sm:hidden absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg"
+        >
+          ✕
+        </button>
 
-      {/* Profile — used by extension autofill */}
-      <Section title="Profil candidat" icon="👤">
-        <p className="text-xs text-gray-400 -mt-2">Ces données alimentent le générateur STAR, les emails automatiques et l'autofill de l'extension Firefox.</p>
-
-        {/* Extract from CV CTA */}
-        <div className="flex items-center gap-3 bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 rounded-xl px-4 py-3">
-          <span className="text-xl shrink-0">✨</span>
-          <div className="flex-1 min-w-0">
-            {profile?.extractedFrom
-              ? <p className="text-xs text-indigo-700">Profil extrait depuis <strong>{profile.extractedFrom}</strong>{profile.extractedAt ? ` · ${new Date(profile.extractedAt).toLocaleDateString('fr-FR')}` : ''}</p>
-              : <p className="text-xs text-indigo-700 font-medium">Rempli automatiquement depuis ton CV uploadé — zéro saisie manuelle.</p>
-            }
-          </div>
-          <button
-            onClick={handleExtractFromCV}
-            disabled={extracting}
-            className="shrink-0 text-xs font-semibold bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
-          >
-            {extracting
-              ? <><span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin inline-block" /> Extraction…</>
-              : profile?.extractedFrom ? '🔄 Ré-extraire' : '✦ Extraire depuis mon CV'
-            }
-          </button>
+        <div className="p-5 space-y-1.5">
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => { setActiveTab(cat.id); setSidebarOpen(false) }}
+              className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${
+                activeTab === cat.id
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <span className="text-lg">{cat.icon}</span>
+              <span>{cat.label}</span>
+            </button>
+          ))}
         </div>
-        {extractError && <p className="text-xs text-red-500">{extractError}</p>}
-
-        <Row label="Nom complet" hint="Tel qu'il apparaîtra sur les formulaires">
-          <TextInput value={profile.name} onChange={v => updateProfile('name', v)} placeholder="Alexandre Leblanc" />
-        </Row>
-        <Row label="Titre / Poste visé" hint="">
-          <TextInput value={profile.title} onChange={v => updateProfile('title', v)} placeholder="Senior Product Manager" />
-        </Row>
-        <Row label="Site web / Portfolio" hint="Affiché dans le CV et les emails">
-          <TextInput value={profile.website} onChange={v => updateProfile('website', v)} placeholder="https://linkedin.com/in/devilalex" />
-        </Row>
-        <div>
-          <p className="text-sm font-medium text-gray-700 mb-1.5">Résumé d'expérience</p>
-          <TextInput multiline rows={3} value={profile.experience} onChange={v => updateProfile('experience', v)} placeholder="18 ans d'expérience en product management, gaming, SaaS, mobile..." />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-gray-700 mb-1.5">Compétences clés</p>
-          <TextInput multiline rows={2} value={profile.skills} onChange={v => updateProfile('skills', v)} placeholder="Product strategy, OKR, Agile/Scrum, Data analytics, Figma, SQL..." />
-        </div>
-        <Row label="Langues" hint="">
-          <TextInput value={profile.languages} onChange={v => updateProfile('languages', v)} placeholder="Français (natif), Anglais (courant), Japonais (JLPT N1)" />
-        </Row>
-        <Row label="Formation" hint="">
-          <TextInput value={profile.education} onChange={v => updateProfile('education', v)} placeholder="Ingénieur Arts & Métiers ParisTech" />
-        </Row>
-        <div>
-          <p className="text-sm font-medium text-gray-700 mb-1.5">Expérience IA / Projets récents</p>
-          <TextInput multiline rows={2} value={profile.ai_experience} onChange={v => updateProfile('ai_experience', v)} placeholder="Claude API, ComfyUI, JobTrackr (React+Vercel en production)..." />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-gray-700 mb-1.5">Motivation / Pitch par défaut</p>
-          <TextInput multiline rows={2} value={profile.motivation} onChange={v => updateProfile('motivation', v)} placeholder="Passionné par les produits qui résolvent de vrais problèmes..." />
-        </div>
-
-        {/* Read-only enriched fields from extraction */}
-        {(profile?.key_achievements?.length > 0 || profile?.companies?.length > 0) && (
-          <div className="space-y-3 pt-1 border-t border-gray-100">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Données extraites (lecture seule)</p>
-            {profile?.companies?.length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-gray-600 mb-1">Entreprises</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {profile.companies.map((c, i) => (
-                    <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{c}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {profile?.key_achievements?.length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-gray-600 mb-1">Réalisations clés</p>
-                <ul className="space-y-1">
-                  {profile.key_achievements.map((a, i) => (
-                    <li key={i} className="text-xs text-gray-600 flex gap-2"><span className="text-indigo-400">·</span>{a}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between pt-1">
-          <p className="text-xs text-gray-400">💡 Sync le CV depuis l'onglet Réglages de l'extension Firefox pour enrichir l'autofill</p>
-          <button
-            onClick={handleSaveProfile}
-            className={`text-sm font-semibold px-4 py-1.5 rounded-lg transition-all ${
-              profileSaved ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-indigo-600 text-white hover:bg-indigo-700'
-            }`}
-          >
-            {profileSaved ? '✓ Sauvegardé' : 'Sauvegarder'}
-          </button>
-        </div>
-      </Section>
-
-      {/* Goals */}
-      <Section title="Objectifs de recherche" icon="🎯">
-        <Row label="Candidatures / semaine" hint="Nombre d'envois visé chaque semaine">
-          <NumInput value={settings.weeklyApps} onChange={v => updateSetting('weeklyApps', v)} min={1} max={50} />
-        </Row>
-        <Row label="Taux de réponse cible" hint="% de candidatures avec un retour employeur">
-          <NumInput value={settings.responseRate} onChange={v => updateSetting('responseRate', v)} min={1} max={100} suffix="%" />
-        </Row>
-        <Row label="Entretiens / mois" hint="Objectif mensuel d'entretiens obtenus">
-          <NumInput value={settings.monthlyInterviews} onChange={v => updateSetting('monthlyInterviews', v)} min={1} max={30} />
-        </Row>
-      </Section>
-
-      {/* Automation */}
-      <Section title="Automatisation & Archives" icon="⚙️">
-        <Row label="Auto-archiver après X jours sans réponse" hint="Candidatures envoyées / en examen / en attente">
-          <NumInput value={settings.archiveSentDays} onChange={v => updateSetting('archiveSentDays', v)} min={0} max={365} suffix="jours" />
-        </Row>
-        <Row label="Auto-archiver les refus après X jours" hint="Statuts : Refusée, Refus ATS, Annulée">
-          <NumInput value={settings.archiveRejectedDays} onChange={v => updateSetting('archiveRejectedDays', v)} min={0} max={365} suffix="jours" />
-        </Row>
-        <Row label="Sync Gmail automatique" hint="Intervalle entre deux synchronisations Gmail">
-          <NumInput value={settings.autoRefreshHours} onChange={v => updateSetting('autoRefreshHours', v)} min={1} max={72} suffix="h" />
-        </Row>
-        <Row label="Période de recherche Gmail" hint="Fenêtre d'import des emails lors d'un scan">
-          <NumInput value={settings.gmailPeriodMonths} onChange={v => updateSetting('gmailPeriodMonths', v)} min={1} max={12} suffix="mois" />
-        </Row>
-        <Row label="Vérifier disponibilité du poste après X jours" hint="Auto-détecte si le poste est toujours ouvert dans les emails reçus">
-          <NumInput value={settings.checkPositionAfterDays} onChange={v => updateSetting('checkPositionAfterDays', v)} min={0} max={365} suffix="jours" />
-        </Row>
-      </Section>
-
-      {/* Notifications */}
-      <div>
-        <div className="flex items-center gap-2.5 mb-5 px-0">
-          <span className="text-lg">🔔</span>
-          <h2 className="font-semibold text-gray-800 text-sm">Notifications</h2>
-        </div>
-        <NotificationSettings />
       </div>
 
-      {/* Follow-ups */}
-      <Section title="Rappels & Suivi" icon="🔔">
-        <p className="text-xs text-gray-400 -mt-2">Délais avant qu'une action urgente apparaisse dans le tableau de bord</p>
-        <Row label="Relance candidature envoyée" hint="Statut : Envoyée">
-          <NumInput value={settings.followUpSentDays} onChange={v => updateSetting('followUpSentDays', v)} min={1} max={60} suffix="jours" />
-        </Row>
-        <Row label="Relance profil en examen" hint="Statut : En cours d'examen">
-          <NumInput value={settings.followUpReviewingDays} onChange={v => updateSetting('followUpReviewingDays', v)} min={1} max={60} suffix="jours" />
-        </Row>
-        <Row label="Suivi en attente de réponse" hint="Statut : En attente">
-          <NumInput value={settings.followUpWaitingDays} onChange={v => updateSetting('followUpWaitingDays', v)} min={1} max={60} suffix="jours" />
-        </Row>
-        <Row label="Répondre à une offre reçue" hint="Statut : Offre reçue">
-          <NumInput value={settings.followUpOfferDays} onChange={v => updateSetting('followUpOfferDays', v)} min={1} max={30} suffix="jours" />
-        </Row>
-        <div className="flex justify-end">
-          <button
-            onClick={() => {
-              updateSetting('followUpSentDays', SETTINGS_DEFAULTS.followUpSentDays)
-              updateSetting('followUpReviewingDays', SETTINGS_DEFAULTS.followUpReviewingDays)
-              updateSetting('followUpWaitingDays', SETTINGS_DEFAULTS.followUpWaitingDays)
-              updateSetting('followUpOfferDays', SETTINGS_DEFAULTS.followUpOfferDays)
-            }}
-            className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            Remettre les valeurs par défaut
-          </button>
-        </div>
-      </Section>
+      {/* Overlay on mobile when sidebar is open */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/20 sm:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-      {/* Data */}
-      <Section title="Données" icon="💾">
-        {/* Export */}
-        <Row label="Exporter les candidatures" hint={`${jobs.length} candidatures au format JSON`}>
-          <button
-            onClick={handleExport}
-            className={`text-sm font-medium px-4 py-1.5 rounded-lg border transition-all ${
-              exportDone
-                ? 'bg-green-50 border-green-200 text-green-700'
-                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            {exportDone ? '✓ Exporté' : 'Exporter JSON'}
-          </button>
-        </Row>
-
-        {/* Import */}
-        <Row label="Importer des candidatures" hint="Fusionne avec les données existantes (sans doublon)">
-          <label className="cursor-pointer text-sm font-medium px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-all">
-            Importer JSON
-            <input type="file" accept=".json" className="hidden" onChange={handleImport} />
-          </label>
-        </Row>
-        {importError && <p className="text-xs text-red-500">{importError}</p>}
-
-        {/* Merge duplicates */}
-        <Row label="Fusionner les doublons" hint="Détecte et fusionne les candidatures en double">
-          <button
-            onClick={onMergeDuplicates}
-            className="text-sm font-medium px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all"
-          >
-            Fusionner
-          </button>
-        </Row>
-
-        {/* Clear email cache */}
-        <Row label="Vider le cache emails" hint="Force un re-parsing complet lors du prochain scan Gmail">
-          {confirmClear ? (
-            <div className="flex gap-2">
-              <button onClick={clearEmailCache} className="text-xs font-semibold px-3 py-1.5 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">Confirmer</button>
-              <button onClick={() => setConfirmClear(false)} className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition-colors">Annuler</button>
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto p-6 sm:p-8">
+          {/* Header with mobile menu */}
+          <div className="flex items-center justify-between gap-4 mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">{currentCategory?.icon} {currentCategory?.label}</h1>
+              <p className="text-gray-500 text-sm mt-1">
+                {activeTab === 'profile' && 'Gérez vos informations professionnelles'}
+                {activeTab === 'goals' && 'Définissez vos cibles de candidatures'}
+                {activeTab === 'automation' && 'Configurez l\'automatisation de votre recherche'}
+                {activeTab === 'notifications' && 'Gérez vos notifications'}
+                {activeTab === 'followups' && 'Définissez les délais de suivi'}
+                {activeTab === 'data' && 'Exportez, importez ou réinitialisez vos données'}
+                {activeTab === 'extension' && 'Gérez l\'extension Firefox'}
+              </p>
             </div>
-          ) : (
-            <button onClick={() => setConfirmClear(true)} className="text-sm font-medium px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-orange-50 hover:border-orange-200 hover:text-orange-700 transition-all">
-              Vider le cache
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="sm:hidden p-2 rounded-lg hover:bg-gray-100"
+            >
+              ☰
             </button>
-          )}
-        </Row>
+          </div>
 
-        {/* Danger zone */}
-        <div className="border border-red-100 rounded-xl p-4 bg-red-50/40 mt-2">
-          <p className="text-xs font-semibold text-red-600 uppercase tracking-wider mb-3">Zone de danger</p>
-          <Row label="Réinitialiser complètement" hint="Supprime toutes les candidatures, paramètres et données locales">
-            {confirmReset ? (
-              <div className="flex gap-2">
-                <button onClick={handleFullReset} className="text-xs font-semibold px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Oui, tout effacer</button>
-                <button onClick={() => setConfirmReset(false)} className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 bg-white transition-colors">Annuler</button>
-              </div>
-            ) : (
-              <button onClick={() => setConfirmReset(true)} className="text-sm font-medium px-4 py-1.5 rounded-lg border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-all">
-                Réinitialiser
-              </button>
+          <div className="space-y-6">
+            {/* Profile Tab */}
+            {activeTab === 'profile' && (
+              <>
+                <Card subtitle="Remplissez automatiquement votre profil depuis votre CV">
+                  <div className="flex items-center gap-3 bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 rounded-lg px-4 py-3 -mx-2">
+                    <span className="text-xl shrink-0">✨</span>
+                    <div className="flex-1 min-w-0">
+                      {profile?.extractedFrom
+                        ? <p className="text-xs text-indigo-700">Profil extrait depuis <strong>{profile.extractedFrom}</strong>{profile.extractedAt ? ` · ${new Date(profile.extractedAt).toLocaleDateString('fr-FR')}` : ''}</p>
+                        : <p className="text-xs text-indigo-700 font-medium">Zéro saisie manuelle — extraction depuis ton CV.</p>
+                      }
+                    </div>
+                    <button
+                      onClick={handleExtractFromCV}
+                      disabled={extracting}
+                      className="shrink-0 text-xs font-semibold bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
+                    >
+                      {extracting
+                        ? <><span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin inline-block" /> Extraction…</>
+                        : profile?.extractedFrom ? '🔄 Ré-extraire' : '✦ Extraire'
+                      }
+                    </button>
+                  </div>
+                  {extractError && <p className="text-xs text-red-500">{extractError}</p>}
+                </Card>
+
+                <Card title="Informations de base">
+                  <Row label="Nom complet" hint="Tel qu'il apparaîtra sur les formulaires">
+                    <TextInput value={profile.name} onChange={v => updateProfile('name', v)} placeholder="Alexandre Leblanc" />
+                  </Row>
+                  <Row label="Titre / Poste visé">
+                    <TextInput value={profile.title} onChange={v => updateProfile('title', v)} placeholder="Senior Product Manager" />
+                  </Row>
+                  <Row label="Site web / Portfolio" hint="Affiché dans le CV et les emails">
+                    <TextInput value={profile.website} onChange={v => updateProfile('website', v)} placeholder="https://linkedin.com/in/devilalex" />
+                  </Row>
+                  <Row label="Langues">
+                    <TextInput value={profile.languages} onChange={v => updateProfile('languages', v)} placeholder="Français (natif), Anglais (courant)" />
+                  </Row>
+                  <Row label="Formation">
+                    <TextInput value={profile.education} onChange={v => updateProfile('education', v)} placeholder="Ingénieur Arts & Métiers" />
+                  </Row>
+                </Card>
+
+                <Card title="Expérience et compétences">
+                  <Row label="Résumé d'expérience" wide hint="Vos 18 ans d'expérience en résumé">
+                    <TextInput multiline rows={3} value={profile.experience} onChange={v => updateProfile('experience', v)} placeholder="18 ans d'expérience en product management..." />
+                  </Row>
+                  <Row label="Compétences clés" wide hint="Séparées par des virgules">
+                    <TextInput multiline rows={2} value={profile.skills} onChange={v => updateProfile('skills', v)} placeholder="Product strategy, OKR, Agile, Data analytics..." />
+                  </Row>
+                  <Row label="Expérience IA / Projets récents" wide>
+                    <TextInput multiline rows={2} value={profile.ai_experience} onChange={v => updateProfile('ai_experience', v)} placeholder="Claude API, ComfyUI, JobTrackr..." />
+                  </Row>
+                  <Row label="Motivation / Pitch par défaut" wide>
+                    <TextInput multiline rows={2} value={profile.motivation} onChange={v => updateProfile('motivation', v)} placeholder="Passionné par les produits qui résolvent de vrais problèmes..." />
+                  </Row>
+                </Card>
+
+                {(profile?.key_achievements?.length > 0 || profile?.companies?.length > 0) && (
+                  <Card title="Données extraites (lecture seule)">
+                    {profile?.companies?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-gray-600 mb-2">Entreprises</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {profile.companies.map((c, i) => (
+                            <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{c}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {profile?.key_achievements?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-gray-600 mb-2">Réalisations clés</p>
+                        <ul className="space-y-1">
+                          {profile.key_achievements.map((a, i) => (
+                            <li key={i} className="text-xs text-gray-600 flex gap-2"><span className="text-indigo-400">·</span>{a}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </Card>
+                )}
+
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleSaveProfile}
+                    className={`text-sm font-semibold px-5 py-2 rounded-lg transition-all ${
+                      profileSaved ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    }`}
+                  >
+                    {profileSaved ? '✓ Sauvegardé' : 'Sauvegarder'}
+                  </button>
+                </div>
+              </>
             )}
-          </Row>
+
+            {/* Goals Tab */}
+            {activeTab === 'goals' && (
+              <Card title="Vos objectifs">
+                <Row label="Candidatures / semaine" hint="Nombre d'envois visé">
+                  <NumInput value={settings.weeklyApps} onChange={v => updateSetting('weeklyApps', v)} min={1} max={50} />
+                </Row>
+                <Row label="Taux de réponse cible" hint="% de retours employeur">
+                  <NumInput value={settings.responseRate} onChange={v => updateSetting('responseRate', v)} min={1} max={100} suffix="%" />
+                </Row>
+                <Row label="Entretiens / mois" hint="Objectif mensuel">
+                  <NumInput value={settings.monthlyInterviews} onChange={v => updateSetting('monthlyInterviews', v)} min={1} max={30} />
+                </Row>
+              </Card>
+            )}
+
+            {/* Automation Tab */}
+            {activeTab === 'automation' && (
+              <Card title="Paramètres d'automatisation">
+                <Row label="Auto-archiver après X jours sans réponse" hint="Pour : Envoyée, En examen, En attente">
+                  <NumInput value={settings.archiveSentDays} onChange={v => updateSetting('archiveSentDays', v)} min={0} max={365} suffix="j" />
+                </Row>
+                <Row label="Auto-archiver les refus après X jours" hint="Pour : Refusée, Refus ATS, Annulée">
+                  <NumInput value={settings.archiveRejectedDays} onChange={v => updateSetting('archiveRejectedDays', v)} min={0} max={365} suffix="j" />
+                </Row>
+                <Row label="Sync Gmail automatique" hint="Intervalle entre deux synchronisations">
+                  <NumInput value={settings.autoRefreshHours} onChange={v => updateSetting('autoRefreshHours', v)} min={1} max={72} suffix="h" />
+                </Row>
+                <Row label="Période de recherche Gmail" hint="Fenêtre d'import des emails">
+                  <NumInput value={settings.gmailPeriodMonths} onChange={v => updateSetting('gmailPeriodMonths', v)} min={1} max={12} suffix="m" />
+                </Row>
+                <Row label="Vérifier disponibilité du poste" hint="Auto-détecte si le poste est toujours ouvert">
+                  <NumInput value={settings.checkPositionAfterDays} onChange={v => updateSetting('checkPositionAfterDays', v)} min={0} max={365} suffix="j" />
+                </Row>
+              </Card>
+            )}
+
+            {/* Notifications Tab */}
+            {activeTab === 'notifications' && (
+              <NotificationSettings />
+            )}
+
+            {/* Follow-ups Tab */}
+            {activeTab === 'followups' && (
+              <>
+                <Card title="Délais avant action urgente" subtitle="Configurez les rappels pour chaque statut">
+                  <Row label="Relance candidature envoyée" hint="Statut : Envoyée">
+                    <NumInput value={settings.followUpSentDays} onChange={v => updateSetting('followUpSentDays', v)} min={1} max={60} suffix="j" />
+                  </Row>
+                  <Row label="Relance profil en examen" hint="Statut : En cours d'examen">
+                    <NumInput value={settings.followUpReviewingDays} onChange={v => updateSetting('followUpReviewingDays', v)} min={1} max={60} suffix="j" />
+                  </Row>
+                  <Row label="Suivi en attente de réponse" hint="Statut : En attente">
+                    <NumInput value={settings.followUpWaitingDays} onChange={v => updateSetting('followUpWaitingDays', v)} min={1} max={60} suffix="j" />
+                  </Row>
+                  <Row label="Répondre à une offre reçue" hint="Statut : Offre reçue">
+                    <NumInput value={settings.followUpOfferDays} onChange={v => updateSetting('followUpOfferDays', v)} min={1} max={30} suffix="j" />
+                  </Row>
+                  <div className="flex justify-end pt-2">
+                    <button
+                      onClick={() => {
+                        updateSetting('followUpSentDays', SETTINGS_DEFAULTS.followUpSentDays)
+                        updateSetting('followUpReviewingDays', SETTINGS_DEFAULTS.followUpReviewingDays)
+                        updateSetting('followUpWaitingDays', SETTINGS_DEFAULTS.followUpWaitingDays)
+                        updateSetting('followUpOfferDays', SETTINGS_DEFAULTS.followUpOfferDays)
+                      }}
+                      className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      ↻ Remettre par défaut
+                    </button>
+                  </div>
+                </Card>
+              </>
+            )}
+
+            {/* Data Tab */}
+            {activeTab === 'data' && (
+              <>
+                <Card title="Exporter & Importer">
+                  <Row label="Exporter les candidatures" hint={`${jobs.length} candidatures en JSON`}>
+                    <button
+                      onClick={handleExport}
+                      className={`text-sm font-medium px-4 py-2 rounded-lg border transition-all ${
+                        exportDone
+                          ? 'bg-green-50 border-green-200 text-green-700'
+                          : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      {exportDone ? '✓ Exporté' : 'Exporter'}
+                    </button>
+                  </Row>
+                  <Row label="Importer des candidatures" hint="Fusionne sans créer de doublons">
+                    <label className="cursor-pointer text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-all">
+                      Importer
+                      <input type="file" accept=".json" className="hidden" onChange={handleImport} />
+                    </label>
+                  </Row>
+                  {importError && <p className="text-xs text-red-500">{importError}</p>}
+                </Card>
+
+                <Card title="Maintenance des données">
+                  <Row label="Fusionner les doublons" hint="Détecte et fusionne automatiquement">
+                    <button
+                      onClick={onMergeDuplicates}
+                      className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all"
+                    >
+                      Fusionner
+                    </button>
+                  </Row>
+                  <Row label="Vider le cache emails" hint="Force un re-parsing au prochain scan">
+                    {confirmClear ? (
+                      <div className="flex gap-2">
+                        <button onClick={clearEmailCache} className="text-xs font-semibold px-3 py-1.5 bg-orange-500 text-white rounded-lg hover:bg-orange-600">Confirmer</button>
+                        <button onClick={() => setConfirmClear(false)} className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">Annuler</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmClear(true)} className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-orange-50 hover:border-orange-200 hover:text-orange-700">
+                        Vider
+                      </button>
+                    )}
+                  </Row>
+                </Card>
+
+                <Card title="Zone de danger" subtitle="Attention : cette action est irréversible">
+                  <div className="border border-red-200 bg-red-50/50 rounded-lg p-4">
+                    <Row label="Réinitialiser complètement" hint="Supprime tout : candidatures, paramètres, données">
+                      {confirmReset ? (
+                        <div className="flex gap-2">
+                          <button onClick={handleFullReset} className="text-xs font-semibold px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700">Oui, tout effacer</button>
+                          <button onClick={() => setConfirmReset(false)} className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">Annuler</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setConfirmReset(true)} className="text-sm font-medium px-4 py-2 rounded-lg border border-red-200 bg-white text-red-600 hover:bg-red-50">
+                          Réinitialiser
+                        </button>
+                      )}
+                    </Row>
+                  </div>
+                </Card>
+              </>
+            )}
+
+            {/* Extension Tab */}
+            {activeTab === 'extension' && (
+              <Card title="Extension Firefox">
+                <Row label="Status" hint="Installez l'extension pour importer les offres directement">
+                  {extensionInstalled === false && (
+                    <a href="/jobtracker-addon-1.5.0.xpi" className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600">
+                      📥 Installer
+                    </a>
+                  )}
+                  {extensionInstalled === true && (
+                    <span className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-green-100 text-green-700">
+                      ✓ Activée
+                    </span>
+                  )}
+                  {extensionInstalled === null && (
+                    <span className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-gray-100 text-gray-700">
+                      ⏳ Vérification...
+                    </span>
+                  )}
+                </Row>
+              </Card>
+            )}
+          </div>
         </div>
-      </Section>
-
-      {extensionInstalled === false && (
-        <Section title="Extension Firefox" icon="🦊">
-          <Row label="JobTrackr Extension" hint="Installe l'extension Firefox pour importer les offres d'emploi directement">
-            <a href="/jobtracker-addon-1.5.0.xpi" className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-all">
-              📥 Installer
-            </a>
-          </Row>
-        </Section>
-      )}
-      {extensionInstalled === true && (
-        <Section title="Extension Firefox" icon="🦊">
-          <Row label="JobTrackr Extension" hint="L'extension Firefox est installée et active">
-            <span className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-green-100 text-green-700">
-              ✓ Activée
-            </span>
-          </Row>
-        </Section>
-      )}
-
+      </div>
     </div>
   )
 }
