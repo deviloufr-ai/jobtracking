@@ -25,7 +25,7 @@ function getFullPageText() {
   const clone = document.body.cloneNode(true)
   clone.querySelectorAll('script, style, nav, footer, header, aside, [role="banner"], [role="navigation"], [aria-hidden="true"]').forEach(el => el.remove())
   const text = clone.innerText || clone.textContent || ''
-  return text.replace(/\s{3,}/g, '\n\n').trim().slice(0, 8000)
+  return text.replace(/\s{3,}/g, '\n\n').trim().slice(0, 15000)
 }
 
 function getSectionTexts(selectors) {
@@ -118,7 +118,7 @@ function extractJobInfo() {
   return {
     company: company.trim(),
     position: position.trim(),
-    description: description.slice(0, 6000),
+    description: description.slice(0, 12000),
     url,
     source: hostname.includes('linkedin') ? 'LinkedIn'
       : hostname.includes('indeed') ? 'Indeed'
@@ -402,8 +402,8 @@ async function getJD() {
     if (r?.text && r.text.length > 80) { cachedJD = r.text; return cachedJD }
   } catch {}
   const targeted = getJobDescription()
-  if (targeted && targeted.length > 80) { cachedJD = targeted.slice(0, 6000); return cachedJD }
-  cachedJD = getFullPageText().slice(0, 4000)
+  if (targeted && targeted.length > 80) { cachedJD = targeted.slice(0, 12000); return cachedJD }
+  cachedJD = getFullPageText().slice(0, 12000)
   return cachedJD
 }
 
@@ -631,6 +631,21 @@ browser.runtime.onMessage.addListener((msg) => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SECTION 7 : Request JD from storage (via custom events)
+// The app sends 'jobtrackr-jd-request' event with jdKey, we respond with data
+// ─────────────────────────────────────────────────────────────────────────────
+window.addEventListener('jobtrackr-jd-request', async (e) => {
+  const jdKey = e.detail?.jdKey
+  if (!jdKey) return
+  try {
+    const result = await browser.runtime.sendMessage({ type: 'LOAD_JD', key: jdKey })
+    window.dispatchEvent(new CustomEvent('jobtrackr-jd-response', { detail: { jdKey, text: result?.text || '' } }))
+  } catch (err) {
+    window.dispatchEvent(new CustomEvent('jobtrackr-jd-response', { detail: { jdKey, text: '', error: err.message } }))
+  }
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SECTION 4 : Boot
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -788,11 +803,20 @@ function showApplyConfirmation(jobInfo) {
     try {
       const r = await browser.runtime.sendMessage({ type: 'GET_APP_URL' })
       const appUrl = r?.appUrl || 'https://jobtracking-three.vercel.app'
+
+      // Store full JD in extension storage instead of URL
+      const jdKey = `jd-${Date.now()}`
+      await browser.runtime.sendMessage({
+        type: 'SAVE_JD',
+        key: jdKey,
+        text: jobInfo.description || ''
+      })
+
       const params = new URLSearchParams({
         add: '1', company, position, status,
         date: new Date().toISOString().split('T')[0],
         url: jobInfo.url || window.location.href,
-        jd: (jobInfo.description || '').slice(0, 2000)
+        jdKey: jdKey  // Pass storage key instead of full JD
       })
       window.open(`${appUrl}?${params.toString()}`, '_blank')
       btn.textContent = '✓ Ajouté !'

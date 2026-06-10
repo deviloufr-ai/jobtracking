@@ -254,6 +254,11 @@ async function init() {
 }
 
 addBtn.addEventListener('click', async () => {
+  const jdKey = `jd-${Date.now()}`
+
+  // Store full JD in extension storage (no char limit)
+  await browser.storage.local.set({ [jdKey]: jobDescription })
+
   const params = new URLSearchParams({
     add: '1',
     company: companyEl.value.trim(),
@@ -261,7 +266,7 @@ addBtn.addEventListener('click', async () => {
     status: statusEl.value,
     date: dateEl.value,
     url: mainEl.dataset.url || '',
-    jd: jobDescription.slice(0, 2000)
+    jdKey: jdKey  // Pass storage key instead of full JD
   })
   addBtn.disabled = true
   addBtn.textContent = '✓ Ajouté !'
