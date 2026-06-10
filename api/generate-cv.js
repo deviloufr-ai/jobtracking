@@ -43,19 +43,25 @@ STRICT FORMAT RULES — ATS-Compatible:
 8. Use ONLY standard fonts (no icons, no boxes, no colors except text/bold)
 
 CONTENT RULES — ATS & Recruiter Optimized:
-- **Profile/Summary**: Write 2-3 lines targeting the exact role. Lead with title match (e.g., "Senior Product Manager with 8+ years…")
+- **Profile/Summary**: Write 1-2 sentences ONLY (40-60 words). Lead with title match + top differentiator.
 - **Keywords**: Front-load job description keywords into the profile, experience titles, and bullets
-- **Bullets**: Use action verbs (Led, Drove, Built, Scaled, Improved) + quantified results (%, revenue, users, time saved)
-- **Experience**: For each role, include: Job Title | Company | Dates | Location on separate lines, then 3-5 achievement bullets
-- **Match Job Requirements**: Prioritize bullets that match top 5 keywords/skills from the job offer
-- **Skills Section**: List technical & soft skills separately; include tools/frameworks mentioned in the JD
-- **Formatting for ATS**: No special characters, images, or complex styling. Standard fonts only
-- **Length**: Aim for 1 page (prefer) or max 2 pages. Cut weak bullets, keep only top achievements
+- **Bullets**: Use action verbs (Led, Drove, Built, Scaled, Improved) + quantified results. Keep sentences under 15 words each.
+- **Experience**: Include ONLY 3-4 most relevant roles. For each: Title | Company | Dates on line 1, then 3-4 achievement bullets (no more)
+- **Match Job Requirements**: Prioritize bullets matching top 5 keywords/skills from the job offer. Cut anything not relevant.
+- **Skills Section**: List ONLY skills mentioned in the JD. Max 5 skill categories, 3-4 items each. Total ~80 words.
+- **Formatting for ATS**: No special characters, images, or complex styling. Standard fonts only.
+- **STRICT LENGTH LIMITS (FIT ONE PAGE)**:
+  - Profile: 40-60 words
+  - Each role: 3-4 bullets, ~15 words per bullet (total 60-80 words per role)
+  - 3-4 roles total: 180-320 words
+  - Skills: 80-100 words
+  - Total target: 300-480 words (fits cleanly on one page)
 - **Do NOT**:
   - Invent new experiences, skills, or certifications
   - Use graphics, icons, or columns (ATS cannot parse)
   - Repeat the same achievement twice
-  - Leave vague descriptions (always quantify: 25% vs "improved")
+  - Include roles not relevant to the position
+  - Write bullets longer than 15 words
 
 RECRUITER SPEED-READ (First 10 seconds):
 - Name at top
