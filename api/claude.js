@@ -25,7 +25,6 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify(safeBody),
     })
-    const data = await response.json()
 
     // Log rate limits for monitoring
     if (response.status === 429) {
@@ -35,8 +34,18 @@ export default async function handler(req, res) {
       })
     }
 
+    // Parse response safely
+    let data
+    try {
+      data = await response.json()
+    } catch (e) {
+      console.error('Failed to parse API response:', response.status, response.statusText)
+      return res.status(response.status || 500).json({ error: `API returned invalid JSON: ${response.statusText}` })
+    }
+
     res.status(response.status).json(data)
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    console.error('Claude proxy error:', err)
+    res.status(500).json({ error: err.message || 'Internal server error' })
   }
 }

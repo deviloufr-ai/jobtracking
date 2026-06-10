@@ -75,6 +75,7 @@ async function callClaude(systemPrompt, userContent, retries = 3) {
       // Total timeout: 60 seconds max per request (prevent unbounded waits)
       const totalTimeoutMs = 60000
       const startTime = Date.now()
+      let lastError
 
       for (let attempt = 0; attempt <= retries; attempt++) {
         const elapsedMs = Date.now() - startTime
@@ -98,7 +99,21 @@ async function callClaude(systemPrompt, userContent, retries = 3) {
             }),
           })
           clearTimeout(timeoutId)
-          const data = await res.json()
+
+          let data
+          try {
+            data = await res.json()
+          } catch (parseErr) {
+            console.error(`Claude response parse error (attempt ${attempt + 1}):`, res.status, res.statusText)
+            lastError = new Error(`Invalid API response (${res.status} ${res.statusText})`)
+            // Retry on parse errors
+            if (attempt < retries) {
+              const waitMs = 1000 * Math.pow(2, attempt)
+              await new Promise(r => setTimeout(r, waitMs))
+              continue
+            }
+            throw lastError
+          }
 
           // Rate limit — wait and retry with exponential backoff
           if (res.status === 429) {
@@ -112,6 +127,18 @@ async function callClaude(systemPrompt, userContent, retries = 3) {
             continue
           }
 
+          // Retry on 5xx errors (transient server issues)
+          if (res.status >= 500 && res.status < 600) {
+            lastError = new Error(data?.error?.message || `Claude API ${res.status}`)
+            if (attempt < retries) {
+              const waitMs = 1000 * Math.pow(2, attempt)
+              console.warn(`Claude 5xx error (${requestId}), retrying in ${waitMs}ms...`)
+              await new Promise(r => setTimeout(r, waitMs))
+              continue
+            }
+            throw lastError
+          }
+
           if (!res.ok) {
             console.error('Claude API error:', data)
             throw new Error(data?.error?.message || `Claude API ${res.status}`)
@@ -123,10 +150,13 @@ async function callClaude(systemPrompt, userContent, retries = 3) {
           if (e.name === 'AbortError') {
             throw new Error(`Request aborted (timeout after ${totalTimeoutMs}ms)`)
           }
-          throw e
+          lastError = e
+          // If this was the last attempt, throw
+          if (attempt === retries) throw e
+          // Otherwise, we'll retry on the next iteration
         }
       }
-      throw new Error('Rate limit — réessaie dans quelques secondes.')
+      throw lastError || new Error('Claude API request failed')
     } finally {
       claudeRequestCount = Math.max(0, claudeRequestCount - 1)
     }
