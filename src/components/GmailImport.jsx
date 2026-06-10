@@ -91,16 +91,21 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         ? { startDate, endDate: endDate < new Date().toISOString().split('T')[0] ? endDate : new Date().toISOString().split('T')[0] }
         : null
 
+      // Extract companies from existing jobs for targeted search
+      const companies = existingJobs
+        ? existingJobs.map(job => job.company).filter(c => c && c.trim().length > 0)
+        : null
+
       // Fetch from selected account or ALL connected accounts
       let emails = []
       if (scanAccount) {
-        emails = await fetchJobEmailsForAccount(scanAccount, null, months, dateRange)
+        emails = await fetchJobEmailsForAccount(scanAccount, null, months, dateRange, null, companies)
       } else if (connectedAccounts.length > 1) {
         // Fetch from all accounts in parallel, deduplicate by id
         setStep(STEPS.fetching)
         const perAccount = await Promise.all(
           connectedAccounts.map(acct =>
-            fetchJobEmailsForAccount(acct.email, null, months, dateRange)
+            fetchJobEmailsForAccount(acct.email, null, months, dateRange, null, companies)
               .then(res => res.map(e => ({ ...e, _account: acct.email })))
               .catch(() => [])
           )
@@ -112,7 +117,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
           }
         }
       } else {
-        emails = await fetchJobEmails(null, months, dateRange)
+        emails = await fetchJobEmails(null, months, dateRange, null, companies)
       }
       setEmailCount(emails.length)
 

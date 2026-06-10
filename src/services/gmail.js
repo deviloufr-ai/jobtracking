@@ -249,18 +249,19 @@ async function gmailFetch(url, token) {
 }
 
 // ── Fetch job emails for a specific account ───────────────────────────────────
-export async function fetchJobEmailsForAccount(accountEmail, maxResults = null, months = null, dateRange = null, lastSyncTime = null) {
+export async function fetchJobEmailsForAccount(accountEmail, maxResults = null, months = null, dateRange = null, lastSyncTime = null, companies = null) {
   const acct = accounts[accountEmail]
   if (!acct?.token) throw new Error(`Non connecté : ${accountEmail}`)
   // Smart period: 3 months on first import, 1 day on refreshes with lastSyncTime
   const actualMonths = months !== null ? months : (lastSyncTime ? 1/30 : 3)
-  return _fetchJobEmails(acct.token, maxResults, actualMonths, dateRange, lastSyncTime)
+  return _fetchJobEmails(acct.token, maxResults, actualMonths, dateRange, lastSyncTime, companies)
 }
 
 // Fetch from ALL connected accounts (merged + deduplicated)
 // lastSyncTime: optional ISO timestamp - if provided, only fetch emails after this time
 // If no lastSyncTime: fetch 3 months (first import), otherwise use 1 day incremental
-export async function fetchJobEmails(maxResults = null, months = null, dateRange = null, lastSyncTime = null) {
+// companies: optional array of company names to search for
+export async function fetchJobEmails(maxResults = null, months = null, dateRange = null, lastSyncTime = null, companies = null) {
   const accountEntries = Object.entries(accounts)
   if (accountEntries.length === 0) throw new Error('Non connecté à Gmail')
 
@@ -269,7 +270,7 @@ export async function fetchJobEmails(maxResults = null, months = null, dateRange
 
   // Fetch from all accounts in parallel
   const results = await Promise.all(
-    accountEntries.map(([email, acct]) => _fetchJobEmails(acct.token, maxResults, actualMonths, dateRange, lastSyncTime))
+    accountEntries.map(([email, acct]) => _fetchJobEmails(acct.token, maxResults, actualMonths, dateRange, lastSyncTime, companies))
   )
 
   // Merge and deduplicate by email ID + data (prevents same email from multiple queries)
@@ -302,7 +303,7 @@ const GMAIL_CAT_MAP = {
   CATEGORY_FORUMS: 'forums',
 }
 
-async function _fetchJobEmails(token, maxResults, months, dateRange = null, lastSyncTime = null) {
+async function _fetchJobEmails(token, maxResults, months, dateRange = null, lastSyncTime = null, companies = null) {
   // Build date filter: smart incremental sync if lastSyncTime provided
   let dateFilter
   let effectiveMonths = months
@@ -366,6 +367,23 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
     // ⑦ Sent emails (outbound applications)
     `in:sent (has:attachment OR subject:candidature OR subject:postulation OR "je postule" OR "je vous contacte" OR "je me permets" OR "I am applying" OR "please find my CV" OR "please find attached my resume") ${dateFilter}`,
   ]
+
+  // ⑧ Company-based search — if candidature companies exist, search for emails mentioning each company
+  if (companies && companies.length > 0) {
+    // Filter and normalize company names (remove empty, trim whitespace)
+    const validCompanies = companies
+      .map(c => c.trim())
+      .filter(c => c.length > 0 && c.length < 100) // Avoid empty or unreasonably long names
+      .slice(0, 20) // Limit to 20 companies to avoid query explosion
+
+    for (const company of validCompanies) {
+      // Escape special Gmail search characters and quote the company name for exact matching
+      const escapedCompany = company.replace(/"/g, '\\"')
+      queries.push(
+        `in:all "${escapedCompany}" (candidature OR application OR entretien OR interview OR offre OR offer OR recrutement OR recruiter OR recruting) ${dateFilter}`
+      )
+    }
+  }
 
   const allMessageIds = new Set()
   const allMessages = []
