@@ -199,10 +199,17 @@ export default function Stats({ jobs }) {
         </div>
         <div>
           <Sparkline values={weeklyActivity} color="#6366f1" />
-          <div className="flex justify-between mt-1" style={{ paddingLeft: '2.5%', paddingRight: '2.5%' }}>
-            {['L','M','M','J','V','S','D'].map((d, i) => (
-              <span key={i} className="text-[10px] text-gray-300 text-center flex-1">{d}</span>
-            ))}
+          <div className="relative mt-1 h-4">
+            {['L','M','M','J','V','S','D'].map((d, i) => {
+              const x = 3 + (i / 6) * 114
+              const leftPct = (x / 120) * 100
+              return (
+                <span key={i} className="absolute text-[10px] text-gray-300 text-center w-4 -translate-x-1/2"
+                  style={{ left: `${leftPct}%` }}>
+                  {d}
+                </span>
+              )
+            })}
           </div>
         </div>
       </Card>
