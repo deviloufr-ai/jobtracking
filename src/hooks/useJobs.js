@@ -753,13 +753,33 @@ export function useJobs() {
     const result = await checkPositionUrl(url)
     setJobs(prev => prev.map(j => {
       if (j.id !== jobId) return j
-      return {
+
+      // Auto-update status if position is detected as closed
+      let updatedJob = {
         ...j,
         positionChecks: {
           ...(j.positionChecks || {}),
           [url]: result
         }
       }
+
+      // If position is closed and job is not already rejected, mark as rejected
+      if (result.available === false && !['rejected', 'rejected_ats', 'cancelled', 'archived'].includes(j.status)) {
+        updatedJob = {
+          ...updatedJob,
+          status: 'rejected',
+          history: [
+            ...(j.history || []),
+            {
+              date: new Date().toISOString().split('T')[0],
+              status: 'rejected',
+              note: `🔍 Poste fermé — détecté: ${result.reason || 'Position not available'}`,
+            }
+          ]
+        }
+      }
+
+      return updatedJob
     }))
     return result
   }
