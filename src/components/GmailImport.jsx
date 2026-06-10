@@ -679,7 +679,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
                 <button onClick={handleScan} disabled={!connected} className={`text-white text-sm font-semibold px-6 py-2.5 rounded-xl active:scale-95 transition-all flex items-center gap-2 ${connected ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-400 cursor-not-allowed'}`}>
                   <span>🔍</span>
                   <span>
-                    Scanner {months} mois
+                    Scanner {dateMode === 'range' ? `${startDate} → ${endDate}` : `${months} mois`}
                     {' '}
                     <span className="font-normal opacity-80 text-xs">
                       ({scanAccount ? scanAccount.split('@')[0] : connectedAccounts.length > 1 ? `${connectedAccounts.length} comptes` : connectedAccounts[0]?.email?.split('@')[0]})
