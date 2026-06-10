@@ -365,13 +365,31 @@ function autoStale(jobs) {
   return jobs.map(j => {
     if (j.status === 'archived') return j
 
-    // Use the ORIGINAL job date as reference for archival
-    // Don't use latest history entry date (it gets updated on every re-import)
-    // Use j.date (when the application was first recorded) for accurate stale calculation
-    const refDate = new Date(j.date || j.updatedAt)
-    const daysSince = (now - refDate) / (1000 * 60 * 60 * 24)
+    const TERMINAL = ['rejected', 'rejected_ats', 'cancelled']
+    const isTerminal = TERMINAL.includes(j.status)
 
-    const threshold = ['rejected', 'rejected_ats', 'cancelled'].includes(j.status) ? archiveRejectedDays : archiveSentDays
+    let refDate
+    let daysSince
+
+    if (isTerminal && j.history?.length) {
+      // For rejected/rejected_ats/cancelled: find the date the job entered a terminal state
+      // Work backwards through history to find the most recent terminal status entry
+      const terminalEntry = [...j.history].reverse().find(h => TERMINAL.includes(h.status))
+      if (terminalEntry?.date) {
+        refDate = new Date(terminalEntry.date)
+        daysSince = (now - refDate) / (1000 * 60 * 60 * 24)
+      } else {
+        // Fallback: use original date if no terminal entry found (shouldn't happen)
+        refDate = new Date(j.date || j.updatedAt)
+        daysSince = (now - refDate) / (1000 * 60 * 60 * 24)
+      }
+    } else {
+      // For sent/reviewing/waiting: use original sent date
+      refDate = new Date(j.date || j.updatedAt)
+      daysSince = (now - refDate) / (1000 * 60 * 60 * 24)
+    }
+
+    const threshold = isTerminal ? archiveRejectedDays : archiveSentDays
     if (daysSince >= threshold) {
       const newEntry = {
         date: now.toISOString().split('T')[0],
@@ -390,6 +408,7 @@ function autoStale(jobs) {
 export function revalidateArchives(jobs) {
   const now = new Date()
   const { archiveSentDays, archiveRejectedDays } = loadSettings()
+  const TERMINAL = ['rejected', 'rejected_ats', 'cancelled']
 
   return jobs.map(j => {
     if (j.status !== 'archived') return j
@@ -404,14 +423,29 @@ export function revalidateArchives(jobs) {
     if (!priorEntry) return j // No prior status, keep archived
 
     const priorStatus = priorEntry.status
-    // Use ORIGINAL application date (j.date) not last activity — matches autoStale behavior
-    const refDate = new Date(j.date || j.updatedAt)
-    const daysSince = (now - refDate) / (1000 * 60 * 60 * 24)
+    const isTerminal = TERMINAL.includes(priorStatus)
+
+    let refDate
+    let daysSince
+
+    if (isTerminal && j.history?.length) {
+      // For rejected/rejected_ats/cancelled: use the rejection date from history
+      const terminalEntry = [...j.history].reverse().find(h => TERMINAL.includes(h.status))
+      if (terminalEntry?.date) {
+        refDate = new Date(terminalEntry.date)
+        daysSince = (now - refDate) / (1000 * 60 * 60 * 24)
+      } else {
+        refDate = new Date(j.date || j.updatedAt)
+        daysSince = (now - refDate) / (1000 * 60 * 60 * 24)
+      }
+    } else {
+      // For sent/reviewing/waiting: use original sent date
+      refDate = new Date(j.date || j.updatedAt)
+      daysSince = (now - refDate) / (1000 * 60 * 60 * 24)
+    }
 
     // Check if job should still be archived with new thresholds
-    const threshold = ['rejected', 'rejected_ats', 'cancelled'].includes(priorStatus)
-      ? archiveRejectedDays
-      : archiveSentDays
+    const threshold = isTerminal ? archiveRejectedDays : archiveSentDays
 
     if (daysSince < threshold) {
       // Job should be restored — remove auto-archive entry and restore prior status
