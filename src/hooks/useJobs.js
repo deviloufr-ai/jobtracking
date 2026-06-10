@@ -288,6 +288,60 @@ function splitPipeNotes(jobs) {
   })
 }
 
+function deduplicateMeetings(meetings) {
+  if (meetings.length <= 1) return meetings
+
+  // Normalize meeting title for comparison
+  const normTitle = (note = '') => {
+    const clean = note
+      .toLowerCase()
+      .replace(/^📅\s*/, '') // Remove calendar emoji
+      .replace(/\(à venir\)|upcoming|today|aujourd'hui|demain|tomorrow/gi, '') // Remove temporal markers
+      .replace(/—.*$/, '') // Remove location after dash
+      .replace(/[^a-z0-9\s]/g, '') // Keep only alphanumeric and spaces
+      .replace(/\s+/g, ' ')
+      .trim()
+    return clean
+  }
+
+  const byDateTitle = new Map()
+  for (const meeting of meetings) {
+    const key = `${meeting.date}_${normTitle(meeting.note)}`
+    if (!byDateTitle.has(key)) {
+      byDateTitle.set(key, [meeting])
+    } else {
+      byDateTitle.get(key).push(meeting)
+    }
+  }
+
+  const deduped = []
+  for (const [, group] of byDateTitle) {
+    if (group.length === 1) {
+      deduped.push(group[0])
+      continue
+    }
+
+    // Merge duplicate meetings: keep meeting links, combine gmailIds
+    const primary = group[0]
+    const gmailIds = []
+    let bestLink = primary.meetingLink
+
+    for (const m of group) {
+      if (m.gmailId && !gmailIds.includes(m.gmailId)) gmailIds.push(m.gmailId)
+      if (!bestLink && m.meetingLink) bestLink = m.meetingLink
+    }
+
+    deduped.push({
+      ...primary,
+      meetingLink: bestLink || primary.meetingLink,
+      gmailId: gmailIds[0] || primary.gmailId,
+      gmailIds: gmailIds.length > 1 ? gmailIds : primary.gmailIds,
+    })
+  }
+
+  return deduped
+}
+
 function mergeSameDateEntries(jobs) {
   return jobs.map(j => {
     if (!j.history || j.history.length <= 1) return j
@@ -301,36 +355,36 @@ function mergeSameDateEntries(jobs) {
       return note.startsWith('📅') || /\bmeeting\b|entretien|visio|call|rdv|rendez-vous|zoom|teams|meet/.test(note)
     }
 
-    const meetings = []
+    const meetings = j.history.filter(isMeetingEntry)
+    const nonMeetings = j.history.filter(e => !isMeetingEntry(e))
+
+    // Deduplicate meetings by same-day + similar title
+    const deduplicatedMeetings = deduplicateMeetings(meetings)
+
+    // Merge non-meeting entries by date
     const byDate = {}
     const order = []
 
-    for (const entry of j.history) {
-      if (isMeetingEntry(entry)) {
-        // Keep meetings as-is, no merging
-        meetings.push(entry)
+    for (const entry of nonMeetings) {
+      const key = entry.date || 'unknown'
+      if (!byDate[key]) {
+        byDate[key] = { ...entry, _notes: entry.note ? [entry.note] : [], _gmailIds: entry.gmailId ? [entry.gmailId] : [] }
+        order.push(key)
       } else {
-        // Merge only non-meeting entries by date
-        const key = entry.date || 'unknown'
-        if (!byDate[key]) {
-          byDate[key] = { ...entry, _notes: entry.note ? [entry.note] : [], _gmailIds: entry.gmailId ? [entry.gmailId] : [] }
-          order.push(key)
-        } else {
-          const existing = byDate[key]
-          const statusOrder = ['todo','sent','reviewing','interview','done','waiting','offer','rejected','rejected_ats','cancelled','archived']
-          const existingIdx = statusOrder.indexOf(existing.status)
-          const entryIdx = statusOrder.indexOf(entry.status)
-          if (entryIdx > existingIdx) existing.status = entry.status
-          if (entry.note && entry.note.trim()) {
-            const normNew = entry.note.trim().toLowerCase().replace(/\s+/g, ' ')
-            const isDup = existing._notes.some(n => n.trim().toLowerCase().replace(/\s+/g, ' ') === normNew)
-            if (!isDup) existing._notes.push(entry.note.trim())
-          }
-          if (entry.gmailId && !existing._gmailIds.includes(entry.gmailId)) {
-            existing._gmailIds.push(entry.gmailId)
-          }
-          if (!existing.meetingLink && entry.meetingLink) existing.meetingLink = entry.meetingLink
+        const existing = byDate[key]
+        const statusOrder = ['todo','sent','reviewing','interview','done','waiting','offer','rejected','rejected_ats','cancelled','archived']
+        const existingIdx = statusOrder.indexOf(existing.status)
+        const entryIdx = statusOrder.indexOf(entry.status)
+        if (entryIdx > existingIdx) existing.status = entry.status
+        if (entry.note && entry.note.trim()) {
+          const normNew = entry.note.trim().toLowerCase().replace(/\s+/g, ' ')
+          const isDup = existing._notes.some(n => n.trim().toLowerCase().replace(/\s+/g, ' ') === normNew)
+          if (!isDup) existing._notes.push(entry.note.trim())
         }
+        if (entry.gmailId && !existing._gmailIds.includes(entry.gmailId)) {
+          existing._gmailIds.push(entry.gmailId)
+        }
+        if (!existing.meetingLink && entry.meetingLink) existing.meetingLink = entry.meetingLink
       }
     }
 
@@ -349,7 +403,7 @@ function mergeSameDateEntries(jobs) {
     })
 
     // Merge meetings and non-meetings back together, sorted by date (oldest first, since JobRow will reverse)
-    const combined = [...meetings, ...merged]
+    const combined = [...deduplicatedMeetings, ...merged]
     combined.sort((a, b) => {
       const dateA = new Date(a.rawStart || a.date || 0)
       const dateB = new Date(b.rawStart || b.date || 0)
