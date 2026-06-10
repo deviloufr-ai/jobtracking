@@ -320,7 +320,11 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
     effectiveMonths = 1  // Focus on recent results
   } else if (dateRange?.startDate && dateRange?.endDate) {
     const fmt = d => d.replace(/-/g, '/')
-    dateFilter = `after:${fmt(dateRange.startDate)} before:${fmt(dateRange.endDate)}`
+    // Add 1 day to endDate because "before" excludes the date itself
+    const nextDay = new Date(dateRange.endDate)
+    nextDay.setDate(nextDay.getDate() + 1)
+    const nextDayStr = nextDay.toISOString().split('T')[0]
+    dateFilter = `after:${fmt(dateRange.startDate)} before:${fmt(nextDayStr)}`
     // Estimate months for maxResults calculation
     const ms = new Date(dateRange.endDate) - new Date(dateRange.startDate)
     effectiveMonths = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24 * 30)))
