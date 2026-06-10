@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { isConnected, fetchJobEmails, fetchJobEmailsForAccount, getConnectedAccounts, getCachedUser } from '../services/gmail'
 import { parseEmailsForJobs } from '../services/claude'
 import { fetchCalendarEvents } from '../services/calendar'
-import { isAtsRejection } from './useJobs'
+import { isAtsRejection, isDeletedJob } from './useJobs'
 import { normalize, isJobBoard } from '../constants/jobBoards'
 
 const REFRESH_KEY = 'jobtrackr_last_refresh'
@@ -311,6 +311,11 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
       const now = new Date().toISOString()
       for (const p of grouped) {
         const existing = findExisting(p)
+
+        // Skip re-importing jobs that were explicitly deleted
+        if (!existing && isDeletedJob(p.company, p.position)) {
+          continue
+        }
 
         if (!existing) {
           // New job — add it with lastSyncTime
