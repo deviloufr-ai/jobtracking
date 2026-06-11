@@ -156,15 +156,14 @@ export function initializeSyncCoordinator(userId) {
   }
 
   coordinator = new SyncCoordinator(userId)
-  coordinator.initialize()
+  // Initialize asynchronously but don't block on it
+  coordinator.initialize().catch(err => {
+    console.error('Failed to initialize SyncCoordinator:', err)
+  })
   return coordinator
 }
 
 export function getSyncCoordinator() {
-  if (!coordinator) {
-    console.warn('SyncCoordinator not initialized, create it first with initializeSyncCoordinator')
-    return null
-  }
   return coordinator
 }
 

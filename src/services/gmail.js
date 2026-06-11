@@ -13,12 +13,18 @@ function saveAccounts(map) {
   try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(map)) } catch {}
 }
 
-// Get or create a stable sync user ID (UUID format for Supabase)
+// Get or create a stable sync user ID (pure UUID format for Supabase)
 function getSyncUserId() {
   let syncId = localStorage.getItem(SYNC_USER_KEY)
   if (!syncId) {
     syncId = crypto.randomUUID()
     try { localStorage.setItem(SYNC_USER_KEY, syncId) } catch {}
+  }
+  // Handle legacy "sync-user-" prefix by extracting just the UUID
+  if (syncId.startsWith('sync-user-')) {
+    const pureUuid = syncId.substring('sync-user-'.length)
+    try { localStorage.setItem(SYNC_USER_KEY, pureUuid) } catch {}
+    return pureUuid
   }
   return syncId
 }
