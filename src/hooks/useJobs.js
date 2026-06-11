@@ -443,8 +443,17 @@ async function syncLocalJobsToSupabase(stableSyncId) {
           history: historyByJobId.get(remoteJob.id) || []
         }
 
+        // Always merge with local job to ensure history is attached
         const localJob = await indexeddb.getJob(remoteJob.id)
-        if (!localJob) {
+        if (localJob) {
+          // Merge: keep local data but use remote history and updated_at
+          const merged = {
+            ...localJob,
+            history: jobWithHistory.history,
+            updated_at: remoteJob.updated_at
+          }
+          await indexeddb.saveJob(merged)
+        } else {
           // New job from another device, save it
           await indexeddb.saveJob(jobWithHistory)
           console.log('  ✓ Fetched job:', remoteJob.company)
