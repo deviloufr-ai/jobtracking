@@ -29,6 +29,7 @@ import { useNotifications } from './hooks/useNotifications'
 import NotificationPermissionBanner from './components/NotificationPermissionBanner'
 import { useNotificationPermission } from './hooks/useNotificationPermission'
 import { useNotificationScenarios } from './hooks/useNotificationScenarios'
+import LandingPage from './components/LandingPage'
 
 const DEFAULT_FILTERS = { search: '', statuses: {}, period: 'all' }
 const DEFAULT_SORT = { col: 'date', dir: 'desc' }
@@ -112,6 +113,7 @@ export default function App() {
   const [gmailConnected, setGmailConnected] = useState(() => isConnected())
   const [activeTab, setActiveTab] = useState('tracker')
   const [expandedJobId, setExpandedJobId] = useState(null)
+  const [showLandingPage, setShowLandingPage] = useState(!getCachedUser() && jobs.length === 0)
 
   // On load: restore stored tokens
   useEffect(() => {
@@ -120,6 +122,13 @@ export default function App() {
       getGmailUserInfo().then(user => { if (user) setGmailUser(user) })
     }
   }, [])
+
+  // Hide landing page when user logs in
+  useEffect(() => {
+    if (gmailUser || jobs.length > 0) {
+      setShowLandingPage(false)
+    }
+  }, [gmailUser, jobs.length])
   const [showFavOnly, setShowFavOnly] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [selectedJobForCV, setSelectedJobForCV] = useState(null) // 'tracker' | 'search' | 'cv'
@@ -319,6 +328,15 @@ export default function App() {
   ]
 
   const goTab = (id) => { setActiveTab(id); setMobileMenuOpen(false) }
+
+  // Show landing page if no user and no jobs
+  if (showLandingPage) {
+    return (
+      <ErrorBoundary>
+        <LandingPage onLogin={() => setShowGmail(true)} />
+      </ErrorBoundary>
+    )
+  }
 
   return (
     <ErrorBoundary>
