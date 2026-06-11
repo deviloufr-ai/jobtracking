@@ -1,5 +1,6 @@
 import { useAuth } from './hooks/useAuth'
 import { useMigration } from './hooks/useMigration'
+import { usePolling } from './hooks/usePolling'
 import { LoginPage } from './components/Auth/LoginPage'
 import { MigrationDialog } from './components/MigrationDialog'
 import App from './App'
@@ -7,6 +8,7 @@ import App from './App'
 export default function Root() {
   const { user, loading, isAuthenticated } = useAuth()
   const migration = useMigration(user?.id)
+  const polling = usePolling(user?.id)
 
   // Show loading spinner while checking auth
   if (loading) {
