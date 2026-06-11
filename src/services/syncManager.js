@@ -195,11 +195,8 @@ class SyncManager {
     }
 
     if (result.error) {
-      // 409 = conflict
-      if (result.status === 409) {
-        console.warn('Conflict detected, attempting merge...')
-        return await this.handleConflict(table, record)
-      }
+      // 409 = conflict - but for now, just throw to see actual error
+      console.error('Mutation error:', result.status, result.error)
       throw result.error
     }
 
