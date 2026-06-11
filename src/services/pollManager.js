@@ -1,7 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
 
-const POLL_INTERVAL = 900000 // 15 minutes
+const POLL_INTERVAL = 300000 // 5 minutes
 
 class PollManager {
   constructor() {
