@@ -255,22 +255,22 @@ function renderMinimal(md, pic) {
   const { name, contact, sections } = parseCV(md)
 
   const expStyles = {
-    block:   'margin-bottom:3px',
-    title:   'font-size:10pt;font-weight:800;color:#1e293b;margin:0',
-    company: 'font-size:9pt;font-weight:700;color:#334155',
-    dates:   'font-size:8pt;color:#666;font-style:italic',
-    p:       'font-size:8.5pt;color:#334155;margin:1px 0',
-    li:      'font-size:8.5pt;color:#334155;padding-left:12px;margin:1px 0;line-height:1.3',
+    block:   'margin-bottom:4px;padding-bottom:3px',
+    title:   'font-size:10pt;font-weight:800;color:#1e293b;margin:0;margin-bottom:2px',
+    company: 'font-size:9pt;font-weight:700;color:#334155;margin-bottom:1px',
+    dates:   'font-size:8pt;color:#666;font-style:italic;margin-bottom:2px',
+    p:       'font-size:8.5pt;color:#334155;margin:2px 0;line-height:1.35',
+    li:      'font-size:8.5pt;color:#334155;padding-left:12px;margin:2px 0;line-height:1.4',
     bullet:  '•',
   }
 
   const header = `
-    <div style="padding:12px 20px;border-bottom:1px solid #d1d5db">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:3px">
-        ${pic ? `<div>${picHTML(pic, 48, '#d1d5db')}</div>` : ''}
+    <div style="padding:14px 20px;border-bottom:1.5px solid #d1d5db">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:4px">
+        ${pic ? `<div>${picHTML(pic, 52, '#d1d5db')}</div>` : ''}
         <div>
-          <div style="font-size:16pt;font-weight:900;color:#000;margin:0">${name}</div>
-          ${contact ? `<div style="font-size:7.5pt;color:#666;margin-top:1px">${contact}</div>` : ''}
+          <div style="font-size:17pt;font-weight:900;color:#000;margin:0">${name}</div>
+          ${contact ? `<div style="font-size:8pt;color:#666;margin-top:2px;line-height:1.4">${contact}</div>` : ''}
         </div>
       </div>
     </div>`
@@ -279,13 +279,13 @@ function renderMinimal(md, pic) {
     const blocks = groupBlocks(s.items)
     const inner  = blocks.map(b => expBlock(b, expStyles)).join('')
     return `
-      <div style="margin:6px 0">
-        <div style="font-size:9pt;font-weight:800;color:#000;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;border-bottom:1px solid #e5e7eb">${s.title}</div>
+      <div style="margin:7px 0;padding-bottom:1px">
+        <div style="font-size:9.5pt;font-weight:800;color:#000;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;border-bottom:1.5px solid #e5e7eb;padding-bottom:2px">${s.title}</div>
         ${inner}
       </div>`
   }).join('')
 
-  return `${header}<div style="padding:8px 20px 12px">${body}</div>`
+  return `${header}<div style="padding:10px 20px 12px">${body}</div>`
 }
 
 // ── Template registry ─────────────────────────────────────────────────────────
