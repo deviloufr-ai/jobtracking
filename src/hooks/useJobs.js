@@ -284,18 +284,52 @@ function mergeSameDateEntries(jobs) {
   return jobs.map(j => {
     if (!j.history || j.history.length <= 1) return j
 
-    const isCalendarEvent = h => h.source === 'calendar' || (h.note && h.note.includes('📅'))
-    const calendarEntries = j.history.filter(isCalendarEvent)
-    const deduped = deduplicateMeetings(calendarEntries)
+    // Check if entry is a real meeting (has meetingLink or is calendar event)
+    const isRealMeeting = h => h.meetingLink || h.source === 'calendar' || (h.note && h.note.includes('📅'))
 
-    const calendarEntryIds = new Set(deduped.map(d => `${d.date}_${d.note}_${d.meetingLink}`))
-    const merged = j.history.filter(h => {
-      if (!isCalendarEvent(h)) return true
-      const id = `${h.date}_${h.note}_${h.meetingLink}`
-      return calendarEntryIds.has(id)
-    })
+    // Group entries by date
+    const byDate = new Map()
+    for (const entry of j.history) {
+      if (!byDate.has(entry.date)) {
+        byDate.set(entry.date, [])
+      }
+      byDate.get(entry.date).push(entry)
+    }
 
-    return { ...j, history: merged }
+    // Merge entries with same date
+    const merged = []
+    for (const [date, entries] of byDate) {
+      if (entries.length === 1) {
+        merged.push(entries[0])
+        continue
+      }
+
+      // Separate real meetings from regular entries
+      const meetings = entries.filter(isRealMeeting)
+      const regularEntries = entries.filter(e => !isRealMeeting(e))
+
+      // Keep meetings separate, deduplicate if needed
+      if (meetings.length > 0) {
+        const deduped = deduplicateMeetings(meetings)
+        merged.push(...deduped)
+      }
+
+      // Merge regular entries with same date into one
+      if (regularEntries.length > 0) {
+        const primary = regularEntries[0]
+        const allNotes = regularEntries
+          .map(e => e.note)
+          .filter(Boolean)
+          .join(' | ')
+
+        merged.push({
+          ...primary,
+          note: allNotes || primary.note
+        })
+      }
+    }
+
+    return { ...j, history: merged.sort((a, b) => new Date(a.date) - new Date(b.date)) }
   })
 }
 
