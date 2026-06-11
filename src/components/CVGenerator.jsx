@@ -450,11 +450,7 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
     element.style.lineHeight = '1.2'
     element.style.color = '#000'
     element.style.backgroundColor = '#fff'
-    // A4 page height at 96dpi = ~1123px, constrain to that to force 1 page
-    element.style.maxHeight = '1123px'
-    element.style.overflow = 'hidden'
     element.style.width = '210mm'
-    element.style.height = '297mm'
     element.style.boxSizing = 'border-box'
 
     // Add style to remove page break visual separators and force single page
