@@ -270,7 +270,9 @@ export default function App() {
 
   const handleUpdateHistory = (id, history) => {
     const job = jobs.find(j => j.id === id)
-    updateJob(id, { history })
+    // Sort history by date (chronological order)
+    const sorted = [...history].sort((a, b) => new Date(a.date) - new Date(b.date))
+    updateJob(id, { history: sorted })
     if (job && history.length > (job.history?.length || 0))
       pushNotif('update', `${job.company} — historique mis à jour`, { company: job.company, jobId: id })
   }
