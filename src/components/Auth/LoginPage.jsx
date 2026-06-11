@@ -1,17 +1,7 @@
 import { useAuth } from '../../hooks/useAuth'
-import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 export function LoginPage() {
-  const { signInWithGoogle, loading, error, isAuthenticated } = useAuth()
-  const navigate = useNavigate()
-
-  // Redirect to app if already authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/')
-    }
-  }, [isAuthenticated, navigate])
+  const { signInWithGoogle, loading, error } = useAuth()
 
   const handleGoogleSignIn = async () => {
     try {

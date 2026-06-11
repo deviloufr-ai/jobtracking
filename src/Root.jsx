@@ -1,7 +1,6 @@
 import { useAuth } from './hooks/useAuth'
 import { LoginPage } from './components/Auth/LoginPage'
 import App from './App'
-import { useEffect } from 'react'
 
 export default function Root() {
   const { user, loading, isAuthenticated } = useAuth()
@@ -24,5 +23,5 @@ export default function Root() {
   }
 
   // Show main app if authenticated
-  return <App user={user} />
+  return <App />
 }
