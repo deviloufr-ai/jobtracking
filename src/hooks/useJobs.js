@@ -34,6 +34,15 @@ export function isAtsRejection(notes = '', fromEmail = '') {
   return atsMatch || isRejection
 }
 
+// Helper: ensure history is always sorted by date (chronological order)
+export function sortJobHistory(job) {
+  if (!job?.history?.length) return job
+  return {
+    ...job,
+    history: [...job.history].sort((a, b) => new Date(a.date) - new Date(b.date))
+  }
+}
+
 export const STATUSES = [
   { key: 'todo',         label: 'À postuler',         color: 'bg-slate-100 text-slate-600',   dot: 'bg-slate-400' },
   { key: 'sent',         label: 'Envoyée',           color: 'bg-blue-100 text-blue-700',     dot: 'bg-blue-500' },
@@ -348,7 +357,9 @@ export function useJobs() {
       try {
         await indexeddb.init()
         const cachedJobs = await indexeddb.getAllJobs()
-        setJobs(cachedJobs || [])
+        // Ensure all loaded jobs have sorted history
+        const sortedJobs = (cachedJobs || []).map(job => sortJobHistory(job))
+        setJobs(sortedJobs)
       } catch (err) {
         console.error('Failed to load jobs from IndexedDB:', err)
         setJobs([])
@@ -430,14 +441,16 @@ export function useJobs() {
   }
 
   const updateJob = (id, data) => {
-    setJobs(prev => prev.map(j => j.id === id
-      ? { ...j, ...data, updated_at: new Date().toISOString() }
-      : j
-    ))
+    setJobs(prev => prev.map(j => {
+      if (j.id !== id) return j
+      const updated = { ...j, ...data, updated_at: new Date().toISOString() }
+      return data.history ? sortJobHistory(updated) : updated
+    }))
     const job = jobs.find(j => j.id === id)
     if (job) {
       const updated = { ...job, ...data, updated_at: new Date().toISOString() }
-      syncManager.mutate('jobs', 'update', updated).catch(err => console.error('Failed to sync job:', err))
+      const final = data.history ? sortJobHistory(updated) : updated
+      syncManager.mutate('jobs', 'update', final).catch(err => console.error('Failed to sync job:', err))
     }
   }
 
@@ -451,7 +464,7 @@ export function useJobs() {
     setJobs(prev => prev.map(j => {
       if (j.id !== id) return j
       if (j.status === status) return j
-      return {
+      const updated = {
         ...j,
         status,
         updated_at: new Date().toISOString(),
@@ -461,12 +474,11 @@ export function useJobs() {
           note: st ? `Statut mis à jour → ${st.label}` : 'Statut mis à jour',
         }]
       }
+      return sortJobHistory(updated)
     }))
     const job = jobs.find(j => j.id === id)
     if (job) {
-      const updated = job
-      const st = STATUSES.find(s => s.key === status)
-      const newJob = {
+      const newJob = sortJobHistory({
         ...job,
         status,
         updated_at: new Date().toISOString(),
@@ -475,7 +487,7 @@ export function useJobs() {
           status,
           note: st ? `Statut mis à jour → ${st.label}` : 'Statut mis à jour',
         }]
-      }
+      })
       syncManager.mutate('jobs', 'update', newJob).catch(err => console.error('Failed to sync status:', err))
     }
   }
@@ -486,24 +498,25 @@ export function useJobs() {
       const entryDate = new Date(entry.date)
       const isPast = entryDate < new Date()
       const resolvedStatus = entry.status === 'interview' && isPast ? 'done' : entry.status
-      return {
+      const updated = {
         ...j,
         status: resolvedStatus,
         updated_at: new Date().toISOString(),
         history: [...(j.history || []), { ...entry, status: resolvedStatus }]
       }
+      return sortJobHistory(updated)
     }))
     const job = jobs.find(j => j.id === id)
     if (job) {
       const entryDate = new Date(entry.date)
       const isPast = entryDate < new Date()
       const resolvedStatus = entry.status === 'interview' && isPast ? 'done' : entry.status
-      const newJob = {
+      const newJob = sortJobHistory({
         ...job,
         status: resolvedStatus,
         updated_at: new Date().toISOString(),
         history: [...(job.history || []), { ...entry, status: resolvedStatus }]
-      }
+      })
       syncManager.mutate('jobs', 'update', newJob).catch(err => console.error('Failed to sync history:', err))
     }
   }
