@@ -409,53 +409,7 @@ async function syncLocalJobsToSupabase(stableSyncId) {
   if (!stableSyncId) return
 
   try {
-    // MIGRATION: Check for old data under Gmail email user_id and migrate to stable ID
-    const gmailUser = getCachedUser()
-    if (gmailUser?.email) {
-      const { data: oldData } = await supabase
-        .from('jobs')
-        .select('*')
-        .eq('user_id', gmailUser.email)
-
-      if (oldData?.length) {
-        console.log('🔄 Migrating', oldData.length, 'old jobs from Gmail email to stable sync ID...')
-
-        // Migrate jobs by updating their user_id
-        for (const job of oldData) {
-          try {
-            await supabase
-              .from('jobs')
-              .update({ user_id: stableSyncId })
-              .eq('id', job.id)
-              .eq('user_id', gmailUser.email)
-          } catch (err) {
-            console.warn('  ✗ Failed to migrate job:', job.company, err.message)
-          }
-        }
-
-        // Migrate job history
-        const { data: oldHistory } = await supabase
-          .from('job_history')
-          .select('*')
-          .eq('user_id', gmailUser.email)
-
-        if (oldHistory?.length) {
-          for (const histEntry of oldHistory) {
-            try {
-              await supabase
-                .from('job_history')
-                .update({ user_id: stableSyncId })
-                .eq('id', histEntry.id)
-                .eq('user_id', gmailUser.email)
-            } catch (err) {
-              console.warn('  ✗ Failed to migrate history entry:', histEntry.id, err.message)
-            }
-          }
-        }
-
-        console.log('✓ Migration complete')
-      }
-    }
+    // Skip legacy email-based migration — not needed with stable UUID approach
 
     // FETCH jobs from Supabase for this user (other devices' jobs)
     const { data: supabaseJobs, error: fetchError } = await supabase
