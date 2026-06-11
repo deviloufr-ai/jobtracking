@@ -333,7 +333,7 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
     dateFilter = `newer_than:${days}d`
   }
 
-  const autoLimit = Math.min(effectiveMonths * 60, 500)
+  const autoLimit = Math.floor(Math.min(effectiveMonths * 60, 500))
   maxResults = maxResults ?? autoLimit
 
   // Gmail-native category filter — "promotions" = newsletters/job alerts → skip entirely
@@ -400,7 +400,7 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
     try {
       console.log(`📨 Running query: ${query.slice(0, 80)}...`)
       const data = await gmailFetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${Math.min(effectiveMonths * 20, 100)}&q=${encodeURIComponent(query)}`,
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${Math.floor(Math.min(effectiveMonths * 20, 100))}&q=${encodeURIComponent(query)}`,
         token
       )
       const newCount = (data.messages || []).length
