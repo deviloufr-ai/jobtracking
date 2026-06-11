@@ -131,17 +131,17 @@ function renderModern(md, pic) {
     const blocks = groupBlocks(s.items)
     const inner  = blocks.map(b => expBlock(b, expStyles)).join('')
     return `
-      <div style="margin-bottom:3px">
-        <div style="display:flex;align-items:center;gap:10px;margin:5px 0 4px;page-break-after:avoid">
-          <div style="width:4px;height:16px;background:linear-gradient(180deg,#6366f1,#818cf8);border-radius:2px;flex-shrink:0"></div>
-          <div style="font-size:8pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.1em">${s.title}</div>
+      <div style="margin-bottom:2px">
+        <div style="display:flex;align-items:center;gap:10px;margin:3px 0 2px;page-break-after:avoid">
+          <div style="width:3px;height:14px;background:linear-gradient(180deg,#6366f1,#818cf8);border-radius:2px;flex-shrink:0"></div>
+          <div style="font-size:7.5pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.08em">${s.title}</div>
           <div style="flex:1;height:1px;background:#e0e7ff"></div>
         </div>
         ${inner}
       </div>`
   }).join('')
 
-  return `${header}<div style="padding:6px 24px 8px">${body}</div>`
+  return `${header}<div style="padding:3px 16px 5px">${body}</div>`
 }
 
 // ── Template: CLASSIC ─────────────────────────────────────────────────────────
@@ -178,7 +178,7 @@ function renderClassic(md, pic) {
       </div>`
   }).join('')
 
-  return `${header}<div style="padding:6px 24px 8px">${body}</div>`
+  return `${header}<div style="padding:3px 16px 5px">${body}</div>`
 }
 
 // ── Template: EXECUTIVE (two-column sidebar) ──────────────────────────────────
@@ -441,7 +441,7 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
       setTimeout(() => setSaved(false), 3000)
     }
 
-    // Create temporary container with PDF content (no padding/margins for full bleed)
+    // Create temporary container with PDF content (constrained to 1 page)
     const element = document.createElement('div')
     element.innerHTML = html
     element.style.padding = '0'
@@ -450,13 +450,20 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
     element.style.lineHeight = '1.2'
     element.style.color = '#000'
     element.style.backgroundColor = '#fff'
+    // A4 page height at 96dpi = ~1123px, constrain to that to force 1 page
+    element.style.maxHeight = '1123px'
+    element.style.overflow = 'hidden'
+    element.style.width = '210mm'
+    element.style.height = '297mm'
+    element.style.boxSizing = 'border-box'
 
-    // Add style to remove page break visual separators
+    // Add style to remove page break visual separators and force single page
     const style = document.createElement('style')
     style.innerHTML = `
-      @page { margin: 0; padding: 0; }
-      * { page-break-after: auto; }
+      @page { margin: 0; padding: 0; size: A4; }
+      * { page-break-after: auto !important; page-break-inside: avoid !important; }
       body { margin: 0; padding: 0; line-height: 1.2; }
+      div { page-break-inside: avoid; }
     `
     element.appendChild(style)
 
