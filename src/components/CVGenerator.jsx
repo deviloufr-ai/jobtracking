@@ -141,7 +141,7 @@ function renderModern(md, pic) {
       </div>`
   }).join('')
 
-  return `${header}<div style="padding:6px 24px 20px">${body}</div>`
+  return `${header}<div style="padding:6px 24px 8px">${body}</div>`
 }
 
 // ── Template: CLASSIC ─────────────────────────────────────────────────────────
@@ -178,7 +178,7 @@ function renderClassic(md, pic) {
       </div>`
   }).join('')
 
-  return `${header}<div style="padding:6px 24px 20px">${body}</div>`
+  return `${header}<div style="padding:6px 24px 8px">${body}</div>`
 }
 
 // ── Template: EXECUTIVE (two-column sidebar) ──────────────────────────────────
@@ -407,7 +407,7 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
     element.style.padding = '0'
     element.style.margin = '0'
     element.style.fontFamily = 'Arial, Helvetica, sans-serif'
-    element.style.lineHeight = '1.5'
+    element.style.lineHeight = '1.2'
     element.style.color = '#000'
     element.style.backgroundColor = '#fff'
 
@@ -416,7 +416,7 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
     style.innerHTML = `
       @page { margin: 0; padding: 0; }
       * { page-break-after: auto; }
-      body { margin: 0; padding: 0; }
+      body { margin: 0; padding: 0; line-height: 1.2; }
     `
     element.appendChild(style)
 
@@ -441,7 +441,7 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
         hotfixes: ['px_scaling']
       },
       pagebreak: {
-        mode: ['avoid-all', 'css', 'legacy'],
+        mode: ['css', 'legacy'],
         before: false,
         after: false
       }
