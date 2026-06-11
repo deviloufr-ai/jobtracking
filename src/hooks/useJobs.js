@@ -4,6 +4,7 @@ import { extractUrlsFromEmail, rankUrlsByJobRelevance, checkPositionUrl } from '
 import { indexeddb } from '../services/indexeddb'
 import { syncManager } from '../services/syncManager'
 import { supabase } from '../services/supabase'
+import { getCachedUser } from '../services/gmail'
 
 const ENRICH_TTL_DAYS = 30
 
@@ -402,40 +403,81 @@ export function findDuplicateJob(jobs, company, position) {
   return null
 }
 
-// Sync local jobs to Supabase (in case they were added before auth)
-async function syncLocalJobsToSupabase() {
+// Sync local jobs to Supabase + fetch Supabase jobs (multi-device sync)
+async function syncLocalJobsToSupabase(gmailEmail) {
+  if (!gmailEmail) return
+
   try {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return // Not authenticated yet
-
-    const localJobs = await indexeddb.getAllJobs()
-    if (!localJobs?.length) return
-
-    console.log('📤 Uploading', localJobs.length, 'local jobs to Supabase...')
-
-    // Check which jobs already exist in Supabase
-    const { data: existingJobs } = await supabase
+    // FETCH jobs from Supabase for this user (other devices' jobs)
+    const { data: supabaseJobs, error: fetchError } = await supabase
       .from('jobs')
-      .select('id')
-      .eq('user_id', user.id)
+      .select('*')
+      .eq('user_id', gmailEmail)
 
-    const existingIds = new Set(existingJobs?.map(j => j.id) || [])
+    if (!fetchError && supabaseJobs?.length) {
+      console.log('📥 Fetching', supabaseJobs.length, 'jobs from Supabase...')
 
-    // Upload jobs that don't exist in Supabase
-    for (const job of localJobs) {
-      if (!existingIds.has(job.id)) {
-        try {
-          await syncManager.mutate('jobs', 'insert', job)
-          console.log('  ✓ Synced job:', job.company)
-        } catch (err) {
-          console.warn('  ✗ Failed to sync job:', job.company, err.message)
+      // Fetch history for these jobs
+      const { data: allHistory } = await supabase
+        .from('job_history')
+        .select('*')
+        .eq('user_id', gmailEmail)
+
+      const historyByJobId = new Map()
+      if (allHistory) {
+        allHistory.forEach(entry => {
+          if (!historyByJobId.has(entry.job_id)) {
+            historyByJobId.set(entry.job_id, [])
+          }
+          historyByJobId.get(entry.job_id).push(entry)
+        })
+      }
+
+      // Merge Supabase jobs with history into local IndexedDB
+      for (const remoteJob of supabaseJobs) {
+        const jobWithHistory = {
+          ...remoteJob,
+          history: historyByJobId.get(remoteJob.id) || []
+        }
+
+        const localJob = await indexeddb.getJob(remoteJob.id)
+        if (!localJob) {
+          // New job from another device, save it
+          await indexeddb.saveJob(jobWithHistory)
+          console.log('  ✓ Fetched job:', remoteJob.company)
         }
       }
     }
 
-    console.log('✓ Local jobs sync complete')
+    // UPLOAD local jobs to Supabase (in case they were added before auth)
+    const localJobs = await indexeddb.getAllJobs()
+    if (localJobs?.length) {
+      console.log('📤 Uploading', localJobs.length, 'local jobs to Supabase...')
+
+      // Check which jobs already exist in Supabase
+      const { data: existingJobs } = await supabase
+        .from('jobs')
+        .select('id')
+        .eq('user_id', gmailEmail)
+
+      const existingIds = new Set(existingJobs?.map(j => j.id) || [])
+
+      // Upload jobs that don't exist in Supabase
+      for (const job of localJobs) {
+        if (!existingIds.has(job.id)) {
+          try {
+            await syncManager.mutate('jobs', 'insert', job)
+            console.log('  ✓ Synced job:', job.company)
+          } catch (err) {
+            console.warn('  ✗ Failed to sync job:', job.company, err.message)
+          }
+        }
+      }
+    }
+
+    console.log('✓ Sync complete')
   } catch (err) {
-    console.warn('⚠ Local jobs sync failed (non-critical):', err.message)
+    console.warn('⚠ Sync failed (non-critical):', err.message)
   }
 }
 
@@ -470,8 +512,11 @@ export function useJobs() {
     }
     window.addEventListener('jobtrackr:datasync', handleSync)
 
-    // Sync local jobs to Supabase on app load (in case they were added before auth)
-    syncLocalJobsToSupabase()
+    // Sync local jobs to Supabase + fetch Supabase jobs on app load
+    const gmailUser = getCachedUser()
+    if (gmailUser?.email) {
+      syncLocalJobsToSupabase(gmailUser.email)
+    }
 
     return () => window.removeEventListener('jobtrackr:datasync', handleSync)
   }, [])
