@@ -441,7 +441,7 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
       setTimeout(() => setSaved(false), 3000)
     }
 
-    // Create temporary container with PDF content (constrained to 1 page)
+    // Create temporary container with PDF content (allows multiple pages for full content)
     const element = document.createElement('div')
     element.innerHTML = html
     element.style.padding = '0'
@@ -452,6 +452,8 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
     element.style.backgroundColor = '#fff'
     element.style.width = '210mm'
     element.style.boxSizing = 'border-box'
+    element.style.wordWrap = 'break-word'
+    element.style.overflowWrap = 'break-word'
 
     // Add style to remove page break visual separators and force single page
     const style = document.createElement('style')
