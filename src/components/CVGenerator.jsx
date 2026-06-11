@@ -66,12 +66,12 @@ function groupBlocks(items) {
 // ── Simple renderer (used for "before" original CV panel) ─────────────────────
 function renderSimple(md) {
   return (md || '').split('\n').map(line => {
-    if (line.startsWith('# '))  return `<h1 style="font-size:16pt;font-weight:800;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:5px;margin:0 0 10px">${line.slice(2)}</h1>`
-    if (line.startsWith('## ')) return `<h2 style="font-size:10pt;font-weight:700;color:#4f46e5;margin:14px 0 4px;text-transform:uppercase;letter-spacing:0.08em">${line.slice(3)}</h2>`
-    if (line.startsWith('### ')) return `<h3 style="font-size:10pt;font-weight:700;color:#1e293b;margin:7px 0 2px">${line.slice(4)}</h3>`
-    if (line.startsWith('- ')) return `<div style="font-size:9.5pt;padding-left:12px;margin:2px 0;color:#334155">• ${fmt(line.slice(2))}</div>`
-    if (!line.trim()) return '<div style="margin:4px 0"></div>'
-    return `<p style="font-size:9.5pt;margin:2px 0;color:#334155">${fmt(line)}</p>`
+    if (line.startsWith('# '))  return `<h1 style="font-size:16pt;font-weight:800;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:3px;margin:0 0 6px">${line.slice(2)}</h1>`
+    if (line.startsWith('## ')) return `<h2 style="font-size:10pt;font-weight:700;color:#4f46e5;margin:8px 0 2px;text-transform:uppercase;letter-spacing:0.08em">${line.slice(3)}</h2>`
+    if (line.startsWith('### ')) return `<h3 style="font-size:10pt;font-weight:700;color:#1e293b;margin:4px 0 1px">${line.slice(4)}</h3>`
+    if (line.startsWith('- ')) return `<div style="font-size:9.5pt;padding-left:12px;margin:1px 0;color:#334155">• ${fmt(line.slice(2))}</div>`
+    if (!line.trim()) return '<div style="margin:1px 0"></div>'
+    return `<p style="font-size:9.5pt;margin:1px 0;color:#334155">${fmt(line)}</p>`
   }).join('')
 }
 
