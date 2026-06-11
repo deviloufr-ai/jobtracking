@@ -406,7 +406,7 @@ export function findDuplicateJob(jobs, company, position) {
 
 // Sync local jobs to Supabase + fetch Supabase jobs (multi-device sync)
 async function syncLocalJobsToSupabase(stableSyncId) {
-  if (!stableSyncId) return
+  if (!stableSyncId) return Promise.resolve()
 
   try {
     // Skip legacy email-based migration — not needed with stable UUID approach
@@ -517,7 +517,10 @@ export function useJobs() {
 
     // Sync local jobs to Supabase + fetch Supabase jobs on app load
     const syncUserId = getSyncUserIdForSupabase()
-    syncLocalJobsToSupabase(syncUserId)
+    syncLocalJobsToSupabase(syncUserId).then(() => {
+      // Reload jobs from IndexedDB after Supabase sync completes
+      loadJobs()
+    })
 
     return () => window.removeEventListener('jobtrackr:datasync', handleSync)
   }, [])
