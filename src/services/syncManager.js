@@ -224,9 +224,10 @@ class SyncManager {
       }))
 
       // Upsert history (for updates, this adds new entries)
+      // Use job_id + date + note as natural key to prevent duplicates across syncs
       const { error: historyError } = await supabase
         .from('job_history')
-        .upsert(historyEntries, { onConflict: 'id' })
+        .upsert(historyEntries, { onConflict: 'job_id,date,note' })
 
       if (historyError) {
         console.error('Error syncing job history:', historyError)
