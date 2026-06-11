@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useAuth } from '../hooks/useAuth'
 import { connectGmail, disconnectGmail, refreshToken, fetchJobEmails, fetchJobEmailsForAccount, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, getConnectedAccounts } from '../services/gmail'
 import { fetchCalendarEvents } from '../services/calendar'
 import { buildJobsFromEmails } from '../hooks/useAutoRefresh'
@@ -16,6 +17,7 @@ const MONTH_OPTIONS = [
 ]
 
 export default function GmailImport({ onImport, onUpdate, onClose, existingJobs, onUserChange }) {
+  const { signInWithGoogle: supabaseSignIn } = useAuth()
   const [step, setStep] = useState(STEPS.idle)
   const [connectedAccounts, setConnectedAccounts] = useState(() => getConnectedAccounts())
   const [scanAccount, setScanAccount] = useState(null) // null = all accounts
@@ -61,6 +63,8 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
       setStep(STEPS.connecting)
       setError(null)
       await connectGmail()
+      // Also sign in to Supabase for multi-device sync
+      await supabaseSignIn()
       refreshAccountList()
       setStep(STEPS.idle)
     } catch (e) {
