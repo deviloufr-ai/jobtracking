@@ -120,19 +120,49 @@ class SyncManager {
     }
   }
 
+  stripLocalOnlyFields(record) {
+    if (!record) return record
+
+    const localOnlyFields = new Set([
+      'lastSyncTime',    // For Gmail incremental sync
+      'enrichedAt',      // For enrichment TTL tracking
+      '_history',        // Temp history before merge
+      '_gmailId',        // Gmail metadata
+      '_fromEmail',      // Email metadata
+      '_fromMe',         // Email metadata
+      '_emailBody',      // Email content
+    ])
+
+    const cleaned = { ...record }
+    for (const field of localOnlyFields) {
+      delete cleaned[field]
+    }
+
+    // Also remove any fields starting with underscore (other metadata)
+    for (const key of Object.keys(cleaned)) {
+      if (key.startsWith('_')) {
+        delete cleaned[key]
+      }
+    }
+
+    return cleaned
+  }
+
   async sendMutationToSupabase(table, type, record) {
     const userId = (await supabase.auth.getUser()).data?.user?.id
     if (!userId) throw new Error('User not authenticated')
 
     let result
 
-    // For jobs table, extract history and sync separately
+    // For jobs table, extract history and strip local-only fields
     let jobRecord = record
     let history = null
-    if (table === 'jobs' && record.history) {
+    if (table === 'jobs') {
       const { history: h, ...jobWithoutHistory } = record
       jobRecord = jobWithoutHistory
       history = h
+      // Strip local-only fields (_merged, _history, etc.)
+      jobRecord = this.stripLocalOnlyFields(jobRecord)
     }
 
     switch (type) {
