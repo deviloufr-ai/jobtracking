@@ -334,8 +334,45 @@ function revalidateArchives(jobs) {
   })
 }
 
+function deduplicateExactMatches(jobs) {
+  const seen = new Map()
+  const result = []
+
+  for (const job of jobs) {
+    const co = normalizeCompany(job.company)
+    const pos = (job.position || '').toLowerCase().trim()
+    const date = job.date
+    const status = job.status
+
+    const key = `${co}|||${pos}|||${date}|||${status}`
+
+    if (seen.has(key)) {
+      // Merge with existing: combine notes and history
+      const existing = seen.get(key)
+      if (job.notes && !existing.notes.includes(job.notes)) {
+        existing.notes = existing.notes ? `${existing.notes} | ${job.notes}` : job.notes
+      }
+      if (job.history && job.history.length > 0) {
+        const existingHistoryKeys = new Set(
+          (existing.history || []).map(h => `${h.date}_${(h.note || '').slice(0, 50)}`)
+        )
+        const newEntries = job.history.filter(h => {
+          const k = `${h.date}_${(h.note || '').slice(0, 50)}`
+          return !existingHistoryKeys.has(k)
+        })
+        existing.history = [...(existing.history || []), ...newEntries].sort((a, b) => new Date(a.date) - new Date(b.date))
+      }
+    } else {
+      seen.set(key, job)
+      result.push(job)
+    }
+  }
+
+  return result
+}
+
 function autoStale(jobs) {
-  return revalidateArchives(jobs)
+  return revalidateArchives(deduplicateExactMatches(jobs))
 }
 
 // Helper to check if a job was previously deleted (for dedup on re-import)
