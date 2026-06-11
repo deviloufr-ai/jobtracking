@@ -250,16 +250,56 @@ function renderExecutive(md, pic) {
     </table>`
 }
 
+// ── Template: MINIMAL ────────────────────────────────────────────────────────
+function renderMinimal(md, pic) {
+  const { name, contact, sections } = parseCV(md)
+
+  const expStyles = {
+    block:   'margin-bottom:3px',
+    title:   'font-size:10pt;font-weight:800;color:#1e293b;margin:0',
+    company: 'font-size:9pt;font-weight:700;color:#334155',
+    dates:   'font-size:8pt;color:#666;font-style:italic',
+    p:       'font-size:8.5pt;color:#334155;margin:1px 0',
+    li:      'font-size:8.5pt;color:#334155;padding-left:12px;margin:1px 0;line-height:1.3',
+    bullet:  '•',
+  }
+
+  const header = `
+    <div style="padding:12px 20px;border-bottom:1px solid #d1d5db">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:3px">
+        ${pic ? `<div>${picHTML(pic, 48, '#d1d5db')}</div>` : ''}
+        <div>
+          <div style="font-size:16pt;font-weight:900;color:#000;margin:0">${name}</div>
+          ${contact ? `<div style="font-size:7.5pt;color:#666;margin-top:1px">${contact}</div>` : ''}
+        </div>
+      </div>
+    </div>`
+
+  const body = sections.map(s => {
+    const blocks = groupBlocks(s.items)
+    const inner  = blocks.map(b => expBlock(b, expStyles)).join('')
+    return `
+      <div style="margin:6px 0">
+        <div style="font-size:9pt;font-weight:800;color:#000;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;border-bottom:1px solid #e5e7eb">${s.title}</div>
+        ${inner}
+      </div>`
+  }).join('')
+
+  return `${header}<div style="padding:8px 20px 12px">${body}</div>`
+}
+
 // ── Template registry ─────────────────────────────────────────────────────────
 const TEMPLATES = [
   { id: 'modern',    label: 'Moderne',   icon: '🎨', desc: 'Header dégradé indigo' },
   { id: 'classic',   label: 'Classique', icon: '📄', desc: 'Sobre, centré, intemporel' },
   { id: 'executive', label: 'Executive', icon: '💼', desc: 'Sidebar sombre, 2 colonnes' },
+  { id: 'minimal',   label: 'Minimal',   icon: '✦', desc: 'Ultra-compact, maximal contenu' },
 ]
 
 export function renderCV(md, templateId, pic) {
   if (templateId === 'classic')   return renderClassic(md, pic)
   if (templateId === 'executive') return renderExecutive(md, pic)
+  if (templateId === 'minimal')   return renderMinimal(md, pic)
   return renderModern(md, pic)
 }
 
