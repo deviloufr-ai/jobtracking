@@ -1,3 +1,5 @@
+import { supabase } from './supabase'
+
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
 
@@ -13,30 +15,58 @@ function saveAccounts(map) {
   try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(map)) } catch {}
 }
 
-// Get sync user ID - uses first connected Gmail account's email
-// This ensures all devices logged into the same Gmail share one database
-function getSyncUserId() {
-  // If we have a logged-in Gmail user, use their email as the sync ID
+// Get sync user ID - queries gmail_user_sync_mapping table
+// All devices with the same Gmail email get the same UUID
+async function getSyncUserId() {
   const firstAccount = Object.values(accounts)[0]
-  if (firstAccount?.user?.email) {
-    return firstAccount.user.email
+  const gmailEmail = firstAccount?.user?.email
+
+  if (!gmailEmail) {
+    // Fallback if no Gmail account
+    let syncId = localStorage.getItem(SYNC_USER_KEY)
+    if (!syncId) {
+      syncId = crypto.randomUUID()
+      try { localStorage.setItem(SYNC_USER_KEY, syncId) } catch {}
+    }
+    if (syncId.startsWith('sync-user-')) {
+      const pureUuid = syncId.substring('sync-user-'.length)
+      try { localStorage.setItem(SYNC_USER_KEY, pureUuid) } catch {}
+      return pureUuid
+    }
+    return syncId
   }
 
-  // Fallback: generate UUID if no Gmail account connected yet
-  let syncId = localStorage.getItem(SYNC_USER_KEY)
-  if (!syncId) {
-    syncId = crypto.randomUUID()
-    try { localStorage.setItem(SYNC_USER_KEY, syncId) } catch {}
-  }
+  // Query mapping table for this Gmail account
+  try {
+    const { data: existing, error } = await supabase
+      .from('gmail_user_sync_mapping')
+      .select('sync_uuid')
+      .eq('gmail_email', gmailEmail)
+      .maybeSingle()
 
-  // Handle legacy "sync-user-" prefix
-  if (syncId.startsWith('sync-user-')) {
-    const pureUuid = syncId.substring('sync-user-'.length)
-    try { localStorage.setItem(SYNC_USER_KEY, pureUuid) } catch {}
-    return pureUuid
-  }
+    if (existing?.sync_uuid) {
+      console.log('✓ Found existing sync UUID for:', gmailEmail)
+      return existing.sync_uuid
+    }
 
-  return syncId
+    // Create new mapping for this Gmail
+    const newUuid = crypto.randomUUID()
+    const { error: insertError } = await supabase
+      .from('gmail_user_sync_mapping')
+      .insert({ gmail_email: gmailEmail, sync_uuid: newUuid })
+
+    if (insertError) {
+      console.warn('Failed to insert sync mapping:', insertError)
+      return newUuid
+    }
+
+    console.log('✓ Created new sync UUID for:', gmailEmail)
+    return newUuid
+  } catch (err) {
+    console.warn('Error querying sync mapping, using fallback UUID:', err)
+    // Fallback to a consistent UUID based on email
+    return crypto.randomUUID()
+  }
 }
 
 let accounts = loadAccounts() // { email: { token, user } }
