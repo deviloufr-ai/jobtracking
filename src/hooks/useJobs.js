@@ -4,7 +4,7 @@ import { extractUrlsFromEmail, rankUrlsByJobRelevance, checkPositionUrl } from '
 import { indexeddb } from '../services/indexeddb'
 import { syncManager } from '../services/syncManager'
 import { supabase } from '../services/supabase'
-import { getSyncUserIdForSupabase } from '../services/gmail'
+import { getSyncUserIdForSupabase, getCachedUser } from '../services/gmail'
 
 const ENRICH_TTL_DAYS = 30
 

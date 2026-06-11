@@ -13,11 +13,11 @@ function saveAccounts(map) {
   try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(map)) } catch {}
 }
 
-// Get or create a stable sync user ID (same for all Gmail accounts on this device)
+// Get or create a stable sync user ID (UUID format for Supabase)
 function getSyncUserId() {
   let syncId = localStorage.getItem(SYNC_USER_KEY)
   if (!syncId) {
-    syncId = 'sync-user-' + crypto.randomUUID()
+    syncId = crypto.randomUUID()
     try { localStorage.setItem(SYNC_USER_KEY, syncId) } catch {}
   }
   return syncId
