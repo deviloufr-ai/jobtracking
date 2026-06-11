@@ -199,8 +199,14 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
         // calendar.js already extracts meetingLink; fall back to re-extracting from description/location
         const meetLink = e.meetingLink || extractMeetingLink(e.description) || extractMeetingLink(e.location)
         const platform = meetLink ? detectMeetingPlatform(meetLink) : null
+        // Extract time from rawStart (if it's a datetime, not just a date)
+        let time = null
+        if (e.rawStart && e.rawStart.includes('T')) {
+          const timeMatch = e.rawStart.match(/T(\d{2}:\d{2})/)
+          if (timeMatch) time = timeMatch[1]
+        }
         return {
-          date: e.rawStart || e.date,
+          date: mergeDateAndTime(e.date, time),
           status: e.type === 'interview' ? 'interview' : e.type === 'offer' ? 'offer' : 'waiting',
           note: `📅 ${e.title}${e.location && !meetLink ? ` — ${e.location}` : ''}${e.isUpcoming ? ' (à venir)' : ''}`,
           source: 'calendar',
