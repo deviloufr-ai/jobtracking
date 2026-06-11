@@ -344,19 +344,15 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
   const queries = [
     // ① Gmail "Updates" category = transactional — best signal for ATS/confirmations
     `category:updates (candidature OR application OR entretien OR interview OR recrutement OR recruteur OR recruiter OR "votre candidature" OR "thank you for applying" OR "application received" OR "your application" OR "we regret" OR "not selected" OR "job offer" OR "next steps") ${dateFilter}`,
-    // ①b Catch-all for inbox job keywords (any category) — manual/forwarded emails
-    `in:inbox "job offer" ${dateFilter}`,
-    // ①c Inbox emails with common job keywords (broader net)
+    // ① Inbox emails with common job keywords (broader net)
     `in:inbox (job AND (offer OR application OR candidature)) ${dateFilter}`,
     // ② Personal inbox keywords (FR)
     `in:inbox category:personal (candidature OR postulation OR entretien OR recrutement OR "votre candidature" OR "nous avons bien reçu" OR "suite à votre candidature" OR "nous avons le regret" OR "sans suite" OR "n'avons pas retenu") ${dateFilter}`,
-    // ②b Recruiter acknowledgement emails (FR) — "Nous vous remercions" — search in ALL to catch categorized emails
+    // ②b Recruiter acknowledgement emails (FR)
     `in:all "nous vous remercions" ${dateFilter}`,
-    // ②c Recruiter interview invitation emails (FR) — "faire plus ample connaissance"
-    `in:all "faire plus ample connaissance" ${dateFilter}`,
-    // ②d Recruiter interview invitation alt (FR) — "ample connaissance"
-    `in:all "ample connaissance" ${dateFilter}`,
-    // ②e Talent acquisition emails — "head of talent" or "talent acquisition"
+    // ②c Recruiter interview invitation emails (FR) — both "faire plus ample connaissance" patterns
+    `in:all ("faire plus ample connaissance" OR "ample connaissance") ${dateFilter}`,
+    // ②d Talent acquisition emails
     `in:all ("head of talent" OR "talent acquisition" OR "talent recruiter") ${dateFilter}`,
     // ③ Personal inbox keywords (EN)
     `in:inbox category:personal (interview OR "thank you for applying" OR "thanks for applying" OR "application received" OR "your application" OR "we have received" OR "we regret" OR "not selected" OR "not moving forward" OR "job offer" OR "offer letter" OR "next steps" OR "hiring process") ${dateFilter}`,
@@ -411,9 +407,9 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
     } catch (e) { console.warn('❌ Query failed:', query.slice(0, 60), e.message) }
   }
 
-  for (let i = 0; i < queries.length; i += 3) {
-    await Promise.all(queries.slice(i, i + 3).map(runQuery))
-    if (i + 3 < queries.length) await new Promise(r => setTimeout(r, 200))
+  for (let i = 0; i < queries.length; i += 6) {
+    await Promise.all(queries.slice(i, i + 6).map(runQuery))
+    if (i + 6 < queries.length) await new Promise(r => setTimeout(r, 100))
   }
 
   if (!allMessages.length) return []

@@ -213,8 +213,8 @@ export async function parseEmailsForJobs(emails) {
   const cache = loadEmailCache()
   let cacheHits = 0
 
-  const BATCH = 8  // ~1200 tokens/batch — safe under 50k/min rate limit with delays
-  const BATCH_DELAY_MS = 3000 // 3s between batches → max ~20 batches/min → ~24k tokens/min
+  const BATCH = 15  // ~2250 tokens/batch — still safe under 50k/min with delays
+  const BATCH_DELAY_MS = 2500 // 2.5s between batches → ~24 batches/min → ~54k tokens/min (safe margin)
   const all = []
 
   for (let i = 0; i < emails.length; i += BATCH) {
