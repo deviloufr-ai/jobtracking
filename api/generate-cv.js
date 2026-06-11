@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4000,
+        max_tokens: 8000,
         messages: [{
           role: 'user',
           content: `You are an expert CV writer and recruiter. Adapt this CV for the "${position}" role at "${company}".
@@ -46,16 +46,15 @@ CONTENT RULES — ATS & Recruiter Optimized:
 - **Profile/Summary**: Write 1-2 sentences ONLY (40-60 words). Lead with title match + top differentiator.
 - **Keywords**: Front-load job description keywords into the profile, experience titles, and bullets
 - **Bullets**: Use action verbs (Led, Drove, Built, Scaled, Improved) + quantified results. Keep sentences under 15 words each.
-- **Experience**: Include ONLY 3-4 most relevant roles. For each: Title | Company | Dates on line 1, then 3-4 achievement bullets (no more)
-- **Match Job Requirements**: Prioritize bullets matching top 5 keywords/skills from the job offer. Cut anything not relevant.
-- **Skills Section**: List ONLY skills mentioned in the JD. Max 5 skill categories, 3-4 items each. Total ~80 words.
+- **Experience**: Include ALL roles from the original CV. For each: Title | Company | Dates on line 1, then 2-4 achievement bullets optimized for this role
+- **Match Job Requirements**: Prioritize bullets matching top 5 keywords/skills from the job offer. Adapt descriptions to highlight relevance.
+- **Skills Section**: List ALL skills from original CV, prioritize skills mentioned in the JD at the top
 - **Formatting for ATS**: No special characters, images, or complex styling. Standard fonts only.
-- **STRICT LENGTH LIMITS (FIT ONE PAGE)**:
+- **LENGTH RULES**:
   - Profile: 40-60 words
-  - Each role: 3-4 bullets, ~15 words per bullet (total 60-80 words per role)
-  - 3-4 roles total: 180-320 words
-  - Skills: 80-100 words
-  - Total target: 300-480 words (fits cleanly on one page)
+  - Each role: 2-4 bullets optimized for this position (keep bullets under 15 words each)
+  - Include ALL experience roles from original CV
+  - Skills: Include all original CV skills
 - **Do NOT**:
   - Invent new experiences, skills, or certifications
   - Use graphics, icons, or columns (ATS cannot parse)
