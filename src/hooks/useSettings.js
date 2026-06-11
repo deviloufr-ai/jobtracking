@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { indexeddb } from '../services/indexeddb'
-import { syncManager } from '../services/syncManager'
-import { supabase } from '../services/supabase'
+import { getSyncCoordinator } from '../services/syncCoordinator'
 
 export const SETTINGS_DEFAULTS = {
   weeklyApps: 5,
@@ -74,14 +73,12 @@ export function useSettings() {
       // Sync to Supabase
       indexeddb.saveSettings(next).catch(err => console.error('Failed to save settings to IndexedDB:', err))
 
-      const user = supabase.auth.getUser().then(({ data }) => {
-        if (data.user) {
-          syncManager.mutate('user_settings', 'update', {
-            user_id: data.user.id,
-            ...next
-          }).catch(err => console.error('Failed to sync settings:', err))
-        }
-      })
+      // Sync to Supabase via coordinator
+      const coordinator = getSyncCoordinator()
+      if (coordinator) {
+        coordinator.mutate('user_settings', 'update', next)
+          .catch(err => console.error('Failed to sync settings:', err))
+      }
 
       return next
     })
