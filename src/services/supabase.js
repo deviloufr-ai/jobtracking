@@ -37,6 +37,19 @@ export async function getSession() {
   return session
 }
 
+// Sign in anonymously (for multi-device sync)
+// This gives us a user ID without OAuth redirects
+export async function signInAnonymously() {
+  try {
+    const { data, error } = await supabase.auth.signInAnonymously()
+    if (error) throw error
+    return data
+  } catch (err) {
+    console.error('Error signing in anonymously:', err)
+    throw err
+  }
+}
+
 // Sign in with Google
 export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
