@@ -136,11 +136,19 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
   console.log(`📊 Claude parsed ${emails.length} emails → ${parsed.length} job signals (confidence >= 35)`)
 
   const enriched = parsed
-    .filter(p => p.company && !isJobBoard(p.company))  // drop job board names
+    .filter(p => {
+      const isBoard = isJobBoard(p.company)
+      if (isBoard) {
+        console.log(`🗑️  Filtered job board: ${p.company}/${p.position}`)
+      }
+      return p.company && !isBoard
+    })
     .map(p => ({
       ...p,
       status: p.status === 'rejected' && isAtsRejection(p.notes || '') ? 'rejected_ats' : p.status
     }))
+
+  console.log(`📋 After filtering job boards: ${enriched.length} signals remain`)
 
   const emailByGmailId = Object.fromEntries(emails.map(e => [e.id, e]))
 
@@ -163,8 +171,10 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
     jobGroups.get(key).push(p)
   }
 
+  console.log(`🏢 Grouping into companies: ${jobGroups.size} unique company/position combinations`)
   const grouped = []
-  for (const [, emailsForJob] of jobGroups) {
+  for (const [key, emailsForJob] of jobGroups) {
+    console.log(`  └─ ${key}: ${emailsForJob.length} emails`)
     const sorted = [...emailsForJob].sort((a, b) => new Date(a.date) - new Date(b.date))
 
     // FIX: Post-process HelloWork rejection emails that Claude mis-parses
