@@ -136,7 +136,6 @@ class SyncManager {
       'notes',
       'date',
       'favorite',
-      'enrichedAt',
       'updated_at',
       'last_modified_at',
       'from',
