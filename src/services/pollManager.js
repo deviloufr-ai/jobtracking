@@ -61,6 +61,8 @@ class PollManager {
       return
     }
 
+    let hasChanges = false
+
     try {
       this.notifyListeners({ status: 'polling' })
 
@@ -130,6 +132,7 @@ class PollManager {
 
       // Merge into local cache
       if (changedJobs && changedJobs.length > 0) {
+        hasChanges = true
         for (const job of changedJobs) {
           // Attach history to job
           const jobWithHistory = {
@@ -151,12 +154,14 @@ class PollManager {
       }
 
       if (settingsData) {
+        hasChanges = true
         const localSettings = await indexeddb.getSettings()
         const merged = this.mergeSettings(localSettings, settingsData)
         await indexeddb.saveSettings(merged)
       }
 
       if (cvs && cvs.length > 0) {
+        hasChanges = true
         for (const cv of cvs) {
           await indexeddb.saveCV(cv)
         }
@@ -166,6 +171,11 @@ class PollManager {
       const now = new Date().toISOString()
       this.lastSyncTime = now
       await indexeddb.setMetadata('last_sync_time', now)
+
+      // Emit event if data changed so useJobs reloads
+      if (hasChanges) {
+        window.dispatchEvent(new CustomEvent('jobtrackr:datasync', { detail: { jobsCount: changedJobs?.length || 0 } }))
+      }
 
       this.notifyListeners({
         status: 'success',

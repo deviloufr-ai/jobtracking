@@ -351,7 +351,7 @@ export function useJobs() {
   const [settingsKey, setSettingsKey] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  // Load from IndexedDB on mount
+  // Load from IndexedDB on mount + when synced from other devices
   useEffect(() => {
     const loadJobs = async () => {
       try {
@@ -368,6 +368,14 @@ export function useJobs() {
       }
     }
     loadJobs()
+
+    // Listen for data sync events from polling (multi-device sync)
+    const handleSync = (event) => {
+      console.log('Data synced from Supabase, reloading...', event.detail)
+      loadJobs()
+    }
+    window.addEventListener('jobtrackr:datasync', handleSync)
+    return () => window.removeEventListener('jobtrackr:datasync', handleSync)
   }, [])
 
   // Apply processing pipeline
