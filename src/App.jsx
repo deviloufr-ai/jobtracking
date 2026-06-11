@@ -331,10 +331,17 @@ export default function App() {
 
   // Show landing page if no user and no jobs
   if (showLandingPage) {
+    const handleLandingPageLogin = () => {
+      setShowGmail(true)
+    }
+
     return (
       <ErrorBoundary>
-        <LandingPage onLogin={() => setShowGmail(true)} />
-        {showGmail && <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={() => { setShowGmail(false); const connected = isConnected(); setGmailConnected(connected); setGmailUser(connected ? getCachedUser() : null) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u) }} existingJobs={jobs} />}
+        {showGmail ? (
+          <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={() => { setShowGmail(false); const connected = isConnected(); setGmailConnected(connected); setGmailUser(connected ? getCachedUser() : null) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u) }} existingJobs={jobs} />
+        ) : (
+          <LandingPage onLogin={handleLandingPageLogin} />
+        )}
       </ErrorBoundary>
     )
   }
