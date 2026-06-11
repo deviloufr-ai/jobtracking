@@ -3,7 +3,7 @@ import { indexeddb } from '../services/indexeddb'
 import { syncManager } from '../services/syncManager'
 import { supabase } from '../services/supabase'
 
-const SETTINGS_DEFAULTS = {
+export const SETTINGS_DEFAULTS = {
   weeklyApps: 5,
   responseRate: 30,
   monthlyInterviews: 3,

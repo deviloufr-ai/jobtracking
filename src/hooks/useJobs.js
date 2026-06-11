@@ -329,6 +329,13 @@ function autoStale(jobs) {
   return revalidateArchives(jobs)
 }
 
+// Helper to check if a job was previously deleted (for dedup on re-import)
+export function isDeletedJob(company, position) {
+  // In Supabase version, deleted jobs are truly gone from server
+  // This is a no-op but kept for compatibility with useAutoRefresh
+  return false
+}
+
 // Main hook
 export function useJobs() {
   const [rawJobs, setJobs] = useState([])
