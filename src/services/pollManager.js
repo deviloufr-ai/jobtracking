@@ -33,6 +33,8 @@ class PollManager {
     // Get last sync time from metadata
     this.lastSyncTime = await indexeddb.getMetadata('last_sync_time')
 
+    console.log('🔄 Starting polling for user:', userId, 'lastSync:', this.lastSyncTime)
+
     // Run first poll immediately
     await this.poll()
 
@@ -54,16 +56,19 @@ class PollManager {
   // Perform one poll cycle
   async poll() {
     if (!isSupabaseConfigured()) {
+      console.warn('⚠ Supabase not configured, skipping poll')
       return
     }
 
     if (!navigator.onLine || !this.userId) {
+      console.log('⚠ Offline or no userId, skipping poll')
       return
     }
 
     let hasChanges = false
 
     try {
+      console.log('📡 Polling Supabase for user:', this.userId)
       this.notifyListeners({ status: 'polling' })
 
       // Fetch jobs changed since last sync
@@ -84,6 +89,8 @@ class PollManager {
         this.notifyListeners({ status: 'error', error: jobsError.message })
         return
       }
+
+      console.log('✓ Fetched', changedJobs?.length || 0, 'jobs from Supabase')
 
       // Fetch job history for all user jobs
       const { data: allHistory, error: historyError } = await supabase

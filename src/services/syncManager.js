@@ -81,21 +81,25 @@ class SyncManager {
 
     // If Supabase not configured, only save to local cache
     if (!isSupabaseConfigured()) {
+      console.warn('⚠ Supabase not configured, saving to local cache only')
       return { success: true, local: true }
     }
 
     // If offline, queue and return
     if (!this.isOnline) {
+      console.log('📦 Device offline, queuing mutation:', type, table)
       const mutationId = await this.queueMutation(table, type, record)
       return { success: true, offline: true, mutationId }
     }
 
     // If online, send to Supabase immediately
     try {
+      console.log('🔄 Syncing to Supabase:', type, table, record.id)
       const result = await this.sendMutationToSupabase(table, type, record)
+      console.log('✓ Sync successful:', result)
       return result
     } catch (err) {
-      console.error('Mutation failed, queuing for retry:', err)
+      console.error('✗ Mutation failed, queuing for retry:', err)
       await this.queueMutation(table, type, record)
       this.notifyListeners({ status: 'offline', queueSize: await this.getQueueSize() })
       throw err

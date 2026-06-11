@@ -65,7 +65,9 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
       refreshAccountList()
       // Also sign in to Supabase for multi-device sync (async, non-blocking)
       setTimeout(() => {
-        signInAnonymously().catch(err => console.warn('Supabase sync auth failed (non-critical):', err))
+        signInAnonymously()
+          .then(data => console.log('✓ Supabase anonymous auth successful:', data?.user?.id))
+          .catch(err => console.error('✗ Supabase sync auth failed:', err.message))
       }, 500)
       setStep(STEPS.idle)
     } catch (e) {
