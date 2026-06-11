@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { signInAnonymously } from '../services/supabase'
 import { connectGmail, disconnectGmail, refreshToken, fetchJobEmails, fetchJobEmailsForAccount, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, getConnectedAccounts } from '../services/gmail'
 import { fetchCalendarEvents } from '../services/calendar'
 import { buildJobsFromEmails } from '../hooks/useAutoRefresh'
@@ -63,12 +62,6 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
       setError(null)
       await connectGmail()
       refreshAccountList()
-      // Also sign in to Supabase for multi-device sync (async, non-blocking)
-      setTimeout(() => {
-        signInAnonymously()
-          .then(data => console.log('✓ Supabase anonymous auth successful:', data?.user?.id))
-          .catch(err => console.error('✗ Supabase sync auth failed:', err.message))
-      }, 500)
       setStep(STEPS.idle)
     } catch (e) {
       setError('Connexion Gmail annulée ou échouée : ' + e.message)
