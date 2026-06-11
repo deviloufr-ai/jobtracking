@@ -15,58 +15,54 @@ function saveAccounts(map) {
   try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(map)) } catch {}
 }
 
-// Get sync user ID - queries gmail_user_sync_mapping table
+// Get sync user ID - cached in localStorage, syncs with Supabase in background
 // All devices with the same Gmail email get the same UUID
-async function getSyncUserId() {
-  const firstAccount = Object.values(accounts)[0]
-  const gmailEmail = firstAccount?.user?.email
+function getSyncUserId() {
+  // Return cached value synchronously
+  let syncId = localStorage.getItem(SYNC_USER_KEY)
 
-  if (!gmailEmail) {
-    // Fallback if no Gmail account
-    let syncId = localStorage.getItem(SYNC_USER_KEY)
-    if (!syncId) {
-      syncId = crypto.randomUUID()
-      try { localStorage.setItem(SYNC_USER_KEY, syncId) } catch {}
-    }
-    if (syncId.startsWith('sync-user-')) {
-      const pureUuid = syncId.substring('sync-user-'.length)
-      try { localStorage.setItem(SYNC_USER_KEY, pureUuid) } catch {}
-      return pureUuid
-    }
+  // Handle legacy format
+  if (syncId?.startsWith('sync-user-')) {
+    const pureUuid = syncId.substring('sync-user-'.length)
+    try { localStorage.setItem(SYNC_USER_KEY, pureUuid) } catch {}
+    syncId = pureUuid
+  }
+
+  if (syncId) {
     return syncId
   }
 
-  // Query mapping table for this Gmail account
-  try {
-    const { data: existing, error } = await supabase
+  // Generate new UUID if not cached
+  const newUuid = crypto.randomUUID()
+  try { localStorage.setItem(SYNC_USER_KEY, newUuid) } catch {}
+
+  // Background sync: query and cache from Supabase
+  const firstAccount = Object.values(accounts)[0]
+  const gmailEmail = firstAccount?.user?.email
+
+  if (gmailEmail) {
+    supabase
       .from('gmail_user_sync_mapping')
       .select('sync_uuid')
       .eq('gmail_email', gmailEmail)
       .maybeSingle()
-
-    if (existing?.sync_uuid) {
-      console.log('✓ Found existing sync UUID for:', gmailEmail)
-      return existing.sync_uuid
-    }
-
-    // Create new mapping for this Gmail
-    const newUuid = crypto.randomUUID()
-    const { error: insertError } = await supabase
-      .from('gmail_user_sync_mapping')
-      .insert({ gmail_email: gmailEmail, sync_uuid: newUuid })
-
-    if (insertError) {
-      console.warn('Failed to insert sync mapping:', insertError)
-      return newUuid
-    }
-
-    console.log('✓ Created new sync UUID for:', gmailEmail)
-    return newUuid
-  } catch (err) {
-    console.warn('Error querying sync mapping, using fallback UUID:', err)
-    // Fallback to a consistent UUID based on email
-    return crypto.randomUUID()
+      .then(({ data: existing }) => {
+        if (existing?.sync_uuid) {
+          console.log('✓ Found existing sync UUID for:', gmailEmail)
+          try { localStorage.setItem(SYNC_USER_KEY, existing.sync_uuid) } catch {}
+        } else {
+          // Create new mapping
+          supabase
+            .from('gmail_user_sync_mapping')
+            .insert({ gmail_email: gmailEmail, sync_uuid: newUuid })
+            .then(() => console.log('✓ Created new sync UUID for:', gmailEmail))
+            .catch(err => console.warn('Failed to insert sync mapping:', err))
+        }
+      })
+      .catch(err => console.warn('Error syncing UUID:', err))
   }
+
+  return newUuid
 }
 
 let accounts = loadAccounts() // { email: { token, user } }
