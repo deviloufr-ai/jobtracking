@@ -274,17 +274,11 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
     if (!isConnected() || refreshingRef.current) return
     setRefreshing(true)
 
-    // Safety timeout: stop spinner after 30 seconds to avoid infinite animation
-    let timeoutId
     try {
-      timeoutId = setTimeout(() => {
-        setRefreshing(false)
-        console.warn('Refresh timeout - stopping spinner')
-      }, 30000)
-      // Simple time-based sync: scan last day to catch new emails
+      // Simple time-based sync: scan last 2 weeks to catch new emails
       // (Not lastSyncTime-based to avoid Gmail indexing delays)
       // Duplicate detection + history merge prevents re-importing same emails
-      const months = 14/30  // 2 weeks (same default as manual scan)
+      const months = 14/30
 
       // Fetch from all connected accounts and merge, tagging each email with its account
       const connectedAccts = getConnectedAccounts()
@@ -398,7 +392,6 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
     } catch (e) {
       console.warn('Auto-refresh failed:', e.message)
     } finally {
-      clearTimeout(timeoutId)
       setRefreshing(false)
     }
   }, [])

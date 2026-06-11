@@ -1,0 +1,37 @@
+# Supabase Configuration for JobTrackr
+
+[project]
+# Get this from your Supabase project settings
+project_id = "your-project-id"
+# Leave empty for local development, replace with actual URL for production
+api_url = "https://your-project.supabase.co"
+api_key = ""
+
+[db]
+port = 5432
+# Password for local postgres container
+password = "postgres"
+
+[studio]
+enabled = true
+port = 3000
+
+[auth]
+enabled = true
+# Enable Google OAuth
+# Go to Supabase Dashboard → Authentication → Providers → Google
+# Add your Google OAuth credentials there
+
+[storage]
+enabled = true
+bucket_name = "jobtracker-uploads"
+
+[functions]
+# For future serverless function support
+enabled = false
+
+[analytics]
+enabled = false
+
+[vector]
+enabled = false
