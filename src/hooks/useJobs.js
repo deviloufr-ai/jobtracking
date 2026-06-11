@@ -402,6 +402,43 @@ export function findDuplicateJob(jobs, company, position) {
   return null
 }
 
+// Sync local jobs to Supabase (in case they were added before auth)
+async function syncLocalJobsToSupabase() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return // Not authenticated yet
+
+    const localJobs = await indexeddb.getAllJobs()
+    if (!localJobs?.length) return
+
+    console.log('📤 Uploading', localJobs.length, 'local jobs to Supabase...')
+
+    // Check which jobs already exist in Supabase
+    const { data: existingJobs } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('user_id', user.id)
+
+    const existingIds = new Set(existingJobs?.map(j => j.id) || [])
+
+    // Upload jobs that don't exist in Supabase
+    for (const job of localJobs) {
+      if (!existingIds.has(job.id)) {
+        try {
+          await syncManager.mutate('jobs', 'insert', job)
+          console.log('  ✓ Synced job:', job.company)
+        } catch (err) {
+          console.warn('  ✗ Failed to sync job:', job.company, err.message)
+        }
+      }
+    }
+
+    console.log('✓ Local jobs sync complete')
+  } catch (err) {
+    console.warn('⚠ Local jobs sync failed (non-critical):', err.message)
+  }
+}
+
 // Main hook
 export function useJobs() {
   const [rawJobs, setJobs] = useState([])
@@ -432,6 +469,10 @@ export function useJobs() {
       loadJobs()
     }
     window.addEventListener('jobtrackr:datasync', handleSync)
+
+    // Sync local jobs to Supabase on app load (in case they were added before auth)
+    syncLocalJobsToSupabase()
+
     return () => window.removeEventListener('jobtrackr:datasync', handleSync)
   }, [])
 
