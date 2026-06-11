@@ -113,7 +113,8 @@ export default function App() {
   const [gmailConnected, setGmailConnected] = useState(() => isConnected())
   const [activeTab, setActiveTab] = useState('tracker')
   const [expandedJobId, setExpandedJobId] = useState(null)
-  const [showLandingPage, setShowLandingPage] = useState(!getCachedUser() && jobs.length === 0)
+  const [hasLoggedInThisSession, setHasLoggedInThisSession] = useState(false)
+  const [showLandingPage, setShowLandingPage] = useState(true)
 
   // On load: restore stored tokens
   useEffect(() => {
@@ -121,14 +122,19 @@ export default function App() {
     if (!gmailUser && isConnected()) {
       getGmailUserInfo().then(user => { if (user) setGmailUser(user) })
     }
-  }, [])
-
-  // Hide landing page when user logs in
-  useEffect(() => {
-    if (gmailUser || jobs.length > 0) {
+    // Hide landing page if user has previous session or jobs
+    if (getCachedUser() || jobs.length > 0) {
       setShowLandingPage(false)
     }
-  }, [gmailUser, jobs.length])
+  }, [])
+
+  // Hide landing page when user logs in during this session
+  useEffect(() => {
+    if (gmailUser && !hasLoggedInThisSession) {
+      setHasLoggedInThisSession(true)
+      setShowLandingPage(false)
+    }
+  }, [gmailUser, hasLoggedInThisSession])
   const [showFavOnly, setShowFavOnly] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [selectedJobForCV, setSelectedJobForCV] = useState(null) // 'tracker' | 'search' | 'cv'
@@ -778,7 +784,7 @@ export default function App() {
 
       {modal && <JobModal job={modal === 'add' ? null : modal} onSave={handleSave} onClose={() => setModal(null)} />}
       {toDelete && <ConfirmDelete job={toDelete} onConfirm={handleDelete} onCancel={() => setToDelete(null)} />}
-      {showGmail && <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={() => { setShowGmail(false); const connected = isConnected(); setGmailConnected(connected); setGmailUser(connected ? getCachedUser() : null) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u) }} existingJobs={jobs} />}
+      {showGmail && <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={() => { setShowGmail(false); const connected = isConnected(); setGmailConnected(connected); if (connected) { setHasLoggedInThisSession(true); setShowLandingPage(false) } setGmailUser(connected ? getCachedUser() : null) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u); if (u) { setHasLoggedInThisSession(true); setShowLandingPage(false) } }} existingJobs={jobs} />}
       {showImageImport && <ImageImport onImport={handleBulkImport} onClose={() => setShowImageImport(false)} existingJobs={jobs} />}
       {starJob && <STARGenerator job={starJob} onClose={() => setStarJob(null)} />}
       {emailDraft && <EmailDraft job={emailDraft.job} type={emailDraft.type} onClose={() => setEmailDraft(null)} onEmailSent={handleEmailSent} />}
