@@ -42,10 +42,9 @@ export async function isUserMigrated(userId) {
       .from('user_metadata')
       .select('migrated_at')
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
 
-    if (error && error.code !== 'PGRST116') {
-      // PGRST116 = no rows returned (new user)
+    if (error) {
       console.error('Error checking migration status:', error)
       return false
     }
@@ -347,7 +346,7 @@ export async function performMigration(userId, onProgress) {
         .from('user_settings')
         .select('*')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
       if (userSettings) {
         await indexeddb.saveSettings(userSettings)

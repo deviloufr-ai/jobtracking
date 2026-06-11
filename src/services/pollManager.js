@@ -89,9 +89,9 @@ class PollManager {
         .from('user_settings')
         .select('*')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
-      if (settingsError && settingsError.code !== 'PGRST116') {
+      if (settingsError) {
         console.error('Poll error fetching settings:', settingsError)
         // Don't fail the whole poll for settings error
       }
