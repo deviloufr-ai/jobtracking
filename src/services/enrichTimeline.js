@@ -123,25 +123,29 @@ async function analyzeEmailsForTimeline(emails, companyName) {
       messages: [{
         role: 'user',
         content: `Tu analyses des emails liés à une candidature chez "${companyName}".
-Extrait CHAQUE événement important comme une entrée SÉPARÉE dans la timeline.
+RÈGLE PRINCIPALE : Pour chaque DATE UNIQUE, crée UNE SEULE entrée consolidée qui résume tous les événements de cette date.
 
-RÈGLE IMPORTANTE : chaque email = potentiellement plusieurs événements distincts. Ne fusionne JAMAIS plusieurs événements en un seul. Si un email mentionne "call puis test technique", crée 2 entrées séparées.
+CONSOLIDATION :
+- Une seule entrée par date (même si 5 emails ce jour)
+- La note doit être un résumé listant les points clés (max 2-3 points)
+- Utilise le statut MAXIMUM atteint (sent < reviewing < interview < waiting/offer < done)
+- Déduplique les informations répétées
+- Si plusieurs informations sur la même date, sépare par " | "
 
-Pour chaque événement retourne un objet JSON avec :
+Pour chaque date retourne un objet JSON avec :
 - date: YYYY-MM-DD (date de l'email ou de l'événement mentionné)
-- time: HH:mm si l'heure est mentionnée (ex: "14:30"), sinon null
-- status: exactement un de : "sent" | "reviewing" | "interview" | "waiting" | "offer" | "rejected" | "rejected_ats" | "cancelled"
-- note: UNE SEULE action ou information courte (max 80 chars, PAS de pipe |, PAS de concaténation)
-- meetingLink: URL du lien visio si présent dans l'email (Google Meet, Zoom, Teams), sinon null
+- time: HH:mm si l'heure d'une action importante est mentionnée (ex: "14:30"), sinon null
+- status: le statut MAXIMUM atteint ce jour-là : "sent" | "reviewing" | "interview" | "waiting" | "offer" | "rejected" | "rejected_ats" | "cancelled" | "done"
+- note: Résumé concis de 150-200 chars avec points clés séparés par " | "
+- meetingLink: URL du lien visio si présent, sinon null
 - source: "email"
 
-Exemples CORRECTS (une action par entrée) :
+Exemples CORRECTS (une entrée par date) :
 [
   {"date":"2026-06-01","time":null,"status":"sent","note":"Candidature envoyée via LinkedIn","source":"email"},
-  {"date":"2026-06-02","time":null,"status":"reviewing","note":"Accusé de réception automatique","source":"email"},
-  {"date":"2026-06-03","time":"14:30","status":"interview","note":"Invitation call RH 15min","source":"email"},
-  {"date":"2026-06-04","time":"14:45","status":"interview","note":"Call RH passé - profil retenu","source":"email","meetingLink":"https://meet.google.com/xyz"},
-  {"date":"2026-06-05","time":null,"status":"waiting","note":"Test technique envoyé","source":"email"}
+  {"date":"2026-06-02","time":"14:30","status":"interview","note":"Invitation entretien RH visio 30min | Écart salarial 40-42k, négociation possible","source":"email","meetingLink":"https://meet.google.com/xyz"},
+  {"date":"2026-06-03","time":"14:45","status":"interview","note":"Entretien passé - profil retenu | Prétention 55K CDI | Disponibilité immédiate","source":"email"},
+  {"date":"2026-06-04","time":null,"status":"waiting","note":"Test technique envoyé | Réponse attendue 1 semaine","source":"email"}
 ]
 
 Réponds UNIQUEMENT avec un tableau JSON valide, sans texte avant ou après, sans backticks.
