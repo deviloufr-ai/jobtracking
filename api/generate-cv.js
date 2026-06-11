@@ -71,10 +71,10 @@ RECRUITER SPEED-READ (First 10 seconds):
 - Skills list: put required JD skills at the top
 
 ORIGINAL CV:
-${cvText.slice(0, 4000)}
+${cvText.slice(0, 12000)}
 
 JOB DESCRIPTION (${company} - ${position}):
-${jobDescription.slice(0, 2000)}
+${jobDescription.slice(0, 12000)}
 
 Return ONLY the Markdown CV, no preamble, no comments.`
         }]
