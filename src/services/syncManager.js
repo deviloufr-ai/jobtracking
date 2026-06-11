@@ -124,13 +124,14 @@ class SyncManager {
     if (!record) return record
 
     const localOnlyFields = new Set([
-      'lastSyncTime',    // For Gmail incremental sync
-      'enrichedAt',      // For enrichment TTL tracking
-      '_history',        // Temp history before merge
-      '_gmailId',        // Gmail metadata
-      '_fromEmail',      // Email metadata
-      '_fromMe',         // Email metadata
-      '_emailBody',      // Email content
+      'lastSyncTime',     // For Gmail incremental sync
+      '_history',         // Temp history before merge
+      '_gmailId',         // Gmail metadata
+      '_fromEmail',       // Email metadata
+      '_fromMe',          // Email metadata
+      '_emailBody',       // Email content
+      'positionChecks',   // Local position verification cache
+      'checkAllPositions',// Function reference
     ])
 
     const cleaned = { ...record }
@@ -141,6 +142,13 @@ class SyncManager {
     // Also remove any fields starting with underscore (other metadata)
     for (const key of Object.keys(cleaned)) {
       if (key.startsWith('_')) {
+        delete cleaned[key]
+      }
+    }
+
+    // Remove function references
+    for (const key of Object.keys(cleaned)) {
+      if (typeof cleaned[key] === 'function') {
         delete cleaned[key]
       }
     }
