@@ -142,7 +142,6 @@ class SyncManager {
       'from',
       'offerUrl',
       'positionLinks',
-      'positionChecks',
     ])
 
     const cleaned = {}
@@ -246,13 +245,10 @@ class SyncManager {
       }))
 
       if (historyEntries.length > 0) {
-        // Use upsert with proper conflict handling: (job_id, date, note) as natural key
+        // Insert history entries - Supabase unique constraint will handle duplicates
         const { error: historyError } = await supabase
           .from('job_history')
-          .upsert(historyEntries, {
-            onConflict: 'job_id,date,note',
-            ignoreDuplicates: false
-          })
+          .insert(historyEntries, { onConflict: 'ignore' })
 
         if (historyError) {
           console.error('Error syncing job history:', historyError)

@@ -51,13 +51,20 @@ export function convertHistoryFromSupabase(supabaseEntry) {
 
 export function convertHistoryToSupabase(localEntry) {
   if (!localEntry) return localEntry
+
+  // Store only first gmailId if multiple (to avoid array serialization issues)
+  let gmailId = localEntry.gmailId || null
+  if (!gmailId && localEntry.gmailIds && localEntry.gmailIds.length > 0) {
+    gmailId = localEntry.gmailIds[0]
+  }
+
   return {
     date: localEntry.date,
     status: localEntry.status || null,
     note: localEntry.note || null,
     meeting_link: localEntry.meetingLink || null,
-    gmail_id: localEntry.gmailId || null,
-    gmail_ids: localEntry.gmailIds ? JSON.stringify(localEntry.gmailIds) : null,
+    gmail_id: gmailId,
+    gmail_ids: null, // Keep as null - we'll use gmail_id only
     offer_url: localEntry.offerUrl || null,
     show_cv_button: localEntry.showCVButton || false,
     from_email: localEntry.from || null,

@@ -541,12 +541,10 @@ async function syncLocalJobsToSupabase(stableSyncId) {
               ...convertHistoryToSupabase(entry)
             }))
 
-            await supabase
+            // Insert with ignore duplicates - unique constraint handles conflicts
+            const { error } = await supabase
               .from('job_history')
-              .upsert(historyEntries, {
-                onConflict: 'job_id,date,note',
-                ignoreDuplicates: false
-              })
+              .insert(historyEntries, { onConflict: 'ignore' })
 
             console.log('  ✓ Synced history for:', job.company, '(' + dedupedHistory.length + ' entries)')
           } catch (err) {
