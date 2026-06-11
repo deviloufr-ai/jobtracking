@@ -123,12 +123,12 @@ export default function App() {
     }
   }, [])
 
-  // Hide landing page when user has already logged in + has data
+  // Hide landing page when user logs in
   useEffect(() => {
-    if (gmailUser && jobs.length > 0) {
+    if (gmailUser) {
       setShowLandingPage(false)
     }
-  }, [gmailUser, jobs.length])
+  }, [gmailUser])
   const [showFavOnly, setShowFavOnly] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [selectedJobForCV, setSelectedJobForCV] = useState(null) // 'tracker' | 'search' | 'cv'
