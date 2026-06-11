@@ -463,13 +463,13 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
     `
     element.appendChild(style)
 
-    // Configure html2pdf options for high quality (no compression)
+    // Configure html2pdf options for balanced quality and file size
     const options = {
       margin: 0,
       filename: `${filename}.pdf`,
-      image: { type: 'png', quality: 1.0 },  // PNG for lossless image quality
+      image: { type: 'jpeg', quality: 0.85 },  // JPEG with 85% quality
       html2canvas: {
-        scale: 2,              // Higher scale for crisp text rendering
+        scale: 1.2,            // Balanced scale for crisp text
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
@@ -480,7 +480,7 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4',
-        compress: false,       // No compression for quality
+        compress: true,        // Enable PDF compression
         hotfixes: ['px_scaling']
       },
       pagebreak: {
