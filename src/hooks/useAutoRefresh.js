@@ -281,19 +281,10 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
         setRefreshing(false)
         console.warn('Refresh timeout - stopping spinner')
       }, 30000)
-      // Smart incremental sync: find oldest lastSyncTime across all jobs
-      // This enables fetching only new emails since the last refresh
-      let oldestSyncTime = null
-      for (const job of jobsRef.current) {
-        if (job.lastSyncTime) {
-          const time = new Date(job.lastSyncTime)
-          if (!oldestSyncTime || time < oldestSyncTime) {
-            oldestSyncTime = time
-          }
-        }
-      }
-      // First import (no lastSyncTime) → fetch 3 months; afterwards → incremental
-      const months = oldestSyncTime ? null : 3
+      // Simple time-based sync: scan last day to catch new emails
+      // (Not lastSyncTime-based to avoid Gmail indexing delays)
+      // Duplicate detection + history merge prevents re-importing same emails
+      const months = 14/30  // 2 weeks (same default as manual scan)
 
       // Fetch from all connected accounts and merge, tagging each email with its account
       const connectedAccts = getConnectedAccounts()
@@ -301,7 +292,7 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
       if (connectedAccts.length > 1) {
         const perAccount = await Promise.all(
           connectedAccts.map(acct =>
-            fetchJobEmailsForAccount(acct.email, 100, months, null, oldestSyncTime?.toISOString())
+            fetchJobEmailsForAccount(acct.email, 100, months, null, null)
               .then(emails => emails.map(e => ({ ...e, _account: acct.email })))
               .catch(() => [])
           )
@@ -314,7 +305,7 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
           }
         }
       } else {
-        allEmails = await fetchJobEmails(100, months, null, oldestSyncTime?.toISOString())
+        allEmails = await fetchJobEmails(100, months, null, null)
       }
       const [emails, calendarEvents] = await Promise.all([
         Promise.resolve(allEmails),
