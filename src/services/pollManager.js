@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
+import { convertHistoryFromSupabase } from './fieldConversion'
 
 const POLL_INTERVAL = 300000 // 5 minutes
 
@@ -62,26 +63,35 @@ class PollManager {
 
       console.log('✓ Fetched', changedJobs?.length || 0, 'jobs from Supabase')
 
-      // Fetch job history for all user jobs
-      const { data: allHistory, error: historyError } = await supabase
-        .from('job_history')
-        .select('*')
-        .eq('user_id', userId)
-
-      if (historyError) {
-        console.error('Poll error fetching history:', historyError)
-        // Don't fail for history errors
-      }
-
-      // Map history by job_id
+      // Fetch job history only for changed jobs (not all jobs)
       const historyByJobId = new Map()
-      if (allHistory) {
-        allHistory.forEach(entry => {
-          if (!historyByJobId.has(entry.job_id)) {
-            historyByJobId.set(entry.job_id, [])
+      if (changedJobs && changedJobs.length > 0) {
+        // Fetch history for each changed job separately to avoid duplicates
+        for (const job of changedJobs) {
+          const { data: jobHistory, error: historyError } = await supabase
+            .from('job_history')
+            .select('*')
+            .eq('job_id', job.id)
+            .order('date', { ascending: true })
+
+          if (historyError) {
+            console.error(`Poll error fetching history for job ${job.id}:`, historyError)
+          } else if (jobHistory) {
+            // Convert from snake_case to camelCase and deduplicate
+            const seen = new Set()
+            const deduped = []
+            for (const entry of jobHistory) {
+              const converted = convertHistoryFromSupabase(entry)
+              const normNote = (converted.note || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 100)
+              const key = `${converted.date}_${normNote}`
+              if (!seen.has(key)) {
+                seen.add(key)
+                deduped.push(converted)
+              }
+            }
+            historyByJobId.set(job.id, deduped)
           }
-          historyByJobId.get(entry.job_id).push(entry)
-        })
+        }
       }
 
       // Fetch settings
@@ -165,38 +175,72 @@ class PollManager {
     }
   }
 
-  mergeJob(local, remote) {
-    // Last-write-wins on timestamp
-    if (!local.last_modified_at || !remote.last_modified_at) {
-      return remote
+  snakeToCamel(obj) {
+    if (!obj || typeof obj !== 'object') return obj
+    const camel = {}
+    for (const [key, value] of Object.entries(obj)) {
+      const camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase())
+      // Handle special cases
+      if (camelKey === 'gmailIds' && typeof value === 'string') {
+        try {
+          camel[camelKey] = JSON.parse(value)
+        } catch {
+          camel[camelKey] = value
+        }
+      } else {
+        camel[camelKey] = value
+      }
     }
+    return camel
+  }
 
-    const localTime = new Date(local.last_modified_at).getTime()
-    const remoteTime = new Date(remote.last_modified_at).getTime()
+  mergeJob(local, remote) {
+    // Convert remote snake_case fields to camelCase
+    const remoteConverted = this.snakeToCamel(remote)
+
+    // Last-write-wins on timestamp
+    const localTime = local.last_modified_at ? new Date(local.last_modified_at).getTime() : 0
+    const remoteTime = remoteConverted.last_modified_at ? new Date(remoteConverted.last_modified_at).getTime() : 0
 
     if (localTime > remoteTime) {
+      // Local is newer, keep it but add any new remote history
+      if (local.history && Array.isArray(local.history) && remoteConverted.history && Array.isArray(remoteConverted.history)) {
+        return { ...local, history: this.mergeHistories(local.history, remoteConverted.history) }
+      }
       return local
     }
 
-    // Remote is newer, but merge histories
-    if (local.history && Array.isArray(local.history)) {
-      const remoteHistory = remote.history || []
-      const localHistory = local.history
-
-      const merged = [...remoteHistory]
-      localHistory.forEach(entry => {
-        const exists = merged.some(
-          h => h.date === entry.date && h.status === entry.status
-        )
-        if (!exists) {
-          merged.push(entry)
-        }
-      })
-
-      return { ...remote, history: merged }
+    // Remote is newer, but merge histories to preserve local entries not yet synced
+    if (remoteConverted.history && Array.isArray(remoteConverted.history) && local.history && Array.isArray(local.history)) {
+      return { ...remoteConverted, history: this.mergeHistories(remoteConverted.history, local.history) }
     }
 
-    return remote
+    return remoteConverted
+  }
+
+  mergeHistories(remote, local) {
+    const seen = new Set()
+    const merged = []
+
+    // Add remote first (they are canonical)
+    for (const entry of remote) {
+      const normNote = (entry.note || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 100)
+      const key = `${entry.date}_${normNote}`
+      seen.add(key)
+      merged.push(entry)
+    }
+
+    // Add local entries not already in remote
+    for (const entry of local) {
+      const normNote = (entry.note || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 100)
+      const key = `${entry.date}_${normNote}`
+      if (!seen.has(key)) {
+        seen.add(key)
+        merged.push(entry)
+      }
+    }
+
+    return merged.sort((a, b) => new Date(a.date) - new Date(b.date))
   }
 
   mergeSettings(local, remote) {

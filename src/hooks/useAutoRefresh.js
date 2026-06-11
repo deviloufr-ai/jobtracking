@@ -207,6 +207,8 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
         date: e.date, status: e.status, note: e.notes || '',
         gmailId: e.gmailId, from: e.fromEmail, fromMe: e.fromMe || false,
         source: 'email',
+        body: orig?.body || null,
+        subject: orig?.subject || null,
         receivedBy: orig?._account || getCachedUser()?.email || null,
         ...(meetingLink && { meetingLink }),
       }

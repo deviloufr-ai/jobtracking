@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
+import { convertHistoryToSupabase } from './fieldConversion'
 
 // Simple UUID generation
 function generateId() {
@@ -140,6 +141,8 @@ class SyncManager {
       'last_modified_at',
       'from',
       'offerUrl',
+      'positionLinks',
+      'positionChecks',
     ])
 
     const cleaned = {}
@@ -150,6 +153,26 @@ class SyncManager {
     }
 
     return cleaned
+  }
+
+  camelToSnake(obj) {
+    if (!obj || typeof obj !== 'object') return obj
+    const snake = {}
+    for (const [key, value] of Object.entries(obj)) {
+      const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase()
+      snake[snakeKey] = value
+    }
+    return snake
+  }
+
+  snakeToCamel(obj) {
+    if (!obj || typeof obj !== 'object') return obj
+    const camel = {}
+    for (const [key, value] of Object.entries(obj)) {
+      const camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase())
+      camel[camelKey] = value
+    }
+    return camel
   }
 
   async sendMutationToSupabase(userId, table, type, record) {
@@ -203,37 +226,38 @@ class SyncManager {
     // Sync job history if present
     if (table === 'jobs' && history && Array.isArray(history) && result.data && result.data[0]) {
       const jobId = result.data[0].id || record.id
-      const historyEntries = history.map(entry => ({
+
+      // Deduplicate history before syncing (by date+note)
+      const seen = new Set()
+      const deduped = []
+      for (const entry of history) {
+        const normNote = (entry.note || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 100)
+        const key = `${entry.date}_${normNote}`
+        if (!seen.has(key)) {
+          seen.add(key)
+          deduped.push(entry)
+        }
+      }
+
+      const historyEntries = deduped.map(entry => ({
         job_id: jobId,
         user_id: userId,
-        date: entry.date,
-        status: entry.status || null,
-        note: entry.note || null,
-        meeting_link: entry.meetingLink || null,
-        gmail_id: entry.gmailId || null,
-        gmail_ids: entry.gmailIds || null,
-        offer_url: entry.offerUrl || null,
-        show_cv_button: entry.showCVButton || false,
-        from_email: entry.from || null,
-        from_me: entry.fromMe || false,
-        source: entry.source || null,
-        raw_start: entry.rawStart || null,
-        version: 1,
-        device_id: entry.device_id || null,
-        last_modified_at: new Date().toISOString()
+        ...convertHistoryToSupabase(entry)
       }))
 
-      // Upsert history (for updates, this adds new entries)
-      // Don't use onConflict - just insert and let duplicates be handled by DB constraints
-      // If unique constraint exists, DB will silently ignore duplicates
-      const { error: historyError } = await supabase
-        .from('job_history')
-        .insert(historyEntries)
+      if (historyEntries.length > 0) {
+        // Use upsert with proper conflict handling: (job_id, date, note) as natural key
+        const { error: historyError } = await supabase
+          .from('job_history')
+          .upsert(historyEntries, {
+            onConflict: 'job_id,date,note',
+            ignoreDuplicates: false
+          })
 
-      if (historyError && historyError.code !== '23505') {
-        // 23505 is unique_violation - expected for duplicates, ignore it
-        console.error('Error syncing job history:', historyError)
-        // Don't throw - history is secondary to job sync
+        if (historyError) {
+          console.error('Error syncing job history:', historyError)
+          // Don't throw - history is secondary to job sync
+        }
       }
     }
 

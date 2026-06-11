@@ -6,6 +6,7 @@ import { syncManager } from '../services/syncManager'
 import { getSyncCoordinator } from '../services/syncCoordinator'
 import { supabase } from '../services/supabase'
 import { getSyncUserIdForSupabase, getCachedUser } from '../services/gmail'
+import { convertHistoryFromSupabase, convertHistoryToSupabase } from '../services/fieldConversion'
 
 const ENRICH_TTL_DAYS = 30
 
@@ -472,8 +473,9 @@ async function syncLocalJobsToSupabase(stableSyncId) {
 
       // Merge Supabase jobs with history into local IndexedDB
       for (const remoteJob of supabaseJobs) {
-        // Deduplicate remote history by (date, note)
-        const remoteHistory = historyByJobId.get(remoteJob.id) || []
+        // Get history for this job and convert snake_case to camelCase
+        const remoteHistory = (historyByJobId.get(remoteJob.id) || []).map(entry => convertHistoryFromSupabase(entry))
+
         const deduped = deduplicateHistory([{ history: remoteHistory }])[0].history
 
         const jobWithHistory = {
@@ -536,26 +538,15 @@ async function syncLocalJobsToSupabase(stableSyncId) {
             const historyEntries = dedupedHistory.map(entry => ({
               job_id: job.id,
               user_id: stableSyncId,
-              date: entry.date,
-              status: entry.status || null,
-              note: entry.note || null,
-              meeting_link: entry.meetingLink || null,
-              gmail_id: entry.gmailId || null,
-              gmail_ids: entry.gmailIds || null,
-              offer_url: entry.offerUrl || null,
-              show_cv_button: entry.showCVButton || false,
-              from_email: entry.from || null,
-              from_me: entry.fromMe || false,
-              source: entry.source || null,
-              raw_start: entry.rawStart || null,
-              version: 1,
-              device_id: entry.device_id || null,
-              last_modified_at: new Date().toISOString()
+              ...convertHistoryToSupabase(entry)
             }))
 
             await supabase
               .from('job_history')
-              .upsert(historyEntries, { onConflict: 'id' })
+              .upsert(historyEntries, {
+                onConflict: 'job_id,date,note',
+                ignoreDuplicates: false
+              })
 
             console.log('  ✓ Synced history for:', job.company, '(' + dedupedHistory.length + ' entries)')
           } catch (err) {
