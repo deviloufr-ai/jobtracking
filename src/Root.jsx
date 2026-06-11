@@ -1,9 +1,12 @@
 import { useAuth } from './hooks/useAuth'
+import { useMigration } from './hooks/useMigration'
 import { LoginPage } from './components/Auth/LoginPage'
+import { MigrationDialog } from './components/MigrationDialog'
 import App from './App'
 
 export default function Root() {
   const { user, loading, isAuthenticated } = useAuth()
+  const migration = useMigration(user?.id)
 
   // Show loading spinner while checking auth
   if (loading) {
@@ -23,5 +26,15 @@ export default function Root() {
   }
 
   // Show main app if authenticated
-  return <App />
+  return (
+    <>
+      <MigrationDialog
+        status={migration.status}
+        progress={migration.progress}
+        message={migration.message}
+        error={migration.error}
+      />
+      <App />
+    </>
+  )
 }
