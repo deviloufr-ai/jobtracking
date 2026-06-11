@@ -79,6 +79,28 @@ class PollManager {
         return
       }
 
+      // Fetch job history for all user jobs
+      const { data: allHistory, error: historyError } = await supabase
+        .from('job_history')
+        .select('*')
+        .eq('user_id', this.userId)
+
+      if (historyError) {
+        console.error('Poll error fetching history:', historyError)
+        // Don't fail for history errors
+      }
+
+      // Map history by job_id
+      const historyByJobId = new Map()
+      if (allHistory) {
+        allHistory.forEach(entry => {
+          if (!historyByJobId.has(entry.job_id)) {
+            historyByJobId.set(entry.job_id, [])
+          }
+          historyByJobId.get(entry.job_id).push(entry)
+        })
+      }
+
       // Fetch settings
       const { data: settingsData, error: settingsError } = await supabase
         .from('user_settings')
@@ -105,14 +127,20 @@ class PollManager {
       // Merge into local cache
       if (changedJobs && changedJobs.length > 0) {
         for (const job of changedJobs) {
+          // Attach history to job
+          const jobWithHistory = {
+            ...job,
+            history: historyByJobId.get(job.id) || []
+          }
+
           const localJob = await indexeddb.getJob(job.id)
 
           if (!localJob) {
             // New job, just save it
-            await indexeddb.saveJob(job)
+            await indexeddb.saveJob(jobWithHistory)
           } else {
             // Merge local and remote
-            const merged = this.mergeJob(localJob, job)
+            const merged = this.mergeJob(localJob, jobWithHistory)
             await indexeddb.saveJob(merged)
           }
         }

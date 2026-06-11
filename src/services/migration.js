@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { indexeddb } from './indexeddb'
 
 // Check if user has localStorage data that needs migration
 export async function checkLocalDataExists() {
@@ -298,6 +299,67 @@ export async function performMigration(userId, onProgress) {
 
     // Mark as migrated
     await markUserMigrated(userId)
+
+    // Populate IndexedDB cache with all jobs + history from Supabase
+    onProgress?.('Loading data from cloud...', 95)
+    try {
+      const { data: allJobs } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('user_id', userId)
+
+      const { data: allHistory } = await supabase
+        .from('job_history')
+        .select('*')
+        .eq('user_id', userId)
+
+      // Map history by job_id
+      const historyByJobId = new Map()
+      if (allHistory) {
+        allHistory.forEach(entry => {
+          if (!historyByJobId.has(entry.job_id)) {
+            historyByJobId.set(entry.job_id, [])
+          }
+          historyByJobId.get(entry.job_id).push(entry)
+        })
+      }
+
+      // Save jobs with history to IndexedDB
+      if (allJobs) {
+        for (const job of allJobs) {
+          const jobWithHistory = {
+            ...job,
+            history: historyByJobId.get(job.id) || []
+          }
+          await indexeddb.saveJob(jobWithHistory)
+        }
+      }
+
+      // Save settings and CVs to IndexedDB
+      const { data: userSettings } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
+
+      if (userSettings) {
+        await indexeddb.saveSettings(userSettings)
+      }
+
+      const { data: userCVs } = await supabase
+        .from('cvs')
+        .select('*')
+        .eq('user_id', userId)
+
+      if (userCVs) {
+        for (const cv of userCVs) {
+          await indexeddb.saveCV(cv)
+        }
+      }
+    } catch (err) {
+      console.error('Error populating IndexedDB cache:', err)
+      // Don't fail migration if cache population fails
+    }
 
     onProgress?.('Migration complete!', 100)
 
