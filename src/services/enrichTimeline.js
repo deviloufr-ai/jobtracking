@@ -66,6 +66,29 @@ function mergeDateAndTime(date, time) {
   return `${date}T${time}:00`
 }
 
+// Deduplicate meeting links in existing history
+function deduplicateMeetingLinks(history) {
+  if (!history || history.length === 0) return history
+
+  const seenLinks = new Set()
+  const updated = [...history]
+
+  // Iterate backwards to keep calendar events (which have correct dates)
+  for (let i = updated.length - 1; i >= 0; i--) {
+    const entry = updated[i]
+    if (entry.meetingLink) {
+      if (seenLinks.has(entry.meetingLink)) {
+        // Duplicate found — remove the link from this entry
+        updated[i] = { ...entry, meetingLink: undefined, meetingPlatform: undefined, meetingEmoji: undefined }
+      } else {
+        seenLinks.add(entry.meetingLink)
+      }
+    }
+  }
+
+  return updated
+}
+
 // Auto-mark meetings as done when 1+ hour has passed, and remove "À venir" label
 function autoCompletePastMeetings(history) {
   if (!history || history.length === 0) return history
@@ -296,8 +319,11 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
   const merged = [...(job.history || []), ...newEvents]
   merged.sort((a, b) => new Date(a.date) - new Date(b.date))
 
+  // Deduplicate meeting links in history (clean up existing duplicates)
+  const deduplicated = deduplicateMeetingLinks(merged)
+
   // Auto-mark previous items as done when their meeting is 2+ hours in the past
-  const autoCompleted = autoCompletePastMeetings(merged)
+  const autoCompleted = autoCompletePastMeetings(deduplicated)
 
   // Return even if no new events — meeting links may have been injected into existing entries
   const hadUpdates = events.some(e => {
