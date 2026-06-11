@@ -438,18 +438,23 @@ async function syncLocalJobsToSupabase(stableSyncId) {
 
       // Merge Supabase jobs with history into local IndexedDB
       for (const remoteJob of supabaseJobs) {
+        // Deduplicate remote history by (date, note)
+        const remoteHistory = historyByJobId.get(remoteJob.id) || []
+        const deduped = deduplicateHistory([{ history: remoteHistory }])[0].history
+
         const jobWithHistory = {
           ...remoteJob,
-          history: historyByJobId.get(remoteJob.id) || []
+          history: deduped
         }
 
         // Always merge with local job to ensure history is attached
         const localJob = await indexeddb.getJob(remoteJob.id)
         if (localJob) {
-          // Merge: keep local data but use remote history and updated_at
+          // Merge: combine and deduplicate both local and remote history
+          const combined = [...(localJob.history || []), ...deduped]
           const merged = {
             ...localJob,
-            history: jobWithHistory.history,
+            history: deduplicateHistory([{ history: combined }])[0].history,
             updated_at: remoteJob.updated_at
           }
           await indexeddb.saveJob(merged)
@@ -489,9 +494,12 @@ async function syncLocalJobsToSupabase(stableSyncId) {
             console.warn('  ✗ Failed to sync job:', job.company, err.message)
           }
         } else if (historyCount > 0) {
-          // Existing job - sync just the history entries
+          // Existing job - sync just the history entries (deduplicated)
           try {
-            const historyEntries = job.history.map(entry => ({
+            // Deduplicate history before sending to Supabase
+            const dedupedHistory = deduplicateHistory([job])[0].history
+
+            const historyEntries = dedupedHistory.map(entry => ({
               job_id: job.id,
               user_id: stableSyncId,
               date: entry.date,
@@ -515,7 +523,7 @@ async function syncLocalJobsToSupabase(stableSyncId) {
               .from('job_history')
               .upsert(historyEntries, { onConflict: 'id' })
 
-            console.log('  ✓ Synced history for:', job.company, '(' + historyCount + ' entries)')
+            console.log('  ✓ Synced history for:', job.company, '(' + dedupedHistory.length + ' entries)')
           } catch (err) {
             console.warn('  ✗ Failed to sync history for:', job.company, err.message)
           }
@@ -571,7 +579,7 @@ export function useJobs() {
   }, [])
 
   // Apply processing pipeline (dedup is manual-only to avoid false merges)
-  const jobs = useMemo(() => autoStale(rawJobs), [rawJobs, settingsKey])
+  const jobs = useMemo(() => deduplicateHistory(autoStale(rawJobs)), [rawJobs, settingsKey])
 
   // Persist to IndexedDB whenever jobs change
   useEffect(() => {
