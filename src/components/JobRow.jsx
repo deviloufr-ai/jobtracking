@@ -470,8 +470,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                     // Fix #19 — stable key: date + status + note prefix (not just index)
                     const entryKey = `${entry.date}-${entry.status}-${(entry.note || '').slice(0, 20)}-${i}`
                     return (
-                      <div key={entryKey} className="flex gap-3 relative group/step">
-                        {!isLast && <div className="absolute left-[7px] top-5 bottom-0 w-px bg-indigo-200" />}
+                      <div key={entryKey} className="flex gap-0 relative group/step mb-3">
                         {(() => {
                           const isMeeting = entry.source === 'calendar' || !!entry.meetingLink
                           // Fix: use rawStart if available (precise time), otherwise check if date is in the past
@@ -490,12 +489,28 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                           const angleMatch = rawFrom.match(/<([^>]+@[^>]+)>/)
                           const fromEmail = angleMatch ? angleMatch[1].trim() : (rawFrom.includes('@') && !rawFrom.includes(' ') ? rawFrom : null)
                           const showSender = entry.source === 'email' && !entry.fromMe && fromEmail && !isNoReply(fromEmail)
+                          const sourceLabel = getSourceLabel(entry, job.company)
+                          const emailCount = history.filter(h => h.source === 'email').length
                           return (
                         <>
-                        <div className={`w-3.5 h-3.5 rounded-full flex-shrink-0 mt-1 border-2 border-white shadow-sm ${isPastMeeting ? 'bg-gray-300' : isUpcomingMeeting ? 'bg-amber-400' : st.dot}`} />
-                        <div className={`pb-3 flex-1 ${isPastMeeting ? 'opacity-50' : ''}`}>
+                        {/* LEFT PANEL: Metadata */}
+                        <div className="w-24 flex-shrink-0 bg-indigo-50/50 border-r border-indigo-100 px-3 py-2.5 flex flex-col items-center justify-start gap-1">
+                          <div className={`w-3.5 h-3.5 rounded-full flex-shrink-0 border-2 border-white shadow-sm ${isPastMeeting ? 'bg-gray-300' : isUpcomingMeeting ? 'bg-amber-400' : st.dot}`} />
+                          <span className="text-[10px] font-semibold text-gray-700 text-center">{formatDate(entry.date)}</span>
+                          {sourceLabel && (
+                            <span className="text-[9px] text-gray-500 text-center truncate max-w-full">{sourceLabel}</span>
+                          )}
+                          {entry.gmailIds?.length > 0 || entry.gmailId ? (
+                            <span className="text-[9px] bg-cyan-100 text-cyan-700 px-1.5 py-0.5 rounded-full font-semibold">
+                              📧 ×{entry.gmailIds?.length || 1}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {/* RIGHT PANEL: Content */}
+                        <div className={`pb-0 flex-1 bg-white border border-indigo-100 rounded-r-xl px-3 py-2.5 ${isPastMeeting ? 'opacity-50' : ''}`}>
                           {editingStep === i ? (
-                            <div className="bg-white border border-indigo-200 rounded-xl p-3 space-y-2">
+                            <div className="bg-gray-50 border border-indigo-200 rounded-lg p-3 space-y-2">
                               <div className="grid grid-cols-3 gap-2">
                                 <select className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300"
                                   value={editForm.status || entry.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
@@ -528,47 +543,33 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                             </div>
                           ) : (
                             <>
-                              {/* Header: Status, Date, Sender, Actions */}
-                              <div className="flex items-center justify-between gap-3 mb-2">
-                                <div className="flex items-center gap-2 flex-wrap flex-1">
-                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isPastMeeting ? 'bg-gray-100 text-gray-400' : isUpcomingMeeting ? 'bg-amber-100 text-amber-700' : st.color}`}>{isPastMeeting ? '✓ Passé' : isUpcomingMeeting ? '📅 À venir' : st.label}</span>
-                                  <span className={`text-xs text-gray-400 ${isPastMeeting ? 'line-through' : ''}`}>
-                                    {isMeeting ? (
-                                      entry.rawStart ? formatDateTime(entry.rawStart) :
-                                      entry.date && entry.date.includes('T') ? formatDateTime(entry.date) :
-                                      `📅 ${formatDate(entry.date)}`
-                                    ) : (
-                                      entry.date && entry.date.includes('T') ? formatDateTime(entry.date) : formatDate(entry.date)
-                                    )}
-                                  </span>
-                                  {showSender && (
-                                    <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
-                                      {angleMatch ? rawFrom.match(/^([^<]+)/)?.[1]?.trim().split(' ')[0] : fromEmail.split('@')[0]}
-                                    </span>
-                                  )}
-                                </div>
+                              {/* Status Badge + Edit/Delete Actions */}
+                              <div className="flex items-center justify-between gap-2 mb-1.5">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isPastMeeting ? 'bg-gray-100 text-gray-400' : isUpcomingMeeting ? 'bg-amber-100 text-amber-700' : st.color}`}>
+                                  {isPastMeeting ? '✓ Passé' : isUpcomingMeeting ? '📅 À venir' : st.label}
+                                </span>
                                 <div className="flex gap-1 items-center flex-shrink-0">
                                   {confirmDeleteIdx === i ? (
                                     <>
                                       <button onClick={() => { handleDeleteStep(i); setConfirmDeleteIdx(null) }}
-                                        className="text-[10px] font-semibold text-white bg-red-500 hover:bg-red-600 px-2 py-0.5 rounded transition-colors">Supprimer</button>
+                                        className="text-[10px] font-semibold text-white bg-red-500 hover:bg-red-600 px-1.5 py-0.5 rounded transition-colors">Suppr.</button>
                                       <button onClick={() => setConfirmDeleteIdx(null)}
-                                        className="text-[10px] text-gray-400 hover:text-gray-600 px-1.5 py-0.5 rounded">✕</button>
+                                        className="text-[10px] text-gray-400 hover:text-gray-600 px-1 py-0.5 rounded">✕</button>
                                     </>
                                   ) : (
                                     <>
                                       <button onClick={() => { setEditingStep(i); setEditForm({ status: entry.status, date: entry.date, note: entry.note || '', meetingLink: entry.meetingLink || '' }) }}
-                                        className="text-[10px] font-medium text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 px-2 py-0.5 rounded transition-colors">✏️ </button>
+                                        className="text-[10px] font-medium text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 px-1 py-0.5 rounded transition-colors">✏️</button>
                                       <button onClick={() => setConfirmDeleteIdx(i)}
-                                        className="text-[10px] font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 px-2 py-0.5 rounded transition-colors">🗑️</button>
+                                        className="text-[10px] font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 px-1 py-0.5 rounded transition-colors">🗑️</button>
                                     </>
                                   )}
                                 </div>
                               </div>
 
-                              {/* Notes: Full width single column */}
+                              {/* Notes */}
                               {entry.note && entry.note.includes(' · ') ? (
-                                <ul className="mt-1 space-y-0.5">
+                                <ul className="mb-1.5 space-y-0.5">
                                   {entry.note.split(' · ').filter(Boolean).map((line, li) => (
                                     <li key={li} className="flex gap-1.5 text-xs text-gray-600">
                                       <span className="text-gray-300 flex-shrink-0 mt-0.5">•</span>
@@ -577,16 +578,17 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                                   ))}
                                 </ul>
                               ) : entry.note ? (
-                                <p className={`text-xs mt-0.5 ${entry.source === 'calendar' ? 'text-gray-400 italic' : 'text-gray-600'}`}>{entry.note}</p>
+                                <p className={`text-xs mb-1.5 ${entry.source === 'calendar' ? 'text-gray-400 italic' : 'text-gray-600'}`}>{entry.note}</p>
                               ) : null}
-                              {/* Action links row — Fix #10: render extra gmailIds too */}
+
+                              {/* Action Links */}
                               {(entry.meetingLink || entry.gmailId || entry.gmailIds?.length || (entry.source === 'calendar' && !entry.meetingLink)) && (
-                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   {entry.meetingLink && !isPastMeeting && (
                                     <a href={entry.meetingLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
                                       className="inline-flex items-center gap-1.5 text-xs font-medium text-white bg-amber-500 hover:bg-amber-600 px-2.5 py-1 rounded-lg transition-colors">
                                       <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                                      Rejoindre {entry.meetingPlatform || 'la visio'} ↗
+                                      Rejoindre {entry.meetingPlatform || 'visio'} ↗
                                     </a>
                                   )}
                                   {entry.source === 'calendar' && !entry.meetingLink && (
@@ -601,9 +603,9 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                                       <a href={url} target="_blank" rel="noopener noreferrer"
                                         onClick={e => e.stopPropagation()}
                                         className={`inline-flex items-center gap-1 text-xs transition-colors ${uncertain ? 'text-amber-400 hover:text-amber-600' : 'text-gray-400 hover:text-red-500'}`}
-                                        title={uncertain ? '⚠ Compte incertain' : `${ids.length > 1 ? `${ids.length} emails` : 'Ouvrir'} dans ${account || 'Gmail'}`}>
+                                        title={uncertain ? '⚠ Compte incertain' : `${ids.length > 1 ? `${ids.length} emails` : 'Email'} dans ${account || 'Gmail'}`}>
                                         <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.909 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>
-                                        Voir l'email
+                                        Email
                                         {ids.length > 1 && <span className="ml-0.5 px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded text-[10px] font-semibold">{ids.length}</span>}
                                         {account && <span className="text-[9px] opacity-60">({account.split('@')[0]})</span>}
                                         {uncertain && <span className="text-[9px]">⚠</span>}
