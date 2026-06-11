@@ -7,6 +7,7 @@ import { getStatus, isAtsRejection } from '../hooks/useJobs'
 const STEPS = { idle: 'idle', connecting: 'connecting', fetching: 'fetching', parsing: 'parsing', review: 'review' }
 
 const MONTH_OPTIONS = [
+  { value: 14/30,  label: '2 semaines' },
   { value: 1,  label: '1 mois' },
   { value: 3,  label: '3 mois' },
   { value: 6,  label: '6 mois' },
@@ -24,7 +25,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
   const [selected, setSelected] = useState(new Set())
   const [error, setError] = useState(null)
   const [emailCount, setEmailCount] = useState(0)
-  const [months, setMonths] = useState(3)
+  const [months, setMonths] = useState(14/30)
   const [dateMode, setDateMode] = useState('relative') // 'relative' | 'range'
   const [startDate, setStartDate] = useState(() => {
     const d = new Date(); d.setMonth(d.getMonth() - 3)
