@@ -239,9 +239,16 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
   }
 
   const newEvents = []
+  const processedMeetingLinks = new Set() // Track links we've added in this batch
+
   for (const e of events) {
-    // Skip if this exact meeting link already exists in the candidature
+    // Skip if this exact meeting link already exists anywhere in job history
     if (e.meetingLink && existingMeetingLinks.has(e.meetingLink)) {
+      continue
+    }
+
+    // Skip if we already processed this meeting link in this batch
+    if (e.meetingLink && processedMeetingLinks.has(e.meetingLink)) {
       continue
     }
 
@@ -259,6 +266,7 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
         existing.meetingPlatform = e.meetingPlatform
         existing.meetingEmoji = e.meetingEmoji
         existingMeetingLinks.add(e.meetingLink)
+        processedMeetingLinks.add(e.meetingLink)
       }
     } else {
       // For email events with meeting links: create a "decision" entry without the link
@@ -273,9 +281,13 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
           // Explicitly NOT including meetingLink here
         })
         existingMeetingLinks.add(e.meetingLink)
+        processedMeetingLinks.add(e.meetingLink)
       } else {
         newEvents.push(e)
-        if (e.meetingLink) existingMeetingLinks.add(e.meetingLink)
+        if (e.meetingLink) {
+          existingMeetingLinks.add(e.meetingLink)
+          processedMeetingLinks.add(e.meetingLink)
+        }
       }
     }
   }
