@@ -613,10 +613,16 @@ export function useJobs() {
   }
 
   const toggleFavorite = (id) => {
-    setJobs(prev => prev.map(j => j.id === id ? { ...j, favorite: !j.favorite } : j))
-    const job = jobs.find(j => j.id === id)
-    if (job) {
-      const updated = { ...job, favorite: !job.favorite }
+    // Find current favorite value BEFORE state update
+    const currentJob = jobs.find(j => j.id === id)
+    const newFavoriteValue = currentJob ? !currentJob.favorite : true
+
+    // Update local state
+    setJobs(prev => prev.map(j => j.id === id ? { ...j, favorite: newFavoriteValue } : j))
+
+    // Sync with correct favorite value
+    if (currentJob) {
+      const updated = { ...currentJob, favorite: newFavoriteValue, updated_at: new Date().toISOString() }
       console.log('Toggling favorite:', id, 'new value:', updated.favorite)
       syncManager.mutate('jobs', 'update', updated).catch(err => console.error('Failed to sync favorite:', err))
     }
