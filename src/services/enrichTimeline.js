@@ -27,6 +27,26 @@ function extractMeetingLink(text = '') {
   return null
 }
 
+// Normalize meeting content for deduplication (lowercase, remove extra spaces/punctuation)
+function normalizeMeetingContent(text = '') {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[()àâäæéèêëïîôöùûüœç]/g, c => {
+      const map = { 'à': 'a', 'â': 'a', 'ä': 'a', 'æ': 'ae', 'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e', 'ï': 'i', 'î': 'i', 'ô': 'o', 'ö': 'o', 'ù': 'u', 'û': 'u', 'ü': 'u', 'œ': 'oe', 'ç': 'c' }
+      return map[c] || c
+    })
+    .replace(/[^\w\s]/g, '')
+}
+
+// Check if a similar meeting already exists in history (by date + normalized content)
+function hasSimilarMeeting(note, date, history) {
+  const normalized = normalizeMeetingContent(note)
+  const sameDay = (history || []).filter(h => h.date === date)
+  return sameDay.some(h => normalizeMeetingContent(h.note) === normalized)
+}
+
 function detectMeetingPlatform(url = '') {
   if (url.includes('meet.google.com')) return { name: 'Google Meet', emoji: '🟢' }
   if (url.includes('zoom.us')) return { name: 'Zoom', emoji: '🔵' }
@@ -212,6 +232,11 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
   for (const e of events) {
     // Skip if this exact meeting link already exists in the candidature
     if (e.meetingLink && existingMeetingLinks.has(e.meetingLink)) {
+      continue
+    }
+
+    // Skip if similar meeting content already exists on the same day
+    if (hasSimilarMeeting(e.note, e.date, job.history)) {
       continue
     }
 
