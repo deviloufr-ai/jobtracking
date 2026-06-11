@@ -1,0 +1,278 @@
+import { supabase } from './supabase'
+import { indexeddb } from './indexeddb'
+import { v4 as uuidv4 } from 'crypto'
+
+// Simple UUID generation (alternative to uuid library if not installed)
+function generateId() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
+
+class SyncManager {
+  constructor() {
+    this.isOnline = navigator.onLine
+    this.syncInProgress = false
+    this.listeners = []
+    this.debounceTimer = null
+    this.retryCount = {}
+    this.maxRetries = 5
+    this.maxBackoffMs = 30000
+
+    // Listen to online/offline events
+    window.addEventListener('online', () => this.handleOnline())
+    window.addEventListener('offline', () => this.handleOffline())
+  }
+
+  handleOnline() {
+    this.isOnline = true
+    this.notifyListeners({ status: 'online' })
+    // Flush queue when coming online
+    this.flushQueue()
+  }
+
+  handleOffline() {
+    this.isOnline = false
+    this.notifyListeners({ status: 'offline' })
+  }
+
+  // Register listener for sync status changes
+  onStatusChange(callback) {
+    this.listeners.push(callback)
+    return () => {
+      this.listeners = this.listeners.filter(l => l !== callback)
+    }
+  }
+
+  notifyListeners(status) {
+    this.listeners.forEach(listener => listener(status))
+  }
+
+  async getQueueSize() {
+    const mutations = await indexeddb.getQueuedMutations()
+    return mutations.length
+  }
+
+  // Queue a mutation when offline
+  async queueMutation(table, type, record) {
+    const mutation = {
+      id: generateId(),
+      table,
+      type, // 'insert' | 'update' | 'delete'
+      record,
+      timestamp: Date.now()
+    }
+
+    await indexeddb.addToQueue(mutation)
+    this.notifyListeners({
+      status: this.isOnline ? 'syncing' : 'offline',
+      queueSize: await this.getQueueSize()
+    })
+
+    return mutation.id
+  }
+
+  // Execute mutation and queue if offline
+  async mutate(table, type, record) {
+    // Apply to local cache first (optimistic update)
+    await this.applyToLocalCache(table, type, record)
+
+    // If offline, queue and return
+    if (!this.isOnline) {
+      const mutationId = await this.queueMutation(table, type, record)
+      return { success: true, offline: true, mutationId }
+    }
+
+    // If online, send to Supabase immediately
+    try {
+      const result = await this.sendMutationToSupabase(table, type, record)
+      return result
+    } catch (err) {
+      console.error('Mutation failed, queuing for retry:', err)
+      await this.queueMutation(table, type, record)
+      this.notifyListeners({ status: 'offline', queueSize: await this.getQueueSize() })
+      throw err
+    }
+  }
+
+  async applyToLocalCache(table, type, record) {
+    switch (table) {
+      case 'jobs':
+        if (type === 'delete') {
+          await indexeddb.deleteJob(record.id)
+        } else {
+          await indexeddb.saveJob(record)
+        }
+        break
+      case 'cvs':
+        await indexeddb.saveCV(record)
+        break
+      case 'settings':
+        await indexeddb.saveSettings(record)
+        break
+    }
+  }
+
+  async sendMutationToSupabase(table, type, record) {
+    const userId = (await supabase.auth.getUser()).data?.user?.id
+    if (!userId) throw new Error('User not authenticated')
+
+    let result
+
+    switch (type) {
+      case 'insert':
+        result = await supabase
+          .from(table)
+          .insert({ ...record, user_id: userId })
+          .select('id')
+        break
+
+      case 'update':
+        result = await supabase
+          .from(table)
+          .update(record)
+          .eq('id', record.id)
+          .eq('user_id', userId)
+          .select()
+        break
+
+      case 'delete':
+        result = await supabase
+          .from(table)
+          .delete()
+          .eq('id', record.id)
+          .eq('user_id', userId)
+        break
+    }
+
+    if (result.error) {
+      // 409 = conflict
+      if (result.status === 409) {
+        console.warn('Conflict detected, attempting merge...')
+        return await this.handleConflict(table, record)
+      }
+      throw result.error
+    }
+
+    return { success: true, data: result.data }
+  }
+
+  async handleConflict(table, record) {
+    // Fetch remote version
+    const { data: remoteData, error } = await supabase
+      .from(table)
+      .select()
+      .eq('id', record.id)
+      .single()
+
+    if (error) {
+      console.error('Failed to fetch remote for conflict resolution:', error)
+      throw error
+    }
+
+    // Merge strategy: remote wins (last-write-wins)
+    // But preserve local history entries
+    const merged = this.mergeRecords(record, remoteData)
+
+    // Update local cache with merged version
+    await this.applyToLocalCache(table, 'update', merged)
+
+    return { success: true, merged: true, data: merged }
+  }
+
+  mergeRecords(local, remote) {
+    // Last-write-wins on timestamp
+    if (!local.last_modified_at || !remote.last_modified_at) {
+      return remote // Fallback to remote
+    }
+
+    const localTime = new Date(local.last_modified_at).getTime()
+    const remoteTime = new Date(remote.last_modified_at).getTime()
+
+    if (localTime > remoteTime) {
+      return local
+    }
+
+    // Remote is newer, but preserve local history if table is jobs
+    if (local.history && Array.isArray(local.history)) {
+      const remoteHistory = remote.history || []
+      const localHistory = local.history
+
+      // Merge histories (append-only, de-duplicate by date+status)
+      const merged = [...remoteHistory]
+      localHistory.forEach(entry => {
+        const exists = merged.some(
+          h => h.date === entry.date && h.status === entry.status
+        )
+        if (!exists) {
+          merged.push(entry)
+        }
+      })
+
+      return { ...remote, history: merged }
+    }
+
+    return remote
+  }
+
+  // Flush queue when online
+  async flushQueue() {
+    if (this.syncInProgress) return
+
+    try {
+      this.syncInProgress = true
+      this.notifyListeners({ status: 'syncing', queueSize: 0 })
+
+      const mutations = await indexeddb.getQueuedMutations()
+
+      if (mutations.length === 0) {
+        this.notifyListeners({ status: 'synced' })
+        return
+      }
+
+      console.log(`Flushing ${mutations.length} queued mutations...`)
+
+      // Process mutations in order (FIFO)
+      for (const mutation of mutations) {
+        try {
+          await this.sendMutationToSupabase(
+            mutation.table,
+            mutation.type,
+            mutation.record
+          )
+          await indexeddb.removeFromQueue(mutation.id)
+
+          // Notify progress
+          const remaining = await this.getQueueSize()
+          this.notifyListeners({
+            status: remaining > 0 ? 'syncing' : 'synced',
+            queueSize: remaining
+          })
+        } catch (err) {
+          console.error('Failed to flush mutation:', mutation, err)
+          // Don't retry immediately, will retry on next online event
+          break
+        }
+      }
+
+      this.notifyListeners({ status: 'synced', queueSize: 0 })
+    } catch (err) {
+      console.error('Queue flush error:', err)
+      this.notifyListeners({ status: 'error', error: err.message })
+    } finally {
+      this.syncInProgress = false
+    }
+  }
+
+  // Get current sync status
+  getStatus() {
+    return {
+      isOnline: this.isOnline,
+      isSyncing: this.syncInProgress
+    }
+  }
+}
+
+export const syncManager = new SyncManager()
