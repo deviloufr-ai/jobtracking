@@ -121,19 +121,28 @@ class SyncManager {
 
     let result
 
+    // For jobs table, extract history and sync separately
+    let jobRecord = record
+    let history = null
+    if (table === 'jobs' && record.history) {
+      const { history: h, ...jobWithoutHistory } = record
+      jobRecord = jobWithoutHistory
+      history = h
+    }
+
     switch (type) {
       case 'insert':
         result = await supabase
           .from(table)
-          .insert({ ...record, user_id: userId })
+          .insert({ ...jobRecord, user_id: userId })
           .select('id')
         break
 
       case 'update':
         result = await supabase
           .from(table)
-          .update(record)
-          .eq('id', record.id)
+          .update(jobRecord)
+          .eq('id', jobRecord.id)
           .eq('user_id', userId)
           .select()
         break
@@ -142,7 +151,7 @@ class SyncManager {
         result = await supabase
           .from(table)
           .delete()
-          .eq('id', record.id)
+          .eq('id', jobRecord.id)
           .eq('user_id', userId)
         break
     }
@@ -154,6 +163,40 @@ class SyncManager {
         return await this.handleConflict(table, record)
       }
       throw result.error
+    }
+
+    // Sync job history if present
+    if (table === 'jobs' && history && Array.isArray(history) && result.data && result.data[0]) {
+      const jobId = result.data[0].id || record.id
+      const historyEntries = history.map(entry => ({
+        job_id: jobId,
+        user_id: userId,
+        date: entry.date,
+        status: entry.status || null,
+        note: entry.note || null,
+        meeting_link: entry.meetingLink || null,
+        gmail_id: entry.gmailId || null,
+        gmail_ids: entry.gmailIds || null,
+        offer_url: entry.offerUrl || null,
+        show_cv_button: entry.showCVButton || false,
+        from_email: entry.from || null,
+        from_me: entry.fromMe || false,
+        source: entry.source || null,
+        raw_start: entry.rawStart || null,
+        version: 1,
+        device_id: entry.device_id || null,
+        last_modified_at: new Date().toISOString()
+      }))
+
+      // Upsert history (for updates, this adds new entries)
+      const { error: historyError } = await supabase
+        .from('job_history')
+        .upsert(historyEntries, { onConflict: 'id' })
+
+      if (historyError) {
+        console.error('Error syncing job history:', historyError)
+        // Don't throw - history is secondary to job sync
+      }
     }
 
     return { success: true, data: result.data }
