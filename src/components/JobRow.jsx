@@ -568,9 +568,9 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                               </div>
 
                               {/* Notes */}
-                              {entry.note && entry.note.includes(' · ') ? (
+                              {entry.note && (entry.note.includes(' · ') || entry.note.includes(' — ')) ? (
                                 <ul className="mb-1.5 space-y-0.5">
-                                  {entry.note.split(' · ').filter(Boolean).map((line, li) => (
+                                  {entry.note.split(/ · | — /).filter(Boolean).map((line, li) => (
                                     <li key={li} className="flex gap-1.5 text-xs text-gray-600">
                                       <span className="text-gray-300 flex-shrink-0 mt-0.5">•</span>
                                       <span>{line.trim()}</span>
