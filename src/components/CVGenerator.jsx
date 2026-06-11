@@ -265,7 +265,7 @@ function renderMinimal(md, pic) {
   }
 
   const header = `
-    <div style="padding:14px 20px;border-bottom:1.5px solid #d1d5db">
+    <div style="padding:16px 24px;border-bottom:1.5px solid #d1d5db">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:4px">
         ${pic ? `<div>${picHTML(pic, 52, '#d1d5db')}</div>` : ''}
         <div>
@@ -279,13 +279,13 @@ function renderMinimal(md, pic) {
     const blocks = groupBlocks(s.items)
     const inner  = blocks.map(b => expBlock(b, expStyles)).join('')
     return `
-      <div style="margin:7px 0;padding-bottom:1px">
-        <div style="font-size:9.5pt;font-weight:800;color:#000;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;border-bottom:1.5px solid #e5e7eb;padding-bottom:2px">${s.title}</div>
+      <div style="margin:9px 0;padding-bottom:2px">
+        <div style="font-size:9.5pt;font-weight:800;color:#000;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;border-bottom:1.5px solid #e5e7eb;padding-bottom:2px">${s.title}</div>
         ${inner}
       </div>`
   }).join('')
 
-  return `${header}<div style="padding:10px 20px 12px">${body}</div>`
+  return `${header}<div style="padding:12px 24px 14px">${body}</div>`
 }
 
 // ── Template registry ─────────────────────────────────────────────────────────
