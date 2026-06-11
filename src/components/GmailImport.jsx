@@ -62,9 +62,11 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
       setStep(STEPS.connecting)
       setError(null)
       await connectGmail()
-      // Also sign in to Supabase for multi-device sync (anonymous, no redirects)
-      signInAnonymously().catch(err => console.warn('Supabase sync auth failed (non-critical):', err))
       refreshAccountList()
+      // Also sign in to Supabase for multi-device sync (async, non-blocking)
+      setTimeout(() => {
+        signInAnonymously().catch(err => console.warn('Supabase sync auth failed (non-critical):', err))
+      }, 500)
       setStep(STEPS.idle)
     } catch (e) {
       setError('Connexion Gmail annulée ou échouée : ' + e.message)
