@@ -23,44 +23,14 @@ class PollManager {
     this.listeners.forEach(listener => listener(data))
   }
 
-  // Start polling
-  async start(userId) {
-    if (this.isPolling) return
-
-    this.userId = userId
-    this.isPolling = true
-
-    // Get last sync time from metadata
-    this.lastSyncTime = await indexeddb.getMetadata('last_sync_time')
-
-    console.log('🔄 Starting polling for user:', userId, 'lastSync:', this.lastSyncTime)
-
-    // Run first poll immediately
-    await this.poll()
-
-    // Then set up interval
-    this.pollTimer = setInterval(() => {
-      this.poll()
-    }, POLL_INTERVAL)
-  }
-
-  // Stop polling
-  stop() {
-    this.isPolling = false
-    if (this.pollTimer) {
-      clearInterval(this.pollTimer)
-      this.pollTimer = null
-    }
-  }
-
   // Perform one poll cycle
-  async poll() {
+  async poll(userId) {
     if (!isSupabaseConfigured()) {
       console.warn('⚠ Supabase not configured, skipping poll')
       return
     }
 
-    if (!navigator.onLine || !this.userId) {
+    if (!navigator.onLine || !userId) {
       console.log('⚠ Offline or no userId, skipping poll')
       return
     }
@@ -68,14 +38,14 @@ class PollManager {
     let hasChanges = false
 
     try {
-      console.log('📡 Polling Supabase for user:', this.userId)
+      console.log('📡 Polling Supabase for user:', userId)
       this.notifyListeners({ status: 'polling' })
 
       // Fetch jobs changed since last sync
       const jobsQuery = supabase
         .from('jobs')
         .select('*')
-        .eq('user_id', this.userId)
+        .eq('user_id', userId)
 
       // If we have a last sync time, only fetch changes
       if (this.lastSyncTime) {
@@ -96,7 +66,7 @@ class PollManager {
       const { data: allHistory, error: historyError } = await supabase
         .from('job_history')
         .select('*')
-        .eq('user_id', this.userId)
+        .eq('user_id', userId)
 
       if (historyError) {
         console.error('Poll error fetching history:', historyError)
@@ -118,7 +88,7 @@ class PollManager {
       const { data: settingsData, error: settingsError } = await supabase
         .from('user_settings')
         .select('*')
-        .eq('user_id', this.userId)
+        .eq('user_id', userId)
         .single()
 
       if (settingsError && settingsError.code !== 'PGRST116') {
@@ -130,7 +100,7 @@ class PollManager {
       const { data: cvs, error: cvsError } = await supabase
         .from('cvs')
         .select('*')
-        .eq('user_id', this.userId)
+        .eq('user_id', userId)
 
       if (cvsError) {
         console.error('Poll error fetching CVs:', cvsError)

@@ -3,6 +3,7 @@ import { loadSettings } from './useSettings'
 import { extractUrlsFromEmail, rankUrlsByJobRelevance, checkPositionUrl } from '../services/positionChecker'
 import { indexeddb } from '../services/indexeddb'
 import { syncManager } from '../services/syncManager'
+import { getSyncCoordinator } from '../services/syncCoordinator'
 import { supabase } from '../services/supabase'
 import { getSyncUserIdForSupabase, getCachedUser } from '../services/gmail'
 
@@ -514,7 +515,7 @@ async function syncLocalJobsToSupabase(stableSyncId) {
       for (const job of localJobs) {
         if (!existingIds.has(job.id)) {
           try {
-            await syncManager.mutate('jobs', 'insert', job)
+            await syncManager.mutate(stableSyncId, 'jobs', 'insert', job)
             console.log('  ✓ Synced job:', job.company)
           } catch (err) {
             console.warn('  ✗ Failed to sync job:', job.company, err.message)
@@ -633,7 +634,10 @@ export function useJobs() {
     delete job._emailBody
 
     setJobs(prev => [job, ...prev])
-    syncManager.mutate('jobs', 'insert', job).catch(err => console.error('Failed to sync job:', err))
+    const coordinator = getSyncCoordinator()
+    if (coordinator) {
+      coordinator.mutate('jobs', 'insert', job).catch(err => console.error('Failed to sync job:', err))
+    }
     return job
   }
 
@@ -647,13 +651,19 @@ export function useJobs() {
     if (job) {
       const updated = { ...job, ...data, updated_at: new Date().toISOString() }
       const final = data.history ? sortJobHistory(updated) : updated
-      syncManager.mutate('jobs', 'update', final).catch(err => console.error('Failed to sync job:', err))
+      const coordinator = getSyncCoordinator()
+      if (coordinator) {
+        coordinator.mutate('jobs', 'update', final).catch(err => console.error('Failed to sync job:', err))
+      }
     }
   }
 
   const deleteJob = (id) => {
     setJobs(prev => prev.filter(j => j.id !== id))
-    syncManager.mutate('jobs', 'delete', { id }).catch(err => console.error('Failed to sync deletion:', err))
+    const coordinator = getSyncCoordinator()
+    if (coordinator) {
+      coordinator.mutate('jobs', 'delete', { id }).catch(err => console.error('Failed to sync deletion:', err))
+    }
   }
 
   const updateStatus = (id, status) => {
@@ -685,7 +695,10 @@ export function useJobs() {
           note: st ? `Statut mis à jour → ${st.label}` : 'Statut mis à jour',
         }]
       })
-      syncManager.mutate('jobs', 'update', newJob).catch(err => console.error('Failed to sync status:', err))
+      const coordinator = getSyncCoordinator()
+      if (coordinator) {
+        coordinator.mutate('jobs', 'update', newJob).catch(err => console.error('Failed to sync status:', err))
+      }
     }
   }
 
@@ -714,7 +727,10 @@ export function useJobs() {
         updated_at: new Date().toISOString(),
         history: [...(job.history || []), { ...entry, status: resolvedStatus }]
       })
-      syncManager.mutate('jobs', 'update', newJob).catch(err => console.error('Failed to sync history:', err))
+      const coordinator = getSyncCoordinator()
+      if (coordinator) {
+        coordinator.mutate('jobs', 'update', newJob).catch(err => console.error('Failed to sync history:', err))
+      }
     }
   }
 
@@ -725,7 +741,10 @@ export function useJobs() {
     const job = jobs.find(j => j.id === id)
     if (job) {
       const updated = { ...job, enrichedAt: new Date().toISOString() }
-      syncManager.mutate('jobs', 'update', updated).catch(err => console.error('Failed to sync enrichment:', err))
+      const coordinator = getSyncCoordinator()
+      if (coordinator) {
+        coordinator.mutate('jobs', 'update', updated).catch(err => console.error('Failed to sync enrichment:', err))
+      }
     }
   }
 
@@ -736,7 +755,10 @@ export function useJobs() {
     const job = jobs.find(j => j.id === id)
     if (job) {
       const updated = { ...job, enrichedAt: undefined }
-      syncManager.mutate('jobs', 'update', updated).catch(err => console.error('Failed to sync enrichment clear:', err))
+      const coordinator = getSyncCoordinator()
+      if (coordinator) {
+        coordinator.mutate('jobs', 'update', updated).catch(err => console.error('Failed to sync enrichment clear:', err))
+      }
     }
   }
 
@@ -756,7 +778,10 @@ export function useJobs() {
     if (currentJob) {
       const updated = { ...currentJob, favorite: newFavoriteValue, updated_at: new Date().toISOString() }
       console.log('Toggling favorite:', id, 'new value:', updated.favorite)
-      syncManager.mutate('jobs', 'update', updated).catch(err => console.error('Failed to sync favorite:', err))
+      const coordinator = getSyncCoordinator()
+      if (coordinator) {
+        coordinator.mutate('jobs', 'update', updated).catch(err => console.error('Failed to sync favorite:', err))
+      }
     }
   }
 

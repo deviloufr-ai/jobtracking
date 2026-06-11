@@ -1,8 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
-import { v4 as uuidv4 } from 'crypto'
 
-// Simple UUID generation (alternative to uuid library if not installed)
+// Simple UUID generation
 function generateId() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0
@@ -75,7 +74,7 @@ class SyncManager {
   }
 
   // Execute mutation and queue if offline
-  async mutate(table, type, record) {
+  async mutate(userId, table, type, record) {
     // Apply to local cache first (optimistic update)
     await this.applyToLocalCache(table, type, record)
 
@@ -95,7 +94,7 @@ class SyncManager {
     // If online, send to Supabase immediately
     try {
       console.log('🔄 Syncing to Supabase:', type, table, record.id)
-      const result = await this.sendMutationToSupabase(table, type, record)
+      const result = await this.sendMutationToSupabase(userId, table, type, record)
       console.log('✓ Sync successful:', result)
       return result
     } catch (err) {
@@ -153,8 +152,7 @@ class SyncManager {
     return cleaned
   }
 
-  async sendMutationToSupabase(table, type, record) {
-    const userId = (await supabase.auth.getUser()).data?.user?.id
+  async sendMutationToSupabase(userId, table, type, record) {
     if (!userId) throw new Error('User not authenticated')
 
     let result
@@ -301,7 +299,7 @@ class SyncManager {
   }
 
   // Flush queue when online
-  async flushQueue() {
+  async flushQueue(userId) {
     if (this.syncInProgress || !isSupabaseConfigured()) return
 
     try {
@@ -321,6 +319,7 @@ class SyncManager {
       for (const mutation of mutations) {
         try {
           await this.sendMutationToSupabase(
+            userId,
             mutation.table,
             mutation.type,
             mutation.record

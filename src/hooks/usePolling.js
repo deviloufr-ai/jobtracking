@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { pollManager } from '../services/pollManager'
+import { getSyncCoordinator } from '../services/syncCoordinator'
 
 export function usePolling(userId) {
   const [pollStatus, setPollStatus] = useState({
-    status: 'idle',
+    status: 'synced',
     jobsCount: 0,
     timestamp: null,
     error: null
@@ -11,25 +11,27 @@ export function usePolling(userId) {
 
   useEffect(() => {
     if (!userId) {
-      pollManager.stop()
       return
     }
 
-    // Start polling
-    pollManager.start(userId)
+    // Subscribe to coordinator status updates
+    const coordinator = getSyncCoordinator()
+    if (!coordinator) {
+      console.warn('SyncCoordinator not initialized')
+      return
+    }
 
-    // Listen for poll updates
-    const unsubscribe = pollManager.addListener(data => {
+    const unsubscribe = coordinator.onStatusChange(data => {
       setPollStatus(prev => ({
         ...prev,
-        ...data
+        ...data,
+        timestamp: new Date()
       }))
     })
 
     // Cleanup on unmount or userId change
     return () => {
       unsubscribe()
-      pollManager.stop()
     }
   }, [userId])
 

@@ -14,9 +14,9 @@ import NextAction from './components/NextAction'
 import STARGenerator from './components/STARGenerator'
 import EmailDraft from './components/EmailDraft'
 import { useAutoRefresh } from './hooks/useAutoRefresh'
-import { useAuth } from './hooks/useAuth'
 import { usePolling } from './hooks/usePolling'
 import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, autoReuseStoredTokens, getSyncUserIdForSupabase } from './services/gmail'
+import { initializeSyncCoordinator } from './services/syncCoordinator'
 import JobSearch from './components/JobSearch'
 import CVManager from './components/CVManager'
 import CVViewer from './components/CVViewer'
@@ -120,12 +120,16 @@ export default function App() {
   const [expandedJobId, setExpandedJobId] = useState(null)
   const [showLandingPage, setShowLandingPage] = useState(true)
 
-  // On load: restore stored tokens
+  // On load: restore stored tokens and initialize sync coordinator
   useEffect(() => {
     autoReuseStoredTokens()
     if (!gmailUser && isConnected()) {
       getGmailUserInfo().then(user => { if (user) setGmailUser(user) })
     }
+
+    // Initialize sync coordinator with stable user ID
+    const syncUserId = getSyncUserIdForSupabase()
+    initializeSyncCoordinator(syncUserId)
   }, [])
 
   // Hide landing page when user logs in
