@@ -334,6 +334,7 @@ export default function App() {
     return (
       <ErrorBoundary>
         <LandingPage onLogin={() => setShowGmail(true)} />
+        {showGmail && <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={() => { setShowGmail(false); const connected = isConnected(); setGmailConnected(connected); setGmailUser(connected ? getCachedUser() : null) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u) }} existingJobs={jobs} />}
       </ErrorBoundary>
     )
   }
