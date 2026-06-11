@@ -378,8 +378,8 @@ export function useJobs() {
     return () => window.removeEventListener('jobtrackr:datasync', handleSync)
   }, [])
 
-  // Apply processing pipeline
-  const jobs = useMemo(() => autoStale(rawJobs), [rawJobs, settingsKey])
+  // Apply processing pipeline (includes deduplication)
+  const jobs = useMemo(() => deduplicateJobs(autoStale(rawJobs)), [rawJobs, settingsKey])
 
   // Persist to IndexedDB whenever jobs change
   useEffect(() => {
