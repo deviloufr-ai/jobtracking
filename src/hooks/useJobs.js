@@ -478,8 +478,13 @@ async function syncLocalJobsToSupabase(stableSyncId) {
       for (const job of localJobs) {
         if (!existingIds.has(job.id)) {
           try {
-            await syncManager.mutate(stableSyncId, 'jobs', 'insert', job)
-            console.log('  ✓ Synced job:', job.company)
+            // Ensure job has history for sync
+            const jobToSync = {
+              ...job,
+              history: job.history || []
+            }
+            await syncManager.mutate(stableSyncId, 'jobs', 'insert', jobToSync)
+            console.log('  ✓ Synced job:', job.company, 'with', (job.history?.length || 0), 'history entries')
           } catch (err) {
             console.warn('  ✗ Failed to sync job:', job.company, err.message)
           }
