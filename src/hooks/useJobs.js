@@ -461,7 +461,7 @@ async function syncLocalJobsToSupabase(stableSyncId) {
       }
     }
 
-    // UPLOAD local jobs to Supabase (in case they were added before auth)
+    // UPLOAD local jobs to Supabase + sync history for all jobs
     const localJobs = await indexeddb.getAllJobs()
     if (localJobs?.length) {
       console.log('📤 Uploading', localJobs.length, 'local jobs to Supabase...')
@@ -474,19 +474,49 @@ async function syncLocalJobsToSupabase(stableSyncId) {
 
       const existingIds = new Set(existingJobs?.map(j => j.id) || [])
 
-      // Upload jobs that don't exist in Supabase
+      // Upload new jobs and sync history for all jobs
       for (const job of localJobs) {
+        const historyCount = job.history?.length || 0
+
         if (!existingIds.has(job.id)) {
+          // New job - insert and sync history
           try {
-            // Ensure job has history for sync
-            const jobToSync = {
-              ...job,
-              history: job.history || []
-            }
+            const jobToSync = { ...job, history: job.history || [] }
             await syncManager.mutate(stableSyncId, 'jobs', 'insert', jobToSync)
-            console.log('  ✓ Synced job:', job.company, 'with', (job.history?.length || 0), 'history entries')
+            console.log('  ✓ Synced new job:', job.company, 'with', historyCount, 'history entries')
           } catch (err) {
             console.warn('  ✗ Failed to sync job:', job.company, err.message)
+          }
+        } else if (historyCount > 0) {
+          // Existing job - sync just the history entries
+          try {
+            const historyEntries = job.history.map(entry => ({
+              job_id: job.id,
+              user_id: stableSyncId,
+              date: entry.date,
+              status: entry.status || null,
+              note: entry.note || null,
+              meeting_link: entry.meetingLink || null,
+              gmail_id: entry.gmailId || null,
+              gmail_ids: entry.gmailIds || null,
+              offer_url: entry.offerUrl || null,
+              show_cv_button: entry.showCVButton || false,
+              from_email: entry.from || null,
+              from_me: entry.fromMe || false,
+              source: entry.source || null,
+              raw_start: entry.rawStart || null,
+              version: 1,
+              device_id: entry.device_id || null,
+              last_modified_at: new Date().toISOString()
+            }))
+
+            await supabase
+              .from('job_history')
+              .upsert(historyEntries, { onConflict: 'id' })
+
+            console.log('  ✓ Synced history for:', job.company, '(' + historyCount + ' entries)')
+          } catch (err) {
+            console.warn('  ✗ Failed to sync history for:', job.company, err.message)
           }
         }
       }
