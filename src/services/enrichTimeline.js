@@ -261,8 +261,22 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
         existingMeetingLinks.add(e.meetingLink)
       }
     } else {
-      newEvents.push(e)
-      if (e.meetingLink) existingMeetingLinks.add(e.meetingLink)
+      // For email events with meeting links: create a "decision" entry without the link
+      // The actual meeting will be added via calendar event (with correct date/time)
+      if (e.source === 'email' && e.meetingLink) {
+        // Add decision entry (without meeting link)
+        newEvents.push({
+          date: e.date,
+          status: e.status,
+          note: `${e.note.replace(/📅|📧/g, '').trim()}`,
+          source: 'email',
+          // Explicitly NOT including meetingLink here
+        })
+        existingMeetingLinks.add(e.meetingLink)
+      } else {
+        newEvents.push(e)
+        if (e.meetingLink) existingMeetingLinks.add(e.meetingLink)
+      }
     }
   }
 
