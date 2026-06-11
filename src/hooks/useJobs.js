@@ -5,7 +5,7 @@ import { indexeddb } from '../services/indexeddb'
 import { syncManager } from '../services/syncManager'
 import { getSyncCoordinator } from '../services/syncCoordinator'
 import { supabase } from '../services/supabase'
-import { getSyncUserIdForSupabase, getCachedUser } from '../services/gmail'
+import { getSyncUserIdForSupabase, getCachedUser, resolveSyncUserId } from '../services/gmail'
 import { convertHistoryFromSupabase, convertHistoryToSupabase } from '../services/fieldConversion'
 
 const ENRICH_TTL_DAYS = 30
@@ -334,20 +334,92 @@ function mergeSameDateEntries(jobs) {
   })
 }
 
+function normalizeForComparison(text = '') {
+  return (text || '')
+    .toLowerCase()
+    .replace(/[àâäæéèêëïîôöùûüœç]/g, c => {
+      const map = { 'à': 'a', 'â': 'a', 'ä': 'a', 'æ': 'ae', 'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e', 'ï': 'i', 'î': 'i', 'ô': 'o', 'ö': 'o', 'ù': 'u', 'û': 'u', 'ü': 'u', 'œ': 'oe', 'ç': 'c' }
+      return map[c] || c
+    })
+    .split(/[\s|,.-]+/)
+    .filter(w => w.length > 3)
+}
+
+function notesAreSimilar(wordsA, wordsB) {
+  if (wordsA.length === 0 || wordsB.length === 0) return false
+  const setB = new Set(wordsB)
+  const matches = wordsA.filter(w => setB.has(w)).length
+  const minLength = Math.min(wordsA.length, wordsB.length)
+  return minLength > 0 && matches / minLength > 0.3
+}
+
 function deduplicateHistory(jobs) {
   return jobs.map(j => {
     if (!j.history || j.history.length <= 1) return j
 
-    const seen = new Set()
-    const unique = j.history.filter(h => {
-      const normNote = (h.note || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 100)
-      const k = `${h.date}_${normNote}`
-      if (seen.has(k)) return false
-      seen.add(k)
-      return true
-    })
+    // Group by date
+    const byDate = new Map()
+    for (const entry of j.history) {
+      if (!byDate.has(entry.date)) {
+        byDate.set(entry.date, [])
+      }
+      byDate.get(entry.date).push(entry)
+    }
 
-    return { ...j, history: unique }
+    const deduped = []
+
+    // Process each date group
+    for (const [date, entries] of byDate) {
+      if (entries.length === 1) {
+        deduped.push(entries[0])
+        continue
+      }
+
+      // Cluster similar entries on same date
+      const clusters = []
+      const used = new Set()
+
+      for (let i = 0; i < entries.length; i++) {
+        if (used.has(i)) continue
+
+        const cluster = [i]
+        used.add(i)
+        const baseWords = normalizeForComparison(entries[i].note)
+
+        for (let j = i + 1; j < entries.length; j++) {
+          if (used.has(j)) continue
+          const compareWords = normalizeForComparison(entries[j].note)
+
+          if (notesAreSimilar(baseWords, compareWords)) {
+            cluster.push(j)
+            used.add(j)
+          }
+        }
+
+        clusters.push(cluster)
+      }
+
+      // Merge similar entries in each cluster
+      for (const cluster of clusters) {
+        if (cluster.length === 1) {
+          deduped.push(entries[cluster[0]])
+        } else {
+          const primary = entries[cluster[0]]
+          const uniqueNotes = new Set()
+          for (const idx of cluster) {
+            const note = entries[idx].note
+            if (note) uniqueNotes.add(note)
+          }
+          const merged = {
+            ...primary,
+            note: Array.from(uniqueNotes).join(' | ')
+          }
+          deduped.push(merged)
+        }
+      }
+    }
+
+    return { ...j, history: deduped.sort((a, b) => new Date(a.date) - new Date(b.date)) }
   })
 }
 
@@ -591,11 +663,18 @@ export function useJobs() {
     }
     window.addEventListener('jobtrackr:datasync', handleSync)
 
-    // Sync local jobs to Supabase + fetch Supabase jobs on app load
-    const syncUserId = getSyncUserIdForSupabase()
-    syncLocalJobsToSupabase(syncUserId).then(() => {
-      // Reload jobs from IndexedDB after Supabase sync completes
-      loadJobs()
+    // Resolve sync user ID (waits for Supabase lookup if needed) then sync
+    // This is critical for incognito mode where localStorage is fresh
+    resolveSyncUserId().then(syncUserId => {
+      syncLocalJobsToSupabase(syncUserId).then(() => {
+        // Reload jobs from IndexedDB after Supabase sync completes
+        loadJobs()
+      })
+    }).catch(err => {
+      console.error('Failed to resolve sync user ID:', err)
+      // Fallback: continue with sync anyway using getSyncUserIdForSupabase
+      const syncUserId = getSyncUserIdForSupabase()
+      syncLocalJobsToSupabase(syncUserId).then(() => loadJobs())
     })
 
     return () => window.removeEventListener('jobtrackr:datasync', handleSync)

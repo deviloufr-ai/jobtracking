@@ -65,6 +65,59 @@ function getSyncUserId() {
   return newUuid
 }
 
+// Async version that waits for Supabase lookup (fixes incognito mode sync)
+export async function resolveSyncUserId() {
+  // Return cached value if available
+  let syncId = localStorage.getItem(SYNC_USER_KEY)
+
+  // Handle legacy format
+  if (syncId?.startsWith('sync-user-')) {
+    const pureUuid = syncId.substring('sync-user-'.length)
+    try { localStorage.setItem(SYNC_USER_KEY, pureUuid) } catch {}
+    syncId = pureUuid
+  }
+
+  if (syncId) {
+    return syncId
+  }
+
+  // Generate new UUID
+  const newUuid = crypto.randomUUID()
+  try { localStorage.setItem(SYNC_USER_KEY, newUuid) } catch {}
+
+  // WAIT for Supabase lookup before returning
+  const firstAccount = Object.values(accounts)[0]
+  const gmailEmail = firstAccount?.user?.email
+
+  if (gmailEmail) {
+    try {
+      const { data: existing } = await supabase
+        .from('gmail_user_sync_mapping')
+        .select('sync_uuid')
+        .eq('gmail_email', gmailEmail)
+        .maybeSingle()
+
+      if (existing?.sync_uuid) {
+        console.log('✓ Found existing sync UUID for:', gmailEmail)
+        try { localStorage.setItem(SYNC_USER_KEY, existing.sync_uuid) } catch {}
+        return existing.sync_uuid
+      } else {
+        // Create new mapping
+        await supabase
+          .from('gmail_user_sync_mapping')
+          .insert({ gmail_email: gmailEmail, sync_uuid: newUuid })
+        console.log('✓ Created new sync UUID for:', gmailEmail)
+        return newUuid
+      }
+    } catch (err) {
+      console.warn('Error resolving sync UUID:', err)
+      return newUuid
+    }
+  }
+
+  return newUuid
+}
+
 let accounts = loadAccounts() // { email: { token, user } }
 
 // ── Public API ────────────────────────────────────────────────────────────────
