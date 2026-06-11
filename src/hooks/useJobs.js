@@ -465,6 +465,7 @@ async function syncLocalJobsToSupabase(stableSyncId) {
     const localJobs = await indexeddb.getAllJobs()
     if (localJobs?.length) {
       console.log('📤 Uploading', localJobs.length, 'local jobs to Supabase...')
+      console.log('  Sample job history:', localJobs[0]?.history?.length, 'entries in', localJobs[0]?.company)
 
       // Check which jobs already exist in Supabase
       const { data: existingJobs } = await supabase
