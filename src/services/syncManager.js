@@ -141,7 +141,6 @@ class SyncManager {
       'last_modified_at',
       'from',
       'offerUrl',
-      'positionLinks',
     ])
 
     const cleaned = {}
