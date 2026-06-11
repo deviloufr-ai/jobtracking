@@ -560,6 +560,7 @@ export function useJobs() {
     const job = jobs.find(j => j.id === id)
     if (job) {
       const updated = { ...job, favorite: !job.favorite }
+      console.log('Toggling favorite:', id, 'new value:', updated.favorite)
       syncManager.mutate('jobs', 'update', updated).catch(err => console.error('Failed to sync favorite:', err))
     }
   }
