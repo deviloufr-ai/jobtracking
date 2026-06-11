@@ -332,18 +332,19 @@ export default function App() {
   const goTab = (id) => { setActiveTab(id); setMobileMenuOpen(false) }
 
   // Show landing page if no user and no jobs
-  if (showLandingPage) {
-    const handleLandingPageLogin = () => {
-      setShowGmail(true)
-    }
-
+  if (showLandingPage && !showGmail) {
     return (
       <ErrorBoundary>
-        {showGmail ? (
-          <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={() => { setShowGmail(false); const connected = isConnected(); setGmailConnected(connected); setGmailUser(connected ? getCachedUser() : null) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u) }} existingJobs={jobs} />
-        ) : (
-          <LandingPage onLogin={handleLandingPageLogin} />
-        )}
+        <LandingPage onLogin={() => setShowGmail(true)} />
+      </ErrorBoundary>
+    )
+  }
+
+  // Show Gmail modal if user clicked login
+  if (showLandingPage && showGmail) {
+    return (
+      <ErrorBoundary>
+        <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={() => { setShowGmail(false); const connected = isConnected(); setGmailConnected(connected); setGmailUser(connected ? getCachedUser() : null) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u) }} existingJobs={jobs} />
       </ErrorBoundary>
     )
   }
