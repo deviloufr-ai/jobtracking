@@ -459,11 +459,18 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
 
     // Check if refresh is needed
     const checkAndRefresh = () => {
-      const hoursSinceRefresh = lastRefresh
-        ? (new Date() - lastRefresh) / (1000 * 60 * 60)
-        : Infinity
+      // Skip auto-scan on first-ever load (when no lastRefresh is set)
+      // Supabase fetch during app init already provides all historical jobs
+      // Only auto-scan on subsequent loads if enough time has passed
+      if (!lastRefresh) {
+        console.log('🔄 First load: skipping auto-scan, relying on Supabase fetch')
+        return
+      }
+
+      const hoursSinceRefresh = (new Date() - lastRefresh) / (1000 * 60 * 60)
 
       if (hoursSinceRefresh >= REFRESH_INTERVAL_HOURS) {
+        console.log(`📧 Auto-scanning Gmail: ${Math.round(hoursSinceRefresh)}h since last sync`)
         doRefresh(true)
       }
     }
