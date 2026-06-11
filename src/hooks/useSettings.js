@@ -96,10 +96,13 @@ export function useSettings() {
 
       supabase.auth.getUser().then(({ data }) => {
         if (data.user) {
-          syncManager.mutate('user_settings', 'update', {
-            user_id: data.user.id,
-            ...next
-          }).catch(err => console.error('Failed to sync settings:', err))
+          const coordinator = getSyncCoordinator()
+          if (coordinator) {
+            coordinator.mutate('user_settings', 'update', {
+              user_id: data.user.id,
+              ...next
+            }).catch(err => console.error('Failed to sync settings:', err))
+          }
         }
       })
 
@@ -113,10 +116,13 @@ export function useSettings() {
 
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
-        syncManager.mutate('user_settings', 'update', {
-          user_id: data.user.id,
-          ...SETTINGS_DEFAULTS
-        }).catch(err => console.error('Failed to sync settings reset:', err))
+        const coordinator = getSyncCoordinator()
+        if (coordinator) {
+          coordinator.mutate('user_settings', 'update', {
+            user_id: data.user.id,
+            ...SETTINGS_DEFAULTS
+          }).catch(err => console.error('Failed to sync settings reset:', err))
+        }
       }
     })
 

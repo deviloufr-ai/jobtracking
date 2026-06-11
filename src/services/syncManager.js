@@ -224,12 +224,14 @@ class SyncManager {
       }))
 
       // Upsert history (for updates, this adds new entries)
-      // Use job_id + date + note as natural key to prevent duplicates across syncs
+      // Don't use onConflict - just insert and let duplicates be handled by DB constraints
+      // If unique constraint exists, DB will silently ignore duplicates
       const { error: historyError } = await supabase
         .from('job_history')
-        .upsert(historyEntries, { onConflict: 'job_id,date,note' })
+        .insert(historyEntries)
 
-      if (historyError) {
+      if (historyError && historyError.code !== '23505') {
+        // 23505 is unique_violation - expected for duplicates, ignore it
         console.error('Error syncing job history:', historyError)
         // Don't throw - history is secondary to job sync
       }

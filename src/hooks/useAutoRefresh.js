@@ -129,7 +129,11 @@ function extractMeetingLink(text = '') {
 // Shared logic: parse emails + calendar → grouped jobs with full history
 export async function buildJobsFromEmails(emails, calendarEvents = []) {
   const parsed = await parseEmailsForJobs(emails)
-  if (!parsed.length) return []
+  if (!parsed.length) {
+    console.log(`📧 Claude parsed ${emails.length} emails but found no job candidatures`)
+    return []
+  }
+  console.log(`📊 Claude parsed ${emails.length} emails → ${parsed.length} job signals (confidence >= 35)`)
 
   const enriched = parsed
     .filter(p => p.company && !isJobBoard(p.company))  // drop job board names
@@ -308,7 +312,12 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
       if (!emails.length) return
 
       const grouped = await buildJobsFromEmails(emails, calendarEvents)
-      if (!grouped.length) return
+      if (!grouped.length) {
+        console.log('📭 No jobs extracted from emails (all filtered or no matches)')
+        return
+      }
+
+      console.log(`✅ Extracted ${grouped.length} jobs from emails`)
 
       const GENERIC_POS = ['unknown', 'unknown position', 'poste non précisé', 'non spécifié', 'inconnu', '']
       const isGenericPos = pos => GENERIC_POS.includes((pos || '').toLowerCase().trim())
@@ -327,18 +336,21 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
         return null
       }
 
-      let added = 0, updated = 0
+      let added = 0, updated = 0, skipped = 0
       const now = new Date().toISOString()
       for (const p of grouped) {
         const existing = findExisting(p)
 
         // Skip re-importing jobs that were explicitly deleted
         if (!existing && isDeletedJob(p.company, p.position)) {
+          console.log(`⏭️  Skipped deleted job: ${p.company}/${p.position}`)
+          skipped++
           continue
         }
 
         if (!existing) {
           // New job — add it with lastSyncTime
+          console.log(`➕ Adding new job: ${p.company}/${p.position} (${p.status}, ${p.history?.length || 0} history entries)`)
           addJob({
             company: p.company || 'Inconnu',
             position: p.position || 'Poste non précisé',
@@ -360,6 +372,7 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
           )
           const newEntries = (p.history || []).filter(h => !existingHistKeys.has(`${h.date}_${normNote(h.note)}`))
           if (newEntries.length > 0) {
+            console.log(`📝 Updating ${p.company}/${p.position}: adding ${newEntries.length} new history entries`)
             const merged = [...(existing.history || []), ...newEntries]
               .sort((a, b) => new Date(a.date) - new Date(b.date))
             const deduplicated = deduplicateHistoryBySemantics(merged)
