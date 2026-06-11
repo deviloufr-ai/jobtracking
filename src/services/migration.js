@@ -79,9 +79,12 @@ export async function migrateJobs(userId, jobs) {
       .select('id')
 
     if (error) {
-      console.error('Error migrating jobs:', error)
+      console.error('❌ Error migrating jobs:', error)
+      console.error('Error details:', { code: error.code, message: error.message, details: error.details })
       throw error
     }
+
+    console.log('✅ Jobs migrated successfully:', data)
 
     // Migrate job history entries
     const historyEntries = []
