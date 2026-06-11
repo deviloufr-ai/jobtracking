@@ -345,6 +345,26 @@ export function isDeletedJob(company, position) {
   return false
 }
 
+// Check if a job with same company+position already exists (for form validation)
+export function findDuplicateJob(jobs, company, position) {
+  const targetCo = normalizeCompany(company)
+  const targetPos = (position || '').toLowerCase().trim()
+
+  for (const job of jobs) {
+    const jobCo = normalizeCompany(job.company)
+    if (jobCo !== targetCo) continue
+
+    const jobPos = (job.position || '').toLowerCase().trim()
+    if (jobPos === targetPos) return job
+
+    // Also check for generic positions (if both are generic, consider it same)
+    const GENERIC = new Set(['unknown', 'unknown position', 'poste non précisé', 'non spécifié', 'inconnu', ''])
+    if (GENERIC.has(targetPos) && GENERIC.has(jobPos)) return job
+  }
+
+  return null
+}
+
 // Main hook
 export function useJobs() {
   const [rawJobs, setJobs] = useState([])
@@ -378,8 +398,8 @@ export function useJobs() {
     return () => window.removeEventListener('jobtrackr:datasync', handleSync)
   }, [])
 
-  // Apply processing pipeline (includes deduplication)
-  const jobs = useMemo(() => deduplicateJobs(autoStale(rawJobs)), [rawJobs, settingsKey])
+  // Apply processing pipeline (dedup is manual-only to avoid false merges)
+  const jobs = useMemo(() => autoStale(rawJobs), [rawJobs, settingsKey])
 
   // Persist to IndexedDB whenever jobs change
   useEffect(() => {
@@ -663,5 +683,5 @@ export function useJobs() {
     // This is a no-op in Supabase version - deleted jobs are gone from server
   }
 
-  return { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched, reprocessJobs, checkPosition, checkAllPositions, clearDeletedJobs, loading }
+  return { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched, reprocessJobs, checkPosition, checkAllPositions, clearDeletedJobs, loading, findDuplicateInList: (co, pos) => findDuplicateJob(jobs, co, pos) }
 }

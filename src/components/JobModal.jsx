@@ -3,9 +3,10 @@ import { STATUSES } from '../hooks/useJobs'
 
 const EMPTY = { company: '', position: '', url: '', status: 'sent', date: new Date().toISOString().split('T')[0], notes: '' }
 
-export default function JobModal({ job, onSave, onClose }) {
+export default function JobModal({ job, onSave, onClose, findDuplicate }) {
   const [form, setForm] = useState(job ? { ...job } : { ...EMPTY })
   const [urlWarning, setUrlWarning] = useState(false)
+  const [duplicate, setDuplicate] = useState(null)
   const isEdit = !!job
 
   useEffect(() => {
@@ -13,6 +14,15 @@ export default function JobModal({ job, onSave, onClose }) {
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
   }, [onClose])
+
+  useEffect(() => {
+    if (isEdit || !form.company.trim() || !form.position.trim() || !findDuplicate) {
+      setDuplicate(null)
+      return
+    }
+    const dup = findDuplicate(form.company, form.position)
+    setDuplicate(dup || null)
+  }, [form.company, form.position, isEdit, findDuplicate])
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -115,6 +125,18 @@ export default function JobModal({ job, onSave, onClose }) {
               onChange={e => set('notes', e.target.value)}
             />
           </div>
+
+          {/* Duplicate warning */}
+          {duplicate && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-amber-800 font-medium">⚠️ Candidature existante</p>
+              <p className="text-xs text-amber-700 mt-1">
+                Une candidature pour <strong>{duplicate.company}</strong> — <strong>{duplicate.position}</strong> existe déjà
+                ({duplicate.status ? STATUSES.find(s => s.key === duplicate.status)?.label : 'Statut inconnu'})
+              </p>
+              <p className="text-xs text-amber-600 mt-2">Voulez-vous continuer pour créer un doublon ?</p>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-3 mt-6 justify-end">
