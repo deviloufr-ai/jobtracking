@@ -89,14 +89,28 @@ export async function resolveSyncUserId() {
   let firstAccount = Object.values(accounts)[0]
   let gmailEmail = firstAccount?.user?.email
 
-  // If no logged-in account, trigger OAuth to get email (fixes incognito mode)
+  // If no logged-in account in memory, try reloading from localStorage (in case module state is stale)
+  if (!gmailEmail) {
+    const storedAccounts = loadAccounts()
+    const storedAccount = Object.values(storedAccounts)[0]
+    gmailEmail = storedAccount?.user?.email
+    if (gmailEmail && !firstAccount) firstAccount = storedAccount
+  }
+
+  // If still no email, trigger OAuth to get email (fixes incognito mode)
   if (!gmailEmail) {
     console.log('🔐 No Gmail account found, requesting OAuth login for UUID lookup...')
     try {
       await connectGmail()
-      // Reload accounts after OAuth completes
-      firstAccount = Object.values(accounts)[0]
+      // Reload accounts from localStorage after OAuth (more reliable than module variable)
+      const freshAccounts = loadAccounts()
+      firstAccount = Object.values(freshAccounts)[0]
       gmailEmail = firstAccount?.user?.email
+
+      if (!gmailEmail) {
+        console.warn('⚠️ OAuth completed but no email found in accounts')
+        return newUuid
+      }
     } catch (err) {
       console.warn('⚠️ OAuth failed, proceeding with generated UUID:', err)
       return newUuid
