@@ -84,4 +84,8 @@ export async function refreshSession() {
   return data
 }
 
+export function isSupabaseConfigured() {
+  return !!supabaseUrl && !!supabaseAnonKey
+}
+
 export default supabase

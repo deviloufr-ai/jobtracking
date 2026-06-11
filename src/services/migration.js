@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
 
 // Check if user has localStorage data that needs migration
@@ -33,6 +33,10 @@ export async function checkLocalDataExists() {
 
 // Check if user has already been migrated
 export async function isUserMigrated(userId) {
+  if (!isSupabaseConfigured()) {
+    return false
+  }
+
   try {
     const { data, error } = await supabase
       .from('user_metadata')
@@ -55,7 +59,7 @@ export async function isUserMigrated(userId) {
 
 // Migrate jobs from localStorage to Supabase
 export async function migrateJobs(userId, jobs) {
-  if (jobs.length === 0) return { success: true, count: 0 }
+  if (!isSupabaseConfigured() || jobs.length === 0) return { success: true, count: 0 }
 
   try {
     const jobsToInsert = jobs.map(job => ({

@@ -1,7 +1,7 @@
-import { supabase } from './supabase'
+import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
 
-const POLL_INTERVAL = 30000 // 30 seconds
+const POLL_INTERVAL = 900000 // 15 minutes
 
 class PollManager {
   constructor() {
@@ -53,6 +53,10 @@ class PollManager {
 
   // Perform one poll cycle
   async poll() {
+    if (!isSupabaseConfigured()) {
+      return
+    }
+
     if (!navigator.onLine || !this.userId) {
       return
     }

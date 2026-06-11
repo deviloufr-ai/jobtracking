@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
 import { v4 as uuidv4 } from 'crypto'
 
@@ -78,6 +78,11 @@ class SyncManager {
   async mutate(table, type, record) {
     // Apply to local cache first (optimistic update)
     await this.applyToLocalCache(table, type, record)
+
+    // If Supabase not configured, only save to local cache
+    if (!isSupabaseConfigured()) {
+      return { success: true, local: true }
+    }
 
     // If offline, queue and return
     if (!this.isOnline) {
@@ -262,7 +267,7 @@ class SyncManager {
 
   // Flush queue when online
   async flushQueue() {
-    if (this.syncInProgress) return
+    if (this.syncInProgress || !isSupabaseConfigured()) return
 
     try {
       this.syncInProgress = true
