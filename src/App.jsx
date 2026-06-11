@@ -16,7 +16,7 @@ import EmailDraft from './components/EmailDraft'
 import { useAutoRefresh } from './hooks/useAutoRefresh'
 import { useAuth } from './hooks/useAuth'
 import { usePolling } from './hooks/usePolling'
-import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, autoReuseStoredTokens } from './services/gmail'
+import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, autoReuseStoredTokens, getSyncUserIdForSupabase } from './services/gmail'
 import JobSearch from './components/JobSearch'
 import CVManager from './components/CVManager'
 import CVViewer from './components/CVViewer'
@@ -101,10 +101,8 @@ export default function App() {
   const { permission: notificationPermission } = useNotificationPermission()
   useNotificationScenarios(jobs, notificationPermission)
 
-  // Initialize Supabase auth for multi-device sync
-  const { user: supabaseUser } = useAuth()
-  // Start polling for changes from other devices when user is authenticated
-  usePolling(supabaseUser?.id)
+  // Start polling for changes from other devices (uses stable sync ID, not Gmail email)
+  usePolling(getSyncUserIdForSupabase())
   const [modal, setModal] = useState(null)
   const prevArchiveSettingsRef = useRef(null)
   const [showAddMenu, setShowAddMenu] = useState(false)

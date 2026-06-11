@@ -4,12 +4,23 @@ const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googl
 // ── Multi-account storage ─────────────────────────────────────────────────────
 // accounts: { [email]: { token: string, user: { email, name, picture } } }
 const ACCOUNTS_KEY = 'jt_gmail_accounts'
+const SYNC_USER_KEY = 'jt_sync_user_id'
 
 function loadAccounts() {
   try { const raw = localStorage.getItem(ACCOUNTS_KEY); return raw ? JSON.parse(raw) : {} } catch { return {} }
 }
 function saveAccounts(map) {
   try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(map)) } catch {}
+}
+
+// Get or create a stable sync user ID (same for all Gmail accounts on this device)
+function getSyncUserId() {
+  let syncId = localStorage.getItem(SYNC_USER_KEY)
+  if (!syncId) {
+    syncId = 'sync-user-' + crypto.randomUUID()
+    try { localStorage.setItem(SYNC_USER_KEY, syncId) } catch {}
+  }
+  return syncId
 }
 
 let accounts = loadAccounts() // { email: { token, user } }
@@ -26,6 +37,10 @@ export function isConnected() { return Object.keys(accounts).length > 0 }
 export function getCachedUser() {
   const first = Object.values(accounts)[0]
   return first?.user || null
+}
+
+export function getSyncUserIdForSupabase() {
+  return getSyncUserId()
 }
 
 export function getAccessToken(email) {

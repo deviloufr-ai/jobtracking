@@ -4,7 +4,7 @@ import { extractUrlsFromEmail, rankUrlsByJobRelevance, checkPositionUrl } from '
 import { indexeddb } from '../services/indexeddb'
 import { syncManager } from '../services/syncManager'
 import { supabase } from '../services/supabase'
-import { getCachedUser } from '../services/gmail'
+import { getSyncUserIdForSupabase } from '../services/gmail'
 
 const ENRICH_TTL_DAYS = 30
 
@@ -513,10 +513,8 @@ export function useJobs() {
     window.addEventListener('jobtrackr:datasync', handleSync)
 
     // Sync local jobs to Supabase + fetch Supabase jobs on app load
-    const gmailUser = getCachedUser()
-    if (gmailUser?.email) {
-      syncLocalJobsToSupabase(gmailUser.email)
-    }
+    const syncUserId = getSyncUserIdForSupabase()
+    syncLocalJobsToSupabase(syncUserId)
 
     return () => window.removeEventListener('jobtrackr:datasync', handleSync)
   }, [])
