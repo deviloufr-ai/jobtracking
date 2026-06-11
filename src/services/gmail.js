@@ -81,14 +81,29 @@ export async function resolveSyncUserId() {
     return syncId
   }
 
-  // Generate new UUID
+  // Generate new UUID as fallback
   const newUuid = crypto.randomUUID()
   try { localStorage.setItem(SYNC_USER_KEY, newUuid) } catch {}
 
-  // WAIT for Supabase lookup before returning
-  const firstAccount = Object.values(accounts)[0]
-  const gmailEmail = firstAccount?.user?.email
+  // Get or obtain Gmail email for Supabase lookup
+  let firstAccount = Object.values(accounts)[0]
+  let gmailEmail = firstAccount?.user?.email
 
+  // If no logged-in account, trigger OAuth to get email (fixes incognito mode)
+  if (!gmailEmail) {
+    console.log('🔐 No Gmail account found, requesting OAuth login for UUID lookup...')
+    try {
+      await connectGmail()
+      // Reload accounts after OAuth completes
+      firstAccount = Object.values(accounts)[0]
+      gmailEmail = firstAccount?.user?.email
+    } catch (err) {
+      console.warn('⚠️ OAuth failed, proceeding with generated UUID:', err)
+      return newUuid
+    }
+  }
+
+  // Now lookup or create UUID mapping using Gmail email
   if (gmailEmail) {
     try {
       const { data: existing } = await supabase
