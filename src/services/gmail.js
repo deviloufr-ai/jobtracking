@@ -88,6 +88,7 @@ export async function resolveSyncUserId() {
   // Get or obtain Gmail email for Supabase lookup
   let firstAccount = Object.values(accounts)[0]
   let gmailEmail = firstAccount?.user?.email
+  console.log('📧 Accounts in memory:', Object.keys(accounts).length, 'gmailEmail:', gmailEmail)
 
   // If no logged-in account in memory, try reloading from localStorage (in case module state is stale)
   if (!gmailEmail) {
@@ -95,6 +96,7 @@ export async function resolveSyncUserId() {
     const storedAccount = Object.values(storedAccounts)[0]
     gmailEmail = storedAccount?.user?.email
     if (gmailEmail && !firstAccount) firstAccount = storedAccount
+    console.log('📧 Reloaded from localStorage:', Object.keys(storedAccounts).length, 'gmailEmail:', gmailEmail)
   }
 
   // If still no email, trigger OAuth to get email (fixes incognito mode)
@@ -106,6 +108,7 @@ export async function resolveSyncUserId() {
       const freshAccounts = loadAccounts()
       firstAccount = Object.values(freshAccounts)[0]
       gmailEmail = firstAccount?.user?.email
+      console.log('✅ OAuth completed, reloaded accounts:', Object.keys(freshAccounts).length, 'gmailEmail:', gmailEmail)
 
       if (!gmailEmail) {
         console.warn('⚠️ OAuth completed but no email found in accounts')
@@ -120,6 +123,7 @@ export async function resolveSyncUserId() {
   // Now lookup or create UUID mapping using Gmail email
   if (gmailEmail) {
     try {
+      console.log('🔍 Looking up sync UUID for email:', gmailEmail)
       const { data: existing } = await supabase
         .from('gmail_user_sync_mapping')
         .select('sync_uuid')
@@ -127,11 +131,12 @@ export async function resolveSyncUserId() {
         .maybeSingle()
 
       if (existing?.sync_uuid) {
-        console.log('✓ Found existing sync UUID for:', gmailEmail)
+        console.log('✓ Found existing sync UUID for:', gmailEmail, '→', existing.sync_uuid)
         try { localStorage.setItem(SYNC_USER_KEY, existing.sync_uuid) } catch {}
         return existing.sync_uuid
       } else {
         // Create new mapping
+        console.log('📝 Creating new sync UUID mapping for:', gmailEmail, '→', newUuid)
         await supabase
           .from('gmail_user_sync_mapping')
           .insert({ gmail_email: gmailEmail, sync_uuid: newUuid })
@@ -144,6 +149,7 @@ export async function resolveSyncUserId() {
     }
   }
 
+  console.warn('⚠️ No gmailEmail available, using generated UUID:', newUuid)
   return newUuid
 }
 
