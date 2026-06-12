@@ -2,7 +2,7 @@ import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
 import { convertHistoryFromSupabase, snakeToCamel, deserializeJobFields } from './fieldConversion'
 
-const POLL_INTERVAL = 300000 // 5 minutes
+const POLL_INTERVAL = 10000 // 10 seconds
 
 class PollManager {
   constructor() {

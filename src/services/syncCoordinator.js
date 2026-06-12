@@ -3,7 +3,7 @@ import { pollManager } from './pollManager'
 import { indexeddb } from './indexeddb'
 import { isSupabaseConfigured } from './supabase'
 
-const POLL_INTERVAL = 300000 // 5 minutes
+const POLL_INTERVAL = 10000 // 10 seconds
 
 class SyncCoordinator {
   constructor(userId) {
