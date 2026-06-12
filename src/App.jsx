@@ -102,6 +102,27 @@ export default function App() {
   const { permission: notificationPermission } = useNotificationPermission()
   useNotificationScenarios(jobs, notificationPermission)
 
+  // Load demo data if ?demo=true
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('demo') === 'true' && jobs.length === 0) {
+      const demoJobs = [
+        { id: "job1", company: "Stripe", position: "Senior Full Stack Engineer", status: "todo", date: "2026-05-20", salary: "$150k-$220k", location: "San Francisco", isFavorite: false, notes: "", history: [] },
+        { id: "job2", company: "Figma", position: "Product Engineer", status: "todo", date: "2026-05-25", salary: "$140k-$210k", location: "Remote", isFavorite: false, notes: "", history: [] },
+        { id: "job3", company: "Vercel", position: "Engineering Manager", status: "sent", date: "2026-05-28", salary: "$160k-$230k", location: "San Francisco", isFavorite: true, notes: "Great opportunity for leadership", history: [{ date: "2026-05-28", note: "Application submitted" }] },
+        { id: "job4", company: "Notion", position: "Frontend Engineer", status: "sent", date: "2026-06-02", salary: "$130k-$200k", location: "Remote", isFavorite: false, notes: "", history: [{ date: "2026-06-02", note: "Cover letter customized and sent" }] },
+        { id: "job5", company: "Anthropic", position: "AI/ML Engineer", status: "reviewing", date: "2026-06-08", salary: "$170k-$240k", location: "San Francisco", isFavorite: true, notes: "Very interested in this role", history: [{ date: "2026-06-08", note: "Application submitted" }, { date: "2026-05-23", note: "Status changed to reviewing by recruiter" }] },
+        { id: "job6", company: "Shopify", position: "Backend Engineer", status: "reviewing", date: "2026-06-07", salary: "$140k-$210k", location: "Remote", isFavorite: false, notes: "Portfolio samples sent", history: [{ date: "2026-06-07", note: "Application submitted" }, { date: "2026-05-30", note: "Recruiter requested portfolio samples" }, { date: "2026-05-27", note: "Samples sent" }] },
+        { id: "job7", company: "GitHub", position: "Senior Software Engineer", status: "interview", date: "2026-06-12", salary: "$160k-$230k", location: "Remote", isFavorite: true, notes: "System design interview scheduled", history: [{ date: "2026-06-12", note: "Application submitted" }, { date: "2026-06-05", note: "Passed initial screening" }, { date: "2026-05-31", note: "Phone screen with hiring manager completed" }, { date: "2026-06-15", note: "📅 Scheduled: System design interview - June 15 at 2pm PT" }] },
+        { id: "job8", company: "Slack", position: "Technical Lead", status: "interview", date: "2026-06-10", salary: "$155k-$225k", location: "San Francisco", isFavorite: true, notes: "Onsite interviews scheduled", history: [{ date: "2026-06-10", note: "Application submitted" }, { date: "2026-06-01", note: "Technical assessment completed" }, { date: "2026-06-07", note: "📅 Invited to onsite: June 20-21" }] },
+        { id: "job9", company: "Airbnb", position: "Product Manager", status: "waiting", date: "2026-06-09", salary: "$150k-$220k", location: "San Francisco", isFavorite: true, notes: "Waiting for team feedback on assignment", history: [{ date: "2026-06-09", note: "Application submitted" }, { date: "2026-06-03", note: "Phone screen completed - very positive" }, { date: "2026-05-31", note: "Take-home assignment submitted" }, { date: "2026-06-09", note: "⏳ Waiting for team feedback" }] },
+        { id: "job10", company: "Zapier", position: "Engineering Manager", status: "offer", date: "2026-06-10", salary: "$160k-$230k", location: "Remote", isFavorite: true, notes: "Negotiating terms", history: [{ date: "2026-06-10", note: "Application submitted" }, { date: "2026-05-20", note: "Initial screening passed" }, { date: "2026-05-13", note: "Phone screens completed - 2 rounds" }, { date: "2026-06-02", note: "Final round interview completed" }, { date: "2026-06-10", note: "🎉 OFFER RECEIVED: $150k-180k base + 0.5% equity + benefits" }, { date: "2026-06-11", note: "Negotiating terms" }] },
+        { id: "job11", company: "Linear", position: "Senior Full Stack Engineer", status: "done", date: "2026-06-11", salary: "$165k-$235k", location: "Remote", isFavorite: true, notes: "Accepted! Starting July 1st", history: [{ date: "2026-06-11", note: "Application submitted" }, { date: "2026-05-22", note: "Phone screen completed - great fit" }, { date: "2026-05-15", note: "Technical assessment passed" }, { date: "2026-06-01", note: "Final round completed" }, { date: "2026-06-11", note: "🎉 OFFER ACCEPTED - Starting July 1st!" }] },
+        { id: "job12", company: "Retool", position: "Full Stack Engineer", status: "rejected", date: "2026-05-15", salary: "$130k-$200k", location: "Remote", isFavorite: false, notes: "Learning experience - need more React depth", history: [{ date: "2026-05-15", note: "Application submitted" }, { date: "2026-04-30", note: "Phone screen completed" }, { date: "2026-05-15", note: "❌ Rejection: They went with a candidate with more React experience" }] }
+      ];
+      demoJobs.forEach(job => addJob(job));
+    }
+  }, [jobs.length, addJob]);
+
   const [modal, setModal] = useState(null)
   const prevArchiveSettingsRef = useRef(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
@@ -284,6 +305,9 @@ export default function App() {
       const s = newJobs.length > 1 ? 's' : ''
       pushNotif('new_job', `${newJobs.length} candidature${s} importée${s} depuis Gmail`, { count: newJobs.length })
       showToast(`${newJobs.length} candidature${s} importée${s} !`, 3500)
+      // After successful import, hide landing page and Gmail modal to show the board
+      setShowLandingPage(false)
+      setShowGmail(false)
     }
     setTimeout(() => reprocessJobs(), 100)
   }
