@@ -252,19 +252,24 @@ class SyncManager {
         ...convertHistoryToSupabase(entry)
       }))
 
-      // Delete all old history for this job (clean slate, prevents deleted entries from coming back)
-      await supabase.from('job_history').delete().eq('job_id', jobId)
-
-      // Insert the new deduplicated history
-      if (historyEntries.length > 0) {
-        const result = await supabase
-          .from('job_history')
-          .insert(historyEntries)
-
-        if (result.error) {
-          console.error('Error syncing job history:', result.error)
-          // Don't throw - history is secondary to job sync
+      try {
+        // Delete all old history for this job (clean slate, prevents deleted entries from coming back)
+        const deleteResult = await supabase.from('job_history').delete().eq('job_id', jobId)
+        if (deleteResult.error) {
+          console.warn('Warning deleting old history:', deleteResult.error)
+          // Continue anyway - old entries might not exist
         }
+
+        // Insert the new deduplicated history
+        if (historyEntries.length > 0) {
+          const insertResult = await supabase.from('job_history').insert(historyEntries)
+          if (insertResult.error) {
+            console.error('Error inserting job history:', insertResult.error)
+          }
+        }
+      } catch (err) {
+        console.error('Error syncing job history:', err)
+        // Don't throw - history is secondary to job sync
       }
     }
 
