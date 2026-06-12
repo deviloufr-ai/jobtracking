@@ -521,7 +521,7 @@ function autoStale(jobs) {
 
 // Helper to check if a job was previously deleted by ID (prevents re-sync from remote)
 const DELETED_JOB_IDS_KEY = 'jobtrackr_deleted_job_ids'
-function isDeletedJobId(jobId) {
+export function isDeletedJobId(jobId) {
   const deleted = JSON.parse(localStorage.getItem(DELETED_JOB_IDS_KEY) || '[]')
   return deleted.includes(jobId)
 }

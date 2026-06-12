@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
 import { convertHistoryFromSupabase, snakeToCamel, deserializeJobFields } from './fieldConversion'
+import { isDeletedJobId } from '../hooks/useJobs'
 
 const POLL_INTERVAL = 300000 // 5 minutes
 
@@ -139,6 +140,12 @@ class PollManager {
       if (changedJobs && changedJobs.length > 0) {
         hasChanges = true
         for (const job of changedJobs) {
+          // Skip jobs that were explicitly deleted locally
+          if (isDeletedJobId(job.id)) {
+            console.log('⏭️  Skipped deleted job ID (poll):', job.id)
+            continue
+          }
+
           // Convert from snake_case to camelCase
           const jobInCamel = snakeToCamel(job)
           // Deserialize JSON fields (positionLinks, positionChecks)
