@@ -12,18 +12,15 @@ export default async function handler(req, res) {
 
     console.log(`🔄 Deduplicating for user: ${userId}`)
 
-    // Get service key from environment (try multiple names)
-    let serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || ''
-
-    console.log('🔍 Available env vars:', Object.keys(process.env).filter(k => k.includes('SUPABASE')).join(', '))
+    // Get service key from environment
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!serviceKey) {
-      console.error('❌ Missing SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_KEY')
+      console.error('❌ Missing SUPABASE_SERVICE_ROLE_KEY')
       return res.status(500).json({ error: 'Service key not configured' })
     }
 
-    console.log('✓ Using Supabase URL:', supabaseUrl.substring(0, 20) + '...')
-    console.log('✓ Service key found:', serviceKey.substring(0, 10) + '...')
+    console.log('✓ Service key available')
 
     // Fetch all jobs for this user via REST API
     const jobsUrl = `${supabaseUrl}/rest/v1/jobs?user_id=eq.${userId}`
