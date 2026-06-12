@@ -7,7 +7,7 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-    // Verify request is from auth'd user
+    // Get user ID from auth header
     const authHeader = req.headers.authorization
     if (!authHeader?.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Missing auth header' })
@@ -15,21 +15,24 @@ export default async function handler(req, res) {
 
     const token = authHeader.slice(7)
 
-    // Get user from token (simple JWT decode)
+    // Decode JWT to get user ID
     let userId
     try {
       const parts = token.split('.')
+      if (parts.length !== 3) {
+        throw new Error('Invalid token format')
+      }
       const decoded = JSON.parse(
         Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString()
       )
       userId = decoded.sub
+      if (!userId) throw new Error('No user ID in token')
     } catch (e) {
-      return res.status(401).json({ error: 'Invalid token' })
+      console.error('Token decode error:', e)
+      return res.status(401).json({ error: `Invalid token: ${e.message}` })
     }
 
-    if (!userId) {
-      return res.status(401).json({ error: 'No user in token' })
-    }
+    console.log(`Processing dedup for user: ${userId}`)
 
     console.log(`🔄 Deduplicating jobs for user: ${userId}`)
 
