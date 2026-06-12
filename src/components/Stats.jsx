@@ -4,7 +4,7 @@ import { STATUSES } from '../hooks/useJobs'
 function Sparkline({ values, color = '#6366f1' }) {
   if (!values || values.length < 2) return null
   const max = Math.max(...values, 1)
-  const w = 120, h = 48, pad = 3
+  const w = 140, h = 48, pad = 2
   const pts = values.map((v, i) => {
     const x = pad + (i / (values.length - 1)) * (w - pad * 2)
     const y = h - pad - (v / max) * (h - pad * 2)
@@ -199,11 +199,10 @@ export default function Stats({ jobs }) {
         </div>
         <div className="mt-2">
           <Sparkline values={weeklyActivity} color="#6366f1" />
-          <div className="grid grid-cols-7 gap-1 mt-3">
+          <div className="grid grid-cols-7 gap-0 mt-1.5">
             {['L','M','M','J','V','S','D'].map((d, i) => (
-              <div key={i} className="flex flex-col items-center gap-1">
-                <span className="text-[10px] font-semibold text-gray-400">{weeklyActivity[i]}</span>
-                <span className="text-[10px] text-gray-300">{d}</span>
+              <div key={i} className="flex flex-col items-center">
+                <span className="text-[9px] text-gray-300">{d}</span>
               </div>
             ))}
           </div>
