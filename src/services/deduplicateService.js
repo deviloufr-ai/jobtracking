@@ -8,9 +8,10 @@ export async function deduplicateJobsViaEdgeFunction() {
   try {
     console.log('🔄 Calling deduplicate-jobs Vercel Function...')
 
-    // Get access token for auth header (Vercel function will decode it)
+    // Try multiple ways to get auth token
     let accessToken = null
 
+    // 1. Try getSession()
     try {
       const { data } = await supabase.auth.getSession()
       accessToken = data?.session?.access_token
@@ -21,9 +22,29 @@ export async function deduplicateJobsViaEdgeFunction() {
       console.warn('getSession() failed:', e.message)
     }
 
+    // 2. If no token, try getUser() which might work even if getSession() doesn't
     if (!accessToken) {
-      throw new Error('Not authenticated - please login first')
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser()
+        if (user && !error) {
+          console.log('✓ User found:', user.email)
+          // If user exists, try once more to get session
+          const { data } = await supabase.auth.getSession()
+          accessToken = data?.session?.access_token
+          if (accessToken) {
+            console.log('✓ Got token after getUser()')
+          }
+        }
+      } catch (e) {
+        console.warn('getUser() also failed')
+      }
     }
+
+    if (!accessToken) {
+      throw new Error('Could not obtain access token. You may need to re-login.')
+    }
+
+    console.log('✓ Got access token')
 
     // Call Vercel function (which has SERVICE_ROLE_KEY)
     const functionUrl = '/api/deduplicate'
@@ -31,6 +52,7 @@ export async function deduplicateJobsViaEdgeFunction() {
 
     const response = await fetch(functionUrl, {
       method: 'POST',
+      credentials: 'include', // Include cookies
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
