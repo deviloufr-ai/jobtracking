@@ -8,56 +8,27 @@ export async function deduplicateJobsViaEdgeFunction() {
   try {
     console.log('🔄 Calling deduplicate-jobs Vercel Function...')
 
-    // Try multiple ways to get auth token
-    let accessToken = null
+    // Get user ID from Supabase auth
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-    // 1. Try getSession()
-    try {
-      const { data } = await supabase.auth.getSession()
-      accessToken = data?.session?.access_token
-      if (accessToken) {
-        console.log('✓ Got token from getSession()')
-      }
-    } catch (e) {
-      console.warn('getSession() failed:', e.message)
+    if (!user || userError) {
+      throw new Error('Not authenticated. Please log in.')
     }
 
-    // 2. If no token, try getUser() which might work even if getSession() doesn't
-    if (!accessToken) {
-      try {
-        const { data: { user }, error } = await supabase.auth.getUser()
-        if (user && !error) {
-          console.log('✓ User found:', user.email)
-          // If user exists, try once more to get session
-          const { data } = await supabase.auth.getSession()
-          accessToken = data?.session?.access_token
-          if (accessToken) {
-            console.log('✓ Got token after getUser()')
-          }
-        }
-      } catch (e) {
-        console.warn('getUser() also failed')
-      }
-    }
-
-    if (!accessToken) {
-      throw new Error('Could not obtain access token. You may need to re-login.')
-    }
-
-    console.log('✓ Got access token')
+    console.log('✓ Authenticated as:', user.email)
 
     // Call Vercel function (which has SERVICE_ROLE_KEY)
     const functionUrl = '/api/deduplicate'
-    console.log('📤 POST to:', functionUrl)
+    console.log('📤 POST to:', functionUrl, 'for user:', user.id)
 
     const response = await fetch(functionUrl, {
       method: 'POST',
-      credentials: 'include', // Include cookies
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({})
+      body: JSON.stringify({
+        userId: user.id
+      })
     })
 
     console.log('Response status:', response.status)
