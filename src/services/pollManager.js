@@ -77,13 +77,12 @@ class PollManager {
           if (historyError) {
             console.error(`Poll error fetching history for job ${job.id}:`, historyError)
           } else if (jobHistory) {
-            // Convert from snake_case to camelCase and deduplicate
+            // Convert from snake_case to camelCase and deduplicate by date+status (unique key)
             const seen = new Set()
             const deduped = []
             for (const entry of jobHistory) {
               const converted = convertHistoryFromSupabase(entry)
-              const normNote = (converted.note || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 100)
-              const key = `${converted.date}_${normNote}`
+              const key = `${converted.date}_${converted.status}`
               if (!seen.has(key)) {
                 seen.add(key)
                 deduped.push(converted)
