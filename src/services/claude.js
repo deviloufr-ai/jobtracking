@@ -93,7 +93,7 @@ async function callClaude(systemPrompt, userContent, retries = 3) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               model: MODEL,
-              max_tokens: 1500,
+              max_tokens: 2000,
               system: systemPrompt,
               messages: [{ role: 'user', content: userContent }],
             }),
