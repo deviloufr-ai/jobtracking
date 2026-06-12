@@ -1,50 +1,98 @@
+import { supabase } from './supabase'
 import { getSyncUserIdForSupabase } from './gmail'
 
 /**
- * Call the deduplicate-jobs Vercel Function to clean duplicates server-side
- * Uses Vercel serverless function with SERVICE_ROLE_KEY for auth
+ * Deduplicate jobs client-side (uses existing Supabase client)
  */
 export async function deduplicateJobsViaEdgeFunction() {
   try {
-    console.log('🔄 Calling deduplicate-jobs Vercel Function...')
+    console.log('🔄 Deduplicating jobs (client-side)...')
 
-    // Get sync user ID (same stable UUID used by SyncCoordinator)
     const userId = getSyncUserIdForSupabase()
-
     if (!userId) {
       throw new Error('No user ID found. Please log in.')
     }
 
-    console.log('✓ Using sync user ID:', userId)
+    // Fetch all jobs for this user
+    console.log(`📥 Fetching jobs for user: ${userId}`)
+    const { data: jobs, error: fetchError } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('user_id', userId)
 
-    // Call Vercel function (which has SERVICE_ROLE_KEY)
-    const functionUrl = '/api/deduplicate'
-    console.log('📤 POST to:', functionUrl)
-
-    // Get Supabase URL from client env
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-
-    const response = await fetch(functionUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        userId,
-        supabaseUrl
-      })
-    })
-
-    console.log('Response status:', response.status)
-    const result = await response.json()
-
-    if (!response.ok) {
-      console.error('Dedup error:', result)
-      throw new Error(result.error || `HTTP ${response.status}: Deduplicate failed`)
+    if (fetchError) {
+      throw new Error(`Failed to fetch jobs: ${fetchError.message}`)
     }
 
-    console.log('✓ Deduplication complete:', result.stats)
-    return result
+    console.log(`✓ Fetched ${jobs?.length || 0} jobs`)
+
+    if (!jobs?.length) {
+      return {
+        success: true,
+        stats: { totalJobs: 0, duplicateGroups: 0, deletedJobs: 0 },
+        duplicateGroups: []
+      }
+    }
+
+    // Deduplication logic
+    const normalizeCompany = (name) =>
+      (name || '').toLowerCase()
+        .replace(/\s+(sas|sasu|sarl|sa|srl|inc|ltd|llc|gmbh|bv|nv|ag|spa|oy|ab)\.?\s*$/i, '')
+        .replace(/\.(io|com|fr|co|net|org|eu|de|uk|be|ch|ca|us|tech|dev)\s*$/i, '')
+        .replace(/\b(technologies|digital|solutions|group|labs|studio|hq|services|consulting|innovation|ventures|project|projects)\b/gi, '')
+        .replace(/[^a-z0-9]/g, '')
+
+    const groups = new Map()
+    for (const job of jobs) {
+      const key = `${normalizeCompany(job.company)}|||${(job.position || '').toLowerCase().trim()}`
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key).push(job)
+    }
+
+    const toDelete = []
+    const duplicates = []
+
+    for (const [key, group] of groups) {
+      if (group.length > 1) {
+        group.sort((a, b) =>
+          new Date(b.updated_at || b.date).getTime() - new Date(a.updated_at || a.date).getTime()
+        )
+        const [primary, ...others] = group
+        toDelete.push(...others.map(j => j.id))
+        duplicates.push({
+          company: primary.company,
+          position: primary.position,
+          duplicateCount: others.length
+        })
+      }
+    }
+
+    // Delete duplicates
+    let deletedCount = 0
+    if (toDelete.length > 0) {
+      console.log(`🗑️ Deleting ${toDelete.length} duplicates...`)
+      const { count, error: deleteError } = await supabase
+        .from('jobs')
+        .delete()
+        .in('id', toDelete)
+
+      if (deleteError) {
+        throw new Error(`Failed to delete: ${deleteError.message}`)
+      }
+
+      deletedCount = count || toDelete.length
+      console.log(`✓ Deleted ${deletedCount} duplicates`)
+    }
+
+    return {
+      success: true,
+      stats: {
+        totalJobs: jobs.length,
+        duplicateGroups: duplicates.length,
+        deletedJobs: deletedCount
+      },
+      duplicateGroups: duplicates
+    }
   } catch (error) {
     console.error('Failed to deduplicate:', error.message)
     throw error
