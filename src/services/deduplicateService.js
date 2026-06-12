@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { getSyncUserIdForSupabase } from './gmail'
 
 /**
  * Call the deduplicate-jobs Vercel Function to clean duplicates server-side
@@ -8,18 +8,18 @@ export async function deduplicateJobsViaEdgeFunction() {
   try {
     console.log('🔄 Calling deduplicate-jobs Vercel Function...')
 
-    // Get user ID from Supabase auth
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    // Get sync user ID (same stable UUID used by SyncCoordinator)
+    const userId = getSyncUserIdForSupabase()
 
-    if (!user || userError) {
-      throw new Error('Not authenticated. Please log in.')
+    if (!userId) {
+      throw new Error('No user ID found. Please log in.')
     }
 
-    console.log('✓ Authenticated as:', user.email)
+    console.log('✓ Using sync user ID:', userId)
 
     // Call Vercel function (which has SERVICE_ROLE_KEY)
     const functionUrl = '/api/deduplicate'
-    console.log('📤 POST to:', functionUrl, 'for user:', user.id)
+    console.log('📤 POST to:', functionUrl)
 
     const response = await fetch(functionUrl, {
       method: 'POST',
@@ -27,7 +27,7 @@ export async function deduplicateJobsViaEdgeFunction() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        userId: user.id
+        userId
       })
     })
 
