@@ -395,11 +395,13 @@ async function gmailFetch(url, token) {
 
 // ── Fetch job emails for a specific account ───────────────────────────────────
 export async function fetchJobEmailsForAccount(accountEmail, maxResults = null, months = null, dateRange = null, lastSyncTime = null, companies = null) {
-  const acct = accounts[accountEmail]
-  if (!acct?.token) throw new Error(`Non connecté : ${accountEmail}`)
+  // Ensure token is valid and refresh if expired
+  const token = await ensureValidToken(accountEmail)
+  if (!token) throw new Error(`Non connecté : ${accountEmail}`)
+
   // Smart period: 3 months on first import, 1 day on refreshes with lastSyncTime
   const actualMonths = months !== null ? months : (lastSyncTime ? 1/30 : 3)
-  return _fetchJobEmails(acct.token, maxResults, actualMonths, dateRange, lastSyncTime, companies)
+  return _fetchJobEmails(token, maxResults, actualMonths, dateRange, lastSyncTime, companies)
 }
 
 // Fetch from ALL connected accounts (merged + deduplicated)
@@ -413,9 +415,14 @@ export async function fetchJobEmails(maxResults = null, months = null, dateRange
   // Smart period: 3 months on first import, 1 day on refreshes with lastSyncTime
   const actualMonths = months !== null ? months : (lastSyncTime ? 1/30 : 3)
 
-  // Fetch from all accounts in parallel
+  // Ensure all tokens are valid and refresh if expired
+  const validTokens = await Promise.all(
+    accountEntries.map(([email]) => ensureValidToken(email))
+  )
+
+  // Fetch from all accounts in parallel using valid tokens
   const results = await Promise.all(
-    accountEntries.map(([email, acct]) => _fetchJobEmails(acct.token, maxResults, actualMonths, dateRange, lastSyncTime, companies))
+    accountEntries.map(([email], i) => _fetchJobEmails(validTokens[i], maxResults, actualMonths, dateRange, lastSyncTime, companies))
   )
 
   // Merge and deduplicate by email ID + data (prevents same email from multiple queries)

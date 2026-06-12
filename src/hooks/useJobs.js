@@ -514,20 +514,35 @@ function autoStale(jobs) {
   return revalidateArchives(deduplicateExactMatches(jobs))
 }
 
-// Helper to check if a job was previously deleted (for dedup on re-import)
-const DELETED_JOBS_KEY = 'jobtrackr_deleted_jobs'
+// Helper to check if a job was previously deleted by ID (prevents re-sync from remote)
+const DELETED_JOB_IDS_KEY = 'jobtrackr_deleted_job_ids'
+function isDeletedJobId(jobId) {
+  const deleted = JSON.parse(localStorage.getItem(DELETED_JOB_IDS_KEY) || '[]')
+  return deleted.includes(jobId)
+}
+
+function markJobIdAsDeleted(jobId) {
+  const deleted = JSON.parse(localStorage.getItem(DELETED_JOB_IDS_KEY) || '[]')
+  if (!deleted.includes(jobId)) {
+    deleted.push(jobId)
+    localStorage.setItem(DELETED_JOB_IDS_KEY, JSON.stringify(deleted))
+  }
+}
+
+// Keep old functions for backwards compatibility with auto-refresh
 export function isDeletedJob(company, position) {
-  const deleted = JSON.parse(localStorage.getItem(DELETED_JOBS_KEY) || '[]')
+  // Legacy: company/position-based deletion (for Gmail re-import)
+  const deleted = JSON.parse(localStorage.getItem('jobtrackr_deleted_jobs') || '[]')
   const normalized = `${normalizeCompany(company)}_${(position || '').toLowerCase().trim()}`
   return deleted.includes(normalized)
 }
 
 function markJobAsDeleted(company, position) {
-  const deleted = JSON.parse(localStorage.getItem(DELETED_JOBS_KEY) || '[]')
+  const deleted = JSON.parse(localStorage.getItem('jobtrackr_deleted_jobs') || '[]')
   const normalized = `${normalizeCompany(company)}_${(position || '').toLowerCase().trim()}`
   if (!deleted.includes(normalized)) {
     deleted.push(normalized)
-    localStorage.setItem(DELETED_JOBS_KEY, JSON.stringify(deleted))
+    localStorage.setItem('jobtrackr_deleted_jobs', JSON.stringify(deleted))
   }
 }
 
@@ -552,8 +567,10 @@ export function findDuplicateJob(jobs, company, position) {
 }
 
 // Sync local jobs to Supabase + fetch Supabase jobs (multi-device sync)
+let syncInProgress = false
 async function syncLocalJobsToSupabase(stableSyncId) {
-  if (!stableSyncId) return Promise.resolve()
+  if (!stableSyncId || syncInProgress) return Promise.resolve()
+  syncInProgress = true
 
   try {
     // Skip legacy email-based migration — not needed with stable UUID approach
@@ -585,6 +602,12 @@ async function syncLocalJobsToSupabase(stableSyncId) {
 
       // Merge Supabase jobs with history into local IndexedDB
       for (const remoteJob of supabaseJobs) {
+        // Skip jobs that were explicitly deleted locally
+        if (isDeletedJobId(remoteJob.id)) {
+          console.log('⏭️  Skipped deleted job ID:', remoteJob.id)
+          continue
+        }
+
         // Convert job from snake_case to camelCase
         const remoteJobInCamel = snakeToCamel(remoteJob)
         // Deserialize JSON fields (positionLinks, positionChecks)
@@ -688,6 +711,8 @@ async function syncLocalJobsToSupabase(stableSyncId) {
     console.log('✓ Sync complete')
   } catch (err) {
     console.warn('⚠ Sync failed (non-critical):', err.message)
+  } finally {
+    syncInProgress = false
   }
 }
 
@@ -817,25 +842,29 @@ export function useJobs() {
   }
 
   const updateJob = (id, data) => {
-    setJobs(prev => prev.map(j => {
-      if (j.id !== id) return j
-      const updated = { ...j, ...data, updated_at: new Date().toISOString() }
-      return data.history ? sortJobHistory(updated) : updated
-    }))
+    // Extract job BEFORE state update to avoid race condition
     const job = jobs.find(j => j.id === id)
-    if (job) {
-      const updated = { ...job, ...data, updated_at: new Date().toISOString() }
-      const final = data.history ? sortJobHistory(updated) : updated
-      const coordinator = getSyncCoordinator()
-      if (coordinator) {
-        coordinator.mutate('jobs', 'update', final).catch(err => console.error('Failed to sync job:', err))
-      }
+    if (!job) return
+
+    const updated = { ...job, ...data, updated_at: new Date().toISOString() }
+    const final = data.history ? sortJobHistory(updated) : updated
+
+    // Update local state
+    setJobs(prev => prev.map(j => j.id !== id ? j : final))
+
+    // Sync to Supabase
+    const coordinator = getSyncCoordinator()
+    if (coordinator) {
+      coordinator.mutate('jobs', 'update', final).catch(err => console.error('Failed to sync job:', err))
     }
   }
 
   const deleteJob = (id) => {
     const job = jobs.find(j => j.id === id)
     if (job) {
+      // Track deletion by ID to prevent re-sync from remote
+      markJobIdAsDeleted(id)
+      // Also track by company/position for Gmail re-import prevention
       markJobAsDeleted(job.company, job.position)
     }
     setJobs(prev => prev.filter(j => j.id !== id))
@@ -882,29 +911,27 @@ export function useJobs() {
   }
 
   const addHistoryEntry = (id, entry) => {
+    // Resolve history entry status if interview is in the past, but don't change job status
+    const entryDate = new Date(entry.date)
+    const isPast = entryDate < new Date()
+    const entryStatusResolved = entry.status === 'interview' && isPast ? 'done' : entry.status
+
     setJobs(prev => prev.map(j => {
       if (j.id !== id) return j
-      const entryDate = new Date(entry.date)
-      const isPast = entryDate < new Date()
-      const resolvedStatus = entry.status === 'interview' && isPast ? 'done' : entry.status
       const updated = {
         ...j,
-        status: resolvedStatus,
         updated_at: new Date().toISOString(),
-        history: [...(j.history || []), { ...entry, status: resolvedStatus }]
+        history: [...(j.history || []), { ...entry, status: entryStatusResolved }]
       }
       return sortJobHistory(updated)
     }))
+
     const job = jobs.find(j => j.id === id)
     if (job) {
-      const entryDate = new Date(entry.date)
-      const isPast = entryDate < new Date()
-      const resolvedStatus = entry.status === 'interview' && isPast ? 'done' : entry.status
       const newJob = sortJobHistory({
         ...job,
-        status: resolvedStatus,
         updated_at: new Date().toISOString(),
-        history: [...(job.history || []), { ...entry, status: resolvedStatus }]
+        history: [...(job.history || []), { ...entry, status: entryStatusResolved }]
       })
       const coordinator = getSyncCoordinator()
       if (coordinator) {

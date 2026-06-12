@@ -36,6 +36,16 @@ class PollManager {
       return
     }
 
+    // Load lastSyncTime from IndexedDB if not already set
+    if (!this.lastSyncTime && userId) {
+      try {
+        const stored = await indexeddb.getMetadata('last_sync_time')
+        if (stored) this.lastSyncTime = stored
+      } catch (err) {
+        console.warn('Failed to load lastSyncTime from storage:', err.message)
+      }
+    }
+
     let hasChanges = false
 
     try {
@@ -204,8 +214,8 @@ class PollManager {
     const remoteConverted = this.snakeToCamel(remote)
 
     // Last-write-wins on timestamp
-    const localTime = local.last_modified_at ? new Date(local.last_modified_at).getTime() : 0
-    const remoteTime = remoteConverted.last_modified_at ? new Date(remoteConverted.last_modified_at).getTime() : 0
+    const localTime = local.updated_at ? new Date(local.updated_at).getTime() : 0
+    const remoteTime = remoteConverted.updated_at ? new Date(remoteConverted.updated_at).getTime() : 0
 
     if (localTime > remoteTime) {
       // Local is newer, keep it but add any new remote history
@@ -226,15 +236,23 @@ class PollManager {
   mergeHistories(remote, local) {
     const seen = new Map()
 
-    // Index remote by date+status (the unique key)
+    // Use gmailId as primary key if available, otherwise date+status+note preview
+    // This prevents same-date+status entries from overwriting each other
+    const getKey = (entry) => {
+      if (entry.gmailId) return `gmail_${entry.gmailId}`
+      const notePreview = (entry.note || '').slice(0, 30)
+      return `${entry.date}_${entry.status}_${notePreview}`
+    }
+
+    // Index remote by unique key
     for (const entry of remote) {
-      const key = `${entry.date}_${entry.status}`
+      const key = getKey(entry)
       seen.set(key, entry)
     }
 
     // Override with local entries (local changes take priority)
     for (const entry of local) {
-      const key = `${entry.date}_${entry.status}`
+      const key = getKey(entry)
       seen.set(key, entry)
     }
 

@@ -250,12 +250,22 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
           .join(' | ')
         const gmailIds = []
         let bestLink = null
+
+        // Use highest status from all entries on same date
+        const statusOrder = ['todo','sent','reviewing','interview','done','waiting','offer','rejected','rejected_ats','cancelled']
+        const highestStatus = entries.reduce((best, e) => {
+          const bestIdx = statusOrder.indexOf(best)
+          const eIdx = statusOrder.indexOf(e.status)
+          return eIdx > bestIdx ? e.status : best
+        }, primary.status)
+
         for (const e of entries) {
           if (e.gmailId && !gmailIds.includes(e.gmailId)) gmailIds.push(e.gmailId)
           if (!bestLink && e.meetingLink) bestLink = e.meetingLink
         }
         consolidatedHistory.push({
           ...primary,
+          status: highestStatus,
           note: notes,
           gmailIds: gmailIds.length > 1 ? gmailIds : undefined,
           gmailId: gmailIds.length === 1 ? gmailIds[0] : primary.gmailId,

@@ -249,10 +249,13 @@ export async function parseEmailsForJobs(emails) {
 
     const emailsText = uncached.map((e, j) => {
       const bodySection = e.body?.trim() ? `Contenu: ${e.body.slice(0, 500)}` : `Aperçu: ${e.snippet?.slice(0, 250) || ''}`
-      let dateStr = e.date || ''
+      // Default to today's date if parsing fails
+      let dateStr = new Date().toISOString().split('T')[0]
       try {
-        const parsed = new Date(e.date)
-        if (!isNaN(parsed)) dateStr = parsed.toISOString().split('T')[0]
+        if (e.date) {
+          const parsed = new Date(e.date)
+          if (!isNaN(parsed)) dateStr = parsed.toISOString().split('T')[0]
+        }
       } catch {}
       // Include Gmail category as a confidence hint for Claude
       const catHint = e.gmailCategory === 'updates' ? 'CatégGmail: UPDATES (transactionnel — forte probabilité candidature)'

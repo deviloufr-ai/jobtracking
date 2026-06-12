@@ -234,9 +234,9 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
     if (merged.status === 'interview' && new Date(merged.date) < new Date()) merged.status = 'done'
     const updated = [...history]
     updated[idx] = merged
-    // Re-sort by date after editing
-    updated.sort((a, b) => new Date(a.date) - new Date(b.date))
-    onUpdateHistory(job.id, updated)
+    // Re-sort by date after editing (create new sorted array, don't mutate)
+    const sorted = [...updated].sort((a, b) => new Date(a.date) - new Date(b.date))
+    onUpdateHistory(job.id, sorted)
     setEditingStep(null)
     setEditForm({})
   }
