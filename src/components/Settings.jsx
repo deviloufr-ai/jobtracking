@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSettings, SETTINGS_DEFAULTS } from '../hooks/useSettings'
 import { useExtensionDetect } from '../hooks/useExtensionDetect'
+import { useJobs } from '../hooks/useJobs'
 import NotificationSettings from './NotificationSettings'
 
 const PROFILE_KEY = 'jobtrackr_profile'
@@ -89,6 +90,7 @@ const CATEGORIES = [
 
 export default function Settings({ jobs, onMergeDuplicates }) {
   const { settings, updateSetting, resetSettings } = useSettings()
+  const { deduplicateViaServer } = useJobs()
   const extensionInstalled = useExtensionDetect()
   const [activeTab, setActiveTab] = useState('profile')
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -96,6 +98,9 @@ export default function Settings({ jobs, onMergeDuplicates }) {
   const [confirmClear, setConfirmClear] = useState(false)
   const [exportDone, setExportDone] = useState(false)
   const [importError, setImportError] = useState(null)
+  const [serverDedupLoading, setServerDedupLoading] = useState(false)
+  const [serverDedupResult, setServerDedupResult] = useState(null)
+  const [serverDedupError, setServerDedupError] = useState(null)
 
   // Profile state
   const [profile, setProfile] = useState(loadProfile)
@@ -108,6 +113,22 @@ export default function Settings({ jobs, onMergeDuplicates }) {
     saveProfile(profile)
     setProfileSaved(true)
     setTimeout(() => setProfileSaved(false), 2000)
+  }
+
+  const handleServerDedup = async () => {
+    setServerDedupLoading(true)
+    setServerDedupError(null)
+    setServerDedupResult(null)
+    try {
+      const result = await deduplicateViaServer()
+      setServerDedupResult(result)
+      setTimeout(() => setServerDedupResult(null), 5000)
+    } catch (error) {
+      setServerDedupError(error.message)
+      setTimeout(() => setServerDedupError(null), 5000)
+    } finally {
+      setServerDedupLoading(false)
+    }
   }
 
   async function handleExtractFromCV() {
@@ -445,13 +466,38 @@ export default function Settings({ jobs, onMergeDuplicates }) {
                 </Card>
 
                 <Card title="Maintenance des données">
-                  <Row label="Fusionner les doublons" hint="Détecte et fusionne automatiquement">
+                  <Row label="Fusionner les doublons (client)" hint="Détecte et fusionne localement">
                     <button
                       onClick={onMergeDuplicates}
                       className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all"
                     >
                       Fusionner
                     </button>
+                  </Row>
+                  <Row label="Nettoyer doublons (serveur)" hint="Déduplication Supabase">
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={handleServerDedup}
+                        disabled={serverDedupLoading}
+                        className={`text-sm font-medium px-4 py-2 rounded-lg border transition-all ${
+                          serverDedupLoading
+                            ? 'opacity-50 cursor-not-allowed'
+                            : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-300'
+                        }`}
+                      >
+                        {serverDedupLoading ? '⏳ En cours...' : '🧹 Nettoyer'}
+                      </button>
+                      {serverDedupResult && (
+                        <p className="text-xs text-green-600">
+                          ✓ {serverDedupResult.stats.deletedJobs} doublons supprimés
+                        </p>
+                      )}
+                      {serverDedupError && (
+                        <p className="text-xs text-red-600">
+                          ✗ Erreur: {serverDedupError}
+                        </p>
+                      )}
+                    </div>
                   </Row>
                   <Row label="Vider le cache emails" hint="Force un re-parsing au prochain scan">
                     {confirmClear ? (
