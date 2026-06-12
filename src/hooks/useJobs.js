@@ -400,7 +400,8 @@ function deduplicateHistory(jobs) {
         continue
       }
 
-      // Second pass: cluster similar entries on same date
+      // Second pass: cluster similar entries on same date WITH SAME STATUS
+      // Never merge entries with different statuses—they're different events
       const clusters = []
       const used = new Set()
 
@@ -410,9 +411,13 @@ function deduplicateHistory(jobs) {
         const cluster = [i]
         used.add(i)
         const baseWords = normalizeForComparison(withoutExactDupes[i].note)
+        const baseStatus = withoutExactDupes[i].status
 
         for (let j = i + 1; j < withoutExactDupes.length; j++) {
           if (used.has(j)) continue
+          // Only cluster if same status AND similar notes
+          if (withoutExactDupes[j].status !== baseStatus) continue
+
           const compareWords = normalizeForComparison(withoutExactDupes[j].note)
 
           if (notesAreSimilar(baseWords, compareWords)) {
