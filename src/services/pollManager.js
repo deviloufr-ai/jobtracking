@@ -225,28 +225,22 @@ class PollManager {
   }
 
   mergeHistories(remote, local) {
-    const seen = new Set()
-    const merged = []
+    const seen = new Map()
 
-    // Add remote first (they are canonical)
+    // Index remote by date+status (the unique key)
     for (const entry of remote) {
-      const normNote = (entry.note || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 100)
-      const key = `${entry.date}_${normNote}`
-      seen.add(key)
-      merged.push(entry)
+      const key = `${entry.date}_${entry.status}`
+      seen.set(key, entry)
     }
 
-    // Add local entries not already in remote
+    // Override with local entries (local changes take priority)
     for (const entry of local) {
-      const normNote = (entry.note || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 100)
-      const key = `${entry.date}_${normNote}`
-      if (!seen.has(key)) {
-        seen.add(key)
-        merged.push(entry)
-      }
+      const key = `${entry.date}_${entry.status}`
+      seen.set(key, entry)
     }
 
-    return merged.sort((a, b) => new Date(a.date) - new Date(b.date))
+    // Return merged and sorted
+    return Array.from(seen.values()).sort((a, b) => new Date(a.date) - new Date(b.date))
   }
 
   mergeSettings(local, remote) {
