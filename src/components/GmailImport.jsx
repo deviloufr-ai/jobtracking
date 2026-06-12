@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { connectGmail, disconnectGmail, refreshToken, fetchJobEmails, fetchJobEmailsForAccount, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, getConnectedAccounts } from '../services/gmail'
 import { fetchCalendarEvents } from '../services/calendar'
 import { buildJobsFromEmails } from '../hooks/useAutoRefresh'
+import { clearEmailCache } from '../services/claude'
 import { getStatus, isAtsRejection } from '../hooks/useJobs'
 
 const STEPS = { idle: 'idle', connecting: 'connecting', fetching: 'fetching', parsing: 'parsing', review: 'review' }
@@ -73,6 +74,12 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
     try {
       setStep(STEPS.fetching)
       setError(null)
+
+      // Clear email cache if force import is enabled
+      if (forceImport) {
+        clearEmailCache()
+        console.log('✓ Email cache cleared for force import')
+      }
 
       // If token expired, silently refresh before scanning
       if (!isConnected()) {

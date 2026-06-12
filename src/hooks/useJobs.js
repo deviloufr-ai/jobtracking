@@ -41,6 +41,10 @@ export function isAtsRejection(notes = '', fromEmail = '') {
 // Helper: ensure history is always sorted by date (chronological order)
 export function sortJobHistory(job) {
   if (!job?.history?.length) return job
+  // Check if already sorted to avoid unnecessary copies
+  const isSorted = job.history.every((a, i, arr) => i === 0 || new Date(arr[i-1].date) <= new Date(a.date))
+  if (isSorted) return job
+  // Create new sorted array only if needed
   return {
     ...job,
     history: [...job.history].sort((a, b) => new Date(a.date) - new Date(b.date))
@@ -209,7 +213,8 @@ export function deduplicateJobs(jobs) {
       notes: allNotes || primary.notes,
       history: mergedHistory,
       enrichedAt: latestEnrichedAt || primary.enrichedAt,
-      _merged: group.length > 1 ? group.length : undefined
+      _merged: group.length > 1 ? group.length : undefined,
+      _mergedIds: group.length > 1 ? group.map(g => g.id) : undefined
     })
   }
 
