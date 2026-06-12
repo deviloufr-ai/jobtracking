@@ -594,14 +594,26 @@ async function syncLocalJobsToSupabase(stableSyncId) {
           history: deduped
         }
 
-        // Always merge with local job to ensure history is attached
+        // Merge with local job: prefer remote (source of truth), but keep local notes if remote is missing
         const localJob = await indexeddb.getJob(remoteJobDeserialized.id)
         if (localJob) {
-          // Merge: combine and deduplicate both local and remote history
-          const combined = [...(localJob.history || []), ...deduped]
+          // Create map of remote entries by date+status for lookup
+          const remoteByKey = new Map(
+            deduped.map(h => [`${h.date}_${h.status}`, h])
+          )
+
+          // Add any local entries that don't exist in remote (manual local additions)
+          const allEntries = [...deduped]
+          for (const localEntry of (localJob.history || [])) {
+            const key = `${localEntry.date}_${localEntry.status}`
+            if (!remoteByKey.has(key)) {
+              allEntries.push(localEntry)
+            }
+          }
+
           const merged = {
             ...localJob,
-            history: deduplicateHistory([{ history: combined }])[0].history,
+            history: allEntries.sort((a, b) => new Date(a.date) - new Date(b.date)),
             updated_at: remoteJobDeserialized.updated_at
           }
           await indexeddb.saveJob(merged)
