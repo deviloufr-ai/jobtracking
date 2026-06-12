@@ -7,6 +7,7 @@ import { getSyncCoordinator } from '../services/syncCoordinator'
 import { supabase } from '../services/supabase'
 import { getSyncUserIdForSupabase, getCachedUser, resolveSyncUserId } from '../services/gmail'
 import { convertHistoryFromSupabase, convertHistoryToSupabase, snakeToCamel, deserializeJobFields } from '../services/fieldConversion'
+import { deduplicateJobsViaEdgeFunction, formatDeduplicateResult } from '../services/deduplicateService'
 
 const ENRICH_TTL_DAYS = 30
 
@@ -1062,5 +1063,24 @@ export function useJobs() {
     }
   }
 
-  return { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched, reprocessJobs, checkPosition, checkAllPositions, clearDeletedJobs, cleanupHistoryDuplicates, loading, findDuplicateInList: (co, pos) => findDuplicateJob(jobs, co, pos) }
+  const deduplicateViaServer = async () => {
+    try {
+      console.log('📤 Calling server-side deduplication...')
+      const result = await deduplicateJobsViaEdgeFunction()
+      console.log(formatDeduplicateResult(result))
+
+      // Reload jobs after server-side dedup
+      const coordinator = getSyncCoordinator()
+      if (coordinator) {
+        setTimeout(() => coordinator.poll(), 1000)
+      }
+
+      return result
+    } catch (error) {
+      console.error('Server deduplication failed:', error)
+      throw error
+    }
+  }
+
+  return { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched, reprocessJobs, checkPosition, checkAllPositions, clearDeletedJobs, cleanupHistoryDuplicates, deduplicateViaServer, loading, findDuplicateInList: (co, pos) => findDuplicateJob(jobs, co, pos) }
 }
