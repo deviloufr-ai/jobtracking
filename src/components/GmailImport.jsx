@@ -451,10 +451,10 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
                   icon: '🤖',
                   label: `Analyse IA — ${emailCount} email${emailCount > 1 ? 's' : ''} trouvé${emailCount > 1 ? 's' : ''}`,
                   detail: (() => {
-                    const batches = Math.ceil(emailCount / 8)
-                    const estSecs = batches * 3 + batches * 2 // delay + API time
+                    const batches = Math.ceil(emailCount / 25)
+                    const estSecs = batches * 2 + Math.max(0, batches - 1) * 1.5 // API time + delays (no delay on first batch)
                     const estMin = Math.ceil(estSecs / 60)
-                    return `Claude extrait entreprise, poste, statut et dates. Environ ${estMin > 1 ? `${estMin} minutes` : `${estSecs} secondes`} (${batches} lots de 8 emails, avec pauses anti-rate-limit).`
+                    return `Claude extrait entreprise, poste, statut et dates. Environ ${estMin > 1 ? `${estMin} minutes` : `${estSecs} secondes`} (${batches} lots de 25 emails, avec pauses anti-rate-limit).`
                   })(),
                 },
               ].map((s, i) => {
