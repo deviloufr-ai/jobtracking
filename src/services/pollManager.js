@@ -183,10 +183,9 @@ class PollManager {
       this.lastSyncTime = now
       await indexeddb.setMetadata('last_sync_time', now)
 
-      // Emit event if data changed so useJobs reloads
-      if (hasChanges) {
-        window.dispatchEvent(new CustomEvent('jobtrackr:datasync', { detail: { jobsCount: changedJobs?.length || 0 } }))
-      }
+      // Emit event when sync completes (with or without changes)
+      console.log('✓ Dispatching sync completion event')
+      window.dispatchEvent(new CustomEvent('jobtrackr:datasync', { detail: { jobsCount: changedJobs?.length || 0, hasChanges } }))
 
       this.notifyListeners({
         status: 'success',
