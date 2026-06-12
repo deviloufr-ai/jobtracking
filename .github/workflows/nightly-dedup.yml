@@ -1,0 +1,48 @@
+name: Nightly Deduplication
+
+on:
+  schedule:
+    # Chaque jour à 2h du matin UTC (4h CEST en été)
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Permet de déclencher manuellement
+
+jobs:
+  deduplicate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deduplicate all users
+        run: |
+          echo "🧹 Starting nightly deduplication..."
+
+          # Fetch all unique users from jobs table
+          # Then deduplicate each one
+
+          SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL }}"
+          SERVICE_KEY="${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
+
+          # Get all distinct user IDs
+          USERS=$(curl -s \
+            -H "apikey: $SERVICE_KEY" \
+            -H "Authorization: Bearer $SERVICE_KEY" \
+            "$SUPABASE_URL/rest/v1/jobs?select=user_id&distinct=on.user_id" | jq -r '.[] | .user_id' | sort -u)
+
+          TOTAL_DELETED=0
+          COUNT=0
+
+          for USER_ID in $USERS; do
+            COUNT=$((COUNT + 1))
+            echo "[$COUNT] Deduplicating user: $USER_ID"
+
+            RESPONSE=$(curl -s -X POST "${{ secrets.VERCEL_DEPLOY_URL }}/api/deduplicate" \
+              -H "Content-Type: application/json" \
+              -d "{\"userId\": \"$USER_ID\", \"supabaseUrl\": \"$SUPABASE_URL\"}")
+
+            DELETED=$(echo $RESPONSE | jq '.stats.deletedJobs // 0')
+            TOTAL_DELETED=$((TOTAL_DELETED + DELETED))
+
+            if [ "$DELETED" -gt 0 ]; then
+              echo "  ✓ Deleted $DELETED duplicates"
+            fi
+          done
+
+          echo "✅ Nightly dedup complete: $TOTAL_DELETED duplicates removed across $COUNT users"
