@@ -238,15 +238,18 @@ export default function Settings({ jobs, onMergeDuplicates }) {
         }
       }
 
-      // Delete from Supabase
-      const { error: deleteError } = await supabase
-        .from('job_history')
-        .delete()
-        .neq('id', 'null')
+      // Delete from Supabase - delete all history entries for jobs we have
+      const jobIds = allJobs.map(j => j.id).filter(Boolean)
+      if (jobIds.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('job_history')
+          .delete()
+          .in('job_id', jobIds)
 
-      if (deleteError) {
-        console.error('Supabase delete error (may be schema cache issue):', deleteError)
-        // Don't fail - the local deletion succeeded
+        if (deleteError) {
+          console.error('Supabase delete error:', deleteError)
+          // Don't fail - the local deletion succeeded
+        }
       }
 
       setDeleteHistoryResult({ deletedCount, jobsAffected: deleteHistoryDetails.jobsWithHistory })
