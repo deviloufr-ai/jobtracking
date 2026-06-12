@@ -221,6 +221,22 @@ export function gmailMessageUrl(gmailId, receivedBy) {
   return { url, account, uncertain }
 }
 
+// Load Google OAuth script on page startup (not in connectGmail, to preserve user activation)
+function initGoogleScript() {
+  if (document.getElementById('google-oauth-script')) return
+  const script = document.createElement('script')
+  script.id = 'google-oauth-script'
+  script.src = 'https://accounts.google.com/gsi/client'
+  script.async = true
+  script.defer = true
+  document.head.appendChild(script)
+}
+
+// Call on module load to pre-load Google script
+if (typeof window !== 'undefined') {
+  initGoogleScript()
+}
+
 function waitForGoogle() {
   return new Promise((resolve) => {
     if (window.google?.accounts?.oauth2) { resolve(); return }
@@ -235,30 +251,40 @@ function waitForGoogle() {
 // hint: optional email hint to pre-select account in Google picker
 export async function connectGmail(hint = '') {
   if (!CLIENT_ID) throw new Error('VITE_GOOGLE_CLIENT_ID manquant dans .env')
-  await waitForGoogle()
+
+  // If Google not loaded yet, wait for it (but only once)
+  if (!window.google?.accounts?.oauth2) {
+    await waitForGoogle()
+  }
+
   return new Promise((resolve, reject) => {
-    const client = window.google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: SCOPES,
-      hint,
-      // Use 'select_account' to allow persistence + 'consent' only if needed
-      callback: async (response) => {
-        if (response.error) { reject(new Error(response.error)); return }
-        const token = response.access_token
-        // Fetch user info for this token
-        const user = await fetchUserInfo(token)
-        if (!user) { reject(new Error('Impossible de récupérer le profil')); return }
-        accounts[user.email] = {
-          token,
-          user,
-          tokenExpiry: new Date(Date.now() + 3600000).toISOString() // 1 hour from now
-        }
-        saveAccounts(accounts)
-        resolve({ token, user })
-      },
-    })
-    // Request token with select_account prompt for persistence
-    client.requestAccessToken({ prompt: hint ? '' : 'select_account' })
+    try {
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        hint,
+        // Use 'select_account' to allow persistence + 'consent' only if needed
+        callback: async (response) => {
+          if (response.error) { reject(new Error(response.error)); return }
+          const token = response.access_token
+          // Fetch user info for this token
+          const user = await fetchUserInfo(token)
+          if (!user) { reject(new Error('Impossible de récupérer le profil')); return }
+          accounts[user.email] = {
+            token,
+            user,
+            tokenExpiry: new Date(Date.now() + 3600000).toISOString() // 1 hour from now
+          }
+          saveAccounts(accounts)
+          resolve({ token, user })
+        },
+      })
+      // Request token with select_account prompt for persistence
+      // This happens synchronously after initTokenClient, preserving user activation
+      client.requestAccessToken({ prompt: hint ? '' : 'select_account' })
+    } catch (err) {
+      reject(err)
+    }
   })
 }
 
