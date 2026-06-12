@@ -133,9 +133,16 @@ export function deduplicateJobs(jobs) {
     }
 
     group.sort((a, b) => {
+      // Prefer most recently updated (manual edits)
+      const timeA = new Date(a.updated_at || a.date).getTime()
+      const timeB = new Date(b.updated_at || b.date).getTime()
+      if (timeA !== timeB) return timeB - timeA
+
+      // If same time, prefer higher priority status
       const pa = STATUS_PRIORITY[a.status] ?? 1
       const pb = STATUS_PRIORITY[b.status] ?? 1
       if (pb !== pa) return pb - pa
+
       return new Date(b.date) - new Date(a.date)
     })
 
