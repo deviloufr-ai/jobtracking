@@ -75,11 +75,17 @@ export function useSettings() {
       indexeddb.saveSettings(next).catch(err => console.error('Failed to save settings to IndexedDB:', err))
 
       // Sync to Supabase via coordinator
-      const coordinator = getSyncCoordinator()
-      if (coordinator) {
-        coordinator.mutate('user_settings', 'update', next)
-          .catch(err => console.error('Failed to sync settings:', err))
-      }
+      supabase.auth.getUser().then(({ data }) => {
+        if (data.user) {
+          const coordinator = getSyncCoordinator()
+          if (coordinator) {
+            coordinator.mutate('user_settings', 'update', {
+              user_id: data.user.id,
+              ...next
+            }).catch(err => console.error('Failed to sync settings:', err))
+          }
+        }
+      })
 
       return next
     })
