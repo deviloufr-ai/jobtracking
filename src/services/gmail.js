@@ -62,12 +62,12 @@ function getSyncUserId() {
           // Notify coordinator to reload with correct UUID
           window.dispatchEvent(new CustomEvent('jobtrackr:sync-id-updated', { detail: existing.sync_uuid }))
         } else {
-          // Create new mapping with the UUID we generated
+          // Create/update mapping with the UUID we generated (use upsert to be idempotent)
           supabase
             .from('gmail_user_sync_mapping')
-            .insert({ gmail_email: gmailEmail, sync_uuid: newUuid })
-            .then(() => console.log('✓ Created new sync UUID for:', gmailEmail))
-            .catch(err => console.warn('Failed to insert sync mapping:', err))
+            .upsert({ gmail_email: gmailEmail, sync_uuid: newUuid }, { onConflict: 'gmail_email' })
+            .then(() => console.log('✓ Created/updated sync UUID for:', gmailEmail))
+            .catch(err => console.warn('Failed to upsert sync mapping:', err))
         }
       })
       .catch(err => console.warn('Error syncing UUID:', err))
@@ -151,12 +151,13 @@ export async function resolveSyncUserId() {
         const newUuid = crypto.randomUUID()
         console.log('📝 Creating new sync UUID mapping for:', gmailEmail, '→', newUuid)
         try {
+          // Use upsert to handle case where email already has a mapping (idempotent)
           await supabase
             .from('gmail_user_sync_mapping')
-            .insert({ gmail_email: gmailEmail, sync_uuid: newUuid })
-          console.log('✓ Created new sync UUID for:', gmailEmail)
+            .upsert({ gmail_email: gmailEmail, sync_uuid: newUuid }, { onConflict: 'gmail_email' })
+          console.log('✓ Created/updated sync UUID for:', gmailEmail)
         } catch (err) {
-          console.warn('Failed to insert sync mapping (may already exist):', err)
+          console.warn('Failed to upsert sync mapping:', err)
         }
         try { localStorage.setItem(SYNC_USER_KEY, newUuid) } catch {}
         return newUuid
