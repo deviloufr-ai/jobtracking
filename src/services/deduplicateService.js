@@ -26,11 +26,15 @@ export async function deduplicateJobsViaEdgeFunction() {
     if (!accessToken) {
       const projectId = supabase.supabaseUrl.split('//')[1].split('.')[0]
       const storageKey = `sb-${projectId}-auth-token`
+      console.log('🔍 Looking for token in localStorage with key:', storageKey)
+      console.log('📦 localStorage keys:', Object.keys(localStorage).filter(k => k.includes('sb') || k.includes('auth')))
+
       const stored = localStorage.getItem(storageKey)
 
       if (stored) {
         try {
           const authData = JSON.parse(stored)
+          console.log('📊 Parsed auth data:', authData)
           accessToken = authData?.session?.access_token
           if (accessToken) {
             console.log('✓ Got token from localStorage')
@@ -38,6 +42,12 @@ export async function deduplicateJobsViaEdgeFunction() {
         } catch (e) {
           console.warn('Failed to parse localStorage token:', e.message)
         }
+      } else {
+        console.warn('❌ Token not found in localStorage')
+        // Try alternative key formats
+        const altKey = `sb_${projectId}_auth_token`
+        const altStored = localStorage.getItem(altKey)
+        console.log('🔍 Trying alternative key:', altKey, '→', altStored ? 'found' : 'not found')
       }
     }
 
