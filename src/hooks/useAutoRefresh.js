@@ -282,52 +282,10 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
         }
       })
 
-    // Consolidate same-date email entries into one summary
-    const consolidatedHistory = []
-    const byDate = new Map()
-    for (const h of history) {
-      if (!byDate.has(h.date)) byDate.set(h.date, [])
-      byDate.get(h.date).push(h)
-    }
-    for (const [date, entries] of byDate) {
-      if (entries.length === 1) {
-        consolidatedHistory.push(entries[0])
-      } else {
-        // Merge multiple entries on same date into one
-        const primary = entries[0]
-        const notes = entries
-          .map(e => e.note)
-          .filter(Boolean)
-          .join(' | ')
-        const gmailIds = []
-        let bestLink = null
-
-        // Use highest status from all entries on same date
-        const statusOrder = ['todo','sent','reviewing','interview','done','waiting','offer','rejected','rejected_ats','cancelled']
-        const highestStatus = entries.reduce((best, e) => {
-          const bestIdx = statusOrder.indexOf(best)
-          const eIdx = statusOrder.indexOf(e.status)
-          return eIdx > bestIdx ? e.status : best
-        }, primary.status)
-
-        for (const e of entries) {
-          if (e.gmailId && !gmailIds.includes(e.gmailId)) gmailIds.push(e.gmailId)
-          if (!bestLink && e.meetingLink) bestLink = e.meetingLink
-        }
-        consolidatedHistory.push({
-          ...primary,
-          status: highestStatus,
-          note: notes,
-          gmailIds: gmailIds.length > 1 ? gmailIds : undefined,
-          gmailId: gmailIds.length === 1 ? gmailIds[0] : primary.gmailId,
-          meetingLink: bestLink || primary.meetingLink
-        })
-      }
-    }
-
-    const existingKeys = new Set(consolidatedHistory.map(h => `${h.date}-${h.status}`))
+    // Keep entries separate - consolidation causes data corruption (notes get joined with pipes)
+    const existingKeys = new Set(history.map(h => `${h.date}-${h.status}`))
     const newCalEntries = calEntries.filter(e => !existingKeys.has(`${e.date}-${e.status}`))
-    const merged = [...consolidatedHistory, ...newCalEntries].sort((a, b) => new Date(a.date) - new Date(b.date))
+    const merged = [...history, ...newCalEntries].sort((a, b) => new Date(a.date) - new Date(b.date))
     const deduplicated = deduplicateHistoryBySemantics(merged)
     const mergedHistory = autoCompletePastMeetings(deduplicated)
 
