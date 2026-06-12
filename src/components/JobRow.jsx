@@ -52,24 +52,25 @@ function StepTips({ note }) {
   const tips = getTipsFromNote(note)
   if (!tips.length) return null
   return (
-    <div className="relative inline-block mt-1 group/tips">
-      <span className="text-[11px] text-gray-300 cursor-default select-none px-1 py-0.5 rounded hover:text-amber-400 hover:bg-amber-50 transition-colors">
-        💡 Conseils
-      </span>
+    <div className="relative group/tips">
+      <button className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 hover:bg-amber-200 transition-colors cursor-help"
+        title={`${tips.length} conseil${tips.length > 1 ? 's' : ''}`}>
+        <span className="text-sm">💡</span>
+      </button>
       {/* Tooltip */}
-      <div className="absolute left-0 bottom-full mb-1.5 z-30 hidden group-hover/tips:block w-64
-        bg-white border border-amber-100 rounded-xl shadow-lg p-3">
-        <p className="text-[10px] font-semibold text-amber-600 mb-1.5 uppercase tracking-wide">Conseils</p>
-        <ul className="space-y-1">
+      <div className="absolute right-0 top-full mt-1.5 z-30 hidden group-hover/tips:block w-72
+        bg-amber-50 border border-amber-200 rounded-lg shadow-lg p-3">
+        <p className="text-[10px] font-semibold text-amber-700 mb-2 uppercase tracking-wide">Conseils pour cette étape</p>
+        <ul className="space-y-1.5">
           {tips.map((t, i) => (
-            <li key={i} className="flex gap-1.5 text-[11px] text-gray-700">
-              <span className="text-amber-400 flex-shrink-0 mt-0.5">•</span>
+            <li key={i} className="flex gap-2 text-[11px] text-amber-900">
+              <span className="text-amber-500 flex-shrink-0 mt-0.5">•</span>
               <span>{t}</span>
             </li>
           ))}
         </ul>
         {/* Arrow */}
-        <div className="absolute left-3 top-full w-2 h-2 bg-white border-r border-b border-amber-100 rotate-45 -mt-1" />
+        <div className="absolute right-4 -top-1 w-2 h-2 bg-amber-50 border-l border-t border-amber-200 rotate-45" />
       </div>
     </div>
   )
@@ -496,15 +497,13 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                         {/* LEFT PANEL: Metadata */}
                         <div className="w-24 flex-shrink-0 bg-indigo-50/50 border-r border-indigo-100 px-3 py-2.5 flex flex-col items-center justify-start gap-1">
                           <div className={`w-3.5 h-3.5 rounded-full flex-shrink-0 border-2 border-white shadow-sm ${isPastMeeting ? 'bg-gray-300' : isUpcomingMeeting ? 'bg-amber-400' : st.dot}`} />
+                          {isMeeting && (
+                            <span className="text-lg">📅</span>
+                          )}
                           <span className="text-[10px] font-semibold text-gray-700 text-center">{formatDate(entry.date)}</span>
                           {sourceLabel && (
                             <span className="text-[9px] text-gray-500 text-center truncate max-w-full">{sourceLabel}</span>
                           )}
-                          {entry.gmailIds?.length > 0 || entry.gmailId ? (
-                            <span className="text-[9px] bg-cyan-100 text-cyan-700 px-1.5 py-0.5 rounded-full font-semibold">
-                              📧 ×{entry.gmailIds?.length || 1}
-                            </span>
-                          ) : null}
                         </div>
 
                         {/* RIGHT PANEL: Content */}
@@ -543,11 +542,14 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                             </div>
                           ) : (
                             <>
-                              {/* Status Badge + Edit/Delete Actions */}
+                              {/* Status Badge + Conseils Icon + Edit/Delete Actions */}
                               <div className="flex items-center justify-between gap-2 mb-1.5">
-                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isPastMeeting ? 'bg-gray-100 text-gray-400' : isUpcomingMeeting ? 'bg-amber-100 text-amber-700' : st.color}`}>
-                                  {isPastMeeting ? '✓ Passé' : isUpcomingMeeting ? '📅 À venir' : st.label}
-                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isPastMeeting ? 'bg-gray-100 text-gray-400' : isUpcomingMeeting ? 'bg-amber-100 text-amber-700' : st.color}`}>
+                                    {isPastMeeting ? '✓ Passé' : isUpcomingMeeting ? '📅 À venir' : st.label}
+                                  </span>
+                                  <StepTips note={entry.note} />
+                                </div>
                                 <div className="flex gap-1 items-center flex-shrink-0">
                                   {confirmDeleteIdx === i ? (
                                     <>
@@ -614,7 +616,6 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                                   })()}
                                 </div>
                               )}
-                              {getTipsFromNote(entry.note).length > 0 && <StepTips note={entry.note} />}
                             </>
                           )}
                         </div>

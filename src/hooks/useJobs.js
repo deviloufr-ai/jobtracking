@@ -375,20 +375,37 @@ function deduplicateHistory(jobs) {
         continue
       }
 
-      // Cluster similar entries on same date
+      // First pass: remove exact duplicates
+      const seen = new Map()
+      const withoutExactDupes = []
+      for (const entry of entries) {
+        const normNote = (entry.note || '').trim().toLowerCase()
+        if (!seen.has(normNote)) {
+          seen.set(normNote, entry)
+          withoutExactDupes.push(entry)
+        }
+      }
+
+      // If all were exact dupes, just keep the first one
+      if (withoutExactDupes.length === 1) {
+        deduped.push(withoutExactDupes[0])
+        continue
+      }
+
+      // Second pass: cluster similar entries on same date
       const clusters = []
       const used = new Set()
 
-      for (let i = 0; i < entries.length; i++) {
+      for (let i = 0; i < withoutExactDupes.length; i++) {
         if (used.has(i)) continue
 
         const cluster = [i]
         used.add(i)
-        const baseWords = normalizeForComparison(entries[i].note)
+        const baseWords = normalizeForComparison(withoutExactDupes[i].note)
 
-        for (let j = i + 1; j < entries.length; j++) {
+        for (let j = i + 1; j < withoutExactDupes.length; j++) {
           if (used.has(j)) continue
-          const compareWords = normalizeForComparison(entries[j].note)
+          const compareWords = normalizeForComparison(withoutExactDupes[j].note)
 
           if (notesAreSimilar(baseWords, compareWords)) {
             cluster.push(j)
@@ -402,12 +419,12 @@ function deduplicateHistory(jobs) {
       // Merge similar entries in each cluster
       for (const cluster of clusters) {
         if (cluster.length === 1) {
-          deduped.push(entries[cluster[0]])
+          deduped.push(withoutExactDupes[cluster[0]])
         } else {
-          const primary = entries[cluster[0]]
+          const primary = withoutExactDupes[cluster[0]]
           const uniqueNotes = new Set()
           for (const idx of cluster) {
-            const note = entries[idx].note
+            const note = withoutExactDupes[idx].note
             if (note) uniqueNotes.add(note)
           }
           const merged = {
@@ -999,5 +1016,40 @@ export function useJobs() {
     // This is a no-op in Supabase version - deleted jobs are gone from server
   }
 
-  return { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched, reprocessJobs, checkPosition, checkAllPositions, clearDeletedJobs, loading, findDuplicateInList: (co, pos) => findDuplicateJob(jobs, co, pos) }
+  const cleanupHistoryDuplicates = () => {
+    console.log('🧹 Starting history cleanup for all jobs...')
+    let cleanedCount = 0
+
+    setJobs(prev => {
+      const cleaned = prev.map(job => {
+        if (!job.history || job.history.length <= 1) return job
+
+        const originalLength = job.history.length
+        const deduped = deduplicateHistory([job])[0].history
+
+        if (deduped.length < originalLength) {
+          cleanedCount++
+          console.log(`  ✓ ${job.company}: ${originalLength} → ${deduped.length} entries`)
+          return { ...job, history: deduped, updated_at: new Date().toISOString() }
+        }
+        return job
+      })
+
+      console.log(`✓ Cleanup complete: ${cleanedCount} jobs cleaned`)
+      return cleaned
+    })
+
+    // Re-sync all jobs to Supabase
+    const coordinator = getSyncCoordinator()
+    if (coordinator) {
+      setTimeout(() => {
+        console.log('📤 Re-syncing cleaned jobs to Supabase...')
+        jobs.forEach(job => {
+          coordinator.mutate('jobs', 'update', job).catch(err => console.error('Failed to sync:', err))
+        })
+      }, 500)
+    }
+  }
+
+  return { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched, reprocessJobs, checkPosition, checkAllPositions, clearDeletedJobs, cleanupHistoryDuplicates, loading, findDuplicateInList: (co, pos) => findDuplicateJob(jobs, co, pos) }
 }
