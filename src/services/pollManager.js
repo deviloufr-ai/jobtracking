@@ -232,8 +232,10 @@ class PollManager {
     const localTime = local.updated_at ? new Date(local.updated_at).getTime() : 0
     const remoteTime = remoteConverted.updated_at ? new Date(remoteConverted.updated_at).getTime() : 0
 
-    if (localTime > remoteTime) {
-      // Local is newer, keep it completely (user may have deleted entries locally)
+    // Use >= to prefer local when timestamps are equal or close (Supabase may update server timestamp)
+    // This prevents remote data from overwriting local changes/deletions
+    if (localTime >= remoteTime) {
+      // Local is newer or equal, keep it completely (user may have deleted entries locally)
       // Don't merge in remote history as it would bring back deleted entries
       return local
     }
