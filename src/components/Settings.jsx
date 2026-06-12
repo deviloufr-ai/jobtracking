@@ -90,7 +90,7 @@ const CATEGORIES = [
   { id: 'extension', label: 'Extension', icon: '🦊' },
 ]
 
-export default function Settings({ jobs, onMergeDuplicates }) {
+export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
   const { settings, updateSetting, resetSettings } = useSettings()
   const { deduplicateViaServer } = useJobs()
   const extensionInstalled = useExtensionDetect()
@@ -239,17 +239,18 @@ export default function Settings({ jobs, onMergeDuplicates }) {
       }
 
       // Delete from Supabase - delete all history for current user
-      const userId = allJobs[0]?.user_id || allJobs[0]?.userId
-      if (userId) {
+      if (syncUserId) {
         const { error: deleteError } = await supabase
           .from('job_history')
           .delete()
-          .eq('user_id', userId)
+          .eq('user_id', syncUserId)
 
         if (deleteError) {
           console.error('Supabase delete error:', deleteError)
           throw new Error(`Failed to delete from Supabase: ${deleteError.message}`)
         }
+      } else {
+        throw new Error('User not authenticated')
       }
 
       setDeleteHistoryResult({ deletedCount, jobsAffected: deleteHistoryDetails.jobsWithHistory })
