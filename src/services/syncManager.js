@@ -143,7 +143,6 @@ class SyncManager {
       'sentAt',
       'enrichedAt',
       'offerUrl',
-      'positionLinks',
     ])
 
     // Fields that need JSON serialization for Supabase
