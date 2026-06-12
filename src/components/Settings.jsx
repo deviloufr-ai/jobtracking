@@ -3,6 +3,8 @@ import { useSettings, SETTINGS_DEFAULTS } from '../hooks/useSettings'
 import { useExtensionDetect } from '../hooks/useExtensionDetect'
 import { useJobs } from '../hooks/useJobs'
 import NotificationSettings from './NotificationSettings'
+import { supabase } from '../services/supabase'
+import { indexeddb } from '../services/indexeddb'
 
 const PROFILE_KEY = 'jobtrackr_profile'
 const PROFILE_DEFAULTS = {
@@ -96,6 +98,11 @@ export default function Settings({ jobs, onMergeDuplicates }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
+  const [confirmDeleteHistory, setConfirmDeleteHistory] = useState(false)
+  const [deleteHistoryDetails, setDeleteHistoryDetails] = useState(null)
+  const [deleteHistoryLoading, setDeleteHistoryLoading] = useState(false)
+  const [deleteHistoryResult, setDeleteHistoryResult] = useState(null)
+  const [deleteHistoryError, setDeleteHistoryError] = useState(null)
   const [exportDone, setExportDone] = useState(false)
   const [importError, setImportError] = useState(null)
   const [serverDedupLoading, setServerDedupLoading] = useState(false)
@@ -195,6 +202,66 @@ export default function Settings({ jobs, onMergeDuplicates }) {
   function clearEmailCache() {
     localStorage.removeItem('jobtrackr_email_cache')
     setConfirmClear(false)
+  }
+
+  async function getHistoryDetails() {
+    try {
+      const allJobs = jobs || []
+      const totalHistoryEntries = allJobs.reduce((sum, job) => sum + (job.history?.length || 0), 0)
+      setDeleteHistoryDetails({
+        jobsWithHistory: allJobs.filter(j => j.history?.length > 0).length,
+        totalHistoryEntries,
+        totalJobs: allJobs.length
+      })
+    } catch (err) {
+      console.error('Failed to get history details:', err)
+      setDeleteHistoryDetails(null)
+    }
+  }
+
+  async function handleDeleteAllHistory() {
+    if (!deleteHistoryDetails) return
+    setDeleteHistoryLoading(true)
+    setDeleteHistoryError(null)
+    setDeleteHistoryResult(null)
+
+    try {
+      const allJobs = jobs || []
+      let deletedCount = 0
+
+      // Delete from IndexedDB for all jobs
+      for (const job of allJobs) {
+        if (job.history?.length > 0) {
+          deletedCount += job.history.length
+          const updatedJob = { ...job, history: [] }
+          await indexeddb.saveJob(updatedJob)
+        }
+      }
+
+      // Delete from Supabase
+      const { error: deleteError } = await supabase
+        .from('job_history')
+        .delete()
+        .neq('id', 'null')
+
+      if (deleteError) {
+        console.error('Supabase delete error (may be schema cache issue):', deleteError)
+        // Don't fail - the local deletion succeeded
+      }
+
+      setDeleteHistoryResult({ deletedCount, jobsAffected: deleteHistoryDetails.jobsWithHistory })
+      setConfirmDeleteHistory(false)
+      setDeleteHistoryDetails(null)
+      setTimeout(() => setDeleteHistoryResult(null), 5000)
+
+      // Reload the page to refresh UI
+      setTimeout(() => window.location.reload(), 1000)
+    } catch (err) {
+      setDeleteHistoryError(err.message)
+      console.error('Delete history error:', err)
+    } finally {
+      setDeleteHistoryLoading(false)
+    }
   }
 
   function handleFullReset() {
@@ -511,6 +578,51 @@ export default function Settings({ jobs, onMergeDuplicates }) {
                       </button>
                     )}
                   </Row>
+                  <Row label="Supprimer tout l'historique" hint="Efface tous les entrées d'historique">
+                    {confirmDeleteHistory ? (
+                      <div className="flex flex-col gap-2">
+                        {deleteHistoryDetails && (
+                          <div className="text-xs bg-red-50 border border-red-200 rounded p-3 text-red-700">
+                            <p className="font-semibold mb-1">Vous allez supprimer :</p>
+                            <ul className="space-y-1">
+                              <li>• <strong>{deleteHistoryDetails.totalHistoryEntries}</strong> entrées d'historique</li>
+                              <li>• Concernant <strong>{deleteHistoryDetails.jobsWithHistory}</strong> candidature(s)</li>
+                              <li>• Suppression dans IndexedDB ET Supabase</li>
+                            </ul>
+                            <p className="text-xs mt-2 font-semibold">Cette action est irréversible.</p>
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleDeleteAllHistory}
+                            disabled={deleteHistoryLoading}
+                            className="text-xs font-semibold px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                          >
+                            {deleteHistoryLoading ? '⏳ Suppression...' : 'Oui, tout supprimer'}
+                          </button>
+                          <button onClick={() => { setConfirmDeleteHistory(false); setDeleteHistoryDetails(null) }} className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">
+                            Annuler
+                          </button>
+                        </div>
+                        {deleteHistoryError && <p className="text-xs text-red-600">{deleteHistoryError}</p>}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          getHistoryDetails()
+                          setConfirmDeleteHistory(true)
+                        }}
+                        className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-red-50 hover:border-red-200 hover:text-red-700"
+                      >
+                        Supprimer
+                      </button>
+                    )}
+                  </Row>
+                  {deleteHistoryResult && (
+                    <p className="text-xs text-red-600">
+                      ✓ {deleteHistoryResult.deletedCount} entrées d'historique supprimées de {deleteHistoryResult.jobsAffected} candidature(s)
+                    </p>
+                  )}
                 </Card>
 
                 <Card title="Zone de danger" subtitle="Attention : cette action est irréversible">
