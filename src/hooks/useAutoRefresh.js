@@ -449,20 +449,28 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
 
       let added = 0, updated = 0, skipped = 0
       const now = new Date().toISOString()
+      // Track newly added jobs in THIS batch to prevent duplicates within same refresh cycle
+      // Map of batchKey → { jobId, data }
+      const newJobsThisBatch = new Map()
+
       for (const p of grouped) {
         const existing = findExisting(p)
+        // Also check if this job was already added earlier in THIS batch
+        const batchKey = `${normalize(p.company)}_${normalize(p.position)}`
+        const batchEntry = newJobsThisBatch.get(batchKey)
+        const alreadyAddedThisBatch = !!batchEntry
 
         // Skip re-importing jobs that were explicitly deleted
-        if (!existing && isDeletedJob(p.company, p.position)) {
+        if (!existing && !alreadyAddedThisBatch && isDeletedJob(p.company, p.position)) {
           log(`⏭️  Skipped deleted job: ${p.company}/${p.position}`)
           skipped++
           continue
         }
 
-        if (!existing) {
+        if (!existing && !alreadyAddedThisBatch) {
           // New job — add it with lastSyncTime
           log(`➕ Adding new job: ${p.company}/${p.position} (${p.status}, ${p.history?.length || 0} history entries)`)
-          addJob({
+          const newJob = addJob({
             company: p.company || 'Inconnu',
             position: p.position || 'Poste non précisé',
             url: '', status: p.status || 'sent',
@@ -472,7 +480,47 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
             _history: p.history?.length > 0 ? p.history : undefined,
             ...(p.positionLinks && { positionLinks: p.positionLinks }),
           })
+          // Track that we added this job in this batch (with its ID for later merging)
+          newJobsThisBatch.set(batchKey, { jobId: newJob.id, data: newJob })
           added++
+        } else if (alreadyAddedThisBatch) {
+          // Duplicate detected in this batch — merge history into the first one we added
+          log(`🔄 Merging duplicate in batch: ${p.company}/${p.position} (${p.history?.length || 0} new history entries)`)
+          const { jobId, data: firstJobData } = batchEntry
+
+          // Merge new history entries from this duplicate into the first job
+          if (p.history?.length > 0) {
+            const normNote = s => (s || '').trim().replace(/\s+/g, ' ').slice(0, 80)
+            const existingHistKeys = new Set(
+              (firstJobData.history || []).flatMap(h =>
+                (h.note || '').split(' | ').map(n => `${h.date}_${normNote(n)}`)
+              )
+            )
+            const newEntries = p.history.filter(h => !existingHistKeys.has(`${h.date}_${normNote(h.note)}`))
+
+            if (newEntries.length > 0) {
+              const merged = [...(firstJobData.history || []), ...newEntries]
+                .sort((a, b) => new Date(a.date) - new Date(b.date))
+              const deduplicated = deduplicateHistoryBySemantics(merged)
+              const mergedHistory = autoCompletePastMeetings(deduplicated)
+
+              // Merge position links from this duplicate too
+              const allLinks = [...new Set([...(firstJobData.positionLinks || []), ...(p.positionLinks || [])])]
+
+              updateJob(jobId, {
+                history: mergedHistory,
+                positionLinks: allLinks.length > 0 ? allLinks : undefined,
+                lastSyncTime: now
+              })
+
+              // Update tracked batch entry with merged data
+              newJobsThisBatch.set(batchKey, {
+                jobId,
+                data: { ...firstJobData, history: mergedHistory, positionLinks: allLinks }
+              })
+            }
+          }
+          skipped++
         } else {
           // Existing job — merge any new history entries
           const normNote = s => (s || '').trim().replace(/\s+/g, ' ').slice(0, 80)
