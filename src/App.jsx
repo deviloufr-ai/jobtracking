@@ -176,18 +176,27 @@ export default function App() {
   useEffect(() => {
     if (!gmailUser || initialSyncDone) return
 
-    console.log('📡 Attaching sync listener immediately')
+    console.log('📡 Attaching sync listener immediately for:', gmailUser)
 
-    const handleSyncComplete = () => {
-      console.log('✅ Sync complete - hiding loading screen')
+    const handleSyncComplete = (e) => {
+      console.log('✅ Sync complete - hiding loading screen', e.detail)
       setInitialSyncDone(true)
     }
 
     // Attach listener BEFORE sync might complete
     window.addEventListener('jobtrackr:datasync', handleSyncComplete)
 
+    // Debug: also listen for window messages
+    const debugListener = () => {
+      console.log('🎯 Window event detected')
+    }
+    window.addEventListener('jobtrackr:datasync', debugListener)
+
+    console.log('✓ Listeners attached, waiting for sync event...')
+
     return () => {
       window.removeEventListener('jobtrackr:datasync', handleSyncComplete)
+      window.removeEventListener('jobtrackr:datasync', debugListener)
     }
   }, [gmailUser]) // Only depend on gmailUser, not initialSyncDone
 
