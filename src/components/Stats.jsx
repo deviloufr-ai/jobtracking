@@ -1,35 +1,35 @@
 import { useMemo, useState } from 'react'
 import { STATUSES } from '../hooks/useJobs'
 
-function Sparkline({ values, color = '#6366f1' }) {
-  if (!values || values.length < 2) return null
+function ActivityBars({ values, color = '#6366f1' }) {
+  if (!values || values.length !== 7) return null
   const max = Math.max(...values, 1)
-  const w = 140, h = 48, pad = 2
-  const pts = values.map((v, i) => {
-    const x = pad + (i / (values.length - 1)) * (w - pad * 2)
-    const y = h - pad - (v / max) * (h - pad * 2)
-    return `${x},${y}`
-  })
-  const last = pts[pts.length - 1].split(',')
-  // Build fill path
-  const fillPts = [
-    `${pts[0].split(',')[0]},${h}`,
-    ...pts,
-    `${last[0]},${h}`,
-  ].join(' ')
+  const days = ['L','M','M','J','V','S','D']
+
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="w-full">
-      <defs>
-        <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.18" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon points={fillPts} fill="url(#sg)" />
-      <polyline fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-        points={pts.join(' ')} />
-      <circle cx={last[0]} cy={last[1]} r="3" fill={color} />
-    </svg>
+    <div className="flex items-end justify-between h-48 gap-1.5">
+      {values.map((v, i) => {
+        const pct = (v / max) * 100
+        return (
+          <div key={i} className="flex flex-col items-center flex-1 gap-2">
+            <div className="w-full flex items-end justify-center h-40 bg-gray-50 rounded">
+              <div
+                className="w-full rounded-t transition-all"
+                style={{
+                  height: `${pct}%`,
+                  background: color,
+                  opacity: 0.8
+                }}
+              />
+            </div>
+            <div className="flex flex-col items-center gap-0.5 w-full">
+              <span className="text-xs font-semibold text-gray-700">{v}</span>
+              <span className="text-[10px] text-gray-400">{days[i]}</span>
+            </div>
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -197,16 +197,7 @@ export default function Stats({ jobs }) {
           <span className="text-5xl font-extrabold text-indigo-600 leading-none">{thisWeek}</span>
           <span className="text-sm text-gray-400">cette semaine</span>
         </div>
-        <div className="mt-2">
-          <Sparkline values={weeklyActivity} color="#6366f1" />
-          <div className="grid grid-cols-7 gap-0 mt-1.5">
-            {['L','M','M','J','V','S','D'].map((d, i) => (
-              <div key={i} className="flex flex-col items-center">
-                <span className="text-[9px] text-gray-300">{d}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <ActivityBars values={weeklyActivity} color="#6366f1" />
       </Card>
 
       {/* ── Card 4 — Répartition ──────────────────────────────── */}
