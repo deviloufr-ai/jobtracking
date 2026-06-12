@@ -106,29 +106,13 @@ export async function resolveSyncUserId() {
     log('📧 Reloaded from localStorage:', Object.keys(storedAccounts).length, 'gmailEmail:', gmailEmail)
   }
 
-  // If still no email, trigger OAuth to get email (fixes incognito mode)
+  // If still no email, just generate a temporary UUID (don't auto-popup OAuth)
+  // User will need to click login button to connect Gmail
   if (!gmailEmail) {
-    console.log('🔐 No Gmail account found, requesting OAuth login for UUID lookup...')
-    try {
-      await connectGmail()
-      // Reload accounts from localStorage after OAuth (more reliable than module variable)
-      const freshAccounts = loadAccounts()
-      firstAccount = Object.values(freshAccounts)[0]
-      gmailEmail = firstAccount?.user?.email
-      console.log('✅ OAuth completed, reloaded accounts:', Object.keys(freshAccounts).length, 'gmailEmail:', gmailEmail)
-
-      if (!gmailEmail) {
-        console.warn('⚠️ OAuth completed but no email found in accounts')
-        const fallbackUuid = crypto.randomUUID()
-        try { localStorage.setItem(SYNC_USER_KEY, fallbackUuid) } catch {}
-        return fallbackUuid
-      }
-    } catch (err) {
-      console.warn('⚠️ OAuth failed, proceeding with generated UUID:', err)
-      const fallbackUuid = crypto.randomUUID()
-      try { localStorage.setItem(SYNC_USER_KEY, fallbackUuid) } catch {}
-      return fallbackUuid
-    }
+    console.log('ℹ️ No Gmail account found on page load - user will log in manually')
+    const tempUuid = crypto.randomUUID()
+    try { localStorage.setItem(SYNC_USER_KEY, tempUuid) } catch {}
+    return tempUuid
   }
 
   // Now lookup or create UUID mapping using Gmail email
