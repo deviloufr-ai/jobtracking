@@ -399,9 +399,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
               <p className="text-xs text-gray-400">Détection automatique des candidatures</p>
             </div>
           </div>
-          {!isLoading && (
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
-          )}
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
         </div>
 
         <div className="px-6 py-5">
