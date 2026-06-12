@@ -4,7 +4,7 @@ import { extractUrlsFromEmail, rankUrlsByJobRelevance, checkPositionUrl } from '
 import { indexeddb } from '../services/indexeddb'
 import { syncManager } from '../services/syncManager'
 import { getSyncCoordinator } from '../services/syncCoordinator'
-import { supabase } from '../services/supabase'
+import { supabase, isSupabaseConfigured } from '../services/supabase'
 import { getSyncUserIdForSupabase, getCachedUser, resolveSyncUserId } from '../services/gmail'
 import { convertHistoryFromSupabase, convertHistoryToSupabase, snakeToCamel, deserializeJobFields } from '../services/fieldConversion'
 import { deduplicateJobsViaEdgeFunction, formatDeduplicateResult } from '../services/deduplicateService'
@@ -972,7 +972,35 @@ export function useJobs() {
     }
   }
 
-  const clearAllJobs = () => setJobs([])
+  const clearAllJobs = async () => {
+    // Mark all current jobs as deleted to prevent re-sync
+    rawJobs.forEach(job => {
+      markJobIdAsDeleted(job.id)
+      markJobAsDeleted(job.company, job.position)
+    })
+
+    // Clear local state immediately
+    setJobs([])
+
+    // Delete all jobs from Supabase for this user
+    try {
+      const syncUserId = await resolveSyncUserId()
+      if (syncUserId && isSupabaseConfigured()) {
+        const { error } = await supabase
+          .from('jobs')
+          .delete()
+          .eq('user_id', syncUserId)
+
+        if (error) {
+          console.error('Failed to delete jobs from Supabase:', error)
+        } else {
+          console.log('✓ All jobs deleted from Supabase')
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete jobs from Supabase:', err.message)
+    }
+  }
 
   const reprocessJobs = () => {
     setJobs(prev => {

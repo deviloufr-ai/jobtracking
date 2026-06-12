@@ -394,10 +394,10 @@ export default function App() {
     showToast(type === 'remerciement' ? 'Email de remerciement envoyé ✓' : 'Email de relance envoyé ✓')
   }
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (!window.confirm(`Effacer toutes les ${jobs.length} candidatures ? Cette action est irreversible.`)) return
-    clearAllJobs() // Fix #3 — single state update instead of N deleteJob calls
-    showToast('Toutes les candidatures ont été effacées')
+    await clearAllJobs()
+    showToast('Toutes les candidatures ont été effacées (Supabase synchronisé)')
   }
 
   const ThHeader = ({ col, label }) => (
