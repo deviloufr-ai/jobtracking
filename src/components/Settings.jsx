@@ -248,17 +248,17 @@ export default function Settings({ jobs, onMergeDuplicates }) {
 
         if (deleteError) {
           console.error('Supabase delete error:', deleteError)
-          // Don't fail - the local deletion succeeded
+          throw new Error(`Failed to delete from Supabase: ${deleteError.message}`)
         }
       }
 
       setDeleteHistoryResult({ deletedCount, jobsAffected: deleteHistoryDetails.jobsWithHistory })
       setConfirmDeleteHistory(false)
       setDeleteHistoryDetails(null)
-      setTimeout(() => setDeleteHistoryResult(null), 5000)
 
-      // Reload the page to refresh UI
-      setTimeout(() => window.location.reload(), 1000)
+      // Wait 2 seconds then reload to let deletion propagate
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      window.location.reload()
     } catch (err) {
       setDeleteHistoryError(err.message)
       console.error('Delete history error:', err)
