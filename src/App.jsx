@@ -165,17 +165,24 @@ export default function App() {
   // Start polling once we have the correct sync ID
   usePolling(syncUserId)
 
-  // Hide loading screen when sync completes
+  // Hide loading screen when sync completes (event or data loaded)
   useEffect(() => {
     if (!gmailUser || initialSyncDone) return
 
+    // If jobs loaded, sync is complete
+    if (jobs.length > 0) {
+      setInitialSyncDone(true)
+      return
+    }
+
+    // Otherwise, listen for sync complete event
     const handleSyncComplete = () => {
       setInitialSyncDone(true)
     }
 
     window.addEventListener('jobtrackr:datasync', handleSyncComplete)
     return () => window.removeEventListener('jobtrackr:datasync', handleSyncComplete)
-  }, [gmailUser, initialSyncDone])
+  }, [gmailUser, initialSyncDone, jobs.length])
 
   // Hide landing page when user logs in
   useEffect(() => {
