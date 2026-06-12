@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
-import { convertHistoryFromSupabase, snakeToCamel } from './fieldConversion'
+import { convertHistoryFromSupabase, snakeToCamel, deserializeJobFields } from './fieldConversion'
 
 const POLL_INTERVAL = 300000 // 5 minutes
 
@@ -123,9 +123,11 @@ class PollManager {
         for (const job of changedJobs) {
           // Convert from snake_case to camelCase
           const jobInCamel = snakeToCamel(job)
+          // Deserialize JSON fields (positionLinks, positionChecks)
+          const jobDeserialized = deserializeJobFields(jobInCamel)
           // Attach history to job
           const jobWithHistory = {
-            ...jobInCamel,
+            ...jobDeserialized,
             history: historyByJobId.get(job.id) || []
           }
 

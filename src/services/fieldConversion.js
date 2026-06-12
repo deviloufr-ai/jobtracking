@@ -78,3 +78,23 @@ export function convertHistoryToSupabase(localEntry) {
     last_modified_at: new Date().toISOString()
   }
 }
+
+export function deserializeJobFields(job) {
+  if (!job) return job
+
+  const jsonFields = ['position_links', 'position_checks']
+  const deserialized = { ...job }
+
+  for (const field of jsonFields) {
+    if (deserialized[field] && typeof deserialized[field] === 'string') {
+      try {
+        deserialized[field] = JSON.parse(deserialized[field])
+      } catch (e) {
+        console.warn(`Failed to parse ${field}:`, e)
+        // Keep original if parse fails
+      }
+    }
+  }
+
+  return deserialized
+}

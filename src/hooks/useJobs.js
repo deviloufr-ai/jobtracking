@@ -6,7 +6,7 @@ import { syncManager } from '../services/syncManager'
 import { getSyncCoordinator } from '../services/syncCoordinator'
 import { supabase } from '../services/supabase'
 import { getSyncUserIdForSupabase, getCachedUser, resolveSyncUserId } from '../services/gmail'
-import { convertHistoryFromSupabase, convertHistoryToSupabase, snakeToCamel } from '../services/fieldConversion'
+import { convertHistoryFromSupabase, convertHistoryToSupabase, snakeToCamel, deserializeJobFields } from '../services/fieldConversion'
 
 const ENRICH_TTL_DAYS = 30
 
@@ -547,31 +547,33 @@ async function syncLocalJobsToSupabase(stableSyncId) {
       for (const remoteJob of supabaseJobs) {
         // Convert job from snake_case to camelCase
         const remoteJobInCamel = snakeToCamel(remoteJob)
+        // Deserialize JSON fields (positionLinks, positionChecks)
+        const remoteJobDeserialized = deserializeJobFields(remoteJobInCamel)
         // Get history for this job and convert snake_case to camelCase
         const remoteHistory = (historyByJobId.get(remoteJob.id) || []).map(entry => convertHistoryFromSupabase(entry))
 
         const deduped = deduplicateHistory([{ history: remoteHistory }])[0].history
 
         const jobWithHistory = {
-          ...remoteJobInCamel,
+          ...remoteJobDeserialized,
           history: deduped
         }
 
         // Always merge with local job to ensure history is attached
-        const localJob = await indexeddb.getJob(remoteJobInCamel.id)
+        const localJob = await indexeddb.getJob(remoteJobDeserialized.id)
         if (localJob) {
           // Merge: combine and deduplicate both local and remote history
           const combined = [...(localJob.history || []), ...deduped]
           const merged = {
             ...localJob,
             history: deduplicateHistory([{ history: combined }])[0].history,
-            updated_at: remoteJobInCamel.updated_at
+            updated_at: remoteJobDeserialized.updated_at
           }
           await indexeddb.saveJob(merged)
         } else {
           // New job from another device, save it
           await indexeddb.saveJob(jobWithHistory)
-          console.log('  ✓ Fetched job:', remoteJobInCamel.company)
+          console.log('  ✓ Fetched job:', remoteJobDeserialized.company)
         }
       }
     }

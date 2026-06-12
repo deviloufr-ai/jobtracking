@@ -147,10 +147,18 @@ class SyncManager {
       'positionChecks',
     ])
 
+    // Fields that need JSON serialization for Supabase
+    const jsonFields = new Set(['positionLinks', 'positionChecks'])
+
     const cleaned = {}
     for (const key of Object.keys(record)) {
       if (safeFields.has(key) && record[key] !== undefined) {
-        cleaned[key] = record[key]
+        // Serialize complex types to JSON string for storage
+        if (jsonFields.has(key) && (Array.isArray(record[key]) || typeof record[key] === 'object')) {
+          cleaned[key] = JSON.stringify(record[key])
+        } else {
+          cleaned[key] = record[key]
+        }
       }
     }
 
