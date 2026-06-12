@@ -140,9 +140,6 @@ class SyncManager {
       'updated_at',
       'last_modified_at',
       'from',
-      'sentAt',
-      'enrichedAt',
-      'offerUrl',
     ])
 
     // Fields that need JSON serialization for Supabase
