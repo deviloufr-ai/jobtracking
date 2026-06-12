@@ -687,7 +687,11 @@ export function useJobs() {
     // Listen for data sync events from polling (multi-device sync)
     const handleSync = (event) => {
       console.log('Data synced from Supabase, reloading...', event.detail)
-      loadJobs()
+      loadJobs().then(() => {
+        // Auto-deduplicate after sync to prevent visible duplicates
+        console.log('🔄 Auto-deduplicating jobs after sync...')
+        setJobs(prev => deduplicateJobs(prev))
+      })
     }
     window.addEventListener('jobtrackr:datasync', handleSync)
 
