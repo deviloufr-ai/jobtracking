@@ -658,8 +658,11 @@ async function syncLocalJobsToSupabase(stableSyncId) {
             console.warn('  ✗ Failed to sync job:', job.company, err.message)
           }
         } else if (historyCount > 0) {
-          // Existing job - upsert history entries (handles edited entries without data loss)
+          // Existing job - delete and re-insert to clean up corrupted data
           try {
+            // Delete all old history for this job (cleans up any pipe-concatenated entries)
+            await supabase.from('job_history').delete().eq('job_id', job.id)
+
             // Deduplicate history before sending to Supabase
             const dedupedHistory = deduplicateHistory([job])[0].history
 
@@ -669,13 +672,9 @@ async function syncLocalJobsToSupabase(stableSyncId) {
               ...convertHistoryToSupabase(entry)
             }))
 
-            // Insert with ignore on duplicates - table constraint is (job_id, date, note)
+            // Re-insert all history entries (clean slate, no conflicts)
             if (historyEntries.length > 0) {
-              const { error } = await supabase
-                .from('job_history')
-                .insert(historyEntries, { onConflict: 'ignore' })
-
-              if (error) console.warn('Insert error:', error)
+              await supabase.from('job_history').insert(historyEntries)
             }
 
             console.log('  ✓ Synced history for:', job.company, '(' + dedupedHistory.length + ' entries)')
