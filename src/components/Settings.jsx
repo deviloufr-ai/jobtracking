@@ -238,13 +238,13 @@ export default function Settings({ jobs, onMergeDuplicates }) {
         }
       }
 
-      // Delete from Supabase - delete all history entries for jobs we have
-      const jobIds = allJobs.map(j => j.id).filter(Boolean)
-      if (jobIds.length > 0) {
+      // Delete from Supabase - delete all history for current user
+      const userId = allJobs[0]?.user_id || allJobs[0]?.userId
+      if (userId) {
         const { error: deleteError } = await supabase
           .from('job_history')
           .delete()
-          .in('job_id', jobIds)
+          .eq('user_id', userId)
 
         if (deleteError) {
           console.error('Supabase delete error:', deleteError)
