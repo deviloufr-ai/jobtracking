@@ -251,38 +251,17 @@ class SyncManager {
         }
       }
 
-      // Expand pipe-delimited notes into separate history entries
-      const expanded = []
-      for (const entry of deduped) {
-        if (entry.note && entry.note.includes(' | ')) {
-          const parts = entry.note.split(' | ').map(p => p.trim()).filter(Boolean)
-          // Only split if all parts are meaningful (>= 10 chars) and multiple parts
-          const allMeaningful = parts.every(p => p.length >= 10)
-          if (allMeaningful && parts.length >= 2) {
-            parts.forEach(part => expanded.push({ ...entry, note: part }))
-          } else {
-            expanded.push(entry)
-          }
-        } else {
-          expanded.push(entry)
-        }
-      }
-
-      const historyEntries = expanded.map(entry => ({
+      const historyEntries = deduped.map(entry => ({
         job_id: jobId,
         user_id: userId,
         ...convertHistoryToSupabase(entry)
       }))
 
       if (historyEntries.length > 0) {
-        // Upsert history entries (update if exists, insert if new)
-        // Keys: job_id, date, note - if entry already exists, update it
+        // Insert with ignore duplicates - table's unique constraint will handle conflicts
         const { error: historyError } = await supabase
           .from('job_history')
-          .upsert(historyEntries, {
-            onConflict: 'job_id,date,note',
-            ignoreDuplicates: false
-          })
+          .insert(historyEntries, { onConflict: 'ignore' })
 
         if (historyError) {
           console.error('Error syncing job history:', historyError)
