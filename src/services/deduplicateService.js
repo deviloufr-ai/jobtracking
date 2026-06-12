@@ -1,17 +1,16 @@
 import { supabase } from './supabase'
 
 /**
- * Call the deduplicate-jobs Edge Function to clean duplicates server-side
- * This is more efficient than doing it on the client
+ * Call the deduplicate-jobs Vercel Function to clean duplicates server-side
+ * Uses Vercel serverless function with SERVICE_ROLE_KEY for auth
  */
 export async function deduplicateJobsViaEdgeFunction() {
   try {
-    console.log('🔄 Calling deduplicate-jobs Edge Function...')
+    console.log('🔄 Calling deduplicate-jobs Vercel Function...')
 
-    // Try to get access token from multiple sources
+    // Get access token for auth header (Vercel function will decode it)
     let accessToken = null
 
-    // 1. Try getSession() first (most reliable)
     try {
       const { data } = await supabase.auth.getSession()
       accessToken = data?.session?.access_token
@@ -19,47 +18,15 @@ export async function deduplicateJobsViaEdgeFunction() {
         console.log('✓ Got token from getSession()')
       }
     } catch (e) {
-      console.warn('getSession() failed, trying localStorage...')
-    }
-
-    // 2. If no session, try localStorage (Supabase stores it there)
-    if (!accessToken) {
-      const projectId = supabase.supabaseUrl.split('//')[1].split('.')[0]
-      const storageKey = `sb-${projectId}-auth-token`
-      console.log('🔍 Looking for token in localStorage with key:', storageKey)
-      console.log('📦 localStorage keys:', Object.keys(localStorage).filter(k => k.includes('sb') || k.includes('auth')))
-
-      const stored = localStorage.getItem(storageKey)
-
-      if (stored) {
-        try {
-          const authData = JSON.parse(stored)
-          console.log('📊 Parsed auth data:', authData)
-          accessToken = authData?.session?.access_token
-          if (accessToken) {
-            console.log('✓ Got token from localStorage')
-          }
-        } catch (e) {
-          console.warn('Failed to parse localStorage token:', e.message)
-        }
-      } else {
-        console.warn('❌ Token not found in localStorage')
-        // Try alternative key formats
-        const altKey = `sb_${projectId}_auth_token`
-        const altStored = localStorage.getItem(altKey)
-        console.log('🔍 Trying alternative key:', altKey, '→', altStored ? 'found' : 'not found')
-      }
+      console.warn('getSession() failed:', e.message)
     }
 
     if (!accessToken) {
-      throw new Error('No access token found - please login first')
+      throw new Error('Not authenticated - please login first')
     }
 
-    console.log('✓ Access token acquired')
-
-    // Call the Edge Function with auth header
-    const supabaseUrl = supabase.supabaseUrl
-    const functionUrl = `${supabaseUrl}/functions/v1/deduplicate-jobs`
+    // Call Vercel function (which has SERVICE_ROLE_KEY)
+    const functionUrl = '/api/deduplicate'
     console.log('📤 POST to:', functionUrl)
 
     const response = await fetch(functionUrl, {
@@ -75,7 +42,7 @@ export async function deduplicateJobsViaEdgeFunction() {
     const result = await response.json()
 
     if (!response.ok) {
-      console.error('Edge Function error:', result)
+      console.error('Dedup error:', result)
       throw new Error(result.error || `HTTP ${response.status}: Deduplicate failed`)
     }
 
