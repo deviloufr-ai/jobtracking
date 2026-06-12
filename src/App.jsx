@@ -165,42 +165,32 @@ export default function App() {
   // Start polling once we have the correct sync ID
   usePolling(syncUserId)
 
-  // Hide loading screen when sync completes (event, data loaded, or timeout)
+  // Attach listener IMMEDIATELY when gmailUser logs in (before sync event fires)
   useEffect(() => {
-    console.log('🔍 Loading screen effect:', { gmailUser: !!gmailUser, initialSyncDone, jobsCount: jobs.length })
-    if (!gmailUser || initialSyncDone) {
-      console.log('⏭️  Skipping - no user or already done')
-      return
-    }
+    if (!gmailUser || initialSyncDone) return
 
-    // If jobs loaded, sync is complete
-    if (jobs.length > 0) {
-      console.log('📊 Jobs loaded, hiding loading screen')
-      setInitialSyncDone(true)
-      return
-    }
+    console.log('📡 Attaching sync listener immediately')
 
-    console.log('⏳ Setting up timeout for loading screen')
-
-    // Listen for sync complete event
     const handleSyncComplete = () => {
-      console.log('📡 Sync event received, hiding loading screen')
+      console.log('✅ Sync complete - hiding loading screen')
       setInitialSyncDone(true)
     }
 
+    // Attach listener BEFORE sync might complete
     window.addEventListener('jobtrackr:datasync', handleSyncComplete)
-
-    // Fallback timeout: after 10 seconds, show dashboard even if sync hasn't finished
-    const timeout = setTimeout(() => {
-      console.log('⏱️ Loading screen timeout - showing dashboard')
-      setInitialSyncDone(true)
-    }, 10000)
 
     return () => {
       window.removeEventListener('jobtrackr:datasync', handleSyncComplete)
-      clearTimeout(timeout)
     }
-  }, [gmailUser, initialSyncDone])
+  }, [gmailUser]) // Only depend on gmailUser, not initialSyncDone
+
+  // Hide loading screen when jobs load
+  useEffect(() => {
+    if (gmailUser && jobs.length > 0 && !initialSyncDone) {
+      console.log('📊 Jobs loaded, hiding loading screen')
+      setInitialSyncDone(true)
+    }
+  }, [jobs.length, gmailUser, initialSyncDone])
 
   // Hide landing page when user logs in
   useEffect(() => {
