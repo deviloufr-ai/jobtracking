@@ -140,6 +140,7 @@ export default function App() {
   const [expandedJobId, setExpandedJobId] = useState(null)
   const [showLandingPage, setShowLandingPage] = useState(true)
   const [syncUserId, setSyncUserId] = useState(null)
+  const [initialSyncDone, setInitialSyncDone] = useState(false)
 
   // On load: resolve correct sync ID and initialize sync infrastructure
   useEffect(() => {
@@ -163,6 +164,17 @@ export default function App() {
 
   // Start polling once we have the correct sync ID
   usePolling(syncUserId)
+
+  // Hide loading screen after initial sync completes (or timeout if no data)
+  useEffect(() => {
+    if (gmailUser && !initialSyncDone) {
+      const timeout = setTimeout(() => {
+        setInitialSyncDone(true)
+      }, 5000) // Max 5 seconds on loading screen
+
+      return () => clearTimeout(timeout)
+    }
+  }, [gmailUser, initialSyncDone])
 
   // Hide landing page when user logs in
   useEffect(() => {
@@ -389,7 +401,7 @@ export default function App() {
   }
 
   // Show loading screen while Supabase syncs data for first time
-  if (gmailUser && jobs.length === 0) {
+  if (gmailUser && jobs.length === 0 && !initialSyncDone) {
     return (
       <ErrorBoundary>
         <div className="min-h-screen bg-slate-50 flex items-center justify-center">
