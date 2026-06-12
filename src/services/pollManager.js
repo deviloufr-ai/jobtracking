@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
-import { convertHistoryFromSupabase } from './fieldConversion'
+import { convertHistoryFromSupabase, snakeToCamel } from './fieldConversion'
 
 const POLL_INTERVAL = 300000 // 5 minutes
 
@@ -121,9 +121,11 @@ class PollManager {
       if (changedJobs && changedJobs.length > 0) {
         hasChanges = true
         for (const job of changedJobs) {
+          // Convert from snake_case to camelCase
+          const jobInCamel = snakeToCamel(job)
           // Attach history to job
           const jobWithHistory = {
-            ...job,
+            ...jobInCamel,
             history: historyByJobId.get(job.id) || []
           }
 
@@ -142,15 +144,17 @@ class PollManager {
 
       if (settingsData) {
         hasChanges = true
+        const settingsInCamel = snakeToCamel(settingsData)
         const localSettings = await indexeddb.getSettings()
-        const merged = this.mergeSettings(localSettings, settingsData)
+        const merged = this.mergeSettings(localSettings, settingsInCamel)
         await indexeddb.saveSettings(merged)
       }
 
       if (cvs && cvs.length > 0) {
         hasChanges = true
         for (const cv of cvs) {
-          await indexeddb.saveCV(cv)
+          const cvInCamel = snakeToCamel(cv)
+          await indexeddb.saveCV(cvInCamel)
         }
       }
 

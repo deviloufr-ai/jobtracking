@@ -132,6 +132,7 @@ class SyncManager {
       'id',
       'company',
       'position',
+      'url',
       'status',
       'notes',
       'date',
@@ -139,7 +140,11 @@ class SyncManager {
       'updated_at',
       'last_modified_at',
       'from',
+      'sentAt',
+      'enrichedAt',
       'offerUrl',
+      'positionLinks',
+      'positionChecks',
     ])
 
     const cleaned = {}
@@ -186,6 +191,8 @@ class SyncManager {
       history = h
       // Strip local-only fields (_merged, _history, etc.)
       jobRecord = this.stripLocalOnlyFields(jobRecord)
+      // Convert camelCase to snake_case for Supabase
+      jobRecord = this.camelToSnake(jobRecord)
     }
 
     switch (type) {
