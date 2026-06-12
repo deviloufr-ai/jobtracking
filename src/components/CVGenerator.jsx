@@ -3,8 +3,16 @@ import html2pdf from 'html2pdf.js'
 
 const IS_DEV = import.meta.env.DEV
 
+// ── HTML escape helper ────────────────────────────────────────────────────────
+const escapeHtml = s => (s || '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;')
+
 // ── Inline markdown formatter ──────────────────────────────────────────────────
-const fmt = t => (t || '')
+const fmt = t => escapeHtml(t || '')
   .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   .replace(/\*(.+?)\*/g, '<em>$1</em>')
 

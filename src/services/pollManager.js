@@ -73,21 +73,30 @@ class PollManager {
 
       console.log('✓ Fetched', changedJobs?.length || 0, 'jobs from Supabase')
 
-      // Fetch job history only for changed jobs (not all jobs)
+      // Fetch job history only for changed jobs (batch query, not N+1)
       const historyByJobId = new Map()
       if (changedJobs && changedJobs.length > 0) {
-        // Fetch history for each changed job separately to avoid duplicates
-        for (const job of changedJobs) {
-          const { data: jobHistory, error: historyError } = await supabase
-            .from('job_history')
-            .select('*')
-            .eq('job_id', job.id)
-            .order('date', { ascending: true })
+        const jobIds = changedJobs.map(j => j.id)
+        const { data: allHistory, error: historyError } = await supabase
+          .from('job_history')
+          .select('*')
+          .in('job_id', jobIds)
+          .order('date', { ascending: true })
 
-          if (historyError) {
-            console.error(`Poll error fetching history for job ${job.id}:`, historyError)
-          } else if (jobHistory) {
-            // Convert from snake_case to camelCase and deduplicate by date+status (unique key)
+        if (historyError) {
+          console.error('Poll error fetching history:', historyError)
+        } else if (allHistory) {
+          // Group history by job ID and deduplicate by date+status
+          const historyByJob = new Map()
+          for (const entry of allHistory) {
+            if (!historyByJob.has(entry.job_id)) {
+              historyByJob.set(entry.job_id, [])
+            }
+            historyByJob.get(entry.job_id).push(entry)
+          }
+
+          // Convert and deduplicate each job's history
+          for (const [jobId, jobHistory] of historyByJob) {
             const seen = new Set()
             const deduped = []
             for (const entry of jobHistory) {
@@ -98,7 +107,7 @@ class PollManager {
                 deduped.push(converted)
               }
             }
-            historyByJobId.set(job.id, deduped)
+            historyByJobId.set(jobId, deduped)
           }
         }
       }

@@ -20,6 +20,8 @@ function saveAccounts(map) {
   try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(map)) } catch {}
 }
 
+let accounts = loadAccounts() // { email: { token, user } }
+
 // Get sync user ID - cached in localStorage, syncs with Supabase in background
 // All devices with the same Gmail email get the same UUID
 function getSyncUserId() {
@@ -157,8 +159,6 @@ export async function resolveSyncUserId() {
   console.warn('⚠️ No gmailEmail available, using generated UUID:', newUuid)
   return newUuid
 }
-
-let accounts = loadAccounts() // { email: { token, user } }
 
 // ── Public API ────────────────────────────────────────────────────────────────
 export function isGmailConfigured() { return !!CLIENT_ID }

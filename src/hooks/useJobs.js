@@ -880,96 +880,75 @@ export function useJobs() {
   }
 
   const updateStatus = (id, status) => {
-    const st = STATUSES.find(s => s.key === status)
-    setJobs(prev => prev.map(j => {
-      if (j.id !== id) return j
-      if (j.status === status) return j
-      const updated = {
-        ...j,
-        status,
-        updated_at: new Date().toISOString(),
-        history: [...(j.history || []), {
-          date: new Date().toISOString().split('T')[0],
-          status,
-          note: st ? `Statut mis à jour → ${st.label}` : 'Statut mis à jour',
-        }]
-      }
-      return sortJobHistory(updated)
-    }))
     const job = jobs.find(j => j.id === id)
-    if (job) {
-      const newJob = sortJobHistory({
-        ...job,
+    if (!job || job.status === status) return
+
+    const st = STATUSES.find(s => s.key === status)
+    const newJob = sortJobHistory({
+      ...job,
+      status,
+      updated_at: new Date().toISOString(),
+      history: [...(job.history || []), {
+        date: new Date().toISOString().split('T')[0],
         status,
-        updated_at: new Date().toISOString(),
-        history: [...(job.history || []), {
-          date: new Date().toISOString().split('T')[0],
-          status,
-          note: st ? `Statut mis à jour → ${st.label}` : 'Statut mis à jour',
-        }]
-      })
-      const coordinator = getSyncCoordinator()
-      if (coordinator) {
-        coordinator.mutate('jobs', 'update', newJob).catch(err => console.error('Failed to sync status:', err))
-      }
+        note: st ? `Statut mis à jour → ${st.label}` : 'Statut mis à jour',
+      }]
+    })
+
+    setJobs(prev => prev.map(j => j.id !== id ? j : newJob))
+
+    const coordinator = getSyncCoordinator()
+    if (coordinator) {
+      coordinator.mutate('jobs', 'update', newJob).catch(err => console.error('Failed to sync status:', err))
     }
   }
 
   const addHistoryEntry = (id, entry) => {
+    const job = jobs.find(j => j.id === id)
+    if (!job) return
+
     // Resolve history entry status if interview is in the past, but don't change job status
     const entryDate = new Date(entry.date)
     const isPast = entryDate < new Date()
     const entryStatusResolved = entry.status === 'interview' && isPast ? 'done' : entry.status
 
-    setJobs(prev => prev.map(j => {
-      if (j.id !== id) return j
-      const updated = {
-        ...j,
-        updated_at: new Date().toISOString(),
-        history: [...(j.history || []), { ...entry, status: entryStatusResolved }]
-      }
-      return sortJobHistory(updated)
-    }))
+    const newJob = sortJobHistory({
+      ...job,
+      updated_at: new Date().toISOString(),
+      history: [...(job.history || []), { ...entry, status: entryStatusResolved }]
+    })
 
-    const job = jobs.find(j => j.id === id)
-    if (job) {
-      const newJob = sortJobHistory({
-        ...job,
-        updated_at: new Date().toISOString(),
-        history: [...(job.history || []), { ...entry, status: entryStatusResolved }]
-      })
-      const coordinator = getSyncCoordinator()
-      if (coordinator) {
-        coordinator.mutate('jobs', 'update', newJob).catch(err => console.error('Failed to sync history:', err))
-      }
+    setJobs(prev => prev.map(j => j.id !== id ? j : newJob))
+
+    const coordinator = getSyncCoordinator()
+    if (coordinator) {
+      coordinator.mutate('jobs', 'update', newJob).catch(err => console.error('Failed to sync history:', err))
     }
   }
 
   const markEnriched = (id) => {
-    setJobs(prev => prev.map(j =>
-      j.id === id ? { ...j, enrichedAt: new Date().toISOString() } : j
-    ))
     const job = jobs.find(j => j.id === id)
-    if (job) {
-      const updated = { ...job, enrichedAt: new Date().toISOString() }
-      const coordinator = getSyncCoordinator()
-      if (coordinator) {
-        coordinator.mutate('jobs', 'update', updated).catch(err => console.error('Failed to sync enrichment:', err))
-      }
+    if (!job) return
+
+    const updated = { ...job, enrichedAt: new Date().toISOString() }
+    setJobs(prev => prev.map(j => j.id === id ? updated : j))
+
+    const coordinator = getSyncCoordinator()
+    if (coordinator) {
+      coordinator.mutate('jobs', 'update', updated).catch(err => console.error('Failed to sync enrichment:', err))
     }
   }
 
   const clearEnriched = (id) => {
-    setJobs(prev => prev.map(j =>
-      j.id === id ? { ...j, enrichedAt: undefined } : j
-    ))
     const job = jobs.find(j => j.id === id)
-    if (job) {
-      const updated = { ...job, enrichedAt: undefined }
-      const coordinator = getSyncCoordinator()
-      if (coordinator) {
-        coordinator.mutate('jobs', 'update', updated).catch(err => console.error('Failed to sync enrichment clear:', err))
-      }
+    if (!job) return
+
+    const updated = { ...job, enrichedAt: undefined }
+    setJobs(prev => prev.map(j => j.id === id ? updated : j))
+
+    const coordinator = getSyncCoordinator()
+    if (coordinator) {
+      coordinator.mutate('jobs', 'update', updated).catch(err => console.error('Failed to sync enrichment clear:', err))
     }
   }
 
@@ -978,21 +957,18 @@ export function useJobs() {
   }
 
   const toggleFavorite = (id) => {
-    // Find current favorite value BEFORE state update
     const currentJob = jobs.find(j => j.id === id)
-    const newFavoriteValue = currentJob ? !currentJob.favorite : true
+    if (!currentJob) return
 
-    // Update local state
-    setJobs(prev => prev.map(j => j.id === id ? { ...j, favorite: newFavoriteValue } : j))
+    const newFavoriteValue = !currentJob.favorite
+    const updated = { ...currentJob, favorite: newFavoriteValue, updated_at: new Date().toISOString() }
 
-    // Sync with correct favorite value
-    if (currentJob) {
-      const updated = { ...currentJob, favorite: newFavoriteValue, updated_at: new Date().toISOString() }
-      console.log('Toggling favorite:', id, 'new value:', updated.favorite)
-      const coordinator = getSyncCoordinator()
-      if (coordinator) {
-        coordinator.mutate('jobs', 'update', updated).catch(err => console.error('Failed to sync favorite:', err))
-      }
+    setJobs(prev => prev.map(j => j.id === id ? updated : j))
+
+    console.log('Toggling favorite:', id, 'new value:', updated.favorite)
+    const coordinator = getSyncCoordinator()
+    if (coordinator) {
+      coordinator.mutate('jobs', 'update', updated).catch(err => console.error('Failed to sync favorite:', err))
     }
   }
 
@@ -1019,63 +995,41 @@ export function useJobs() {
   }
 
   const checkPosition = async (jobId, url) => {
-    const result = await checkPositionUrl(url)
-    setJobs(prev => prev.map(j => {
-      if (j.id !== jobId) return j
-
-      let updatedJob = {
-        ...j,
-        positionChecks: {
-          ...(j.positionChecks || {}),
-          [url]: result
-        }
-      }
-
-      if (result.available === false && !['rejected', 'rejected_ats', 'cancelled', 'archived'].includes(j.status)) {
-        updatedJob = {
-          ...updatedJob,
-          status: 'rejected',
-          history: [
-            ...(j.history || []),
-            {
-              date: new Date().toISOString().split('T')[0],
-              status: 'rejected',
-              note: `🔍 Poste fermé — détecté: ${result.reason || 'Position not available'}`,
-            }
-          ]
-        }
-      }
-
-      return updatedJob
-    }))
-
     const job = jobs.find(j => j.id === jobId)
-    if (job) {
-      let updatedJob = {
-        ...job,
-        positionChecks: {
-          ...(job.positionChecks || {}),
-          [url]: result
-        }
-      }
+    if (!job) return null
 
-      if (result.available === false && !['rejected', 'rejected_ats', 'cancelled', 'archived'].includes(job.status)) {
-        updatedJob = {
-          ...updatedJob,
-          status: 'rejected',
-          history: [
-            ...(job.history || []),
-            {
-              date: new Date().toISOString().split('T')[0],
-              status: 'rejected',
-              note: `🔍 Poste fermé — détecté: ${result.reason || 'Position not available'}`,
-            }
-          ]
-        }
-      }
+    const result = await checkPositionUrl(url)
 
-      syncManager.mutate('jobs', 'update', updatedJob).catch(err => console.error('Failed to sync position check:', err))
+    let updatedJob = {
+      ...job,
+      positionChecks: {
+        ...(job.positionChecks || {}),
+        [url]: result
+      }
     }
+
+    if (result.available === false && !['rejected', 'rejected_ats', 'cancelled', 'archived'].includes(job.status)) {
+      updatedJob = {
+        ...updatedJob,
+        status: 'rejected',
+        history: [
+          ...(job.history || []),
+          {
+            date: new Date().toISOString().split('T')[0],
+            status: 'rejected',
+            note: `🔍 Poste fermé — détecté: ${result.reason || 'Position not available'}`,
+          }
+        ]
+      }
+    }
+
+    setJobs(prev => prev.map(j => j.id !== jobId ? j : updatedJob))
+
+    const coordinator = getSyncCoordinator()
+    if (coordinator) {
+      coordinator.mutate('jobs', 'update', updatedJob).catch(err => console.error('Failed to sync position check:', err))
+    }
+
     return result
   }
 
@@ -1093,7 +1047,7 @@ export function useJobs() {
   }
 
   const clearDeletedJobs = () => {
-    localStorage.removeItem(DELETED_JOBS_KEY)
+    localStorage.removeItem(DELETED_JOB_IDS_KEY)
     console.log('✓ Cleared deleted jobs list — auto-refresh will re-import them')
   }
 

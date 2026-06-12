@@ -13,14 +13,19 @@ class SyncCoordinator {
     this.isPolling = false
     this.listeners = []
 
+    // Bind handlers so we can remove them later
+    this.handleOnlineBinding = () => this.handleOnline()
+    this.handleOfflineBinding = () => this.handleOffline()
+    this.handleDatasyncBinding = () => {
+      this.notifyListeners({ status: 'synced', timestamp: new Date() })
+    }
+
     // Listen to online/offline events
-    window.addEventListener('online', () => this.handleOnline())
-    window.addEventListener('offline', () => this.handleOffline())
+    window.addEventListener('online', this.handleOnlineBinding)
+    window.addEventListener('offline', this.handleOfflineBinding)
 
     // Listen to datasync events from pollManager
-    window.addEventListener('jobtrackr:datasync', () => {
-      this.notifyListeners({ status: 'synced', timestamp: new Date() })
-    })
+    window.addEventListener('jobtrackr:datasync', this.handleDatasyncBinding)
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -60,6 +65,11 @@ class SyncCoordinator {
       this.pollTimer = null
     }
     this.isPolling = false
+
+    // Remove event listeners to prevent memory leaks
+    window.removeEventListener('online', this.handleOnlineBinding)
+    window.removeEventListener('offline', this.handleOfflineBinding)
+    window.removeEventListener('jobtrackr:datasync', this.handleDatasyncBinding)
   }
 
   // ────────────────────────────────────────────────────────────────────────────

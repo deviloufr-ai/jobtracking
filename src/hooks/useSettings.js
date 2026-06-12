@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { indexeddb } from '../services/indexeddb'
 import { getSyncCoordinator } from '../services/syncCoordinator'
+import { supabase } from '../services/supabase'
 
 export const SETTINGS_DEFAULTS = {
   weeklyApps: 5,
@@ -41,7 +42,7 @@ export function useSettings() {
 
   // Load from IndexedDB on mount
   useEffect(() => {
-    const loadSettings = async () => {
+    const loadSettingsAsync = async () => {
       try {
         await indexeddb.init()
         const cached = await indexeddb.getSettings()
@@ -60,7 +61,7 @@ export function useSettings() {
         setLoading(false)
       }
     }
-    loadSettings()
+    loadSettingsAsync()
   }, [])
 
   const updateSetting = useCallback((key, value) => {
