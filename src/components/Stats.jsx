@@ -7,12 +7,12 @@ function ActivityBars({ values, color = '#6366f1' }) {
   const days = ['L','M','M','J','V','S','D']
 
   return (
-    <div className="flex items-end justify-between h-48 gap-1.5">
+    <div className="flex items-end justify-center h-40 gap-2">
       {values.map((v, i) => {
         const pct = (v / max) * 100
         return (
-          <div key={i} className="flex flex-col items-center flex-1 gap-2">
-            <div className="w-full flex items-end justify-center h-40 bg-gray-50 rounded">
+          <div key={i} className="flex flex-col items-center gap-1.5">
+            <div className="flex items-end justify-center h-32 w-8 bg-gray-50 rounded">
               <div
                 className="w-full rounded-t transition-all"
                 style={{
@@ -22,7 +22,7 @@ function ActivityBars({ values, color = '#6366f1' }) {
                 }}
               />
             </div>
-            <div className="flex flex-col items-center gap-0.5 w-full">
+            <div className="flex flex-col items-center gap-0.5">
               <span className="text-xs font-semibold text-gray-700">{v}</span>
               <span className="text-[10px] text-gray-400">{days[i]}</span>
             </div>
@@ -71,12 +71,23 @@ export default function Stats({ jobs }) {
   const offerRate = total > 0 ? Math.round((offers / total) * 100) : 0
   const interviewRate = total > 0 ? Math.round(((interviews + offers) / total) * 100) : 0
 
+  const getWeekStart = () => {
+    const now = new Date()
+    const day = now.getDay()
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1)
+    const weekStart = new Date(now.setDate(diff))
+    weekStart.setHours(0, 0, 0, 0)
+    return weekStart
+  }
+
   const weeklyActivity = useMemo(() => {
     const days = Array(7).fill(0)
-    const now = new Date()
+    const weekStart = getWeekStart()
     for (const j of jobs) {
-      const diff = Math.floor((now - new Date(j.date)) / 86400000)
-      if (diff >= 0 && diff < 7) days[6 - diff]++
+      const jobDate = new Date(j.date)
+      jobDate.setHours(0, 0, 0, 0)
+      const diff = Math.floor((jobDate - weekStart) / 86400000)
+      if (diff >= 0 && diff < 7) days[diff]++
     }
     return days
   }, [jobs])
@@ -92,15 +103,6 @@ export default function Stats({ jobs }) {
     count: jobs.filter(j => j.status === s.key).length
   })).filter(s => s.count > 0 && s.key !== 'archived')
 
-  // Calendar week: Monday 00:00 to Sunday 23:59 (resets each Monday)
-  const getWeekStart = () => {
-    const now = new Date()
-    const day = now.getDay()
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1) // adjust when day is Sunday
-    const weekStart = new Date(now.setDate(diff))
-    weekStart.setHours(0, 0, 0, 0)
-    return weekStart
-  }
   const weekStart = getWeekStart()
   const thisWeek = jobs.filter(j => new Date(j.date) >= weekStart).length
   const rateColor = responseRate >= 30 ? '#10b981' : responseRate >= 15 ? '#f59e0b' : '#6366f1'
