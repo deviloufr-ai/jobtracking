@@ -21,13 +21,17 @@ export async function deduplicateJobsViaEdgeFunction() {
     const functionUrl = '/api/deduplicate'
     console.log('📤 POST to:', functionUrl)
 
+    // Get Supabase URL from client env
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+
     const response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        userId
+        userId,
+        supabaseUrl
       })
     })
 

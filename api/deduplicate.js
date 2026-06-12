@@ -2,21 +2,26 @@ export default async function handler(req, res) {
   try {
     console.log('📨 Deduplicate request received')
 
-    const { userId } = req.body
+    const { userId, supabaseUrl } = req.body
     if (!userId) {
       return res.status(400).json({ error: 'Missing userId' })
+    }
+    if (!supabaseUrl) {
+      return res.status(400).json({ error: 'Missing supabaseUrl' })
     }
 
     console.log(`🔄 Deduplicating for user: ${userId}`)
 
-    // Get Supabase credentials from environment
-    const supabaseUrl = process.env.VITE_SUPABASE_URL || ''
+    // Get service key from environment
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
-    if (!supabaseUrl || !serviceKey) {
-      console.error('❌ Missing Supabase credentials')
-      return res.status(500).json({ error: 'Supabase not configured' })
+    if (!serviceKey) {
+      console.error('❌ Missing SUPABASE_SERVICE_ROLE_KEY')
+      return res.status(500).json({ error: 'Service key not configured' })
     }
+
+    console.log('✓ Using Supabase URL:', supabaseUrl.substring(0, 20) + '...')
+    console.log('✓ Service key available')
 
     // Fetch all jobs for this user via REST API
     const jobsUrl = `${supabaseUrl}/rest/v1/jobs?user_id=eq.${userId}`
