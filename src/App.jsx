@@ -183,8 +183,8 @@ export default function App() {
     window.addEventListener('jobtrackr:datasync', handleSyncComplete)
 
     // Fallback timeout: after 10 seconds, show dashboard even if sync hasn't finished
-    // This prevents getting stuck on loading screen
     const timeout = setTimeout(() => {
+      console.log('⏱️ Loading screen timeout - showing dashboard')
       setInitialSyncDone(true)
     }, 10000)
 
@@ -192,7 +192,7 @@ export default function App() {
       window.removeEventListener('jobtrackr:datasync', handleSyncComplete)
       clearTimeout(timeout)
     }
-  }, [gmailUser, initialSyncDone, jobs.length])
+  }, [gmailUser, initialSyncDone])
 
   // Hide landing page when user logs in
   useEffect(() => {
