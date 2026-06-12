@@ -167,9 +167,20 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
     if (!pos) return ''
     const normalized = pos.toLowerCase().trim()
     // Remove common suffixes that don't distinguish jobs (Growth, Junior, Senior, H/F, CDI, CDD)
-    // but keep them in the display title
     return normalized
       .replace(/\s*(\(growth\)|\bfresh|\bjunior|\bsenior|\blead|\bh\/f|\bcdi|\bcdd|\b[ivxlc]+)$/i, '')
+      .trim()
+  }
+
+  // Normalize company for grouping — match "Manutan" with "Manutan Business Technology"
+  // but keep "Manutan" vs "Manutan Consulting" separate (different divisions)
+  const normalizeCompanyForGrouping = (company) => {
+    if (!company) return ''
+    const normalized = company.toLowerCase().trim()
+    // Remove common legal suffixes (Inc, Ltd, GmbH, SA, SARL, EIRL, etc.)
+    // and generic business suffixes (Group, Division, Business, Solutions, Technologies, etc.)
+    return normalized
+      .replace(/\s*(\binc\.?|\bltd\.?|\b(gmbh|sa|sarl|eirl|sas|sasu|sprl)\b|\bgroup\b|\bdivision\b|\bbusiness\b|\bsolutions\b|\btechnologies?\b|\bservice[s]?\b)\.?$/i, '')
       .trim()
   }
 
@@ -177,9 +188,12 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
   for (const p of enriched) {
     if (!p.company) continue
     if (isSuggestion(p)) continue
-    // Group by company + normalized position so "Product Manager" and "Product Manager Growth" merge
-    // but "Lead Product Manager" ≠ "Product Manager" stay separate
-    const companyKey = normalize(p.company)
+    // Group by normalized company + normalized position
+    // "Manutan Business Technology" merges with "Manutan"
+    // "Product Manager" merges with "Product Manager Growth"
+    // But "Manutan Consulting" stays separate from "Manutan"
+    const normCompany = normalizeCompanyForGrouping(p.company)
+    const companyKey = normalize(normCompany) // apply alphanumeric normalization too
     const normPos = normalizePositionForGrouping(p.position)
     const posKey = normPos || 'unknown'
     const key = isGenericPos(p.position) ? companyKey : `${companyKey}|||${posKey}`
