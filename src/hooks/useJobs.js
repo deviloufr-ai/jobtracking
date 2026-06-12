@@ -979,14 +979,23 @@ export function useJobs() {
       markJobAsDeleted(job.company, job.position)
     })
 
-    // Clear local state immediately
+    // Clear IndexedDB immediately (before Supabase to prevent re-sync from restoring)
+    try {
+      await indexeddb.clearJobs()
+      console.log('✓ Cleared IndexedDB')
+    } catch (err) {
+      console.error('Failed to clear IndexedDB:', err.message)
+    }
+
+    // Clear local state
     setJobs([])
 
     // Delete all jobs from Supabase for this user
     try {
       const syncUserId = await resolveSyncUserId()
       if (syncUserId && isSupabaseConfigured()) {
-        const { error } = await supabase
+        console.log('Deleting all jobs from Supabase for user:', syncUserId)
+        const { error, count } = await supabase
           .from('jobs')
           .delete()
           .eq('user_id', syncUserId)
@@ -994,7 +1003,7 @@ export function useJobs() {
         if (error) {
           console.error('Failed to delete jobs from Supabase:', error)
         } else {
-          console.log('✓ All jobs deleted from Supabase')
+          console.log('✓ All jobs deleted from Supabase (count:', count, ')')
         }
       }
     } catch (err) {
