@@ -233,12 +233,8 @@ class PollManager {
     const remoteTime = remoteConverted.updated_at ? new Date(remoteConverted.updated_at).getTime() : 0
 
     if (localTime > remoteTime) {
-      // Local is newer, keep it but add any new remote history
-      if (local.history && Array.isArray(local.history) && remoteConverted.history && Array.isArray(remoteConverted.history)) {
-        const merged = [...local.history, ...remoteConverted.history]
-        const deduplicated = deduplicateHistory([{ history: merged }])[0].history
-        return { ...local, history: deduplicated }
-      }
+      // Local is newer, keep it completely (user may have deleted entries locally)
+      // Don't merge in remote history as it would bring back deleted entries
       return local
     }
 
