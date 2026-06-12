@@ -167,16 +167,24 @@ export default function App() {
 
   // Hide loading screen when sync completes (event, data loaded, or timeout)
   useEffect(() => {
-    if (!gmailUser || initialSyncDone) return
+    console.log('🔍 Loading screen effect:', { gmailUser: !!gmailUser, initialSyncDone, jobsCount: jobs.length })
+    if (!gmailUser || initialSyncDone) {
+      console.log('⏭️  Skipping - no user or already done')
+      return
+    }
 
     // If jobs loaded, sync is complete
     if (jobs.length > 0) {
+      console.log('📊 Jobs loaded, hiding loading screen')
       setInitialSyncDone(true)
       return
     }
 
+    console.log('⏳ Setting up timeout for loading screen')
+
     // Listen for sync complete event
     const handleSyncComplete = () => {
+      console.log('📡 Sync event received, hiding loading screen')
       setInitialSyncDone(true)
     }
 
