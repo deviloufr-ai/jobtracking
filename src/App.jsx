@@ -150,9 +150,9 @@ export default function App() {
     }
   }, [])
 
-  // Initialize sync when user logs in or if already logged in
+  // Initialize sync only when user leaves landing page (actively logs in)
   useEffect(() => {
-    if (!gmailUser || syncUserId) return // Already initialized
+    if (showLandingPage || !gmailUser || syncUserId) return // Don't sync if on landing page
 
     console.log('🔐 User logged in, initializing SyncCoordinator...')
 
@@ -167,7 +167,7 @@ export default function App() {
       setSyncUserId(fallbackId)
       initializeSyncCoordinator(fallbackId)
     })
-  }, [gmailUser, syncUserId])
+  }, [showLandingPage, gmailUser, syncUserId])
 
   // Start polling once we have the correct sync ID
   usePolling(syncUserId)
