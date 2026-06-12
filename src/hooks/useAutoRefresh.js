@@ -409,10 +409,10 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
         } else {
           // Existing job — merge any new history entries
           const normNote = s => (s || '').trim().replace(/\s+/g, ' ').slice(0, 80)
-          // Expand merged notes (stored as "note1 · note2") so individual notes match too
+          // Expand merged notes (stored as "note1 | note2") so individual notes match too
           const existingHistKeys = new Set(
             (existing.history || []).flatMap(h =>
-              (h.note || '').split(' · ').map(n => `${h.date}_${normNote(n)}`)
+              (h.note || '').split(' | ').map(n => `${h.date}_${normNote(n)}`)
             )
           )
           const newEntries = (p.history || []).filter(h => !existingHistKeys.has(`${h.date}_${normNote(h.note)}`))
