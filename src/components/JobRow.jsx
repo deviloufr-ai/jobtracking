@@ -244,8 +244,12 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
   const handleDeleteStep = (displayIdx) => {
     // Fix #18 — confirmation is now handled inline (two-step UI), no window.confirm
     const idx = toOriginalIdx(displayIdx)
+    console.log('🗑️ Deleting history entry:', { displayIdx, originalIdx: idx, entry: history[idx], totalBefore: history.length })
     const updated = history.filter((_, i) => i !== idx)
+    console.log('✓ Updated history:', { totalAfter: updated.length, removed: history[idx] })
     onUpdateHistory(job.id, updated)
+    console.log('✓ Called onUpdateHistory for job:', job.id)
+    setConfirmDeleteIdx(null)
   }
 
   const handleEnrich = async () => {
