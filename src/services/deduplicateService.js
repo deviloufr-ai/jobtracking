@@ -8,23 +8,31 @@ export async function deduplicateJobsViaEdgeFunction() {
   try {
     console.log('🔄 Calling deduplicate-jobs Edge Function...')
 
-    // Get current session
-    const { data, error } = await supabase.auth.getSession()
-    if (error) {
-      console.error('Session error:', error)
-      throw new Error(`Failed to get session: ${error.message}`)
+    // Get current user (more reliable than getSession)
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError) {
+      console.error('Auth error:', userError)
+      throw new Error(`Auth failed: ${userError.message}`)
     }
 
-    const session = data?.session
-    if (!session) {
+    if (!user) {
       throw new Error('Not logged in - please login first')
     }
 
-    if (!session.access_token) {
-      throw new Error('No access token available')
+    console.log('✓ User found:', user.id)
+
+    // Get session for access token
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError || !session) {
+      console.warn('Session error (will try without token):', sessionError?.message)
     }
 
-    console.log('✓ Session found, calling Edge Function...')
+    const accessToken = session?.access_token
+    if (!accessToken) {
+      throw new Error('No access token - session may have expired')
+    }
+
+    console.log('✓ Access token found')
 
     // Call the Edge Function with auth header
     const supabaseUrl = supabase.supabaseUrl
@@ -34,7 +42,7 @@ export async function deduplicateJobsViaEdgeFunction() {
     const response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${session.access_token}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({})
