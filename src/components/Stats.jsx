@@ -197,19 +197,15 @@ export default function Stats({ jobs }) {
           <span className="text-5xl font-extrabold text-indigo-600 leading-none">{thisWeek}</span>
           <span className="text-sm text-gray-400">cette semaine</span>
         </div>
-        <div>
+        <div className="mt-2">
           <Sparkline values={weeklyActivity} color="#6366f1" />
-          <div className="relative mt-1 h-4">
-            {['L','M','M','J','V','S','D'].map((d, i) => {
-              const x = 3 + (i / 6) * 114
-              const leftPct = (x / 120) * 100
-              return (
-                <span key={i} className="absolute text-[10px] text-gray-300 text-center w-4 -translate-x-1/2"
-                  style={{ left: `${leftPct}%` }}>
-                  {d}
-                </span>
-              )
-            })}
+          <div className="grid grid-cols-7 gap-1 mt-3">
+            {['L','M','M','J','V','S','D'].map((d, i) => (
+              <div key={i} className="flex flex-col items-center gap-1">
+                <span className="text-[10px] font-semibold text-gray-400">{weeklyActivity[i]}</span>
+                <span className="text-[10px] text-gray-300">{d}</span>
+              </div>
+            ))}
           </div>
         </div>
       </Card>
