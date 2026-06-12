@@ -16,7 +16,7 @@ import STARGenerator from './components/STARGenerator'
 import EmailDraft from './components/EmailDraft'
 import { useAutoRefresh } from './hooks/useAutoRefresh'
 import { usePolling } from './hooks/usePolling'
-import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, autoReuseStoredTokens, getSyncUserIdForSupabase } from './services/gmail'
+import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, autoReuseStoredTokens, getSyncUserIdForSupabase, resolveSyncUserId } from './services/gmail'
 import { initializeSyncCoordinator } from './services/syncCoordinator'
 import JobSearch from './components/JobSearch'
 import CVManager from './components/CVManager'
@@ -102,8 +102,6 @@ export default function App() {
   const { permission: notificationPermission } = useNotificationPermission()
   useNotificationScenarios(jobs, notificationPermission)
 
-  // Start polling for changes from other devices (uses stable sync ID, not Gmail email)
-  usePolling(getSyncUserIdForSupabase())
   const [modal, setModal] = useState(null)
   const prevArchiveSettingsRef = useRef(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
@@ -120,18 +118,30 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('tracker')
   const [expandedJobId, setExpandedJobId] = useState(null)
   const [showLandingPage, setShowLandingPage] = useState(true)
+  const [syncUserId, setSyncUserId] = useState(null)
 
-  // On load: restore stored tokens and initialize sync coordinator
+  // On load: resolve correct sync ID and initialize sync infrastructure
   useEffect(() => {
     autoReuseStoredTokens()
     if (!gmailUser && isConnected()) {
       getGmailUserInfo().then(user => { if (user) setGmailUser(user) })
     }
 
-    // Initialize sync coordinator with stable user ID
-    const syncUserId = getSyncUserIdForSupabase()
-    initializeSyncCoordinator(syncUserId)
+    // Resolve sync user ID asynchronously (waits for Supabase lookup)
+    // This ensures multi-device sync uses the same UUID for the same Gmail account
+    resolveSyncUserId().then(id => {
+      setSyncUserId(id)
+      initializeSyncCoordinator(id)
+    }).catch(err => {
+      console.error('Failed to resolve sync ID, using fallback:', err)
+      const fallbackId = getSyncUserIdForSupabase()
+      setSyncUserId(fallbackId)
+      initializeSyncCoordinator(fallbackId)
+    })
   }, [])
+
+  // Start polling once we have the correct sync ID
+  usePolling(syncUserId)
 
   // Hide landing page when user logs in
   useEffect(() => {
