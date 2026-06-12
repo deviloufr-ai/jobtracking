@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { isConnected, fetchJobEmails, fetchJobEmailsForAccount, getConnectedAccounts, getCachedUser } from '../services/gmail'
 import { parseEmailsForJobs, validateAndCleanJobs } from '../services/claude'
 import { fetchCalendarEvents } from '../services/calendar'
+import { extractJobUrlsFromEmail, rankUrlsByJobRelevance } from '../services/positionChecker'
 import { isAtsRejection, isDeletedJob } from './useJobs'
 import { normalize, isJobBoard } from '../constants/jobBoards'
 
@@ -343,6 +344,10 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
       .filter(Boolean)
       .join('\n\n---\n\n')
 
+    // Extract job URLs from email bodies
+    const jobUrls = emailBodies ? extractJobUrlsFromEmail(emailBodies) : []
+    const positionLinks = jobUrls.length > 0 ? jobUrls : undefined
+
     grouped.push({
       ...latest,
       position: bestPosition,
@@ -351,6 +356,7 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
       history: mergedHistory,
       notes: sorted.map(e => e.notes).filter(Boolean).join(' | '),
       _emailBody: emailBodies || undefined,
+      ...(positionLinks && { positionLinks }),
       ...(allUpdateOnly && { _updateOnly: true }),
     })
   }
@@ -464,6 +470,7 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
             notes: p.notes || '',
             lastSyncTime: now,
             _history: p.history?.length > 0 ? p.history : undefined,
+            ...(p.positionLinks && { positionLinks: p.positionLinks }),
           })
           added++
         } else {
@@ -485,11 +492,25 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
             // Upgrade status if new emails show a higher-priority status
             const newStatus = STATUS_ORDER.indexOf(p.status) > STATUS_ORDER.indexOf(existing.status)
               ? p.status : existing.status
-            updateJob(existing.id, { history: mergedHistory, status: newStatus, lastSyncTime: now })
+            const updatePayload = { history: mergedHistory, status: newStatus, lastSyncTime: now }
+            // Add position links if found (merge with existing if any)
+            if (p.positionLinks?.length) {
+              const existingLinks = new Set(existing.positionLinks || [])
+              const allLinks = [...existingLinks, ...p.positionLinks]
+              updatePayload.positionLinks = [...new Set(allLinks)]
+            }
+            updateJob(existing.id, updatePayload)
             updated++
           } else {
             // No new entries but still update lastSyncTime to avoid re-fetching same emails
-            updateJob(existing.id, { lastSyncTime: now })
+            const updatePayload = { lastSyncTime: now }
+            // Add position links if found
+            if (p.positionLinks?.length) {
+              const existingLinks = new Set(existing.positionLinks || [])
+              const allLinks = [...existingLinks, ...p.positionLinks]
+              updatePayload.positionLinks = [...new Set(allLinks)]
+            }
+            updateJob(existing.id, updatePayload)
           }
         }
       }
