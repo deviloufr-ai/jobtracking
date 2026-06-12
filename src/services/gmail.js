@@ -3,6 +3,11 @@ import { supabase } from './supabase'
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
 
+// Debug mode: set localStorage.debug = '1' to enable verbose logging
+const DEBUG = typeof window !== 'undefined' && localStorage?.getItem('debug') === '1'
+const log = (...args) => DEBUG && console.log(...args)
+const logError = (...args) => console.error(...args)
+
 // ── Multi-account storage ─────────────────────────────────────────────────────
 // accounts: { [email]: { token: string, user: { email, name, picture } } }
 const ACCOUNTS_KEY = 'jt_gmail_accounts'
@@ -88,7 +93,7 @@ export async function resolveSyncUserId() {
   // Get or obtain Gmail email for Supabase lookup
   let firstAccount = Object.values(accounts)[0]
   let gmailEmail = firstAccount?.user?.email
-  console.log('📧 Accounts in memory:', Object.keys(accounts).length, 'gmailEmail:', gmailEmail)
+  log('📧 Accounts in memory:', Object.keys(accounts).length, 'gmailEmail:', gmailEmail)
 
   // If no logged-in account in memory, try reloading from localStorage (in case module state is stale)
   if (!gmailEmail) {
@@ -96,7 +101,7 @@ export async function resolveSyncUserId() {
     const storedAccount = Object.values(storedAccounts)[0]
     gmailEmail = storedAccount?.user?.email
     if (gmailEmail && !firstAccount) firstAccount = storedAccount
-    console.log('📧 Reloaded from localStorage:', Object.keys(storedAccounts).length, 'gmailEmail:', gmailEmail)
+    log('📧 Reloaded from localStorage:', Object.keys(storedAccounts).length, 'gmailEmail:', gmailEmail)
   }
 
   // If still no email, trigger OAuth to get email (fixes incognito mode)
@@ -546,13 +551,13 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
 
   const runQuery = async (query) => {
     try {
-      console.log(`📨 Running query: ${query.slice(0, 80)}...`)
+      log(`📨 Running query: ${query.slice(0, 80)}...`)
       const data = await gmailFetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${Math.floor(Math.min(effectiveMonths * 20, 100))}&q=${encodeURIComponent(query)}`,
         token
       )
       const newCount = (data.messages || []).length
-      console.log(`✅ Query returned ${newCount} emails`)
+      log(`✅ Query returned ${newCount} emails`)
       for (const m of (data.messages || [])) {
         if (!allMessageIds.has(m.id)) { allMessageIds.add(m.id); allMessages.push(m) }
       }
@@ -604,11 +609,11 @@ async function fetchEmailDetail(id, token) {
     const subject = get('Subject')
     const from = get('From')
 
-    console.log(`📧 Processing email: "${subject}" from ${from}`)
+    log(`📧 Processing email: "${subject}" from ${from}`)
 
     // Safety net: drop promotional/forum emails even if they slipped through query filters
     if (labelIds.includes('CATEGORY_PROMOTIONS') || labelIds.includes('CATEGORY_FORUMS')) {
-      console.log(`   ❌ Filtered: Promotional/Forum category`)
+      log(`   ❌ Filtered: Promotional/Forum category`)
       return null
     }
 
@@ -629,7 +634,7 @@ async function fetchEmailDetail(id, token) {
     const isATS = ATS_DOMAINS.some(d => fromRaw.includes(d)) || LINKEDIN_APP_CONFIRMATION
 
     if (isATS) {
-      console.log(`   ✅ Passed: Recognized ATS domain`)
+      log(`   ✅ Passed: Recognized ATS domain`)
     }
 
     if (!isATS) {
@@ -660,7 +665,7 @@ async function fetchEmailDetail(id, token) {
       const noreplyAlert = (fromRaw.includes('noreply@') || fromRaw.includes('no-reply@')) && !isRecruiterNoreply
 
       if (isFromBlocklist || noreplyAlert) {
-        console.log(`   ❌ Filtered: Job alert sender/noreply (blocklist: ${isFromBlocklist}, noreplyAlert: ${noreplyAlert})`)
+        log(`   ❌ Filtered: Job alert sender/noreply (blocklist: ${isFromBlocklist}, noreplyAlert: ${noreplyAlert})`)
         return null
       }
       const JOB_ALERT_SUBJECTS = [
@@ -674,7 +679,7 @@ async function fetchEmailDetail(id, token) {
       const isJobAlert = JOB_ALERT_SENDERS.some(s => fromRaw.includes(s))
         || JOB_ALERT_SUBJECTS.some(s => subjectRaw.includes(s))
       if (isJobAlert) {
-        console.log(`   ❌ Filtered: Job alert subject`)
+        log(`   ❌ Filtered: Job alert subject`)
         return null
       }
 
@@ -704,17 +709,17 @@ async function fetchEmailDetail(id, token) {
       ]
       const hasJobSignal = JOB_SUBJECT_KEYWORDS.some(k => subjectRaw.includes(k) || snippetRaw.includes(k))
       if (!hasJobSignal) {
-        console.log(`   ❌ Filtered: No job signal keywords found`)
+        log(`   ❌ Filtered: No job signal keywords found`)
         return null
       }
-      console.log(`   ✅ Passed: Has job signal keywords`)
+      log(`   ✅ Passed: Has job signal keywords`)
     }
     const isSent = labelIds.includes('SENT')
 
     // Detect Gmail category for Claude confidence hint
     const gmailCategory = Object.entries(GMAIL_CAT_MAP).find(([k]) => labelIds.includes(k))?.[1] || null
 
-    console.log(`   ✅ Email accepted and will be sent to Claude`)
+    log(`   ✅ Email accepted and will be sent to Claude`)
     return {
       id: data.id,
       subject: get('Subject'),

@@ -5,6 +5,9 @@ import { fetchCalendarEvents } from '../services/calendar'
 import { isAtsRejection, isDeletedJob } from './useJobs'
 import { normalize, isJobBoard } from '../constants/jobBoards'
 
+const DEBUG = typeof window !== 'undefined' && localStorage?.getItem('debug') === '1'
+const log = (...args) => DEBUG && console.log(...args)
+
 // Auto-mark previous history items as done when their corresponding meeting has finished
 function autoCompletePastMeetings(history) {
   if (!history || history.length === 0) return history
@@ -130,16 +133,16 @@ function extractMeetingLink(text = '') {
 export async function buildJobsFromEmails(emails, calendarEvents = []) {
   const parsed = await parseEmailsForJobs(emails)
   if (!parsed.length) {
-    console.log(`📧 Claude parsed ${emails.length} emails but found no job candidatures`)
+    log(`📧 Claude parsed ${emails.length} emails but found no job candidatures`)
     return []
   }
-  console.log(`📊 Claude parsed ${emails.length} emails → ${parsed.length} job signals (confidence >= 35)`)
+  log(`📊 Claude parsed ${emails.length} emails → ${parsed.length} job signals (confidence >= 35)`)
 
   const enriched = parsed
     .filter(p => {
       const isBoard = isJobBoard(p.company)
       if (isBoard) {
-        console.log(`🗑️  Filtered job board: ${p.company}/${p.position}`)
+        log(`🗑️  Filtered job board: ${p.company}/${p.position}`)
       }
       return p.company && !isBoard
     })
@@ -148,7 +151,7 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
       status: p.status === 'rejected' && isAtsRejection(p.notes || '') ? 'rejected_ats' : p.status
     }))
 
-  console.log(`📋 After filtering job boards: ${enriched.length} signals remain`)
+  log(`📋 After filtering job boards: ${enriched.length} signals remain`)
 
   const emailByGmailId = Object.fromEntries(emails.map(e => [e.id, e]))
 
@@ -171,10 +174,10 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
     jobGroups.get(key).push(p)
   }
 
-  console.log(`🏢 Grouping into companies: ${jobGroups.size} unique company/position combinations`)
+  log(`🏢 Grouping into companies: ${jobGroups.size} unique company/position combinations`)
   const grouped = []
   for (const [key, emailsForJob] of jobGroups) {
-    console.log(`  └─ ${key}: ${emailsForJob.length} emails`)
+    log(`  └─ ${key}: ${emailsForJob.length} emails`)
     const sorted = [...emailsForJob].sort((a, b) => new Date(a.date) - new Date(b.date))
 
     // FIX: Post-process HelloWork rejection emails that Claude mis-parses
@@ -368,11 +371,11 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
 
       const grouped = await buildJobsFromEmails(emails, calendarEvents)
       if (!grouped.length) {
-        console.log('📭 No jobs extracted from emails (all filtered or no matches)')
+        log('📭 No jobs extracted from emails (all filtered or no matches)')
         return
       }
 
-      console.log(`✅ Extracted ${grouped.length} jobs from emails`)
+      log(`✅ Extracted ${grouped.length} jobs from emails`)
 
       const GENERIC_POS = ['unknown', 'unknown position', 'poste non précisé', 'non spécifié', 'inconnu', '']
       const isGenericPos = pos => GENERIC_POS.includes((pos || '').toLowerCase().trim())
@@ -398,14 +401,14 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
 
         // Skip re-importing jobs that were explicitly deleted
         if (!existing && isDeletedJob(p.company, p.position)) {
-          console.log(`⏭️  Skipped deleted job: ${p.company}/${p.position}`)
+          log(`⏭️  Skipped deleted job: ${p.company}/${p.position}`)
           skipped++
           continue
         }
 
         if (!existing) {
           // New job — add it with lastSyncTime
-          console.log(`➕ Adding new job: ${p.company}/${p.position} (${p.status}, ${p.history?.length || 0} history entries)`)
+          log(`➕ Adding new job: ${p.company}/${p.position} (${p.status}, ${p.history?.length || 0} history entries)`)
           addJob({
             company: p.company || 'Inconnu',
             position: p.position || 'Poste non précisé',
@@ -427,7 +430,7 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
           )
           const newEntries = (p.history || []).filter(h => !existingHistKeys.has(`${h.date}_${normNote(h.note)}`))
           if (newEntries.length > 0) {
-            console.log(`📝 Updating ${p.company}/${p.position}: adding ${newEntries.length} new history entries`)
+            log(`📝 Updating ${p.company}/${p.position}: adding ${newEntries.length} new history entries`)
             const merged = [...(existing.history || []), ...newEntries]
               .sort((a, b) => new Date(a.date) - new Date(b.date))
             const deduplicated = deduplicateHistoryBySemantics(merged)
@@ -473,14 +476,14 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
       // Supabase fetch during app init already provides all historical jobs
       // Only auto-scan on subsequent loads if enough time has passed
       if (!lastRefresh) {
-        console.log('🔄 First load: skipping auto-scan, relying on Supabase fetch')
+        log('🔄 First load: skipping auto-scan, relying on Supabase fetch')
         return
       }
 
       const hoursSinceRefresh = (new Date() - lastRefresh) / (1000 * 60 * 60)
 
       if (hoursSinceRefresh >= REFRESH_INTERVAL_HOURS) {
-        console.log(`📧 Auto-scanning Gmail: ${Math.round(hoursSinceRefresh)}h since last sync`)
+        log(`📧 Auto-scanning Gmail: ${Math.round(hoursSinceRefresh)}h since last sync`)
         doRefresh(true)
       }
     }
