@@ -161,18 +161,7 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
   const GENERIC_POS = ['unknown', 'unknown position', 'poste non précisé', 'non spécisifé', 'inconnu', '']
   const isGenericPos = pos => GENERIC_POS.includes((pos || '').toLowerCase().trim())
 
-  // Normalize position for grouping — match "Product Manager" with "Product Manager Growth"
-  // but keep them separate if truly different (Lead PM vs Senior PM)
-  const normalizePositionForGrouping = (pos) => {
-    if (!pos) return ''
-    const normalized = pos.toLowerCase().trim()
-    // Remove common suffixes that don't distinguish jobs (Growth, Junior, Senior, H/F, CDI, CDD)
-    return normalized
-      .replace(/\s*(\(growth\)|\bfresh|\bjunior|\bsenior|\blead|\bh\/f|\bcdi|\bcdd|\b[ivxlc]+)$/i, '')
-      .trim()
-  }
-
-  // Normalize company for grouping — match "Manutan" with "Manutan Business Technology"
+  // Normalize company for grouping only — match "Manutan" with "Manutan Business Technology"
   // but keep "Manutan" vs "Manutan Consulting" separate (different divisions)
   const normalizeCompanyForGrouping = (company) => {
     if (!company) return ''
@@ -188,14 +177,12 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
   for (const p of enriched) {
     if (!p.company) continue
     if (isSuggestion(p)) continue
-    // Group by normalized company + normalized position
-    // "Manutan Business Technology" merges with "Manutan"
-    // "Product Manager" merges with "Product Manager Growth"
-    // But "Manutan Consulting" stays separate from "Manutan"
+    // Group by exact company + exact position (no position normalization)
+    // Company normalization handles "Manutan Business Technology" merging with "Manutan"
+    // Position variations like "Senior PM" vs "Senior Product Manager" stay separate to preserve all email data
     const normCompany = normalizeCompanyForGrouping(p.company)
     const companyKey = normalize(normCompany) // apply alphanumeric normalization too
-    const normPos = normalizePositionForGrouping(p.position)
-    const posKey = normPos || 'unknown'
+    const posKey = (p.position || '').toLowerCase().trim()
     const key = isGenericPos(p.position) ? companyKey : `${companyKey}|||${posKey}`
     if (!jobGroups.has(key)) jobGroups.set(key, [])
     jobGroups.get(key).push(p)
