@@ -454,7 +454,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                       onKeyDown={e => { if (e.key === 'Enter') handleAddStep() }} autoFocus />
                     <input className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
                       placeholder="🔗 Lien visio (Meet, Zoom, Teams...)"
-                      value={newStep.meetingLink || ''} onChange={e => setNewStep(s => ({ ...s, meetingLink: e.target.value || undefined }))} />
+                      value={newStep.meetingLink || ''} onChange={e => setNewStep(s => ({ ...s, meetingLink: e.target.value }))} />
                     <div className="flex justify-end">
                       <button onClick={handleAddStep} disabled={!newStep.note.trim()}
                         className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-colors">
@@ -534,7 +534,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                               <input className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
                                 placeholder="🔗 Lien visio (optionnel)"
                                 value={editForm.meetingLink !== undefined ? editForm.meetingLink : (entry.meetingLink || '')}
-                                onChange={e => setEditForm(f => ({ ...f, meetingLink: e.target.value || undefined }))} />
+                                onChange={e => setEditForm(f => ({ ...f, meetingLink: e.target.value }))} />
                               <div className="flex justify-end gap-2">
                                 <button onClick={() => { setEditingStep(null); setEditForm({}) }} className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100">Annuler</button>
                                 <button onClick={() => handleSaveEdit(i)} className="text-xs bg-indigo-600 text-white px-3 py-1 rounded-lg hover:bg-indigo-700">Sauvegarder</button>
