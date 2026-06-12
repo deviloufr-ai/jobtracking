@@ -150,9 +150,9 @@ export default function App() {
     }
   }, [])
 
-  // Initialize sync ONLY when user logs in
+  // Initialize sync when user logs in or if already logged in
   useEffect(() => {
-    if (!gmailUser) return
+    if (!gmailUser || syncUserId) return // Already initialized
 
     console.log('🔐 User logged in, initializing SyncCoordinator...')
 
@@ -167,7 +167,7 @@ export default function App() {
       setSyncUserId(fallbackId)
       initializeSyncCoordinator(fallbackId)
     })
-  }, [gmailUser])
+  }, [gmailUser, syncUserId])
 
   // Start polling once we have the correct sync ID
   usePolling(syncUserId)
