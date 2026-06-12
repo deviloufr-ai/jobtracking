@@ -161,28 +161,49 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
   const GENERIC_POS = ['unknown', 'unknown position', 'poste non précisé', 'non spécisifé', 'inconnu', '']
   const isGenericPos = pos => GENERIC_POS.includes((pos || '').toLowerCase().trim())
 
-  // Normalize company for grouping only — match "Manutan" with "Manutan Business Technology"
-  // but keep "Manutan" vs "Manutan Consulting" separate (different divisions)
+  // Normalize company for grouping — match "Manutan" with "Manutan Business Technology"
+  // Apply regex repeatedly until no more suffixes remain
   const normalizeCompanyForGrouping = (company) => {
     if (!company) return ''
-    const normalized = company.toLowerCase().trim()
-    // Remove common legal suffixes (Inc, Ltd, GmbH, SA, SARL, EIRL, etc.)
-    // and generic business suffixes (Group, Division, Business, Solutions, Technologies, etc.)
+    let normalized = company.toLowerCase().trim()
+    const suffixRegex = /\s+(inc|ltd|gmbh|sa|sarl|eirl|sas|sasu|sprl|group|division|business|solutions|technology|technologies|service|consulting|ventures|locations)\s*\.?\s*$/i
+
+    // Apply regex repeatedly until no more matches (handles "Manutan Business Technology" → "Manutan")
+    let prev
+    do {
+      prev = normalized
+      normalized = normalized.replace(suffixRegex, '').trim()
+    } while (normalized !== prev && normalized.length > 0)
+
     return normalized
-      .replace(/\s*(\binc\.?|\bltd\.?|\b(gmbh|sa|sarl|eirl|sas|sasu|sprl)\b|\bgroup\b|\bdivision\b|\bbusiness\b|\bsolutions\b|\btechnologies?\b|\bservice[s]?\b)\.?$/i, '')
-      .trim()
+  }
+
+  // Smart position normalization: remove common suffixes but keep the core role
+  // "Product Manager Growth" → "Product Manager"
+  // "Senior Product Manager" → "Senior Product Manager" (keep senior since it's important)
+  // "PM" → "PM" (keep abbreviations)
+  const normalizePositionForGrouping = (pos) => {
+    if (!pos) return ''
+    let normalized = pos.toLowerCase().trim()
+    // Only remove specific suffixes that don't change the core role
+    // Avoid removing prefixes like "Senior", "Lead", "Junior" as they distinguish different roles
+    const suffixRegex = /\s*(growth|for\s+.*?|h\/f|cdi|cdd|contract|temporary|temp|permanent)$/i
+    normalized = normalized.replace(suffixRegex, '').trim()
+    return normalized
   }
 
   const jobGroups = new Map()
   for (const p of enriched) {
     if (!p.company) continue
     if (isSuggestion(p)) continue
-    // Group by exact company + exact position (no position normalization)
-    // Company normalization handles "Manutan Business Technology" merging with "Manutan"
-    // Position variations like "Senior PM" vs "Senior Product Manager" stay separate to preserve all email data
+    // Group by normalized company + normalized position
+    // "Manutan Business Technology" merges with "Manutan"
+    // "Product Manager Growth" merges with "Product Manager"
+    // But "Senior PM" ≠ "PM" (they're different roles)
     const normCompany = normalizeCompanyForGrouping(p.company)
-    const companyKey = normalize(normCompany) // apply alphanumeric normalization too
-    const posKey = (p.position || '').toLowerCase().trim()
+    const companyKey = normalize(normCompany)
+    const normPos = normalizePositionForGrouping(p.position)
+    const posKey = normPos || 'unknown'
     const key = isGenericPos(p.position) ? companyKey : `${companyKey}|||${posKey}`
     if (!jobGroups.has(key)) jobGroups.set(key, [])
     jobGroups.get(key).push(p)
