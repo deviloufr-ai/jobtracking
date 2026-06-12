@@ -1001,7 +1001,9 @@ export function useJobs() {
   const reprocessJobs = () => {
     setJobs(prev => {
       const revalidated = revalidateArchives(prev)
-      const processed = autoStale(deduplicateJobs(mergeSameDateEntries(splitPipeNotes(deduplicateHistory(revalidated)))))
+      // Skip mergeSameDateEntries - it was causing pipe concatenation of history entries
+      // Keep history entries separate per date/status combination
+      const processed = autoStale(deduplicateJobs(splitPipeNotes(deduplicateHistory(revalidated))))
 
       return processed.map(job => {
         const hasHelloWorkResponse = (job.notes || '').includes('Réponse reçue de l\'entreprise via HelloWork') ||
