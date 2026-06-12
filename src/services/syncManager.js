@@ -252,12 +252,14 @@ class SyncManager {
         ...convertHistoryToSupabase(entry)
       }))
 
+      // Delete all old history for this job (clean slate, prevents deleted entries from coming back)
+      await supabase.from('job_history').delete().eq('job_id', jobId)
+
+      // Insert the new deduplicated history
       if (historyEntries.length > 0) {
-        // Insert with ignore duplicates - table's unique constraint will handle conflicts
-        // Don't call .select() to avoid schema cache issues
         const result = await supabase
           .from('job_history')
-          .insert(historyEntries, { onConflict: 'ignore' })
+          .insert(historyEntries)
 
         if (result.error) {
           console.error('Error syncing job history:', result.error)
