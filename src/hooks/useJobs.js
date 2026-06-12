@@ -510,10 +510,20 @@ function autoStale(jobs) {
 }
 
 // Helper to check if a job was previously deleted (for dedup on re-import)
+const DELETED_JOBS_KEY = 'jobtrackr_deleted_jobs'
 export function isDeletedJob(company, position) {
-  // In Supabase version, deleted jobs are truly gone from server
-  // This is a no-op but kept for compatibility with useAutoRefresh
-  return false
+  const deleted = JSON.parse(localStorage.getItem(DELETED_JOBS_KEY) || '[]')
+  const normalized = `${normalizeCompany(company)}_${(position || '').toLowerCase().trim()}`
+  return deleted.includes(normalized)
+}
+
+function markJobAsDeleted(company, position) {
+  const deleted = JSON.parse(localStorage.getItem(DELETED_JOBS_KEY) || '[]')
+  const normalized = `${normalizeCompany(company)}_${(position || '').toLowerCase().trim()}`
+  if (!deleted.includes(normalized)) {
+    deleted.push(normalized)
+    localStorage.setItem(DELETED_JOBS_KEY, JSON.stringify(deleted))
+  }
 }
 
 // Check if a job with same company+position already exists (for form validation)
@@ -804,6 +814,10 @@ export function useJobs() {
   }
 
   const deleteJob = (id) => {
+    const job = jobs.find(j => j.id === id)
+    if (job) {
+      markJobAsDeleted(job.company, job.position)
+    }
     setJobs(prev => prev.filter(j => j.id !== id))
     const coordinator = getSyncCoordinator()
     if (coordinator) {
@@ -1025,7 +1039,8 @@ export function useJobs() {
   }
 
   const clearDeletedJobs = () => {
-    // This is a no-op in Supabase version - deleted jobs are gone from server
+    localStorage.removeItem(DELETED_JOBS_KEY)
+    console.log('✓ Cleared deleted jobs list — auto-refresh will re-import them')
   }
 
   const cleanupHistoryDuplicates = () => {
