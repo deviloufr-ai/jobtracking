@@ -464,7 +464,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                   </div>
                 )}
 
-                <div className="relative">
+                <div className="relative overflow-visible">
                   {[...history].reverse().map((entry, i, arr) => {
                     const st = getStatus(entry.status)
                     const isLast = i === arr.length - 1
