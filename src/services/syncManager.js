@@ -254,9 +254,11 @@ class SyncManager {
 
       if (historyEntries.length > 0) {
         // Insert with ignore duplicates - table's unique constraint will handle conflicts
+        // Use .select() without args to avoid schema cache issues with specific columns
         const { error: historyError } = await supabase
           .from('job_history')
           .insert(historyEntries, { onConflict: 'ignore' })
+          .select()
 
         if (historyError) {
           console.error('Error syncing job history:', historyError)
