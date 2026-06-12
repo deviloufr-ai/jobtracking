@@ -20,19 +20,33 @@ serve(async (req) => {
       global: { headers: { Authorization: `Bearer ${token}` } },
     })
 
-    // Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
-    if (userError || !user) {
+    // Get current user from JWT token
+    let userId: string
+    try {
+      const jwt = token
+      // Decode JWT to get user ID (sub claim)
+      const parts = jwt.split('.')
+      if (parts.length !== 3) {
+        throw new Error('Invalid token format')
+      }
+
+      const decoded = JSON.parse(
+        atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))
+      )
+      userId = decoded.sub
+
+      if (!userId) {
+        return new Response(
+          JSON.stringify({ error: "Invalid token: no user ID" }),
+          { status: 401 }
+        )
+      }
+    } catch (e) {
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
+        JSON.stringify({ error: `Token decode failed: ${e.message}` }),
         { status: 401 }
       )
     }
-
-    const userId = user.id
     console.log(`🔄 Deduplicating jobs for user: ${userId}`)
 
     // Fetch all jobs for this user
