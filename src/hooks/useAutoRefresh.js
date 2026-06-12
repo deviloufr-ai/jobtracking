@@ -158,17 +158,30 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
   const SUGGESTION_KEYWORDS = ['suggérée', 'suggested job', 'job suggestion', 'alerte indeed', 'alerte emploi', 'job alert', 'recommended job', 'recommandée', 'offre recommandée', 'pas de candidature confirmée', 'offre correspondante']
   const isSuggestion = p => SUGGESTION_KEYWORDS.some(k => (p.notes || '').toLowerCase().includes(k))
 
-  const GENERIC_POS = ['unknown', 'unknown position', 'poste non précisé', 'non spécifié', 'inconnu', '']
+  const GENERIC_POS = ['unknown', 'unknown position', 'poste non précisé', 'non spécisifé', 'inconnu', '']
   const isGenericPos = pos => GENERIC_POS.includes((pos || '').toLowerCase().trim())
+
+  // Normalize position for grouping — match "Product Manager" with "Product Manager Growth"
+  // but keep them separate if truly different (Lead PM vs Senior PM)
+  const normalizePositionForGrouping = (pos) => {
+    if (!pos) return ''
+    const normalized = pos.toLowerCase().trim()
+    // Remove common suffixes that don't distinguish jobs (Growth, Junior, Senior, H/F, CDI, CDD)
+    // but keep them in the display title
+    return normalized
+      .replace(/\s*(\(growth\)|\bfresh|\bjunior|\bsenior|\blead|\bh\/f|\bcdi|\bcdd|\b[ivxlc]+)$/i, '')
+      .trim()
+  }
 
   const jobGroups = new Map()
   for (const p of enriched) {
     if (!p.company) continue
     if (isSuggestion(p)) continue
-    // Group by company + position so different roles at same company stay separate
-    // "Joko/Lead Product Manager" ≠ "Joko/Product Manager"
+    // Group by company + normalized position so "Product Manager" and "Product Manager Growth" merge
+    // but "Lead Product Manager" ≠ "Product Manager" stay separate
     const companyKey = normalize(p.company)
-    const posKey = (p.position || '').toLowerCase().trim()
+    const normPos = normalizePositionForGrouping(p.position)
+    const posKey = normPos || 'unknown'
     const key = isGenericPos(p.position) ? companyKey : `${companyKey}|||${posKey}`
     if (!jobGroups.has(key)) jobGroups.set(key, [])
     jobGroups.get(key).push(p)
