@@ -366,7 +366,7 @@ function notesAreSimilar(wordsA, wordsB) {
   return minLength > 0 && matches / minLength > 0.3
 }
 
-function deduplicateHistory(jobs) {
+export function deduplicateHistory(jobs) {
   return jobs.map(j => {
     if (!j.history || j.history.length <= 1) return j
 

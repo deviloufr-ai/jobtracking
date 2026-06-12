@@ -1,7 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
 import { convertHistoryFromSupabase, snakeToCamel, deserializeJobFields } from './fieldConversion'
-import { isDeletedJobId } from '../hooks/useJobs'
+import { isDeletedJobId, deduplicateHistory } from '../hooks/useJobs'
 
 const POLL_INTERVAL = 300000 // 5 minutes
 
@@ -235,44 +235,21 @@ class PollManager {
     if (localTime > remoteTime) {
       // Local is newer, keep it but add any new remote history
       if (local.history && Array.isArray(local.history) && remoteConverted.history && Array.isArray(remoteConverted.history)) {
-        return { ...local, history: this.mergeHistories(local.history, remoteConverted.history) }
+        const merged = [...local.history, ...remoteConverted.history]
+        const deduplicated = deduplicateHistory([{ history: merged }])[0].history
+        return { ...local, history: deduplicated }
       }
       return local
     }
 
     // Remote is newer, but merge histories to preserve local entries not yet synced
     if (remoteConverted.history && Array.isArray(remoteConverted.history) && local.history && Array.isArray(local.history)) {
-      return { ...remoteConverted, history: this.mergeHistories(remoteConverted.history, local.history) }
+      const merged = [...remoteConverted.history, ...local.history]
+      const deduplicated = deduplicateHistory([{ history: merged }])[0].history
+      return { ...remoteConverted, history: deduplicated }
     }
 
     return remoteConverted
-  }
-
-  mergeHistories(remote, local) {
-    const seen = new Map()
-
-    // Use gmailId as primary key if available, otherwise date+status+note preview
-    // This prevents same-date+status entries from overwriting each other
-    const getKey = (entry) => {
-      if (entry.gmailId) return `gmail_${entry.gmailId}`
-      const notePreview = (entry.note || '').slice(0, 30)
-      return `${entry.date}_${entry.status}_${notePreview}`
-    }
-
-    // Index remote by unique key
-    for (const entry of remote) {
-      const key = getKey(entry)
-      seen.set(key, entry)
-    }
-
-    // Override with local entries (local changes take priority)
-    for (const entry of local) {
-      const key = getKey(entry)
-      seen.set(key, entry)
-    }
-
-    // Return merged and sorted
-    return Array.from(seen.values()).sort((a, b) => new Date(a.date) - new Date(b.date))
   }
 
   mergeSettings(local, remote) {
