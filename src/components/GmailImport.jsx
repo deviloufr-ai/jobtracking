@@ -135,10 +135,24 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         return
       }
 
+      // Deduplicate emails by ID to prevent Claude from parsing the same email multiple times
+      const seenIds = new Set()
+      const deduped = []
+      for (const email of emails) {
+        if (!seenIds.has(email.id)) {
+          seenIds.add(email.id)
+          deduped.push(email)
+        }
+      }
+
+      if (deduped.length < emails.length) {
+        console.log(`🔄 Deduplicated: ${emails.length} → ${deduped.length} emails (removed ${emails.length - deduped.length} duplicates)`)
+      }
+
       // Debug info — show ALL emails so user can verify what was fetched
       setDebugInfo({
-        emailsFound: emails.length,
-        subjects: emails.map(e => `${e.from?.split('<')[0]?.trim() || e.from} → ${e.subject}`),
+        emailsFound: deduped.length,
+        subjects: deduped.map(e => `${e.from?.split('<')[0]?.trim() || e.from} → ${e.subject}`),
       })
 
       setStep(STEPS.parsing)
@@ -146,7 +160,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
       let calendarEvents = []
       let calendarError = null
       const [grouped] = await Promise.all([
-        buildJobsFromEmails(emails, []),
+        buildJobsFromEmails(deduped, []),
         fetchCalendarEvents('', dateRange ? Math.max(1, Math.ceil((new Date(dateRange.endDate) - new Date(dateRange.startDate)) / (1000 * 60 * 60 * 24 * 30))) : months)
           .then(evts => { calendarEvents = evts; console.log(`📅 Calendar: ${evts.length} events fetched`) })
           .catch(e => { calendarError = e.message; console.error('Calendar fetch failed during scan:', e) }),
