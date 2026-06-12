@@ -8,31 +8,44 @@ export async function deduplicateJobsViaEdgeFunction() {
   try {
     console.log('🔄 Calling deduplicate-jobs Edge Function...')
 
-    // Get current user (more reliable than getSession)
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    if (userError) {
-      console.error('Auth error:', userError)
-      throw new Error(`Auth failed: ${userError.message}`)
+    // Try to get access token from multiple sources
+    let accessToken = null
+
+    // 1. Try getSession() first (most reliable)
+    try {
+      const { data } = await supabase.auth.getSession()
+      accessToken = data?.session?.access_token
+      if (accessToken) {
+        console.log('✓ Got token from getSession()')
+      }
+    } catch (e) {
+      console.warn('getSession() failed, trying localStorage...')
     }
 
-    if (!user) {
-      throw new Error('Not logged in - please login first')
-    }
-
-    console.log('✓ User found:', user.id)
-
-    // Get session for access token
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    if (sessionError || !session) {
-      console.warn('Session error (will try without token):', sessionError?.message)
-    }
-
-    const accessToken = session?.access_token
+    // 2. If no session, try localStorage (Supabase stores it there)
     if (!accessToken) {
-      throw new Error('No access token - session may have expired')
+      const projectId = supabase.supabaseUrl.split('//')[1].split('.')[0]
+      const storageKey = `sb-${projectId}-auth-token`
+      const stored = localStorage.getItem(storageKey)
+
+      if (stored) {
+        try {
+          const authData = JSON.parse(stored)
+          accessToken = authData?.session?.access_token
+          if (accessToken) {
+            console.log('✓ Got token from localStorage')
+          }
+        } catch (e) {
+          console.warn('Failed to parse localStorage token:', e.message)
+        }
+      }
     }
 
-    console.log('✓ Access token found')
+    if (!accessToken) {
+      throw new Error('No access token found - please login first')
+    }
+
+    console.log('✓ Access token acquired')
 
     // Call the Edge Function with auth header
     const supabaseUrl = supabase.supabaseUrl
