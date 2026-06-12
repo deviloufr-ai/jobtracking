@@ -366,6 +366,26 @@ function notesAreSimilar(wordsA, wordsB) {
   return minLength > 0 && matches / minLength > 0.3
 }
 
+// Merge a list of notes into a single ' | '-joined note WITHOUT nesting.
+// Notes are split into atomic parts first, so re-merging an already-joined
+// note ("A | B") with one of its parts ("A") yields "A | B" — not "A | B | A".
+// This makes note merging idempotent and stops history notes from growing.
+function dedupeNoteParts(notes) {
+  const parts = []
+  const seen = new Set()
+  for (const note of notes) {
+    for (const raw of (note || '').split(' | ')) {
+      const part = raw.trim()
+      const norm = part.toLowerCase()
+      if (part && !seen.has(norm)) {
+        seen.add(norm)
+        parts.push(part)
+      }
+    }
+  }
+  return parts.join(' | ')
+}
+
 export function deduplicateHistory(jobs) {
   return jobs.map(j => {
     if (!j.history || j.history.length <= 1) return j
@@ -434,22 +454,16 @@ export function deduplicateHistory(jobs) {
         clusters.push(cluster)
       }
 
-      // Merge similar entries in each cluster
+      // Merge similar entries in each cluster (idempotent: parts are de-nested)
       for (const cluster of clusters) {
-        if (cluster.length === 1) {
-          deduped.push(withoutExactDupes[cluster[0]])
+        const primary = withoutExactDupes[cluster[0]]
+        const note = dedupeNoteParts(cluster.map(idx => withoutExactDupes[idx].note))
+        // Reuse the primary object when nothing changed to avoid needless re-renders;
+        // also cleans up previously-nested notes on single entries ("A | B | A" → "A | B").
+        if (cluster.length === 1 && note === (primary.note || '')) {
+          deduped.push(primary)
         } else {
-          const primary = withoutExactDupes[cluster[0]]
-          const uniqueNotes = new Set()
-          for (const idx of cluster) {
-            const note = withoutExactDupes[idx].note
-            if (note) uniqueNotes.add(note)
-          }
-          const merged = {
-            ...primary,
-            note: Array.from(uniqueNotes).join(' | ')
-          }
-          deduped.push(merged)
+          deduped.push({ ...primary, note })
         }
       }
     }
@@ -857,10 +871,12 @@ export function useJobs() {
     // Update local state
     setJobs(prev => prev.map(j => j.id !== id ? j : final))
 
-    // Sync to Supabase
+    // Sync to Supabase. Only rewrite remote history when this update actually
+    // touched history — otherwise we needlessly delete+reinsert the whole timeline.
     const coordinator = getSyncCoordinator()
     if (coordinator) {
-      coordinator.mutate('jobs', 'update', final).catch(err => console.error('Failed to sync job:', err))
+      coordinator.mutate('jobs', 'update', final, { syncHistory: !!data.history })
+        .catch(err => console.error('Failed to sync job:', err))
     }
   }
 
@@ -935,7 +951,7 @@ export function useJobs() {
 
     const coordinator = getSyncCoordinator()
     if (coordinator) {
-      coordinator.mutate('jobs', 'update', updated).catch(err => console.error('Failed to sync enrichment:', err))
+      coordinator.mutate('jobs', 'update', updated, { syncHistory: false }).catch(err => console.error('Failed to sync enrichment:', err))
     }
   }
 
@@ -948,7 +964,7 @@ export function useJobs() {
 
     const coordinator = getSyncCoordinator()
     if (coordinator) {
-      coordinator.mutate('jobs', 'update', updated).catch(err => console.error('Failed to sync enrichment clear:', err))
+      coordinator.mutate('jobs', 'update', updated, { syncHistory: false }).catch(err => console.error('Failed to sync enrichment clear:', err))
     }
   }
 
@@ -968,7 +984,7 @@ export function useJobs() {
     console.log('Toggling favorite:', id, 'new value:', updated.favorite)
     const coordinator = getSyncCoordinator()
     if (coordinator) {
-      coordinator.mutate('jobs', 'update', updated).catch(err => console.error('Failed to sync favorite:', err))
+      coordinator.mutate('jobs', 'update', updated, { syncHistory: false }).catch(err => console.error('Failed to sync favorite:', err))
     }
   }
 

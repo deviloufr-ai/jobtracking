@@ -76,13 +76,13 @@ class SyncCoordinator {
   // Mutation API (used by useJobs)
   // ────────────────────────────────────────────────────────────────────────────
 
-  async mutate(table, type, record) {
+  async mutate(table, type, record, options = {}) {
     if (!this.userId) {
       console.error('Cannot mutate: no userId in coordinator')
       throw new Error('No userId configured')
     }
 
-    return syncManager.mutate(this.userId, table, type, record)
+    return syncManager.mutate(this.userId, table, type, record, options)
   }
 
   // ────────────────────────────────────────────────────────────────────────────

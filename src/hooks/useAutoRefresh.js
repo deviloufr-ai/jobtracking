@@ -347,6 +347,11 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
     if (!isConnected() || refreshingRef.current) return
     setRefreshing(true)
 
+    // Read the CURRENT jobs list via ref. This callback is memoized with []
+    // deps, so the `jobs` param is captured from the first render (empty array
+    // before IndexedDB load) — using it for dedup re-imports everything as new.
+    const jobs = jobsRef.current
+
     try {
       // Simple time-based sync: scan last 2 weeks to catch new emails
       // (Not lastSyncTime-based to avoid Gmail indexing delays)

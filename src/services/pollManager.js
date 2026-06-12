@@ -96,13 +96,17 @@ class PollManager {
             historyByJob.get(entry.job_id).push(entry)
           }
 
-          // Convert and deduplicate each job's history
+          // Convert and deduplicate each job's history.
+          // Key on date+note (matching the push key in syncManager) — NOT date+status.
+          // Keying on status would collapse two distinct events on the same day into
+          // one, silently losing timeline entries on every poll.
           for (const [jobId, jobHistory] of historyByJob) {
             const seen = new Set()
             const deduped = []
             for (const entry of jobHistory) {
               const converted = convertHistoryFromSupabase(entry)
-              const key = `${converted.date}_${converted.status}`
+              const normNote = (converted.note || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 100)
+              const key = `${converted.date}_${normNote}`
               if (!seen.has(key)) {
                 seen.add(key)
                 deduped.push(converted)
@@ -228,26 +232,30 @@ class PollManager {
     // Convert remote snake_case fields to camelCase
     const remoteConverted = this.snakeToCamel(remote)
 
-    // Last-write-wins on timestamp
+    // Scalar fields: last-write-wins on timestamp. Local wins ties (>=) so a
+    // device's own just-made edit isn't clobbered by Supabase's server timestamp.
     const localTime = local.updated_at ? new Date(local.updated_at).getTime() : 0
     const remoteTime = remoteConverted.updated_at ? new Date(remoteConverted.updated_at).getTime() : 0
+    const base = localTime >= remoteTime ? local : remoteConverted
 
-    // Use >= to prefer local when timestamps are equal or close (Supabase may update server timestamp)
-    // This prevents remote data from overwriting local changes/deletions
-    if (localTime >= remoteTime) {
-      // Local is newer or equal, keep it completely (user may have deleted entries locally)
-      // Don't merge in remote history as it would bring back deleted entries
-      return local
+    // History: ALWAYS additive-merge, regardless of which side won the scalar
+    // fields. Returning only the winner's history (the old behaviour) silently
+    // dropped a peer device's newly-added entries on concurrent edits.
+    // deduplicateHistory is idempotent, so repeated merges don't grow notes.
+    // Trade-off: an entry deleted on one device can briefly reappear until that
+    // device re-syncs — acceptable vs. permanently losing real timeline entries.
+    const localHistory = Array.isArray(local.history) ? local.history : []
+    const remoteHistory = Array.isArray(remoteConverted.history) ? remoteConverted.history : []
+    if (localHistory.length || remoteHistory.length) {
+      // Winner's entries first so its metadata (meetingLink, gmailId…) is kept as primary.
+      const ordered = base === local
+        ? [...localHistory, ...remoteHistory]
+        : [...remoteHistory, ...localHistory]
+      const history = deduplicateHistory([{ history: ordered }])[0].history
+      return { ...base, history }
     }
 
-    // Remote is newer, but merge histories to preserve local entries not yet synced
-    if (remoteConverted.history && Array.isArray(remoteConverted.history) && local.history && Array.isArray(local.history)) {
-      const merged = [...remoteConverted.history, ...local.history]
-      const deduplicated = deduplicateHistory([{ history: merged }])[0].history
-      return { ...remoteConverted, history: deduplicated }
-    }
-
-    return remoteConverted
+    return base
   }
 
   mergeSettings(local, remote) {

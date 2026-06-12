@@ -75,7 +75,7 @@ class SyncManager {
   }
 
   // Execute mutation and queue if offline
-  async mutate(userId, table, type, record) {
+  async mutate(userId, table, type, record, options = {}) {
     // Apply to local cache first (optimistic update)
     await this.applyToLocalCache(table, type, record)
 
@@ -95,7 +95,7 @@ class SyncManager {
     // If online, send to Supabase immediately
     try {
       console.log('🔄 Syncing to Supabase:', type, table, record.id)
-      const result = await this.sendMutationToSupabase(userId, table, type, record)
+      const result = await this.sendMutationToSupabase(userId, table, type, record, options)
       console.log('✓ Sync successful:', result)
       return result
     } catch (err) {
@@ -180,7 +180,7 @@ class SyncManager {
     return camel
   }
 
-  async sendMutationToSupabase(userId, table, type, record) {
+  async sendMutationToSupabase(userId, table, type, record, options = {}) {
     if (!userId) throw new Error('User not authenticated')
 
     let result
@@ -230,8 +230,10 @@ class SyncManager {
       throw result.error
     }
 
-    // Sync job history if present
-    if (table === 'jobs' && history && Array.isArray(history) && result.data && result.data[0]) {
+    // Sync job history if present — but skip when the caller signals that this
+    // mutation didn't touch history (e.g. favorite toggle, enrichment flag).
+    // Avoids a destructive delete+reinsert of the whole timeline on every field edit.
+    if (options.syncHistory !== false && table === 'jobs' && history && Array.isArray(history) && result.data && result.data[0]) {
       const jobId = result.data[0].id || record.id
 
       // Deduplicate history before syncing (by date+note)
