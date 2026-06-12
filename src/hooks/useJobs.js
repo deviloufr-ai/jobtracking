@@ -8,6 +8,7 @@ import { supabase, isSupabaseConfigured } from '../services/supabase'
 import { getSyncUserIdForSupabase, getCachedUser, resolveSyncUserId } from '../services/gmail'
 import { convertHistoryFromSupabase, convertHistoryToSupabase, snakeToCamel, deserializeJobFields } from '../services/fieldConversion'
 import { deduplicateJobsViaEdgeFunction, formatDeduplicateResult } from '../services/deduplicateService'
+import { GENERIC_POSITIONS_SET, isGenericPosition } from '../constants/positions'
 
 const ENRICH_TTL_DAYS = 30
 
@@ -85,9 +86,8 @@ const STATUS_PRIORITY = {
 // Import all the deduplication/processing functions from original useJobs
 // (These are pure functions, no changes needed)
 export function deduplicateJobs(jobs) {
-  const GENERIC_POS_SET = new Set(['unknown', 'unknown position', 'poste non précisé', 'non spécifié', 'inconnu', ''])
   const normPos = p => (p || '').toLowerCase().trim().replace(/\s*[hf]\/[hf]\s*/gi, '').trim()
-  const isGenericPos = p => GENERIC_POS_SET.has(normPos(p))
+  const isGenericPos = p => GENERIC_POSITIONS_SET.has(normPos(p))
 
   const groups = new Map()
   for (const job of jobs) {
@@ -151,7 +151,7 @@ export function deduplicateJobs(jobs) {
       return new Date(b.date) - new Date(a.date)
     })
 
-    const realPositions = [...new Set(group.map(j => normPos(j.position)).filter(p => !GENERIC_POS_SET.has(p)))]
+    const realPositions = [...new Set(group.map(j => normPos(j.position)).filter(p => !GENERIC_POSITIONS_SET.has(p)))]
     if (realPositions.length > 1) {
       group.forEach(j => result.push(j))
       continue
@@ -171,10 +171,9 @@ export function deduplicateJobs(jobs) {
 
     const primary = group[0]
 
-    const GENERIC_POSITIONS = ['unknown', 'unknown position', 'poste non précisé', 'non spécifié', 'inconnu', '']
     const bestPosition = group
       .map(j => j.position || '')
-      .find(p => !GENERIC_POSITIONS.includes(p.toLowerCase().trim()))
+      .find(p => !isGenericPosition(p))
       || primary.position
 
     const allHistory = group.flatMap(j => j.history || [])
@@ -578,8 +577,7 @@ export function findDuplicateJob(jobs, company, position) {
     if (jobPos === targetPos) return job
 
     // Also check for generic positions (if both are generic, consider it same)
-    const GENERIC = new Set(['unknown', 'unknown position', 'poste non précisé', 'non spécifié', 'inconnu', ''])
-    if (GENERIC.has(targetPos) && GENERIC.has(jobPos)) return job
+    if (GENERIC_POSITIONS_SET.has(targetPos) && GENERIC_POSITIONS_SET.has(jobPos)) return job
   }
 
   return null

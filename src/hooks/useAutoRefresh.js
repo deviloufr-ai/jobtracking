@@ -5,6 +5,7 @@ import { fetchCalendarEvents } from '../services/calendar'
 import { extractJobUrlsFromEmail, rankUrlsByJobRelevance } from '../services/positionChecker'
 import { isAtsRejection, isDeletedJob } from './useJobs'
 import { normalize, isJobBoard } from '../constants/jobBoards'
+import { isGenericPosition as isGenericPos } from '../constants/positions'
 
 const DEBUG = typeof window !== 'undefined' && localStorage?.getItem('debug') === '1'
 const log = (...args) => DEBUG && console.log(...args)
@@ -170,9 +171,6 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
 
   const SUGGESTION_KEYWORDS = ['suggérée', 'suggested job', 'job suggestion', 'alerte indeed', 'alerte emploi', 'job alert', 'recommended job', 'recommandée', 'offre recommandée', 'pas de candidature confirmée', 'offre correspondante']
   const isSuggestion = p => SUGGESTION_KEYWORDS.some(k => (p.notes || '').toLowerCase().includes(k))
-
-  const GENERIC_POS = ['unknown', 'unknown position', 'poste non précisé', 'non spécisifé', 'inconnu', '']
-  const isGenericPos = pos => GENERIC_POS.includes((pos || '').toLowerCase().trim())
 
   // Normalize company for grouping — match "Manutan" with "Manutan Business Technology"
   // Apply regex repeatedly until no more suffixes remain
@@ -392,9 +390,6 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
       }
 
       log(`✅ Extracted ${grouped.length} jobs from emails`)
-
-      const GENERIC_POS = ['unknown', 'unknown position', 'poste non précisé', 'non spécifié', 'inconnu', '']
-      const isGenericPos = pos => GENERIC_POS.includes((pos || '').toLowerCase().trim())
 
       const jobByKey = new Map(jobs.map(j => [`${normalize(j.company)}_${normalize(j.position)}`, j]))
       const jobByCompany = new Map(jobs.map(j => [normalize(j.company), j]))

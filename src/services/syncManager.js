@@ -170,16 +170,6 @@ class SyncManager {
     return snake
   }
 
-  snakeToCamel(obj) {
-    if (!obj || typeof obj !== 'object') return obj
-    const camel = {}
-    for (const [key, value] of Object.entries(obj)) {
-      const camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase())
-      camel[camelKey] = value
-    }
-    return camel
-  }
-
   async sendMutationToSupabase(userId, table, type, record, options = {}) {
     if (!userId) throw new Error('User not authenticated')
 

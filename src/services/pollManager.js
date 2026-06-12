@@ -209,28 +209,9 @@ class PollManager {
     }
   }
 
-  snakeToCamel(obj) {
-    if (!obj || typeof obj !== 'object') return obj
-    const camel = {}
-    for (const [key, value] of Object.entries(obj)) {
-      const camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase())
-      // Handle special cases
-      if (camelKey === 'gmailIds' && typeof value === 'string') {
-        try {
-          camel[camelKey] = JSON.parse(value)
-        } catch {
-          camel[camelKey] = value
-        }
-      } else {
-        camel[camelKey] = value
-      }
-    }
-    return camel
-  }
-
   mergeJob(local, remote) {
-    // Convert remote snake_case fields to camelCase
-    const remoteConverted = this.snakeToCamel(remote)
+    // Convert remote snake_case fields to camelCase (shared util in fieldConversion)
+    const remoteConverted = snakeToCamel(remote)
 
     // Scalar fields: last-write-wins on timestamp. Local wins ties (>=) so a
     // device's own just-made edit isn't clobbered by Supabase's server timestamp.
