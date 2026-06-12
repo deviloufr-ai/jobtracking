@@ -142,12 +142,19 @@ export default function App() {
   const [syncUserId, setSyncUserId] = useState(null)
   const [initialSyncDone, setInitialSyncDone] = useState(false)
 
-  // On load: resolve correct sync ID and initialize sync infrastructure
+  // On load: check for cached Gmail user
   useEffect(() => {
     autoReuseStoredTokens()
     if (!gmailUser && isConnected()) {
       getGmailUserInfo().then(user => { if (user) setGmailUser(user) })
     }
+  }, [])
+
+  // Initialize sync ONLY when user logs in
+  useEffect(() => {
+    if (!gmailUser) return
+
+    console.log('🔐 User logged in, initializing SyncCoordinator...')
 
     // Resolve sync user ID asynchronously (waits for Supabase lookup)
     // This ensures multi-device sync uses the same UUID for the same Gmail account
@@ -160,7 +167,7 @@ export default function App() {
       setSyncUserId(fallbackId)
       initializeSyncCoordinator(fallbackId)
     })
-  }, [])
+  }, [gmailUser])
 
   // Start polling once we have the correct sync ID
   usePolling(syncUserId)
