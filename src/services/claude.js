@@ -560,6 +560,155 @@ CV: ${cvText}`
   } catch { return null }
 }
 
+export async function validateAndCleanJobs(parsedJobs) {
+  if (!parsedJobs || parsedJobs.length === 0) {
+    return { jobs: [], changelog: { merged: [], flagged: [] } }
+  }
+
+  if (IS_DEV) {
+    return { jobs: parsedJobs, changelog: { merged: [], flagged: [] } }
+  }
+
+  // Format jobs for Claude review
+  const jobsText = parsedJobs.map((j, i) => {
+    return `[JOB-${i}] ${j.company} / ${j.position} (${j.date})
+    Status: ${j.status}, Confidence: ${j.confidence}
+    Notes: ${j.notes}
+    EmailId: ${j.gmailId || 'unknown'}`
+  }).join('\n\n')
+
+  const prompt = `Tu dois valider et nettoyer cette liste de candidatures d'emploi extraites d'emails.
+
+TÂCHES À EFFECTUER :
+═════════════════════════════════════════════════════════════════
+
+1. DÉTECTER LES DOUBLONS
+   - Même entreprise (normalisée) + même position (normalisée) = DOUBLON
+   - Exemples de normalisations :
+     * "Manutan" = "Manutan Business Technology" = "Manutan SARL"
+     * "Product Manager" = "Product Manager Growth" (suffixes non-essentiels)
+   - Conserver l'entrée AVEC LA PLUS HAUTE CONFIDENCE
+   - Documenter quels jobs fusionner
+
+2. FUSIONNER ENTRIES DU MÊME JOUR
+   - Grouper par (company, date) SAUF pour les meetings/events
+   - Fusionner les notes avec " · " si possible
+   - Conserver les STATUS les plus élevés dans la hiérarchie : sent < reviewing < interview < offer
+   - GARDER LES MEETINGS SÉPARÉES (source: calendar)
+
+   Exemple :
+   [JOB-0] Yubo / PM (2024-06-12) Status: sent, Notes: "Candidature envoyée"
+   [JOB-1] Yubo / PM (2024-06-12) Status: reviewing, Notes: "Profil en cours"
+   →  Fusionner en : Status: reviewing, Notes: "Candidature envoyée · Profil en cours"
+
+3. SIGNALER LES ERREURS DE PARSING
+   - Confidence < 50 = TRÈS SUSPECTE
+   - Confidence < 40 = À IGNORER (newsletter, alerte, etc.)
+   - Signaler avec raison exacte (company flou? position vague? email automatique?)
+
+4. RETIRER LES FAUX POSITIFS
+   - Newsletters / job alerts / "offres recommandées" → SUPPRIMER
+   - Emails transactionnels purs sans candidature → SUPPRIMER
+   - Profil consulté (pas candidature) → SUPPRIMER
+   - Confidence 0 → SUPPRIMER
+
+═════════════════════════════════════════════════════════════════
+
+JOBS À TRAITER :
+
+${jobsText}
+
+═════════════════════════════════════════════════════════════════
+
+RETOURNER UN JSON VALIDE UNIQUEMENT :
+
+{
+  "cleaned_jobs": [
+    {
+      "job_index": 0,
+      "company": "...",
+      "position": "...",
+      "status": "...",
+      "date": "YYYY-MM-DD",
+      "notes": "...",
+      "confidence": 0-100,
+      "gmail_ids": ["id1", "id2"],
+      "_flagged_reason": null ou "raison de suspicion"
+    }
+  ],
+  "merged": [
+    {
+      "primary_index": 0,
+      "merged_from": [1, 2],
+      "reason": "description"
+    }
+  ],
+  "removed": [
+    {
+      "index": 5,
+      "reason": "newsletter/false positive/low confidence"
+    }
+  ],
+  "summary": "X jobs cleaned, Y merged, Z removed, confidence >= 50"
+}`
+
+  const raw = await callClaude(
+    `Tu es un expert en validation de données. Réponds UNIQUEMENT avec le JSON demandé, sans texte supplémentaire.`,
+    prompt
+  )
+
+  try {
+    let clean = raw.trim()
+    // Strip markdown code fences
+    clean = clean.replace(/^```(?:json)?\s*/i, '').replace(/\s*```[\s\S]*$/, '').trim()
+    const start = clean.indexOf('{')
+    const end = clean.lastIndexOf('}')
+    if (start === -1 || end === -1) {
+      console.warn('Validation response missing JSON, returning unvalidated jobs')
+      return { jobs: parsedJobs, changelog: { merged: [], flagged: [] } }
+    }
+
+    const result = JSON.parse(clean.slice(start, end + 1))
+
+    // Extract cleaned jobs and apply index mapping from original
+    const cleaned = (result.cleaned_jobs || []).map(job => {
+      const original = parsedJobs[job.job_index]
+      if (!original) return job
+      return {
+        ...original,
+        company: job.company || original.company,
+        position: job.position || original.position,
+        status: job.status || original.status,
+        notes: job.notes || original.notes,
+        confidence: job.confidence !== undefined ? job.confidence : original.confidence,
+        gmailIds: job.gmail_ids || (original.gmailId ? [original.gmailId] : []),
+        _flagged_reason: job._flagged_reason || null
+      }
+    })
+
+    // Build changelog
+    const changelog = {
+      merged: result.merged || [],
+      removed: result.removed || [],
+      flagged: cleaned.filter(j => j._flagged_reason).map(j => ({
+        company: j.company,
+        position: j.position,
+        reason: j._flagged_reason,
+        confidence: j.confidence
+      })),
+      summary: result.summary || ''
+    }
+
+    console.log(`✓ Validation complete: ${cleaned.length} jobs retained`)
+    console.log(`  Merged: ${changelog.merged.length}, Removed: ${changelog.removed.length}, Flagged: ${changelog.flagged.length}`)
+
+    return { jobs: cleaned, changelog }
+  } catch (e) {
+    console.error('Validation parse error, returning unvalidated jobs:', e.message)
+    return { jobs: parsedJobs, changelog: { merged: [], flagged: [] } }
+  }
+}
+
 const MOCK_ANALYSIS = {
   summary: "Poste de Product Manager dans une startup en croissance.",
   topSkills: ["Product roadmap", "Agile/Scrum", "Data analysis", "Stakeholder management", "UX"],

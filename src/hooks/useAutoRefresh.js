@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { isConnected, fetchJobEmails, fetchJobEmailsForAccount, getConnectedAccounts, getCachedUser } from '../services/gmail'
-import { parseEmailsForJobs } from '../services/claude'
+import { parseEmailsForJobs, validateAndCleanJobs } from '../services/claude'
 import { fetchCalendarEvents } from '../services/calendar'
 import { isAtsRejection, isDeletedJob } from './useJobs'
 import { normalize, isJobBoard } from '../constants/jobBoards'
@@ -138,7 +138,19 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
   }
   log(`📊 Claude parsed ${emails.length} emails → ${parsed.length} job signals (confidence >= 35)`)
 
-  const enriched = parsed
+  // Validate and clean: remove duplicates, flag errors, merge same-day entries
+  const { jobs: validated, changelog } = await validateAndCleanJobs(parsed)
+  if (changelog.merged?.length > 0) {
+    log(`🔄 Merged ${changelog.merged.length} duplicate entries`)
+  }
+  if (changelog.removed?.length > 0) {
+    log(`🗑️  Removed ${changelog.removed.length} false positives`)
+  }
+  if (changelog.flagged?.length > 0) {
+    log(`⚠️  Flagged ${changelog.flagged.length} entries with low confidence`)
+  }
+
+  const enriched = validated
     .filter(p => {
       const isBoard = isJobBoard(p.company)
       if (isBoard) {
