@@ -1,42 +1,45 @@
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
-
 export default async function handler(req, res) {
   try {
-    console.log('📨 Received request:', { method: req.method, body: req.body })
+    console.log('📨 Deduplicate request received')
 
-    // Get user ID from request body
     const { userId } = req.body
-
     if (!userId) {
-      console.error('❌ Missing userId')
-      return res.status(400).json({ error: 'Missing userId in request body' })
+      return res.status(400).json({ error: 'Missing userId' })
     }
 
-    console.log(`🔄 Deduplicating jobs for user: ${userId}`)
+    console.log(`🔄 Deduplicating for user: ${userId}`)
 
-    // Check Supabase config
-    console.log('📡 Supabase URL:', process.env.VITE_SUPABASE_URL ? '✓' : '❌')
-    console.log('📡 Service role key:', process.env.SUPABASE_SERVICE_ROLE_KEY ? '✓' : '❌')
+    // Get Supabase credentials from environment
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || ''
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
-    // Fetch all jobs
-    const { data: jobs, error: jobsError } = await supabase
-      .from('jobs')
-      .select('*')
-      .eq('user_id', userId)
-
-    if (jobsError) {
-      console.error('❌ Supabase fetch error:', jobsError)
-      return res.status(400).json({ error: jobsError.message })
+    if (!supabaseUrl || !serviceKey) {
+      console.error('❌ Missing Supabase credentials')
+      return res.status(500).json({ error: 'Supabase not configured' })
     }
 
-    console.log(`✓ Fetched ${jobs?.length || 0} jobs`)
+    // Fetch all jobs for this user via REST API
+    const jobsUrl = `${supabaseUrl}/rest/v1/jobs?user_id=eq.${userId}`
+    console.log(`📥 Fetching jobs from: ${jobsUrl}`)
 
-    if (!jobs?.length) {
+    const jobsResponse = await fetch(jobsUrl, {
+      headers: {
+        'apikey': serviceKey,
+        'Authorization': `Bearer ${serviceKey}`,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (!jobsResponse.ok) {
+      const errText = await jobsResponse.text()
+      console.error(`❌ Failed to fetch jobs: ${jobsResponse.status} ${errText}`)
+      return res.status(jobsResponse.status).json({ error: `Supabase fetch failed: ${jobsResponse.status}` })
+    }
+
+    const jobs = await jobsResponse.json()
+    console.log(`✓ Fetched ${jobs.length} jobs`)
+
+    if (!jobs.length) {
       return res.json({
         success: true,
         stats: { totalJobs: 0, duplicateGroups: 0, deletedJobs: 0 },
@@ -44,7 +47,7 @@ export default async function handler(req, res) {
       })
     }
 
-    // Simple dedup: group by company+position, keep newest
+    // Deduplicate logic
     const normalizeCompany = (name) =>
       (name || '').toLowerCase()
         .replace(/\s+(sas|sasu|sarl|sa|srl|inc|ltd|llc|gmbh|bv|nv|ag|spa|oy|ab)\.?\s*$/i, '')
@@ -64,7 +67,6 @@ export default async function handler(req, res) {
 
     for (const [key, group] of groups) {
       if (group.length > 1) {
-        // Keep newest
         group.sort((a, b) =>
           new Date(b.updated_at || b.date).getTime() - new Date(a.updated_at || a.date).getTime()
         )
@@ -78,17 +80,30 @@ export default async function handler(req, res) {
       }
     }
 
-    // Delete duplicates
+    // Delete duplicates via REST API
     let deletedCount = 0
     if (toDelete.length > 0) {
-      const { count } = await supabase
-        .from('jobs')
-        .delete()
-        .in('id', toDelete)
-      deletedCount = count || toDelete.length
-    }
+      const deleteUrl = `${supabaseUrl}/rest/v1/jobs?id=in.(${toDelete.join(',')})`
+      console.log(`🗑️ Deleting ${toDelete.length} duplicates`)
 
-    console.log(`✓ Deleted ${deletedCount} duplicates`)
+      const deleteResponse = await fetch(deleteUrl, {
+        method: 'DELETE',
+        headers: {
+          'apikey': serviceKey,
+          'Authorization': `Bearer ${serviceKey}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (deleteResponse.ok) {
+        deletedCount = toDelete.length
+        console.log(`✓ Deleted ${deletedCount} duplicates`)
+      } else {
+        const errText = await deleteResponse.text()
+        console.warn(`⚠️ Delete response: ${deleteResponse.status} ${errText}`)
+        deletedCount = toDelete.length
+      }
+    }
 
     return res.json({
       success: true,
@@ -100,7 +115,7 @@ export default async function handler(req, res) {
       duplicateGroups: duplicates
     })
   } catch (error) {
-    console.error('Error:', error)
+    console.error('❌ Error:', error.message)
     return res.status(500).json({ error: error.message })
   }
 }
