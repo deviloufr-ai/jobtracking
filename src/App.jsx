@@ -157,6 +157,7 @@ export default function App() {
     const theme = settings.theme || 'light'
     applyTheme(theme)
     document.documentElement.setAttribute('data-theme', theme)
+    document.documentElement.className = `theme-${theme}`
   }, [settings.theme])
 
   // Initialize sync only when user leaves landing page (actively logs in)
@@ -464,6 +465,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div
+        key={`theme-${settings.theme}`}
         className="min-h-screen transition-colors duration-300"
         style={{
           backgroundColor: 'var(--theme-bg)',
