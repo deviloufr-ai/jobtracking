@@ -112,7 +112,8 @@
   color: var(--theme-text) !important;
 }
 
-[data-theme="dark"] thead {
+[data-theme="dark"] thead,
+[data-theme="dark"] thead tr {
   background-color: var(--theme-surface2) !important;
 }
 
@@ -125,14 +126,16 @@
   background-color: var(--theme-surface2) !important;
 }
 
-[data-theme="dark"] td,
-[data-theme="dark"] th {
+[data-theme="dark"] td {
   color: var(--theme-text) !important;
   border-color: var(--theme-border) !important;
 }
 
 [data-theme="dark"] th {
-  color: var(--theme-text-dim) !important;
+  color: var(--theme-text) !important;
+  border-color: var(--theme-border) !important;
+  background-color: var(--theme-surface2) !important;
+  font-weight: 600;
 }
 
 /* Dark theme - Cards and panels */
