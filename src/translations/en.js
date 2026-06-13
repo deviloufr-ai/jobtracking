@@ -211,11 +211,50 @@ export const en = {
   },
 
   // Stats
-  stats: {
-    totalApplications: 'Total applications',
-    activeApplications: 'Active applications',
-    interviewsScheduled: 'Interviews scheduled',
-    offerReceived: 'Offers received',
+  statsHeader: {
+    title: 'Statistics',
+    summary: 'applications · % responses · this week',
+  },
+  statsPipeline: {
+    title: 'Pipeline',
+    activeApplications: 'active applications',
+    sent: 'Sent',
+    interviews: 'Interviews',
+    offers: 'Offers',
+  },
+  statsResponse: {
+    title: 'Response rate',
+    interviews: 'Interviews',
+    offers: 'Offers',
+    active: 'In progress',
+    insufficientData: '⚠ Insufficient data',
+  },
+  statsActivity: {
+    title: '7-day activity',
+    added: 'added',
+    thisWeek: 'this week',
+  },
+  statsDistribution: {
+    title: 'Distribution',
+  },
+
+  // Filters
+  filtersSearch: {
+    placeholder: 'Company or position...',
+    reset: 'Reset filters',
+    result: 'application',
+    results: 'applications',
+    of: '/',
+  },
+  filtersPeriod: {
+    all: 'All periods',
+    week: 'This week',
+    month: 'This month',
+  },
+  filtersStatus: {
+    tooltip1: '1× show · 2× hide · 3× reset',
+    show: 'Showing — click to hide',
+    hidden: 'Hidden — click to reset',
   },
 
   // Common

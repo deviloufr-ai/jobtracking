@@ -1,6 +1,6 @@
 import { STATUSES } from '../hooks/useJobs'
 
-export default function Filters({ filters, onChange, onReset, total, filtered, showFavOnly, onToggleFav, favCount, showArchived, onToggleArchived, archivedCount }) {
+export default function Filters({ filters, onChange, onReset, total, filtered, showFavOnly, onToggleFav, favCount, showArchived, onToggleArchived, archivedCount, t = (key) => key }) {
   const statusEntries = Object.entries(filters.statuses || {})
   const hasActive = filters.search || statusEntries.length > 0 || filters.period !== 'all'
 
@@ -25,7 +25,7 @@ export default function Filters({ filters, onChange, onReset, total, filtered, s
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
           <input
             className="w-full pl-8 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
-            placeholder="Entreprise ou poste..."
+            placeholder={t('filtersSearch.placeholder')}
             value={filters.search}
             onChange={e => onChange({ ...filters, search: e.target.value })}
           />
@@ -65,17 +65,17 @@ export default function Filters({ filters, onChange, onReset, total, filtered, s
           value={filters.period}
           onChange={e => onChange({ ...filters, period: e.target.value })}
         >
-          <option value="all">Toutes les périodes</option>
-          <option value="week">Cette semaine</option>
-          <option value="month">Ce mois</option>
+          <option value="all">{t('filtersPeriod.all')}</option>
+          <option value="week">{t('filtersPeriod.week')}</option>
+          <option value="month">{t('filtersPeriod.month')}</option>
         </select>
         {hasActive && (
           <button onClick={onReset} className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline whitespace-nowrap">
-            Réinitialiser
+            {t('filtersSearch.reset')}
           </button>
         )}
         <span className="text-xs text-gray-400 ml-auto whitespace-nowrap">
-          {filtered} / {total} candidature{total > 1 ? 's' : ''}
+          {filtered} {t('filtersSearch.of')} {total} {total > 1 ? t('filtersSearch.results') : t('filtersSearch.result')}
         </span>
       </div>
 
@@ -86,7 +86,7 @@ export default function Filters({ filters, onChange, onReset, total, filtered, s
             <button
               key={s.key}
               onClick={() => cycleStatus(s.key)}
-              title={!state ? '1× afficher · 2× masquer · 3× reset' : state === 'include' ? 'Affichage — cliquer pour masquer' : 'Masqué — cliquer pour reset'}
+              title={!state ? t('filtersStatus.tooltip1') : state === 'include' ? t('filtersStatus.show') : t('filtersStatus.hidden')}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all select-none
                 ${state === 'include'
                   ? s.color + ' border-transparent shadow-sm'

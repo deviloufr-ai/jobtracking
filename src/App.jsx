@@ -770,7 +770,7 @@ export default function App() {
         {/* Top 2-col: Stats left, Prochaines étapes right — only when data exists */}
         {jobs.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4 items-stretch">
-            <Stats jobs={jobs} />
+            <Stats jobs={jobs} t={t} />
             <NextAction
               jobs={jobs}
               onGenerateCV={handleGenerateCV}
@@ -785,6 +785,7 @@ export default function App() {
           total={jobs.length} filtered={filtered.length}
           showFavOnly={showFavOnly} onToggleFav={() => setShowFavOnly(v => !v)} favCount={favCount}
           showArchived={showArchived} onToggleArchived={() => setShowArchived(v => !v)} archivedCount={archivedCount}
+          t={t}
         />
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">

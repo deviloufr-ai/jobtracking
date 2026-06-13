@@ -59,7 +59,7 @@ function Card({ children }) {
   )
 }
 
-export default function Stats({ jobs }) {
+export default function Stats({ jobs, t = (key) => key }) {
   const total = jobs.filter(j => j.status !== 'archived').length
   const active = jobs.filter(j => ['sent','reviewing','interview','waiting'].includes(j.status)).length
   const interviews = jobs.filter(j => j.status === 'interview').length
@@ -93,9 +93,9 @@ export default function Stats({ jobs }) {
   }, [jobs])
 
   const funnel = [
-    { label: 'Envoyées',   count: sent,              color: '#3b82f6', bg: 'bg-blue-500' },
-    { label: 'Entretiens', count: interviews + offers, color: '#8b5cf6', bg: 'bg-purple-500' },
-    { label: 'Offres',     count: offers,             color: '#10b981', bg: 'bg-green-500' },
+    { label: t('statsPipeline.sent'),   count: sent,              color: '#3b82f6', bg: 'bg-blue-500' },
+    { label: t('statsPipeline.interviews'), count: interviews + offers, color: '#8b5cf6', bg: 'bg-purple-500' },
+    { label: t('statsPipeline.offers'),     count: offers,             color: '#10b981', bg: 'bg-green-500' },
   ]
 
   const byStatus = STATUSES.map(s => ({
@@ -117,8 +117,8 @@ export default function Stats({ jobs }) {
         className="sm:hidden flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-3 shadow-sm w-full text-left"
       >
         <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Statistiques</span>
-          <span className="text-xs font-bold text-gray-700">{total} candidatures · {responseRate}% réponses · {thisWeek} cette semaine</span>
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('statsHeader.title')}</span>
+          <span className="text-xs font-bold text-gray-700">{total} {t('statsHeader.summary').split(' · ')[0]} · {responseRate}% {t('statsHeader.summary').split(' · ')[1]} · {thisWeek} {t('statsHeader.summary').split(' · ')[2]}</span>
         </div>
         <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0 ${open ? 'rotate-180' : ''}`}
           fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -131,10 +131,10 @@ export default function Stats({ jobs }) {
 
       {/* ── Card 1 — Pipeline ─────────────────────────────────── */}
       <Card>
-        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Pipeline</span>
+        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t('statsPipeline.title')}</span>
         <div className="flex items-baseline gap-2">
           <span className="text-5xl font-extrabold text-gray-800 leading-none">{total}</span>
-          <span className="text-sm text-gray-400">candidatures actives</span>
+          <span className="text-sm text-gray-400">{t('statsPipeline.activeApplications')}</span>
         </div>
         <div className="flex flex-col gap-3">
           {funnel.map((f, i) => {
@@ -157,16 +157,16 @@ export default function Stats({ jobs }) {
         </div>
       </Card>
 
-      {/* ── Card 2 — Taux de réponse ──────────────────────────── */}
+      {/* ── Card 2 — Response Rate ──────────────────────────── */}
       <Card>
-        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Taux de réponse</span>
+        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t('statsResponse.title')}</span>
         <div className="flex items-center gap-4">
           <RadialProgress value={responseRate} max={100} size={80} color={rateColor} label={`${responseRate}%`} />
           <div className="flex-1 flex flex-col gap-2">
             {[
-              { label: 'Entretiens', value: `${interviewRate}%`, color: '#8b5cf6' },
-              { label: 'Offres',     value: `${offerRate}%`,     color: '#10b981' },
-              { label: 'En cours',   value: active,              color: '#f59e0b' },
+              { label: t('statsResponse.interviews'), value: `${interviewRate}%`, color: '#8b5cf6' },
+              { label: t('statsResponse.offers'),     value: `${offerRate}%`,     color: '#10b981' },
+              { label: t('statsResponse.active'),   value: active,              color: '#f59e0b' },
             ].map(row => (
               <div key={row.label} className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: row.color }} />
@@ -185,26 +185,26 @@ export default function Stats({ jobs }) {
               <div className="h-full rounded-full transition-all" style={{ width: `${bar.pct}%`, background: bar.color }} />
             </div>
           ))}
-          {total < 5 && <p className="text-[10px] text-amber-500">⚠ Données insuffisantes</p>}
+          {total < 5 && <p className="text-[10px] text-amber-500">{t('statsResponse.insufficientData')}</p>}
         </div>
       </Card>
 
-      {/* ── Card 3 — Activité 7j ──────────────────────────────── */}
+      {/* ── Card 3 — 7-Day Activity ──────────────────────────────── */}
       <Card>
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Activité 7j</span>
-          <span className="text-[11px] text-indigo-600 font-semibold">{thisWeek} ajoutées</span>
+          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t('statsActivity.title')}</span>
+          <span className="text-[11px] text-indigo-600 font-semibold">{thisWeek} {t('statsActivity.added')}</span>
         </div>
         <div className="flex items-baseline gap-2">
           <span className="text-5xl font-extrabold text-indigo-600 leading-none">{thisWeek}</span>
-          <span className="text-sm text-gray-400">cette semaine</span>
+          <span className="text-sm text-gray-400">{t('statsActivity.thisWeek')}</span>
         </div>
         <ActivityBars values={weeklyActivity} color="#6366f1" />
       </Card>
 
-      {/* ── Card 4 — Répartition ──────────────────────────────── */}
+      {/* ── Card 4 — Distribution ──────────────────────────────── */}
       <Card>
-        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Répartition</span>
+        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t('statsDistribution.title')}</span>
         <div className="flex flex-col gap-2.5">
           {byStatus.length === 0 && <span className="text-xs text-gray-300">—</span>}
           {byStatus.map(s => {

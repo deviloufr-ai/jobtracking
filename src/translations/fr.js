@@ -211,11 +211,50 @@ export const fr = {
   },
 
   // Stats
-  stats: {
-    totalApplications: 'Candidatures totales',
-    activeApplications: 'Candidatures actives',
-    interviewsScheduled: 'Entretiens prévus',
-    offerReceived: 'Offres reçues',
+  statsHeader: {
+    title: 'Statistiques',
+    summary: 'candidatures · %réponses · cette semaine',
+  },
+  statsPipeline: {
+    title: 'Pipeline',
+    activeApplications: 'candidatures actives',
+    sent: 'Envoyées',
+    interviews: 'Entretiens',
+    offers: 'Offres',
+  },
+  statsResponse: {
+    title: 'Taux de réponse',
+    interviews: 'Entretiens',
+    offers: 'Offres',
+    active: 'En cours',
+    insufficientData: '⚠ Données insuffisantes',
+  },
+  statsActivity: {
+    title: 'Activité 7j',
+    added: 'ajoutées',
+    thisWeek: 'cette semaine',
+  },
+  statsDistribution: {
+    title: 'Répartition',
+  },
+
+  // Filters
+  filtersSearch: {
+    placeholder: 'Entreprise ou poste...',
+    reset: 'Réinitialiser',
+    result: 'candidature',
+    results: 'candidatures',
+    of: '/',
+  },
+  filtersPeriod: {
+    all: 'Toutes les périodes',
+    week: 'Cette semaine',
+    month: 'Ce mois',
+  },
+  filtersStatus: {
+    tooltip1: '1× afficher · 2× masquer · 3× reset',
+    show: 'Affichage — cliquer pour masquer',
+    hidden: 'Masqué — cliquer pour reset',
   },
 
   // Common
