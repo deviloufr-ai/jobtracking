@@ -525,11 +525,8 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                           key={theme.id}
                           onClick={() => {
                             console.log('🎨 Changing theme to:', theme.id)
-                            updateSetting('theme', theme.id)
-                            setTimeout(() => {
-                              console.log('🎨 Current settings after update:', { theme: settings.theme })
-                              console.log('🎨 Body classes:', document.body.className)
-                            }, 100)
+                            localStorage.setItem('jobtrackr_theme', theme.id)
+                            window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: theme.id } }))
                           }}
                           className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg border-2 transition-all text-left ${
                             settings.theme === theme.id

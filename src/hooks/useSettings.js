@@ -48,12 +48,10 @@ export function useSettings() {
         await indexeddb.init()
         const cached = await indexeddb.getSettings()
         if (cached && Object.keys(cached).length > 0) {
-          console.log('🎨 Loaded settings from IndexedDB:', cached)
           setSettings({ ...SETTINGS_DEFAULTS, ...cached })
         } else {
           // Fall back to localStorage
           const local = loadSettings()
-          console.log('🎨 Loaded settings from localStorage:', local)
           setSettings(local)
         }
       } catch (err) {
@@ -68,10 +66,8 @@ export function useSettings() {
   }, [])
 
   const updateSetting = useCallback((key, value) => {
-    console.log('🎨 updateSetting called:', { key, value })
     setSettings(prev => {
       const next = { ...prev, [key]: value }
-      console.log('🎨 Setting state to:', next)
 
       // Save locally
       saveSettingsLocal(next)
