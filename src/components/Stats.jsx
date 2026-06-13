@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { STATUSES } from '../hooks/useJobs'
+import { STATUSES, getStatusLabel } from '../hooks/useJobs'
 
 function ActivityBars({ values, color = '#6366f1' }) {
   if (!values || values.length !== 7) return null
@@ -219,7 +219,7 @@ export default function Stats({ jobs, t = (key) => key }) {
             return (
               <div key={s.key} className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: barColor }} />
-                <span className="text-xs text-gray-600 w-28 flex-shrink-0">{s.label}</span>
+                <span className="text-xs text-gray-600 w-28 flex-shrink-0">{getStatusLabel(s.key, t)}</span>
                 <div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden min-w-0">
                   <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
                 </div>

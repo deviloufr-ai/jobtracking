@@ -1,4 +1,4 @@
-import { STATUSES } from '../hooks/useJobs'
+import { STATUSES, getStatusLabel } from '../hooks/useJobs'
 
 export default function Filters({ filters, onChange, onReset, total, filtered, showFavOnly, onToggleFav, favCount, showArchived, onToggleArchived, archivedCount, t = (key) => key }) {
   const statusEntries = Object.entries(filters.statuses || {})
@@ -100,7 +100,7 @@ export default function Filters({ filters, onChange, onReset, total, filtered, s
                 : state === 'exclude' ? 'bg-red-300'
                 : 'bg-gray-300'
               }`} />
-              {s.label}
+              {getStatusLabel(s.key, t)}
               {state === 'include' && <span className="text-[10px] opacity-70">✓</span>}
               {state === 'exclude' && <span className="text-[10px]">✕</span>}
             </button>
