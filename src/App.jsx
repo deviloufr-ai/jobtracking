@@ -960,8 +960,8 @@ export default function App() {
         </div>
       </nav>
 
-      {modal && <JobModal job={modal === 'add' ? null : modal} onSave={handleSave} onClose={() => setModal(null)} findDuplicate={findDuplicateInList} />}
-      {toDelete && <ConfirmDelete job={toDelete} onConfirm={handleDelete} onCancel={() => setToDelete(null)} />}
+      {modal && <JobModal job={modal === 'add' ? null : modal} onSave={handleSave} onClose={() => setModal(null)} findDuplicate={findDuplicateInList} t={t} />}
+      {toDelete && <ConfirmDelete job={toDelete} onConfirm={handleDelete} onCancel={() => setToDelete(null)} t={t} />}
       {showGmail && <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={() => { setShowGmail(false); const connected = isConnected(); setGmailConnected(connected); setGmailUser(connected ? getCachedUser() : null) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u) }} existingJobs={jobs} />}
       {showImageImport && <ImageImport onImport={handleBulkImport} onClose={() => setShowImageImport(false)} existingJobs={jobs} />}
       {starJob && <STARGenerator job={starJob} onClose={() => setStarJob(null)} />}

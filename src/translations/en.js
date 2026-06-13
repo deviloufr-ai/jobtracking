@@ -167,6 +167,57 @@ export const en = {
     extension: 'Manage the Firefox extension',
   },
 
+  // JobModal
+  jobModal: {
+    editTitle: 'Edit application',
+    newTitle: 'New application',
+    companyLabel: 'Company',
+    positionLabel: 'Position',
+    urlLabel: 'Job posting URL',
+    dateLabel: 'Date',
+    statusLabel: 'Status',
+    notesLabel: 'Notes',
+    notesPlaceholder: 'Context, contacts, impressions...',
+    companyPlaceholder: 'ex: Pennylane',
+    positionPlaceholder: 'ex: Senior Product Manager',
+    urlInvalid: '⚠ Invalid URL (must start with http)',
+    duplicateWarning: '⚠️ Existing application',
+    duplicateText: 'An application for {company} — {position} already exists ({status})',
+    duplicateAsk: 'Continue to create a duplicate?',
+    cancel: 'Cancel',
+    save: 'Save',
+    required: '*',
+  },
+
+  // ConfirmDelete
+  confirmDelete: {
+    title: 'Confirm deletion',
+    message: 'Are you sure you want to delete this application?',
+    warning: 'This action is irreversible.',
+    cancel: 'Cancel',
+    delete: 'Yes, delete',
+  },
+
+  // Filters
+  filters: {
+    search: 'Search',
+    period: 'Period',
+    all: 'All',
+    week: 'This week',
+    month: 'This month',
+    favorites: 'Favorites',
+    archived: 'Archived',
+    results: '{count} result{s}',
+  },
+
+  // Stats
+  stats: {
+    totalApplications: 'Total applications',
+    activeApplications: 'Active applications',
+    interviewsScheduled: 'Interviews scheduled',
+    offerReceived: 'Offers received',
+  },
+
   // Common
   common: {
     notes: 'Notes',

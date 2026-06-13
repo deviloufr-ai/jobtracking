@@ -167,6 +167,57 @@ export const fr = {
     extension: 'Gérez l\'extension Firefox',
   },
 
+  // JobModal
+  jobModal: {
+    editTitle: 'Modifier la candidature',
+    newTitle: 'Nouvelle candidature',
+    companyLabel: 'Entreprise',
+    positionLabel: 'Poste',
+    urlLabel: 'URL de l\'offre',
+    dateLabel: 'Date',
+    statusLabel: 'Statut',
+    notesLabel: 'Notes',
+    notesPlaceholder: 'Contexte, contacts, impressions...',
+    companyPlaceholder: 'ex: Pennylane',
+    positionPlaceholder: 'ex: Senior Product Manager',
+    urlInvalid: '⚠ URL invalide (doit commencer par http)',
+    duplicateWarning: '⚠️ Candidature existante',
+    duplicateText: 'Une candidature pour {company} — {position} existe déjà ({status})',
+    duplicateAsk: 'Voulez-vous continuer pour créer un doublon ?',
+    cancel: 'Annuler',
+    save: 'Enregistrer',
+    required: '*',
+  },
+
+  // ConfirmDelete
+  confirmDelete: {
+    title: 'Confirmer la suppression',
+    message: 'Êtes-vous sûr de vouloir supprimer cette candidature ?',
+    warning: 'Cette action est irréversible.',
+    cancel: 'Annuler',
+    delete: 'Oui, supprimer',
+  },
+
+  // Filters
+  filters: {
+    search: 'Rechercher',
+    period: 'Période',
+    all: 'Tous',
+    week: 'Cette semaine',
+    month: 'Ce mois',
+    favorites: 'Favoris',
+    archived: 'Archivées',
+    results: '{count} résultat{s}',
+  },
+
+  // Stats
+  stats: {
+    totalApplications: 'Candidatures totales',
+    activeApplications: 'Candidatures actives',
+    interviewsScheduled: 'Entretiens prévus',
+    offerReceived: 'Offres reçues',
+  },
+
   // Common
   common: {
     notes: 'Notes',

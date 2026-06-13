@@ -14,7 +14,7 @@ export const SETTINGS_DEFAULTS = {
   followUpWaitingDays: 7,
   followUpOfferDays: 3,
   autoRefreshHours: 6,
-  gmailPeriodMonths: 3,
+  gmailPeriodDays: 14,
   checkPositionAfterDays: 14,
   checkPositionEnabled: true,
   theme: 'light',

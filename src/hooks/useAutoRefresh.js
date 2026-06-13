@@ -319,7 +319,7 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
   return grouped
 }
 
-export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs) {
+export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs, settings) {
   const [refreshing, setRefreshing] = useState(false)
   const [lastRefresh, setLastRefresh] = useState(() => {
     const stored = localStorage.getItem(REFRESH_KEY)
@@ -329,6 +329,7 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
   const jobsRef = useRef(jobs)
   const refreshingRef = useRef(refreshing)
   const reprocessJobsRef = useRef(reprocessJobs)
+  const settingsRef = useRef(settings)
 
   // Keep refs in sync
   useEffect(() => {
@@ -340,6 +341,9 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
   useEffect(() => {
     reprocessJobsRef.current = reprocessJobs
   }, [reprocessJobs])
+  useEffect(() => {
+    settingsRef.current = settings
+  }, [settings])
 
   const doRefresh = useCallback(async (silent = false) => {
     if (!isConnected() || refreshingRef.current) return
@@ -351,10 +355,11 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
     const jobs = jobsRef.current
 
     try {
-      // Simple time-based sync: scan last 2 weeks to catch new emails
+      // Simple time-based sync: scan emails from user-configured lookback period
       // (Not lastSyncTime-based to avoid Gmail indexing delays)
       // Duplicate detection + history merge prevents re-importing same emails
-      const months = 14/30
+      const gmailLookbackDays = settingsRef.current?.gmailPeriodDays || 14
+      const months = gmailLookbackDays / 30
 
       // Fetch from all connected accounts and merge, tagging each email with its account
       const connectedAccts = getConnectedAccounts()
