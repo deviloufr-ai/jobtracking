@@ -3,6 +3,8 @@ import { useJobs, getStatus } from './hooks/useJobs'
 import { useExtensionImport } from './hooks/useExtensionImport'
 import { useExtensionDetect } from './hooks/useExtensionDetect'
 import { useSettings } from './hooks/useSettings'
+import { applyTheme } from './utils/themes'
+import './styles/themes.css'
 import ErrorBoundary from './components/ErrorBoundary'
 import Stats from './components/Stats'
 import Filters from './components/Filters'
@@ -149,6 +151,11 @@ export default function App() {
       getGmailUserInfo().then(user => { if (user) setGmailUser(user) })
     }
   }, [])
+
+  // Apply theme on load and when settings change
+  useEffect(() => {
+    applyTheme(settings.theme || 'light')
+  }, [settings.theme])
 
   // Initialize sync only when user leaves landing page (actively logs in)
   useEffect(() => {
@@ -454,7 +461,14 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-slate-50">
+      <div
+        className="min-h-screen transition-colors duration-300"
+        style={{
+          backgroundColor: 'var(--theme-bg)',
+          color: 'var(--theme-text)'
+        }}
+        data-theme={settings.theme || 'light'}
+      >
 
       {/* ── Mobile drawer overlay ──────────────────────────────────────────── */}
       {mobileMenuOpen && (

@@ -17,6 +17,7 @@ export const SETTINGS_DEFAULTS = {
   gmailPeriodMonths: 3,
   checkPositionAfterDays: 14,
   checkPositionEnabled: true,
+  theme: 'light',
 }
 
 // Load from localStorage as fallback (for migration period)

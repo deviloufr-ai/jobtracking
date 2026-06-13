@@ -5,6 +5,7 @@ import { useJobs } from '../hooks/useJobs'
 import NotificationSettings from './NotificationSettings'
 import { supabase } from '../services/supabase'
 import { indexeddb } from '../services/indexeddb'
+import { THEMES } from '../utils/themes'
 
 const PROFILE_KEY = 'jobtrackr_profile'
 const PROFILE_DEFAULTS = {
@@ -86,6 +87,7 @@ const CATEGORIES = [
   { id: 'automation', label: 'Automatisation', icon: '⚙️' },
   { id: 'notifications', label: 'Notifications', icon: '🔔' },
   { id: 'followups', label: 'Rappels', icon: '⏰' },
+  { id: 'appearance', label: 'Apparence', icon: '🎨' },
   { id: 'data', label: 'Données', icon: '💾' },
   { id: 'extension', label: 'Extension', icon: '🦊' },
 ]
@@ -327,6 +329,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                 {activeTab === 'automation' && 'Configurez l\'automatisation de votre recherche'}
                 {activeTab === 'notifications' && 'Gérez vos notifications'}
                 {activeTab === 'followups' && 'Définissez les délais de suivi'}
+                {activeTab === 'appearance' && 'Choisissez le thème de l\'application'}
                 {activeTab === 'data' && 'Exportez, importez ou réinitialisez vos données'}
                 {activeTab === 'extension' && 'Gérez l\'extension Firefox'}
               </p>
@@ -507,6 +510,49 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                       ↻ Remettre par défaut
                     </button>
                   </div>
+                </Card>
+              </>
+            )}
+
+            {/* Appearance Tab */}
+            {activeTab === 'appearance' && (
+              <>
+                <Card title="Thème de l'application" subtitle="Choisissez le style visuel qui vous convient le mieux">
+                  <Row label="Thème" hint="Sélectionnez le thème de l'interface">
+                    <div className="space-y-3">
+                      {Object.values(THEMES).map(theme => (
+                        <button
+                          key={theme.id}
+                          onClick={() => updateSetting('theme', theme.id)}
+                          className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg border-2 transition-all text-left ${
+                            settings.theme === theme.id
+                              ? 'border-indigo-500 bg-indigo-50'
+                              : 'border-gray-200 bg-white hover:border-gray-300'
+                          }`}
+                        >
+                          {/* Theme preview */}
+                          <div className="flex gap-2 shrink-0">
+                            <div
+                              style={{ backgroundColor: theme.bg, borderColor: theme.border }}
+                              className="w-12 h-12 rounded-md border"
+                            />
+                            <div
+                              style={{ backgroundColor: theme.primary }}
+                              className="w-12 h-12 rounded-md"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <p className={`font-semibold ${settings.theme === theme.id ? 'text-indigo-700' : 'text-gray-900'}`}>
+                              {theme.label}
+                            </p>
+                          </div>
+                          {settings.theme === theme.id && (
+                            <span className="text-lg">✓</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </Row>
                 </Card>
               </>
             )}
