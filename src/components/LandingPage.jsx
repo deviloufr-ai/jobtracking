@@ -1,4 +1,11 @@
+import { useState } from 'react'
+import PrivacyPolicy from './PrivacyPolicy'
+import TermsOfService from './TermsOfService'
+
 export default function LandingPage({ onLogin }) {
+  const [showPrivacy, setShowPrivacy] = useState(false)
+  const [showTerms, setShowTerms] = useState(false)
+
   return (
     <div style={{
       background: '#0c0f16',
@@ -7,6 +14,8 @@ export default function LandingPage({ onLogin }) {
       lineHeight: 1.55,
       minHeight: '100vh'
     }}>
+      {showPrivacy && <PrivacyPolicy onClose={() => setShowPrivacy(false)} />}
+      {showTerms && <TermsOfService onClose={() => setShowTerms(false)} />}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
 
@@ -765,11 +774,16 @@ export default function LandingPage({ onLogin }) {
               </div>
             </div>
             <div>
-              <h4>Accès</h4>
+              <h4>Légal & Accès</h4>
               <div className="footer-links">
                 <a href="https://jobtracking-three.vercel.app" target="_blank" rel="noreferrer">→ jobtracking-three.vercel.app</a>
                 <a href="https://github.com/deviloufr-ai/jobtracking" target="_blank" rel="noreferrer">→ github.com/deviloufr-ai/jobtracking</a>
-                <span style={{ color: '#6b7488' }}>Notion · Backlog · Roadmap sur demande</span>
+                <button onClick={() => setShowPrivacy(true)} style={{ color: '#eef0f6', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'none', padding: 0, font: 'inherit' }}>
+                  → Politique de confidentialité
+                </button>
+                <button onClick={() => setShowTerms(true)} style={{ color: '#eef0f6', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'none', padding: 0, font: 'inherit' }}>
+                  → Conditions d'utilisation
+                </button>
               </div>
             </div>
           </div>
