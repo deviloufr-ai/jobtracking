@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { enrichJobTimeline } from '../services/enrichTimeline'
 import AdvicePanel from './AdvicePanel'
-import { STATUSES, getStatus } from '../hooks/useJobs'
+import { STATUSES, getStatus, getStatusLabel } from '../hooks/useJobs'
 import { gmailMessageUrl } from '../services/gmail'
 import { isNoReply } from './EmailDraft'
 import UseCasePanel from './UseCasePanel'
@@ -344,7 +344,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer whitespace-nowrap ${status.color} hover:opacity-80 transition-opacity`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
-            {status.label}
+            {getStatusLabel(job.status, t)}
             <span className="text-xs opacity-60">▾</span>
           </button>
           {showStatusMenu && typeof document !== 'undefined' && (
@@ -548,7 +548,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                               <div className="flex items-center justify-between gap-2 mb-1.5">
                                 <div className="flex items-center gap-1.5">
                                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isPastMeeting ? 'bg-gray-100 text-gray-400' : isUpcomingMeeting ? 'bg-amber-100 text-amber-700' : st.color}`}>
-                                    {isPastMeeting ? '✓ Passé' : isUpcomingMeeting ? '📅 À venir' : st.label}
+                                    {isPastMeeting ? '✓ ' + t('jobActions.past') : isUpcomingMeeting ? '📅 ' + t('jobActions.upcoming') : getStatusLabel(entry.status, t)}
                                   </span>
                                   <StepTips note={entry.note} t={t} />
                                 </div>

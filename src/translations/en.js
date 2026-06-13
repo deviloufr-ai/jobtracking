@@ -272,6 +272,8 @@ export const en = {
     date: 'Date',
     tips: 'Tips for this step',
     you: 'You',
+    past: 'Past',
+    upcoming: 'Upcoming',
   },
 
   // GmailImport

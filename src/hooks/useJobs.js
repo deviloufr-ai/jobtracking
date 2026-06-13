@@ -53,21 +53,26 @@ export function sortJobHistory(job) {
 }
 
 export const STATUSES = [
-  { key: 'todo',         label: 'À postuler',         color: 'bg-slate-100 text-slate-600',   dot: 'bg-slate-400' },
-  { key: 'sent',         label: 'Envoyée',           color: 'bg-blue-100 text-blue-700',     dot: 'bg-blue-500' },
-  { key: 'reviewing',    label: "En cours d'examen",  color: 'bg-yellow-100 text-yellow-700', dot: 'bg-yellow-500' },
-  { key: 'interview',    label: 'Entretien planifié',  color: 'bg-purple-100 text-purple-700', dot: 'bg-purple-500' },
-  { key: 'done',         label: 'Traité',              color: 'bg-teal-100 text-teal-700',     dot: 'bg-teal-500' },
-  { key: 'waiting',      label: 'En attente',          color: 'bg-orange-100 text-orange-700', dot: 'bg-orange-500' },
-  { key: 'offer',        label: 'Offre reçue',         color: 'bg-green-100 text-green-700',   dot: 'bg-green-500' },
-  { key: 'rejected',     label: 'Refusée',             color: 'bg-red-100 text-red-700',       dot: 'bg-red-400' },
-  { key: 'rejected_ats', label: 'Refus ATS',           color: 'bg-rose-100 text-rose-600',     dot: 'bg-rose-400' },
-  { key: 'cancelled',    label: 'Annulée',             color: 'bg-gray-100 text-gray-500',     dot: 'bg-gray-400' },
-  { key: 'archived',    label: 'Archivée',            color: 'bg-slate-100 text-slate-400',   dot: 'bg-slate-300' },
+  { key: 'todo',         label: 'To do',         color: 'bg-slate-100 text-slate-600',   dot: 'bg-slate-400' },
+  { key: 'sent',         label: 'Sent',           color: 'bg-blue-100 text-blue-700',     dot: 'bg-blue-500' },
+  { key: 'reviewing',    label: 'Reviewing',  color: 'bg-yellow-100 text-yellow-700', dot: 'bg-yellow-500' },
+  { key: 'interview',    label: 'Interview',  color: 'bg-purple-100 text-purple-700', dot: 'bg-purple-500' },
+  { key: 'done',         label: 'Accepted',              color: 'bg-teal-100 text-teal-700',     dot: 'bg-teal-500' },
+  { key: 'waiting',      label: 'Waiting',          color: 'bg-orange-100 text-orange-700', dot: 'bg-orange-500' },
+  { key: 'offer',        label: 'Offer received',         color: 'bg-green-100 text-green-700',   dot: 'bg-green-500' },
+  { key: 'rejected',     label: 'Rejected',             color: 'bg-red-100 text-red-700',       dot: 'bg-red-400' },
+  { key: 'rejected_ats', label: 'Rejected (ATS)',           color: 'bg-rose-100 text-rose-600',     dot: 'bg-rose-400' },
+  { key: 'cancelled',    label: 'Cancelled',             color: 'bg-gray-100 text-gray-500',     dot: 'bg-gray-400' },
+  { key: 'archived',    label: 'Archived',            color: 'bg-slate-100 text-slate-400',   dot: 'bg-slate-300' },
 ]
 
 export function getStatus(key) {
   return STATUSES.find(s => s.key === key) || STATUSES[0]
+}
+
+export function getStatusLabel(key, t = (key) => key) {
+  const status = getStatus(key)
+  return t(`status.${key}`) || status.label
 }
 
 function normalizeCompany(name = '') {
