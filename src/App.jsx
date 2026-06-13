@@ -16,6 +16,7 @@ import GmailImport from './components/GmailImport'
 import NextAction from './components/NextAction'
 import STARGenerator from './components/STARGenerator'
 import EmailDraft from './components/EmailDraft'
+import MergeModal from './components/MergeModal'
 import { useAutoRefresh } from './hooks/useAutoRefresh'
 import { usePolling } from './hooks/usePolling'
 import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, autoReuseStoredTokens, getSyncUserIdForSupabase, resolveSyncUserId } from './services/gmail'
@@ -145,6 +146,8 @@ export default function App() {
   const [syncUserId, setSyncUserId] = useState(null)
   const [initialSyncDone, setInitialSyncDone] = useState(false)
   const [currentTheme, setCurrentTheme] = useState(settings.theme || 'light')
+  const [selectedJobIds, setSelectedJobIds] = useState(new Set())
+  const [mergeModal, setMergeModal] = useState(null)
 
   // On load: check for cached Gmail user
   useEffect(() => {
@@ -430,6 +433,37 @@ export default function App() {
     if (!window.confirm(msg)) return
     await clearAllJobs()
     showToast(t('notifications.allApplicationsCleared'))
+  }
+
+  const toggleJobSelection = (jobId) => {
+    setSelectedJobIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(jobId)) {
+        newSet.delete(jobId)
+      } else {
+        newSet.add(jobId)
+      }
+      return newSet
+    })
+  }
+
+  const handleMergeSelected = () => {
+    if (selectedJobIds.size < 2) return
+    const selectedJobs = jobs.filter(j => selectedJobIds.has(j.id))
+    setMergeModal(selectedJobs)
+  }
+
+  const handleMergeConfirm = (mergedJob) => {
+    updateJob(mergedJob)
+    // Delete the other selected jobs
+    selectedJobIds.forEach(id => {
+      if (id !== mergedJob.id) {
+        deleteJob(id)
+      }
+    })
+    setSelectedJobIds(new Set())
+    setMergeModal(null)
+    showToast(t('notifications.jobsMerged') || 'Jobs merged successfully!')
   }
 
   const ThHeader = ({ col, label }) => (
@@ -857,6 +891,20 @@ export default function App() {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-yellow-100 bg-yellow-50/60">
+                          <th className="py-3 px-2 w-8">
+                            <input type="checkbox" className="w-4 h-4 cursor-pointer" checked={filtered.filter(j => j.favorite).every(j => selectedJobIds.has(j.id)) && filtered.filter(j => j.favorite).length > 0} onChange={(e) => {
+                              const favJobs = filtered.filter(j => j.favorite)
+                              if (e.target.checked) {
+                                setSelectedJobIds(prev => new Set([...prev, ...favJobs.map(j => j.id)]))
+                              } else {
+                                setSelectedJobIds(prev => {
+                                  const newSet = new Set(prev)
+                                  favJobs.forEach(j => newSet.delete(j.id))
+                                  return newSet
+                                })
+                              }
+                            }} />
+                          </th>
                           <ThHeader col="company" label={t('table.company')} />
                           <ThHeader col="status" label={t('table.status')} />
                           <ThHeader col="date" label={t('table.date')} />
@@ -866,7 +914,7 @@ export default function App() {
                       </thead>
                       <tbody>
                         {filtered.filter(j => j.favorite).map(job => (
-                          <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} onViewSavedCV={handleViewSavedCV} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} checkAllPositions={checkAllPositions} t={t} />
+                          <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} onViewSavedCV={handleViewSavedCV} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} checkAllPositions={checkAllPositions} t={t} isSelected={selectedJobIds.has(job.id)} onSelect={toggleJobSelection} />
                         ))}
                       </tbody>
                     </table>
@@ -883,6 +931,20 @@ export default function App() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-gray-100 bg-gray-50/60">
+                        <th className="py-3 px-2 w-8">
+                          <input type="checkbox" className="w-4 h-4 cursor-pointer" checked={filtered.filter(j => !j.favorite).every(j => selectedJobIds.has(j.id)) && filtered.filter(j => !j.favorite).length > 0} onChange={(e) => {
+                            const nonFavJobs = filtered.filter(j => !j.favorite)
+                            if (e.target.checked) {
+                              setSelectedJobIds(prev => new Set([...prev, ...nonFavJobs.map(j => j.id)]))
+                            } else {
+                              setSelectedJobIds(prev => {
+                                const newSet = new Set(prev)
+                                nonFavJobs.forEach(j => newSet.delete(j.id))
+                                return newSet
+                              })
+                            }
+                          }} />
+                        </th>
                         <ThHeader col="company" label={t('table.company')} />
                         <ThHeader col="status" label={t('table.status')} />
                         <ThHeader col="date" label={t('table.date')} />
@@ -892,7 +954,7 @@ export default function App() {
                     </thead>
                     <tbody>
                       {filtered.filter(j => !j.favorite).map(job => (
-                        <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} onViewSavedCV={handleViewSavedCV} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} checkAllPositions={checkAllPositions} t={t} />
+                        <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} onViewSavedCV={handleViewSavedCV} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} checkAllPositions={checkAllPositions} t={t} isSelected={selectedJobIds.has(job.id)} onSelect={toggleJobSelection} />
                       ))}
                     </tbody>
                   </table>
@@ -906,6 +968,12 @@ export default function App() {
           <p className="text-xs text-gray-300">JobTrackr v0.4 <span title={`commit ${__COMMIT_HASH__}`}>· #{__COMMIT_COUNT__}</span></p>
           {jobs.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap justify-end">
+              {selectedJobIds.size >= 2 && (
+                <button onClick={handleMergeSelected}
+                  className="text-xs text-blue-400 hover:text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors border border-blue-200 hover:border-blue-400">
+                  🔗 {t('footer.mergeSelected') || `Merge ${selectedJobIds.size} selected`}
+                </button>
+              )}
               <button onClick={mergeDuplicates}
                 className="text-xs text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors border border-transparent hover:border-indigo-200">
                 {t('footer.mergeDuplicates')}
@@ -969,6 +1037,7 @@ export default function App() {
       {starJob && <STARGenerator job={starJob} onClose={() => setStarJob(null)} />}
       {emailDraft && <EmailDraft job={emailDraft.job} type={emailDraft.type} onClose={() => setEmailDraft(null)} onEmailSent={handleEmailSent} />}
       {viewingCV && <CVViewer job={viewingCV} onClose={() => setViewingCV(null)} />}
+      {mergeModal && <MergeModal jobs={mergeModal} onConfirm={handleMergeConfirm} onCancel={() => setMergeModal(null)} t={t} />}
 
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-5 py-2.5 rounded-full shadow-lg z-50">

@@ -90,7 +90,7 @@ function getSourceLabel(entry, companyName, t) {
   return null
 }
 
-export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, onViewSavedCV, forceExpand, onForceExpandDone, checkAllPositions, t = (key) => key }) {
+export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, onViewSavedCV, forceExpand, onForceExpandDone, checkAllPositions, t = (key) => key, isSelected = false, onSelect = null }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
   const [showUseCase, setShowUseCase] = useState(false)
@@ -310,10 +310,10 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
         onClick={() => setExpanded(v => !v)}
       >
         {/* Checkbox + Avatar + Company — clicking company/avatar triggers row expand */}
-        <td className="py-3.5 px-4">
+        <td className="py-3.5 px-2">
           <div className="flex items-center gap-3 min-w-0">
             {/* Checkbox */}
-            <input type="checkbox" className="flex-shrink-0 accent-indigo-600 w-3.5 h-3.5 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()} />
+            <input type="checkbox" className="flex-shrink-0 accent-indigo-600 w-4 h-4 cursor-pointer" checked={isSelected} onChange={(e) => { e.stopPropagation(); onSelect?.(job.id) }} />
             {/* Favorite star */}
             <button
               onClick={e => { e.stopPropagation(); onToggleFavorite && onToggleFavorite(job.id) }}
