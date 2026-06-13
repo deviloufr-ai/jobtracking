@@ -143,6 +143,7 @@ export default function App() {
   const [showLandingPage, setShowLandingPage] = useState(true)
   const [syncUserId, setSyncUserId] = useState(null)
   const [initialSyncDone, setInitialSyncDone] = useState(false)
+  const [currentTheme, setCurrentTheme] = useState(settings.theme || 'light')
 
   // On load: check for cached Gmail user
   useEffect(() => {
@@ -155,10 +156,13 @@ export default function App() {
   // Apply theme on load and when settings change
   useEffect(() => {
     const theme = settings.theme || 'light'
-    applyTheme(theme)
-    document.documentElement.setAttribute('data-theme', theme)
-    document.documentElement.className = `theme-${theme}`
-  }, [settings.theme])
+    if (currentTheme !== theme) {
+      applyTheme(theme)
+      document.documentElement.setAttribute('data-theme', theme)
+      document.documentElement.style.setProperty('--current-theme', `'${theme}'`)
+      setCurrentTheme(theme)
+    }
+  }, [settings.theme, currentTheme])
 
   // Initialize sync only when user leaves landing page (actively logs in)
   useEffect(() => {
@@ -465,11 +469,12 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div
-        key={`theme-${settings.theme}`}
+        key={currentTheme}
         className="min-h-screen transition-colors duration-300"
         style={{
           backgroundColor: 'var(--theme-bg)',
-          color: 'var(--theme-text)'
+          color: 'var(--theme-text)',
+          transitionDuration: '200ms'
         }}
       >
 
