@@ -1,160 +1,178 @@
-/* Theme CSS Variables */
-:root {
-  --theme-bg: #f8fafc;
-  --theme-surface: #ffffff;
-  --theme-surface2: #ffffff;
-  --theme-border: #e2e8f0;
-  --theme-text: #1e293b;
-  --theme-text-dim: #64748b;
-  --theme-text-faint: #94a3b8;
-  --theme-primary: #4f46e5;
-  --theme-primary-soft: rgba(79, 70, 229, 0.1);
-  --theme-amber: #f4a73c;
-  --theme-amber-soft: rgba(244, 167, 60, 0.14);
-  --theme-emerald: #36d399;
-  --theme-emerald-soft: rgba(54, 211, 153, 0.14);
+/* Simple theme system using body class */
+
+/* Dark theme base */
+body.theme-dark {
+  background-color: #0c0f16;
+  color: #eef0f6;
 }
 
-/* Dark theme overrides */
-[data-theme="dark"] {
-  --theme-bg: #0c0f16 !important;
-  --theme-surface: #161b26 !important;
-  --theme-surface2: #1f2533 !important;
-  --theme-border: #2b3242 !important;
-  --theme-text: #eef0f6 !important;
-  --theme-text-dim: #9aa3ba !important;
-  --theme-text-faint: #6b7488 !important;
-  --theme-primary: #7b7bf7 !important;
-  --theme-primary-soft: rgba(123, 123, 247, 0.14) !important;
+/* Override Tailwind colors for dark theme */
+body.theme-dark .bg-white,
+body.theme-dark .bg-slate-50,
+body.theme-dark .bg-gray-50,
+body.theme-dark .bg-gray-100 {
+  background-color: #161b26 !important;
 }
 
-/* Dark theme - Override all background colors */
-[data-theme="dark"] .bg-white,
-[data-theme="dark"] .bg-slate-50,
-[data-theme="dark"] .bg-gray-50,
-[data-theme="dark"] .bg-gray-100,
-[data-theme="dark"] .bg-gray-200,
-[data-theme="dark"] .bg-yellow-50,
-[data-theme="dark"] .bg-orange-50,
-[data-theme="dark"] .bg-red-50,
-[data-theme="dark"] .bg-green-50,
-[data-theme="dark"] .bg-blue-50,
-[data-theme="dark"] .bg-purple-50,
-[data-theme="dark"] .bg-indigo-50,
-[data-theme="dark"] .bg-violet-50 {
-  background-color: var(--theme-surface) !important;
+body.theme-dark .text-gray-900,
+body.theme-dark .text-gray-800,
+body.theme-dark .text-gray-700 {
+  color: #eef0f6 !important;
 }
 
-/* Dark theme - Text colors */
-[data-theme="dark"] .text-gray-900,
-[data-theme="dark"] .text-gray-800,
-[data-theme="dark"] .text-gray-700 {
-  color: var(--theme-text) !important;
+body.theme-dark .text-gray-600,
+body.theme-dark .text-gray-500 {
+  color: #9aa3ba !important;
 }
 
-[data-theme="dark"] .text-gray-600,
-[data-theme="dark"] .text-gray-500 {
-  color: var(--theme-text-dim) !important;
+body.theme-dark .text-gray-400,
+body.theme-dark .text-gray-300 {
+  color: #6b7488 !important;
 }
 
-[data-theme="dark"] .text-gray-400,
-[data-theme="dark"] .text-gray-300 {
-  color: var(--theme-text-faint) !important;
+body.theme-dark .border-gray-100,
+body.theme-dark .border-gray-200 {
+  border-color: #2b3242 !important;
 }
 
-/* Dark theme - Border colors */
-[data-theme="dark"] .border-gray-100,
-[data-theme="dark"] .border-gray-200,
-[data-theme="dark"] .border-gray-300,
-[data-theme="dark"] .border-gray-400 {
-  border-color: var(--theme-border) !important;
+body.theme-dark .bg-indigo-50,
+body.theme-dark .bg-indigo-100 {
+  background-color: rgba(123, 123, 247, 0.14) !important;
 }
 
-/* Dark theme - Primary indigo to custom indigo */
-[data-theme="dark"] .bg-indigo-100,
-[data-theme="dark"] .bg-indigo-50 {
-  background-color: var(--theme-primary-soft) !important;
+body.theme-dark .border-indigo-200 {
+  border-color: #7b7bf7 !important;
 }
 
-[data-theme="dark"] .border-indigo-200,
-[data-theme="dark"] .border-indigo-300 {
-  border-color: var(--theme-primary) !important;
+body.theme-dark .text-indigo-600,
+body.theme-dark .text-indigo-700 {
+  color: #7b7bf7 !important;
 }
 
-[data-theme="dark"] .text-indigo-600,
-[data-theme="dark"] .text-indigo-700 {
-  color: var(--theme-primary) !important;
+body.theme-dark table {
+  background-color: #161b26 !important;
 }
 
-[data-theme="dark"] .hover\:bg-indigo-50:hover {
-  background-color: var(--theme-primary-soft) !important;
+body.theme-dark thead {
+  background-color: #1f2533 !important;
 }
 
-[data-theme="dark"] .hover\:text-indigo-600:hover {
-  color: var(--theme-primary) !important;
+body.theme-dark th {
+  color: #eef0f6 !important;
+  background-color: #1f2533 !important;
 }
 
-/* Dark theme - Shadow adjustments */
-[data-theme="dark"] .shadow-sm,
-[data-theme="dark"] .shadow,
-[data-theme="dark"] .shadow-lg {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+body.theme-dark td {
+  color: #eef0f6 !important;
 }
 
-/* Dark theme - Placeholder and subtle text */
-[data-theme="dark"] .placeholder-gray-400::placeholder {
-  color: var(--theme-text-faint) !important;
+body.theme-dark tbody tr:hover {
+  background-color: #1f2533 !important;
 }
 
-/* Dark theme - Table styling */
-[data-theme="dark"] table {
-  background-color: var(--theme-surface) !important;
-  color: var(--theme-text) !important;
+/* Midnight theme */
+body.theme-midnight {
+  background-color: #0a0e13;
+  color: #f1f5f9;
 }
 
-[data-theme="dark"] thead,
-[data-theme="dark"] thead tr {
-  background-color: var(--theme-surface2) !important;
+body.theme-midnight .bg-white,
+body.theme-midnight .bg-slate-50,
+body.theme-midnight .bg-gray-50,
+body.theme-midnight .bg-gray-100 {
+  background-color: #131820 !important;
 }
 
-[data-theme="dark"] tbody tr {
-  border-color: var(--theme-border) !important;
-  background-color: var(--theme-surface) !important;
+body.theme-midnight .text-gray-900,
+body.theme-midnight .text-gray-800,
+body.theme-midnight .text-gray-700 {
+  color: #f1f5f9 !important;
 }
 
-[data-theme="dark"] tbody tr:hover {
-  background-color: var(--theme-surface2) !important;
+body.theme-midnight .border-gray-200 {
+  border-color: #252d3d !important;
 }
 
-[data-theme="dark"] td {
-  color: var(--theme-text) !important;
-  border-color: var(--theme-border) !important;
+/* Ocean theme */
+body.theme-ocean {
+  background-color: #0f172a;
+  color: #f1f5f9;
 }
 
-[data-theme="dark"] th {
-  color: var(--theme-text) !important;
-  border-color: var(--theme-border) !important;
-  background-color: var(--theme-surface2) !important;
-  font-weight: 600;
+body.theme-ocean .bg-white,
+body.theme-ocean .bg-slate-50,
+body.theme-ocean .bg-gray-50,
+body.theme-ocean .bg-gray-100 {
+  background-color: #1e293b !important;
 }
 
-/* Dark theme - Cards and panels */
-[data-theme="dark"] .rounded-xl,
-[data-theme="dark"] .rounded-2xl,
-[data-theme="dark"] .rounded-lg {
-  background-color: var(--theme-surface) !important;
+body.theme-ocean .text-gray-900,
+body.theme-ocean .text-gray-800,
+body.theme-ocean .text-gray-700 {
+  color: #f1f5f9 !important;
 }
 
-/* Dark theme - Badges and status pills */
-[data-theme="dark"] .inline-flex.items-center {
-  background-color: inherit !important;
+body.theme-ocean .border-gray-200 {
+  border-color: #475569 !important;
 }
 
-/* Dark theme - Expand buttons and interactive elements */
-[data-theme="dark"] button {
-  color: var(--theme-text) !important;
+body.theme-ocean .text-indigo-600,
+body.theme-ocean .text-indigo-700 {
+  color: #0ea5e9 !important;
 }
 
-[data-theme="dark"] button:hover {
-  background-color: var(--theme-surface2) !important;
+/* Forest theme */
+body.theme-forest {
+  background-color: #0f2818;
+  color: #f0fdf4;
+}
+
+body.theme-forest .bg-white,
+body.theme-forest .bg-slate-50,
+body.theme-forest .bg-gray-50,
+body.theme-forest .bg-gray-100 {
+  background-color: #1a3a2a !important;
+}
+
+body.theme-forest .text-gray-900,
+body.theme-forest .text-gray-800,
+body.theme-forest .text-gray-700 {
+  color: #f0fdf4 !important;
+}
+
+body.theme-forest .border-gray-200 {
+  border-color: #2d6a4f !important;
+}
+
+body.theme-forest .text-indigo-600,
+body.theme-forest .text-indigo-700 {
+  color: #10b981 !important;
+}
+
+/* Sunset theme */
+body.theme-sunset {
+  background-color: #1f1409;
+  color: #fef3c7;
+}
+
+body.theme-sunset .bg-white,
+body.theme-sunset .bg-slate-50,
+body.theme-sunset .bg-gray-50,
+body.theme-sunset .bg-gray-100 {
+  background-color: #2d1f14 !important;
+}
+
+body.theme-sunset .text-gray-900,
+body.theme-sunset .text-gray-800,
+body.theme-sunset .text-gray-700 {
+  color: #fef3c7 !important;
+}
+
+body.theme-sunset .border-gray-200 {
+  border-color: #54432a !important;
+}
+
+body.theme-sunset .text-indigo-600,
+body.theme-sunset .text-indigo-700 {
+  color: #fb923c !important;
 }

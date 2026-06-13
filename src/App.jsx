@@ -3,7 +3,6 @@ import { useJobs, getStatus } from './hooks/useJobs'
 import { useExtensionImport } from './hooks/useExtensionImport'
 import { useExtensionDetect } from './hooks/useExtensionDetect'
 import { useSettings } from './hooks/useSettings'
-import { applyTheme } from './utils/themes'
 import './styles/themes.css'
 import ErrorBoundary from './components/ErrorBoundary'
 import Stats from './components/Stats'
@@ -157,9 +156,12 @@ export default function App() {
   useEffect(() => {
     const theme = settings.theme || 'light'
     if (currentTheme !== theme) {
-      applyTheme(theme)
-      document.documentElement.setAttribute('data-theme', theme)
-      document.documentElement.style.setProperty('--current-theme', `'${theme}'`)
+      // Remove all theme classes from body
+      document.body.classList.remove('theme-dark', 'theme-midnight', 'theme-ocean', 'theme-forest', 'theme-sunset', 'theme-minimal')
+      // Add the new theme class if not light
+      if (theme !== 'light') {
+        document.body.classList.add(`theme-${theme}`)
+      }
       setCurrentTheme(theme)
     }
   }, [settings.theme, currentTheme])
@@ -469,13 +471,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div
-        key={currentTheme}
         className="min-h-screen transition-colors duration-300"
-        style={{
-          backgroundColor: 'var(--theme-bg)',
-          color: 'var(--theme-text)',
-          transitionDuration: '200ms'
-        }}
       >
 
       {/* ── Mobile drawer overlay ──────────────────────────────────────────── */}
