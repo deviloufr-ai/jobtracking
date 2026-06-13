@@ -523,7 +523,14 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                       {Object.values(THEMES).map(theme => (
                         <button
                           key={theme.id}
-                          onClick={() => updateSetting('theme', theme.id)}
+                          onClick={() => {
+                            console.log('🎨 Changing theme to:', theme.id)
+                            updateSetting('theme', theme.id)
+                            setTimeout(() => {
+                              console.log('🎨 Current settings after update:', { theme: settings.theme })
+                              console.log('🎨 Body classes:', document.body.className)
+                            }, 100)
+                          }}
                           className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg border-2 transition-all text-left ${
                             settings.theme === theme.id
                               ? 'border-indigo-500 bg-indigo-50'

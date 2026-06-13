@@ -155,14 +155,30 @@ export default function App() {
   // Apply theme on load and when settings change
   useEffect(() => {
     const theme = settings.theme || 'light'
+    console.log('🎨 Theme Effect Triggered:', { currentTheme, newTheme: theme, settingsTheme: settings.theme })
+
     if (currentTheme !== theme) {
+      console.log('🎨 Applying new theme:', theme)
+
       // Remove all theme classes from body
-      document.body.classList.remove('theme-dark', 'theme-midnight', 'theme-ocean', 'theme-forest', 'theme-sunset', 'theme-minimal')
+      const themesToRemove = ['theme-dark', 'theme-midnight', 'theme-ocean', 'theme-forest', 'theme-sunset', 'theme-minimal']
+      themesToRemove.forEach(t => {
+        if (document.body.classList.contains(t)) {
+          document.body.classList.remove(t)
+          console.log(`🎨 Removed class: ${t}`)
+        }
+      })
+
       // Add the new theme class if not light
       if (theme !== 'light') {
         document.body.classList.add(`theme-${theme}`)
+        console.log(`🎨 Added class: theme-${theme}`)
       }
+
+      console.log('🎨 Body classes now:', document.body.className)
       setCurrentTheme(theme)
+    } else {
+      console.log('🎨 Theme unchanged, skipping update')
     }
   }, [settings.theme, currentTheme])
 
