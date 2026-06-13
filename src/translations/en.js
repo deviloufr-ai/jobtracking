@@ -365,6 +365,26 @@ export const en = {
     addToTracker: 'Add to tracker',
   },
 
+  // CVGenerator
+  cvGeneratorUI: {
+    back: 'Back',
+    sourceCV: 'Source CV:',
+    photo: 'Photo',
+    sideBySide: 'Side by side',
+    before: 'Before',
+    after: 'After',
+    preview: 'Preview',
+    edit: 'Edit',
+    regenerate: 'Regenerate',
+    exportPDF: 'Export PDF',
+    saved: 'Saved',
+    fetchingJD: 'Fetching job description...',
+    generating: 'Generating...',
+    manualJDTitle: 'No job description found',
+    manualJDHint: 'Please paste the job description below:',
+    selectLanguage: 'Generate in:',
+  },
+
   // CVManager
   cvManagerUI: {
     title: 'My CVs',

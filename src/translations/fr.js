@@ -365,6 +365,26 @@ export const fr = {
     addToTracker: 'Ajouter au suivi',
   },
 
+  // CVGenerator
+  cvGeneratorUI: {
+    back: '← Retour',
+    sourceCV: 'CV source :',
+    photo: '📷 Photo',
+    sideBySide: '⬛⬛ Côte à côte',
+    before: '◀ Avant',
+    after: '▶ Après',
+    preview: '👁️ Aperçu',
+    edit: '✏️ Éditer',
+    regenerate: '↺ Regénérer',
+    exportPDF: '⬇️ Exporter PDF',
+    saved: '✓ Sauvegardé',
+    fetchingJD: 'Récupération de l\'offre...',
+    generating: 'Génération...',
+    manualJDTitle: 'Aucune offre trouvée',
+    manualJDHint: 'Veuillez coller l\'offre d\'emploi ci-dessous :',
+    selectLanguage: 'Générer en :',
+  },
+
   // CVManager
   cvManagerUI: {
     title: 'Mes CVs',

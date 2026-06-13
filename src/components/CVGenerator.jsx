@@ -351,7 +351,7 @@ export const BASE_PRINT_CSS = `
 `
 
 // ─────────────────────────────────────────────────────────────────────────────
-export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
+export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => key }) {
   const [step, setStep]             = useState('fetching_jd')
   const [jdText, setJdText]         = useState('')
   const [jdError, setJdError]       = useState(null)
@@ -523,10 +523,10 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
       {/* Header */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-4 py-3 flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="text-gray-400 hover:text-gray-600 p-1.5 hover:bg-gray-100 rounded-lg text-sm">← Retour</button>
+          <button onClick={onBack} className="text-gray-400 hover:text-gray-600 p-1.5 hover:bg-gray-100 rounded-lg text-sm">{t('cvGeneratorUI.back')}</button>
           <div>
             <p className="text-sm font-semibold text-gray-800">✨ {job.company} — {job.position}</p>
-            <p className="text-xs text-gray-400">CV source : {cv.name}</p>
+            <p className="text-xs text-gray-400">{t('cvGeneratorUI.sourceCV')} {cv.name}</p>
           </div>
         </div>
 
@@ -543,7 +543,7 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
               ) : (
                 <button onClick={() => picInputRef.current?.click()}
                   className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors">
-                  📷 Photo
+                  {t('cvGeneratorUI.photo')}
                 </button>
               )}
               <input ref={picInputRef} type="file" accept="image/*" className="hidden" onChange={handlePicUpload} />
@@ -551,7 +551,7 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
 
             {/* View toggle */}
             <div className="flex border border-gray-200 rounded-lg overflow-hidden text-xs">
-              {[['split','⬛⬛ Côte à côte'],['before','◀ Avant'],['after','▶ Après']].map(([m,l]) => (
+              {[['split', t('cvGeneratorUI.sideBySide')],['before', t('cvGeneratorUI.before')],['after', t('cvGeneratorUI.after')]].map(([m,l]) => (
                 <button key={m} onClick={() => setViewMode(m)}
                   className={`px-3 py-1.5 font-medium transition-colors ${viewMode===m ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
                   {l}
@@ -586,12 +586,12 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV }) {
 
             <button onClick={() => setIsEditing(v => !v)}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${isEditing ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-              {isEditing ? '👁️ Aperçu' : '✏️ Éditer'}
+              {isEditing ? t('cvGeneratorUI.preview') : t('cvGeneratorUI.edit')}
             </button>
-            <button onClick={generateCV} className="text-xs font-medium border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50">↺ Regénérer</button>
+            <button onClick={generateCV} className="text-xs font-medium border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50">{t('cvGeneratorUI.regenerate')}</button>
             <button onClick={handleExportPDF}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${saved ? 'bg-indigo-600 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}`}>
-              {saved ? '✓ Sauvegardé' : '⬇️ Exporter PDF'}
+              {saved ? t('cvGeneratorUI.saved') : t('cvGeneratorUI.exportPDF')}
             </button>
           </div>
         )}
