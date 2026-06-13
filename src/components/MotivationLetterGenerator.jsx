@@ -1,7 +1,10 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import html2pdf from 'html2pdf.js'
+import { useCVs } from '../hooks/useCVs'
 
 export default function MotivationLetterGenerator({ job, onClose, cvText, initialContent, onSaveLetter }) {
+  const { cvs } = useCVs()
+  const [selectedCVId, setSelectedCVId] = useState(null)
   const [letterText, setLetterText] = useState(initialContent || '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -9,9 +12,20 @@ export default function MotivationLetterGenerator({ job, onClose, cvText, initia
   const [saved, setSaved] = useState(false)
   const editorRef = useRef(null)
 
+  // Use job-specific CV if available, otherwise allow selecting from uploaded CVs
+  const effectiveCV = useMemo(() => {
+    if (cvText && cvText.trim()) return cvText
+    if (selectedCVId) {
+      const selected = cvs.find(c => c.id === selectedCVId)
+      return selected?.text || ''
+    }
+    return cvs.length > 0 ? cvs[0]?.text || '' : ''
+  }, [cvText, cvs, selectedCVId])
+
   const generateLetter = async () => {
-    if (!cvText || cvText.trim() === '') {
-      setError('Veuillez d\'abord générer et sauvegarder un CV adapté')
+    const finalCVText = effectiveCV
+    if (!finalCVText || finalCVText.trim() === '') {
+      setError('Veuillez d\'abord uploader un CV ou en sélectionner un')
       return
     }
 
@@ -50,7 +64,7 @@ export default function MotivationLetterGenerator({ job, onClose, cvText, initia
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          cvText,
+          cvText: finalCVText,
           jobDescription: jobDesc,
           company: job.company,
           position: job.position,
@@ -141,6 +155,22 @@ export default function MotivationLetterGenerator({ job, onClose, cvText, initia
         <div className="flex-1 overflow-auto">
           {!letterText ? (
             <div className="p-6 space-y-4">
+              {!cvText && cvs.length > 0 && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2">Sélectionner un CV</label>
+                  <select
+                    value={selectedCVId || (cvs[0]?.id || '')}
+                    onChange={(e) => setSelectedCVId(e.target.value)}
+                    disabled={loading}
+                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {cvs.map(cv => (
+                      <option key={cv.id} value={cv.id}>{cv.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-2">Langue</label>
                 <select

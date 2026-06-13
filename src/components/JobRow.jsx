@@ -808,7 +808,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                   )}
 
                   {/* Generate Motivation Letter button - only when no letter exists yet */}
-                  {job.cvSaved && (job.status === 'todo' || job.status === 'sent') && !job.letterSaved && (
+                  {(job.status === 'todo' || job.status === 'sent') && !job.letterSaved && (
                     <button onClick={() => setShowMotivationLetter(true)}
                       className="w-full text-xs font-medium text-orange-600 bg-white border border-orange-100 px-3 py-2 rounded-lg hover:bg-orange-50 transition-colors text-left">
                       ✍️ Générer une lettre
