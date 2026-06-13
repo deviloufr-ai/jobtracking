@@ -777,6 +777,7 @@ export default function App() {
               onOpenJob={(job) => { setActiveTab('tracker'); setFilters(DEFAULT_FILTERS); setExpandedJobId(job.id) }}
               onSTAR={(job) => setStarJob(job)}
               onDraftEmail={(job, type) => setEmailDraft({ job, type })}
+              t={t}
             />
           </div>
         )}

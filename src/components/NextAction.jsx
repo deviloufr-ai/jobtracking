@@ -6,6 +6,16 @@ import { isNoReply } from './EmailDraft'
 const DISMISSED_KEY = 'jobtrackr_dismissed_actions'
 function loadDismissed() { try { return new Set(JSON.parse(sessionStorage.getItem(DISMISSED_KEY) || '[]')) } catch { return new Set() } }
 function saveDismissed(s) { try { sessionStorage.setItem(DISMISSED_KEY, JSON.stringify([...s])) } catch {} }
+
+// Helper to format translation strings with dynamic values
+function formatTrans(key, replacements = {}) {
+  let str = key
+  for (const [k, v] of Object.entries(replacements)) {
+    str = str.replace(`{${k}}`, v)
+  }
+  return str
+}
+
 function actionKey(job, rule) { return `${job.id}__${rule.label(job).slice(0, 40)}` }
 
 // Returns true if the job has at least one real (non-ATS, non-no-reply) inbound email address
@@ -61,7 +71,7 @@ const TEST_KWS = ['test technique', 'technical test', 'case study', 'assessment'
 const NEGO_KWS = ['négociation', 'salaire', 'rémunération', 'prétentions', 'package', 'compensation', 'offre salariale']
 
 // Urgent actions - things that need attention NOW
-function getUrgentRules() {
+function getUrgentRules(t = (key) => key) {
   const s = loadSettings()
   return [
   // Use case deadline urgent — appears before all other rules when < 3 days left
@@ -71,131 +81,136 @@ function getUrgentRules() {
       return days !== null && days <= 3 && j.useCase?.status !== 'submitted'
     },
     icon: '📝', urgency: 'high',
-    label: job => `Rendre le cas pratique ${job.company}`,
+    label: job => formatTrans(t('nextActionRules.caseSubmit'), { company: job.company }),
     tip: job => {
       const days = useCaseDaysLeft(job)
-      return days < 0 ? `Deadline dépassée de ${Math.abs(days)}j !` : days === 0 ? "Deadline aujourd'hui !" : `Il reste ${days} jour${days > 1 ? 's' : ''} pour rendre le cas pratique.`
+      return days < 0
+        ? formatTrans(t('nextActionRules.caseDeadlinePassed'), { days: Math.abs(days) })
+        : days === 0
+          ? t('nextActionRules.caseDeadlineToday')
+          : formatTrans(t('nextActionRules.caseDeadlineIn'), { days, s: days > 1 ? 's' : '' })
     },
   },
   {
     match: j => j.status === 'sent' && daysSince(j) > s.followUpSentDays && hasRealEmail(j),
     icon: '📨', urgency: 'high',
-    label: job => `Relancer ${job.company}`,
-    tip: job => `Aucune réponse depuis ${Math.round(daysSince(job))} jours. Un email de relance s'impose.`,
+    label: job => formatTrans(t('nextActionRules.followUpSent'), { company: job.company }),
+    tip: job => formatTrans(t('nextActionRules.noResponseSince'), { days: Math.round(daysSince(job)) }),
   },
   {
     match: j => j.status === 'reviewing' && daysSince(j) > s.followUpReviewingDays && hasRealEmail(j),
     icon: '📨', urgency: 'medium',
-    label: job => `Relancer ${job.company}`,
-    tip: job => `Profil en examen depuis ${Math.round(daysSince(job))} jours sans retour.`,
+    label: job => formatTrans(t('nextActionRules.followUpReviewing'), { company: job.company }),
+    tip: job => formatTrans(t('nextActionRules.reviewingNoResponse'), { days: Math.round(daysSince(job)) }),
   },
   {
     match: j => j.status === 'waiting' && daysSince(j) > s.followUpWaitingDays,
     icon: '🔔', urgency: 'high',
-    label: job => `Suivi ${job.company}`,
-    tip: job => `En attente depuis ${Math.round(daysSince(job))} jours — relance appropriée.`,
+    label: job => formatTrans(t('nextActionRules.followUpWaiting'), { company: job.company }),
+    tip: job => formatTrans(t('nextActionRules.waitingSince'), { days: Math.round(daysSince(job)) }),
   },
   {
     match: j => j.status === 'offer' && daysSince(j) > s.followUpOfferDays,
     icon: '🤝', urgency: 'high',
-    label: job => `Répondre à l'offre ${job.company}`,
-    tip: () => `Offre reçue — négocie et réponds avant qu'elle expire.`,
+    label: job => formatTrans(t('nextActionRules.respondToOffer'), { company: job.company }),
+    tip: () => t('nextActionRules.offerReceived'),
   },
   {
     // Interview prep — only when NO test technique keyword (test takes priority)
     match: j => j.status === 'interview' && !hasKeyword(j, ...TEST_KWS),
     icon: '🎯', urgency: 'medium',
-    label: job => `Préparer entretien ${job.company}`,
-    tip: () => `Prépare tes réponses STAR, recherche l'entreprise, prépare 5 questions.`,
+    label: job => formatTrans(t('nextActionRules.prepareInterview'), { company: job.company }),
+    tip: () => t('nextActionRules.prepareStar'),
   },
   {
     // Test technique — urgent priority when keyword detected
     match: j => j.status === 'interview' && hasKeyword(j, ...TEST_KWS),
     icon: '💻', urgency: 'medium',
-    label: job => `Préparer le test technique ${job.company}`,
-    tip: () => `Prépare la documentation, un repo propre, soigne le README et tes explications de choix techniques.`,
-    cta: 'Voir les conseils',
+    label: job => formatTrans(t('nextActionRules.prepareTechTest'), { company: job.company }),
+    tip: () => t('nextActionRules.prepareDocumentation'),
+    cta: t('nextActionRules.viewAdvice'),
   },
 ]}
 
 // Next steps — note-aware, contextual. Order = priority shown to user.
-const NEXT_STEPS_RULES = [
+function getNextStepsRules(t = (key) => key) {
+  return [
   // Upcoming calendar event (test/meeting) — highest priority
   {
     match: j => !['archived','rejected','rejected_ats','cancelled'].includes(j.status) && hasUpcomingCalendar(j) && hasKeyword(j, ...TEST_KWS),
     icon: '💻', type: 'prep',
-    label: job => `Préparer le test technique ${job.company}`,
-    tip: () => `Prépare la documentation, un repo propre, soigne le README et tes explications de choix techniques.`,
-    cta: 'Voir les conseils',
+    label: job => formatTrans(t('nextActionRules.prepareTechTest'), { company: job.company }),
+    tip: () => t('nextActionRules.prepareDocumentation'),
+    cta: t('nextActionRules.viewAdvice'),
     priority: 0,
   },
   // Tech test mentioned anywhere in history (even without calendar)
   {
     match: j => !['archived','rejected','rejected_ats','cancelled'].includes(j.status) && hasKeyword(j, ...TEST_KWS) && !hasUpcomingCalendar(j),
     icon: '💻', type: 'prep',
-    label: job => `Préparer le test technique ${job.company}`,
-    tip: () => `Prépare la documentation, un repo propre, soigne le README et tes explications de choix techniques.`,
-    cta: 'Voir les conseils',
+    label: job => formatTrans(t('nextActionRules.prepareTechTest'), { company: job.company }),
+    tip: () => t('nextActionRules.prepareDocumentation'),
+    cta: t('nextActionRules.viewAdvice'),
     priority: 1,
   },
   // Upcoming calendar event (interview)
   {
     match: j => !['archived','rejected','rejected_ats','cancelled'].includes(j.status) && hasUpcomingCalendar(j) && !hasKeyword(j, ...TEST_KWS),
     icon: '🎯', type: 'prep',
-    label: job => `Préparer l'entretien ${job.company}`,
-    tip: job => `Recherche ${job.company}, prépare 5 questions, révise tes réponses STAR et ton pitch.`,
-    cta: 'Voir les conseils',
+    label: job => formatTrans(t('nextActionRules.prepareInterview'), { company: job.company }),
+    tip: job => formatTrans(t('nextActionRules.prepareInterviewTip'), { company: job.company }),
+    cta: t('nextActionRules.viewAdvice'),
     priority: 0,
   },
   // Salary negotiation detected
   {
     match: j => !['archived','rejected','rejected_ats','cancelled','todo'].includes(j.status) && hasKeyword(j, ...NEGO_KWS),
     icon: '💰', type: 'negotiate',
-    label: job => `Préparer la négociation ${job.company}`,
-    tip: () => `Salaire, télétravail, avantages, date de prise de poste — prépare chaque point avec des arguments marché.`,
-    cta: 'Voir les conseils',
+    label: job => formatTrans(t('nextActionRules.prepareNegotiation'), { company: job.company }),
+    tip: () => t('nextActionRules.negotiationTips'),
+    cta: t('nextActionRules.viewAdvice'),
     priority: 1,
   },
   // Interview status without test
   {
     match: j => j.status === 'interview' && !hasKeyword(j, ...TEST_KWS),
     icon: '🎯', type: 'prep',
-    label: job => `Préparer l'entretien ${job.company}`,
-    tip: job => `Recherche ${job.company}, prépare 5 questions, révise tes réponses STAR et ton pitch.`,
-    cta: 'Voir les conseils',
+    label: job => formatTrans(t('nextActionRules.prepareInterview'), { company: job.company }),
+    tip: job => formatTrans(t('nextActionRules.prepareInterviewTip'), { company: job.company }),
+    cta: t('nextActionRules.viewAdvice'),
     priority: 1,
   },
   // Offer received
   {
     match: j => j.status === 'offer',
     icon: '🤝', type: 'negotiate',
-    label: job => `Répondre à l'offre ${job.company}`,
-    tip: () => `Négocie avant d'accepter. Demande un délai de 48-72h si besoin.`,
-    cta: 'Voir les conseils',
+    label: job => formatTrans(t('nextActionRules.respondToOffer'), { company: job.company }),
+    tip: () => t('nextActionRules.offerNegotiateTip'),
+    cta: t('nextActionRules.viewAdvice'),
   },
   // Todo — generate CV (only if not already generated)
   {
     match: j => j.status === 'todo' && !j.cvSaved,
     icon: '📄', type: 'cv',
-    label: job => `Générer un CV pour ${job.company}`,
-    tip: job => `Adapte ton CV à l'offre ${job.position} avant de postuler.`,
-    cta: 'Générer le CV',
+    label: job => formatTrans(t('nextActionRules.generateCVFor'), { company: job.company }),
+    tip: job => formatTrans(t('nextActionRules.generateCVTip'), { position: job.position, company: job.company }),
+    cta: t('nextActionRules.generateCVButton'),
   },
   // Follow-up overdue (only if there's a real email to respond to)
   {
     match: j => j.status === 'sent' && daysSince(j) > 14 && hasRealEmail(j),
     icon: '✉️', type: 'email',
-    label: job => `Relancer ${job.company}`,
-    tip: () => `Email court et poli : rappel de ta candidature + réaffirmation de ton intérêt.`,
-    cta: 'Rédiger',
+    label: job => formatTrans(t('nextActionRules.followUpOverdue'), { company: job.company }),
+    tip: () => t('nextActionRules.followUpTip'),
+    cta: t('nextActionRules.draftEmail'),
   },
   // Remerciement after rejection
   {
     match: j => j.status === 'rejected' && daysSince(j) < 5 && hasRealEmail(j) && !hasRemerciementSent(j),
     icon: '💌', type: 'email',
-    label: job => `Envoyer remerciement ${job.company}`,
-    tip: () => `Un email de remerciement te différencie et maintient la relation pour l'avenir.`,
-    cta: 'Rédiger',
+    label: job => formatTrans(t('nextActionRules.sendThanks'), { company: job.company }),
+    tip: () => t('nextActionRules.thanksTip'),
+    cta: t('nextActionRules.draftEmail'),
   },
 ]
 
@@ -207,20 +222,21 @@ const URGENCY_DOT = {
 }
 
 // Merge urgent + next steps into one sorted list
-function buildAllActions(activeJobs, s) {
+function buildAllActions(activeJobs, s, t = (key) => key) {
   const items = []
 
   // From urgent rules
   for (const job of activeJobs) {
-    for (const rule of getUrgentRules()) {
+    for (const rule of getUrgentRules(t)) {
       if (rule.match(job)) items.push({ job, rule, urgency: rule.urgency, sortKey: { high: 0, medium: 1, low: 2 }[rule.urgency] ?? 3, source: 'urgent' })
     }
   }
 
   // From next steps rules — avoid duplicating interview prep already in urgent
   const urgentJobIds = new Set(items.filter(i => i.rule.icon === '🎯').map(i => i.job.id))
+  const nextStepsRules = getNextStepsRules(t)
   for (const job of activeJobs) {
-    for (const rule of NEXT_STEPS_RULES) {
+    for (const rule of nextStepsRules) {
       if (!rule.match(job)) continue
       // Skip interview prep if already in urgent for same job
       if (rule.type === 'prep' && !rule.label(job).toLowerCase().includes('test') && urgentJobIds.has(job.id)) continue
@@ -241,7 +257,7 @@ function buildAllActions(activeJobs, s) {
   }).slice(0, 8)
 }
 
-export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDraftEmail }) {
+export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDraftEmail, t = (key) => key }) {
   const [dismissed, setDismissed] = useState(loadDismissed)
 
   const dismiss = (job, rule) => {
@@ -253,7 +269,7 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
   }
   const activeJobs = jobs.filter(j => !['cancelled', 'archived'].includes(j.status))
   const s = loadSettings()
-  const actions = buildAllActions(activeJobs, s).filter(({ job, rule }) => !dismissed.has(actionKey(job, rule)))
+  const actions = buildAllActions(activeJobs, s, t).filter(({ job, rule }) => !dismissed.has(actionKey(job, rule)))
   const urgentCount = actions.filter(a => a.urgency === 'high').length
 
   if (actions.length === 0) return null
