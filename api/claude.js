@@ -7,8 +7,9 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) { res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' }); return }
+  // Accept user's API key from request, fall back to server's if not provided
+  let apiKey = req.body?.apiKey?.trim() || process.env.ANTHROPIC_API_KEY
+  if (!apiKey) { res.status(401).json({ error: 'No API key provided. Please configure your Claude API key in Settings.' }); return }
 
   try {
     const { model, max_tokens, system, messages, tools, tool_choice } = req.body

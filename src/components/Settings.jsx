@@ -85,6 +85,7 @@ const CATEGORIES = [
   { id: 'profile', label: 'Profil', icon: '👤' },
   { id: 'goals', label: 'Objectifs', icon: '🎯' },
   { id: 'automation', label: 'Automatisation', icon: '⚙️' },
+  { id: 'api', label: 'API Claude', icon: '🔑' },
   { id: 'notifications', label: 'Notifications', icon: '🔔' },
   { id: 'followups', label: 'Rappels', icon: '⏰' },
   { id: 'appearance', label: 'Apparence', icon: '🎨' },
@@ -127,6 +128,14 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
   const [serverDedupResult, setServerDedupResult] = useState(null)
   const [serverDedupError, setServerDedupError] = useState(null)
 
+  // API Key state
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('jobtrackr_claude_api_key') || '')
+  const [apiKeySaved, setApiKeySaved] = useState(false)
+  const [apiKeyVisible, setApiKeyVisible] = useState(false)
+  const [apiKeyTested, setApiKeyTested] = useState(false)
+  const [apiKeyTestLoading, setApiKeyTestLoading] = useState(false)
+  const [apiKeyTestError, setApiKeyTestError] = useState(null)
+
   // Profile state
   const [profile, setProfile] = useState(loadProfile)
   const [profileSaved, setProfileSaved] = useState(false)
@@ -138,6 +147,63 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
     saveProfile(profile)
     setProfileSaved(true)
     setTimeout(() => setProfileSaved(false), 2000)
+  }
+
+  const handleSaveApiKey = () => {
+    if (!apiKey.trim()) {
+      setApiKeyTestError('La clé API ne peut pas être vide')
+      return
+    }
+    localStorage.setItem('jobtrackr_claude_api_key', apiKey)
+    setApiKeySaved(true)
+    setApiKeyTestError(null)
+    setTimeout(() => setApiKeySaved(false), 2000)
+  }
+
+  const handleTestApiKey = async () => {
+    if (!apiKey.trim()) {
+      setApiKeyTestError('Entrez une clé API avant de tester')
+      return
+    }
+
+    setApiKeyTestLoading(true)
+    setApiKeyTestError(null)
+    setApiKeyTested(false)
+
+    try {
+      const res = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: apiKey.trim(),
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 100,
+          system: 'Tu es un assistant utile.',
+          messages: [{ role: 'user', content: 'Dis simplement "OK" pour confirmer que ton API fonctionne.' }],
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setApiKeyTestError(data.error || `Erreur API: ${res.status}`)
+      } else {
+        setApiKeyTested(true)
+        setTimeout(() => setApiKeyTested(false), 3000)
+      }
+    } catch (e) {
+      setApiKeyTestError(e.message || 'Erreur de connexion')
+    } finally {
+      setApiKeyTestLoading(false)
+    }
+  }
+
+  const handleClearApiKey = () => {
+    setApiKey('')
+    localStorage.removeItem('jobtrackr_claude_api_key')
+    setApiKeySaved(true)
+    setApiKeyTestError(null)
+    setTimeout(() => setApiKeySaved(false), 2000)
   }
 
   const handleServerDedup = async () => {
@@ -343,6 +409,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                 {activeTab === 'profile' && 'Gérez vos informations professionnelles'}
                 {activeTab === 'goals' && 'Définissez vos cibles de candidatures'}
                 {activeTab === 'automation' && 'Configurez l\'automatisation de votre recherche'}
+                {activeTab === 'api' && 'Configurez votre propre clé API Claude'}
                 {activeTab === 'notifications' && 'Gérez vos notifications'}
                 {activeTab === 'followups' && 'Définissez les délais de suivi'}
                 {activeTab === 'appearance' && 'Choisissez le thème de l\'application'}
@@ -490,6 +557,116 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                   <NumInput value={settings.checkPositionAfterDays} onChange={v => updateSetting('checkPositionAfterDays', v)} min={0} max={365} suffix="j" />
                 </Row>
               </Card>
+            )}
+
+            {/* API Tab */}
+            {activeTab === 'api' && (
+              <>
+                <Card subtitle="Utilisez votre propre clé API Claude pour éviter les limites de fréquence">
+                  <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 -mx-2">
+                    <span className="text-xl shrink-0">🔐</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-blue-700 font-medium">Votre clé API reste privée et stockée localement</p>
+                      <p className="text-xs text-blue-600 mt-0.5">Elle n'est jamais envoyée au serveur de JobTrackr</p>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card title="Clé API Claude">
+                  <Row label="Votre clé API" hint="Créez une clé sur https://console.anthropic.com/api/keys" wide>
+                    <div className="flex gap-2">
+                      <input
+                        type={apiKeyVisible ? 'text' : 'password'}
+                        value={apiKey}
+                        onChange={e => setApiKey(e.target.value)}
+                        placeholder="sk-ant-..."
+                        className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all font-mono text-xs"
+                      />
+                      <button
+                        onClick={() => setApiKeyVisible(!apiKeyVisible)}
+                        className="px-3 py-2 text-gray-500 hover:text-gray-700 text-sm font-medium"
+                        title={apiKeyVisible ? 'Masquer' : 'Afficher'}
+                      >
+                        {apiKeyVisible ? '👁️‍🗨️' : '👁️'}
+                      </button>
+                    </div>
+                  </Row>
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      onClick={handleSaveApiKey}
+                      disabled={!apiKey.trim()}
+                      className={`flex-1 text-sm font-semibold px-4 py-2.5 rounded-lg transition-all ${
+                        apiKeySaved
+                          ? 'bg-green-50 border border-green-200 text-green-700'
+                          : apiKey.trim()
+                          ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                          : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      }`}
+                    >
+                      {apiKeySaved ? '✓ Sauvegardée' : apiKey.trim() ? 'Sauvegarder' : 'Entrez une clé'}
+                    </button>
+                    {apiKey.trim() && (
+                      <button
+                        onClick={handleTestApiKey}
+                        disabled={apiKeyTestLoading}
+                        className={`text-sm font-semibold px-4 py-2.5 rounded-lg border transition-all ${
+                          apiKeyTestLoading
+                            ? 'opacity-50 cursor-not-allowed'
+                            : apiKeyTested
+                            ? 'bg-green-50 border-green-200 text-green-700'
+                            : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50'
+                        }`}
+                      >
+                        {apiKeyTestLoading
+                          ? '⏳ Test...'
+                          : apiKeyTested
+                          ? '✓ OK'
+                          : '🧪 Tester'}
+                      </button>
+                    )}
+                  </div>
+
+                  {apiKeyTestError && (
+                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-xs text-red-700"><strong>Erreur :</strong> {apiKeyTestError}</p>
+                    </div>
+                  )}
+
+                  {apiKey.trim() && !apiKeyTestError && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <p className="text-xs text-gray-600 mb-2">Options :</p>
+                      <button
+                        onClick={handleClearApiKey}
+                        className="text-xs font-medium px-3 py-1.5 rounded-lg border border-red-200 bg-white text-red-700 hover:bg-red-50 transition-all"
+                      >
+                        🗑️ Supprimer la clé
+                      </button>
+                    </div>
+                  )}
+                </Card>
+
+                <Card title="À propos" subtitle="Comprendre la configuration">
+                  <div className="space-y-3 text-sm text-gray-600">
+                    <div>
+                      <p className="font-semibold text-gray-900 mb-1">📍 Où est stockée ma clé ?</p>
+                      <p>Votre clé API est sauvegardée localement dans le stockage du navigateur (localStorage). Elle n'est jamais envoyée aux serveurs de JobTrackr.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 mb-1">🔄 Comment fonctionne la communication ?</p>
+                      <p>Vos requêtes sont envoyées directement à l'API Claude avec votre clé personnelle. Chaque appel utilise votre quota d'API.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 mb-1">💰 Coûts</p>
+                      <p>Les frais d'utilisation sont débités de votre compte Anthropic. Claude Haiku est le modèle le plus économique (5x moins cher que Sonnet).</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 mb-1">🔐 Sécurité</p>
+                      <p>Gardez votre clé secrète. Si vous la compromettez, régénérez-la immédiatement depuis la console Anthropic.</p>
+                    </div>
+                  </div>
+                </Card>
+              </>
             )}
 
             {/* Notifications Tab */}

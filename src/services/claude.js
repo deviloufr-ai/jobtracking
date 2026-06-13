@@ -67,6 +67,9 @@ export function getEmailCacheStats() {
 async function callClaude(systemPrompt, userContent, retries = 3) {
   if (!CLAUDE_ENDPOINT) return JSON.stringify(MOCK_PARSE_RESULT)
 
+  // Get user's API key from localStorage if available
+  const userApiKey = typeof window !== 'undefined' ? localStorage.getItem('jobtrackr_claude_api_key') : null
+
   // Queue requests to prevent cascading rate limits
   return claudeRequestQueue = claudeRequestQueue.then(async () => {
     claudeRequestCount++
@@ -87,16 +90,20 @@ async function callClaude(systemPrompt, userContent, retries = 3) {
         const timeoutId = setTimeout(() => controller.abort(), totalTimeoutMs - elapsedMs)
 
         try {
+          const body = {
+            model: MODEL,
+            max_tokens: 2000,
+            system: systemPrompt,
+            messages: [{ role: 'user', content: userContent }],
+          }
+          // Include user's API key if available
+          if (userApiKey) body.apiKey = userApiKey
+
           const res = await fetch(CLAUDE_ENDPOINT, {
             method: 'POST',
             signal: controller.signal,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              model: MODEL,
-              max_tokens: 2000,
-              system: systemPrompt,
-              messages: [{ role: 'user', content: userContent }],
-            }),
+            body: JSON.stringify(body),
           })
           clearTimeout(timeoutId)
 
