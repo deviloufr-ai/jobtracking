@@ -17,79 +17,91 @@
 
 /* Dark theme overrides */
 [data-theme="dark"] {
-  --theme-bg: #0c0f16;
-  --theme-surface: #161b26;
-  --theme-surface2: #1f2533;
-  --theme-border: #2b3242;
-  --theme-text: #eef0f6;
-  --theme-text-dim: #9aa3ba;
-  --theme-text-faint: #6b7488;
-  --theme-primary: #7b7bf7;
-  --theme-primary-soft: rgba(123, 123, 247, 0.14);
+  --theme-bg: #0c0f16 !important;
+  --theme-surface: #161b26 !important;
+  --theme-surface2: #1f2533 !important;
+  --theme-border: #2b3242 !important;
+  --theme-text: #eef0f6 !important;
+  --theme-text-dim: #9aa3ba !important;
+  --theme-text-faint: #6b7488 !important;
+  --theme-primary: #7b7bf7 !important;
+  --theme-primary-soft: rgba(123, 123, 247, 0.14) !important;
 }
 
-/* Light theme colors applied to dark theme */
-[data-theme="dark"] .bg-white {
-  @apply bg-opacity-0;
+/* Dark theme - Override all background colors */
+[data-theme="dark"] .bg-white,
+[data-theme="dark"] .bg-slate-50,
+[data-theme="dark"] .bg-gray-50,
+[data-theme="dark"] .bg-gray-100,
+[data-theme="dark"] .bg-gray-200,
+[data-theme="dark"] .bg-yellow-50,
+[data-theme="dark"] .bg-orange-50,
+[data-theme="dark"] .bg-red-50,
+[data-theme="dark"] .bg-green-50,
+[data-theme="dark"] .bg-blue-50,
+[data-theme="dark"] .bg-purple-50,
+[data-theme="dark"] .bg-indigo-50,
+[data-theme="dark"] .bg-violet-50 {
   background-color: var(--theme-surface) !important;
 }
 
-[data-theme="dark"] .bg-slate-50 {
-  background-color: var(--theme-bg) !important;
-}
-
-[data-theme="dark"] .bg-gray-50 {
-  background-color: var(--theme-surface) !important;
-}
-
-[data-theme="dark"] .bg-gray-100 {
-  background-color: var(--theme-surface2) !important;
-}
-
-[data-theme="dark"] .border-gray-100 {
-  border-color: var(--theme-border) !important;
-}
-
-[data-theme="dark"] .border-gray-200 {
-  border-color: var(--theme-border) !important;
-}
-
-[data-theme="dark"] .text-gray-900 {
-  color: var(--theme-text) !important;
-}
-
-[data-theme="dark"] .text-gray-800 {
-  color: var(--theme-text) !important;
-}
-
+/* Dark theme - Text colors */
+[data-theme="dark"] .text-gray-900,
+[data-theme="dark"] .text-gray-800,
 [data-theme="dark"] .text-gray-700 {
   color: var(--theme-text) !important;
 }
 
-[data-theme="dark"] .text-gray-600 {
-  color: var(--theme-text-dim) !important;
-}
-
+[data-theme="dark"] .text-gray-600,
 [data-theme="dark"] .text-gray-500 {
   color: var(--theme-text-dim) !important;
 }
 
-[data-theme="dark"] .text-gray-400 {
+[data-theme="dark"] .text-gray-400,
+[data-theme="dark"] .text-gray-300 {
   color: var(--theme-text-faint) !important;
 }
 
+/* Dark theme - Border colors */
+[data-theme="dark"] .border-gray-100,
+[data-theme="dark"] .border-gray-200,
+[data-theme="dark"] .border-gray-300,
+[data-theme="dark"] .border-gray-400 {
+  border-color: var(--theme-border) !important;
+}
+
+/* Dark theme - Primary indigo to custom indigo */
+[data-theme="dark"] .bg-indigo-100,
+[data-theme="dark"] .bg-indigo-50 {
+  background-color: var(--theme-primary-soft) !important;
+}
+
 [data-theme="dark"] .border-indigo-200,
-[data-theme="dark"] .bg-indigo-50,
-[data-theme="dark"] .hover\:bg-indigo-50:hover {
-  --tw-bg-opacity: 1;
-  background-color: var(--theme-primary-soft);
-  border-color: var(--theme-primary);
+[data-theme="dark"] .border-indigo-300 {
+  border-color: var(--theme-primary) !important;
 }
 
-[data-theme="dark"] .text-indigo-600 {
-  color: var(--theme-primary) !important;
-}
-
+[data-theme="dark"] .text-indigo-600,
 [data-theme="dark"] .text-indigo-700 {
   color: var(--theme-primary) !important;
+}
+
+[data-theme="dark"] .hover\:bg-indigo-50:hover {
+  background-color: var(--theme-primary-soft) !important;
+}
+
+[data-theme="dark"] .hover\:text-indigo-600:hover {
+  color: var(--theme-primary) !important;
+}
+
+/* Dark theme - Shadow adjustments */
+[data-theme="dark"] .shadow-sm,
+[data-theme="dark"] .shadow,
+[data-theme="dark"] .shadow-lg {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Dark theme - Placeholder and subtle text */
+[data-theme="dark"] .placeholder-gray-400::placeholder {
+  color: var(--theme-text-faint) !important;
 }
