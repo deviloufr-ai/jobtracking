@@ -48,7 +48,7 @@ function getTipsFromNote(note = '') {
   return []
 }
 
-function StepTips({ note }) {
+function StepTips({ note, t = (key) => key }) {
   const tips = getTipsFromNote(note)
   if (!tips.length) return null
   return (
@@ -62,10 +62,10 @@ function StepTips({ note }) {
         bg-amber-50 border border-amber-200 rounded-lg shadow-lg p-3">
         <p className="text-[10px] font-semibold text-amber-700 mb-2 uppercase tracking-wide">{t('jobActions.tips') || 'Conseils pour cette étape'}</p>
         <ul className="space-y-1.5">
-          {tips.map((t, i) => (
+          {tips.map((tip, i) => (
             <li key={i} className="flex gap-2 text-[11px] text-amber-900">
               <span className="text-amber-500 flex-shrink-0 mt-0.5">•</span>
-              <span>{t}</span>
+              <span>{tip}</span>
             </li>
           ))}
         </ul>
@@ -550,7 +550,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isPastMeeting ? 'bg-gray-100 text-gray-400' : isUpcomingMeeting ? 'bg-amber-100 text-amber-700' : st.color}`}>
                                     {isPastMeeting ? '✓ Passé' : isUpcomingMeeting ? '📅 À venir' : st.label}
                                   </span>
-                                  <StepTips note={entry.note} />
+                                  <StepTips note={entry.note} t={t} />
                                 </div>
                                 <div className="flex gap-1 items-center flex-shrink-0">
                                   {confirmDeleteIdx === i ? (
