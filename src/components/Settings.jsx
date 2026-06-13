@@ -100,6 +100,16 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
+  const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('jobtrackr_theme') || 'light')
+
+  // Listen for theme changes
+  useEffect(() => {
+    const handleThemeChange = (e) => {
+      setCurrentTheme(e.detail.theme)
+    }
+    window.addEventListener('theme-changed', handleThemeChange)
+    return () => window.removeEventListener('theme-changed', handleThemeChange)
+  }, [])
   const [confirmDeleteHistory, setConfirmDeleteHistory] = useState(false)
   const [deleteHistoryDetails, setDeleteHistoryDetails] = useState(null)
   const [deleteHistoryLoading, setDeleteHistoryLoading] = useState(false)
@@ -529,7 +539,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                             window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: theme.id } }))
                           }}
                           className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg border-2 transition-all text-left ${
-                            settings.theme === theme.id
+                            currentTheme === theme.id
                               ? 'border-indigo-500 bg-indigo-50'
                               : 'border-gray-200 bg-white hover:border-gray-300'
                           }`}
