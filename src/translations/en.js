@@ -365,6 +365,32 @@ export const en = {
     addToTracker: 'Add to tracker',
   },
 
+  // CVManager
+  cvManagerUI: {
+    title: 'My CVs',
+    storageInfo: 'CV stored',
+    dragDropPDF: 'Drag a CV PDF here',
+    orClick: 'or click to select • Max 5MB',
+    readingPDF: 'Reading PDF...',
+    selectPDFFile: 'Please select a PDF file',
+    fileTooLarge: 'File too large (max 5MB)',
+    errorReading: 'Error reading PDF',
+    errorExtraction: 'Extraction error',
+    cvUploaded: 'CV uploaded!',
+    extractProfileAuto: 'Extract your profile automatically to improve STAR, emails and autofill?',
+    later: 'Later',
+    extracting: 'Extracting...',
+    extractProfile: 'Extract profile',
+    profileExtracted: 'Profile extracted from {name} — visible in Settings → Candidate Profile',
+    generateForJob: 'Generate a CV for {company}',
+    generateAdapted: 'Generate adapted CV',
+    selectCVAndJob: 'Select a CV and application to generate an optimized version:',
+    uploadCVStart: 'Upload a PDF CV to get started',
+    uploadCVForJob: 'Upload a CV to generate an adapted version for {company} — {position}',
+    pages: 'page|pages',
+    profileCheckmark: 'profile ✓',
+  },
+
   // Common
   common: {
     notes: 'Notes',

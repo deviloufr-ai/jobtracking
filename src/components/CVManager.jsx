@@ -11,7 +11,7 @@ function loadProfile() {
   try { const r = localStorage.getItem(PROFILE_KEY); return r ? JSON.parse(r) : null } catch { return null }
 }
 
-export default function CVManager({ jobs, preselectedJob, onUpdateJob }) {
+export default function CVManager({ jobs, preselectedJob, onUpdateJob, t = (key) => key }) {
   const { cvs, addCV, deleteCV, renameCV } = useCVs()
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
@@ -31,7 +31,7 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob }) {
         body: JSON.stringify({ cvText: cv.text })
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Erreur extraction')
+      if (!res.ok) throw new Error(data.error || t('cvManagerUI.errorExtraction'))
       saveProfile({ ...data.profile, extractedFrom: cv.name })
       setExtractedCvName(cv.name)
       setJustExtracted(true)
@@ -45,11 +45,11 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob }) {
 
   const handleUpload = async (file) => {
     if (!file || file.type !== 'application/pdf') {
-      setError('Veuillez sélectionner un fichier PDF')
+      setError(t('cvManagerUI.selectPDFFile'))
       return
     }
     if (file.size > 5 * 1024 * 1024) {
-      setError('Fichier trop lourd (max 5MB)')
+      setError(t('cvManagerUI.fileTooLarge'))
       return
     }
 
@@ -70,7 +70,7 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob }) {
         body: JSON.stringify({ base64, filename: file.name })
       })
 
-      if (!res.ok) throw new Error('Erreur lors de la lecture du PDF')
+      if (!res.ok) throw new Error(t('cvManagerUI.errorReading'))
       const data = await res.json()
 
       const entry = addCV({
@@ -99,6 +99,7 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob }) {
         job={generatorState.job}
         onBack={() => setGeneratorState(null)}
         onSaveCV={onUpdateJob}
+        t={t}
       />
     )
   }
@@ -109,8 +110,8 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob }) {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
           <span className="text-base">📄</span>
-          <h3 className="text-sm font-semibold text-gray-800">Mes CVs</h3>
-          <span className="text-xs text-gray-400 ml-auto">{cvs.length} CV{cvs.length > 1 ? 's' : ''} stocké{cvs.length > 1 ? 's' : ''}</span>
+          <h3 className="text-sm font-semibold text-gray-800">{t('cvManagerUI.title')}</h3>
+          <span className="text-xs text-gray-400 ml-auto">{cvs.length} CV{cvs.length > 1 ? 's' : ''} {t('cvManagerUI.storageInfo')}{cvs.length > 1 ? 's' : ''}</span>
         </div>
 
         <div className="p-4">
@@ -126,13 +127,13 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob }) {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                 </svg>
-                <p className="text-sm text-indigo-600 font-medium">Lecture du PDF en cours...</p>
+                <p className="text-sm text-indigo-600 font-medium">{t('cvManagerUI.readingPDF')}</p>
               </div>
             ) : (
               <>
                 <div className="text-3xl mb-2">📎</div>
-                <p className="text-sm font-medium text-gray-700">Glisser un CV PDF ici</p>
-                <p className="text-xs text-gray-400 mt-1">ou cliquer pour sélectionner • Max 5MB</p>
+                <p className="text-sm font-medium text-gray-700">{t('cvManagerUI.dragDropPDF')}</p>
+                <p className="text-xs text-gray-400 mt-1">{t('cvManagerUI.orClick')}</p>
               </>
             )}
           </div>
@@ -146,17 +147,17 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob }) {
               <div className="mt-3 flex items-center gap-3 bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 rounded-xl px-4 py-3">
                 <span className="text-xl">✨</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-indigo-800">CV uploadé !</p>
-                  <p className="text-xs text-indigo-600 mt-0.5">Extraire ton profil automatiquement pour améliorer STAR, emails et autofill ?</p>
+                  <p className="text-sm font-semibold text-indigo-800">{t('cvManagerUI.cvUploaded')}</p>
+                  <p className="text-xs text-indigo-600 mt-0.5">{t('cvManagerUI.extractProfileAuto')}</p>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <button onClick={() => setNewCvId(null)} className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1.5 rounded-lg hover:bg-white transition-colors">Plus tard</button>
+                  <button onClick={() => setNewCvId(null)} className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1.5 rounded-lg hover:bg-white transition-colors">{t('cvManagerUI.later')}</button>
                   <button
                     onClick={() => handleExtractProfile(cv)}
                     disabled={extractingId === cv.id}
                     className="text-xs font-semibold bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5"
                   >
-                    {extractingId === cv.id ? <><span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" /> Extraction…</> : '✦ Extraire le profil'}
+                    {extractingId === cv.id ? <><span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" /> {t('cvManagerUI.extracting')}</> : '✦ ' + t('cvManagerUI.extractProfile')}
                   </button>
                 </div>
               </div>
@@ -167,7 +168,7 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob }) {
           {justExtracted && (
             <div className="mt-3 flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
               <span className="text-green-600">✓</span>
-              <p className="text-sm text-green-700 font-medium">Profil extrait depuis <strong>{extractedCvName}</strong> — visible dans <strong>Réglages → Profil candidat</strong></p>
+              <p className="text-sm text-green-700 font-medium">{t('cvManagerUI.profileExtracted').replace('{name}', extractedCvName)}</p>
             </div>
           )}
         </div>
@@ -189,20 +190,20 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob }) {
                     onClick={() => handleExtractProfile(cv)}
                     disabled={!!extractingId}
                     className="text-xs font-medium text-indigo-600 hover:text-white hover:bg-indigo-500 border border-indigo-200 hover:border-indigo-500 px-2.5 py-1 rounded-lg transition-all disabled:opacity-40 flex items-center gap-1 whitespace-nowrap"
-                    title="Extraire le profil depuis ce CV"
+                    title={t('cvManagerUI.extractProfile')}
                   >
                     {extractingId === cv.id
-                      ? <><span className="w-2.5 h-2.5 border border-indigo-400 border-t-indigo-600 rounded-full animate-spin" /> Extraction…</>
-                      : '✦ Profil'}
+                      ? <><span className="w-2.5 h-2.5 border border-indigo-400 border-t-indigo-600 rounded-full animate-spin" /> {t('cvManagerUI.extracting')}</>
+                      : '✦ ' + t('cvManagerUI.extractProfile')}
                   </button>
                   <button
                     onClick={() => deleteCV(cv.id)}
                     className="text-xs text-gray-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Supprimer"
+                    title={t('common.delete')}
                   >🗑️</button>
                 </div>
                 {extractedCvName === cv.name && !justExtracted && (
-                  <span className="text-[10px] font-semibold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full ml-1 shrink-0">profil ✓</span>
+                  <span className="text-[10px] font-semibold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full ml-1 shrink-0">{t('cvManagerUI.profileCheckmark')}</span>
                 )}
               </div>
             ))}
@@ -215,14 +216,14 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob }) {
       {preselectedJob && cvs.length > 0 && !generatorState && (
         <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-indigo-800">✨ Générer un CV pour {preselectedJob.company}</p>
+            <p className="text-sm font-semibold text-indigo-800">✨ {t('cvManagerUI.generateForJob').replace('{company}', preselectedJob.company)}</p>
             <p className="text-xs text-indigo-600 mt-0.5">{preselectedJob.position}</p>
           </div>
           <div className="flex gap-2">
             {cvs.map(cv => (
               <button key={cv.id} onClick={() => setGeneratorState({ cv, job: preselectedJob })}
                 className="text-xs font-medium bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 whitespace-nowrap">
-                {cvs.length > 1 ? cv.name.slice(0,12)+'…' : '🚀 Générer maintenant'}
+                {cvs.length > 1 ? cv.name.slice(0,12)+'…' : '🚀 ' + t('cvManager.generate')}
               </button>
             ))}
           </div>
@@ -233,10 +234,10 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob }) {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
             <span className="text-base">✨</span>
-            <h3 className="text-sm font-semibold text-gray-800">Générer un CV adapté</h3>
+            <h3 className="text-sm font-semibold text-gray-800">{t('cvManagerUI.generateAdapted')}</h3>
           </div>
           <div className="p-4">
-            <p className="text-sm text-gray-500 mb-3">Sélectionne un CV et une candidature pour générer une version optimisée :</p>
+            <p className="text-sm text-gray-500 mb-3">{t('cvManagerUI.selectCVAndJob')}</p>
             <div className="space-y-3">
               {jobs.filter(j => j.status === 'todo' && (j.url || j.notes)).slice(0, 10).map(job => (
                 <div key={job.id} className="flex items-center justify-between gap-3 p-3 border border-gray-100 rounded-xl hover:border-indigo-200 hover:bg-indigo-50/30 transition-all">
@@ -269,11 +270,10 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob }) {
           <div className="text-3xl mb-2">📎</div>
           {preselectedJob ? (
             <>
-              <p className="text-sm font-medium text-gray-600">Uploadez un CV pour générer une version adaptée à</p>
-              <p className="text-sm font-semibold text-indigo-600 mt-1">{preselectedJob.company} — {preselectedJob.position}</p>
+              <p className="text-sm font-medium text-gray-600">{t('cvManagerUI.uploadCVForJob').replace('{company}', preselectedJob.company).replace('{position}', preselectedJob.position)}</p>
             </>
           ) : (
-            <p className="text-sm">Uploadez un CV PDF pour commencer</p>
+            <p className="text-sm">{t('cvManagerUI.uploadCVStart')}</p>
           )}
         </div>
       )}

@@ -760,7 +760,7 @@ export default function App() {
         {activeTab === 'settings' ? (
           <Settings jobs={jobs} syncUserId={syncUserId} onMergeDuplicates={mergeDuplicates} />
         ) : activeTab === 'cv' ? (
-          <CVManager jobs={jobs} preselectedJob={selectedJobForCV} onUpdateJob={updateJob} />
+          <CVManager jobs={jobs} preselectedJob={selectedJobForCV} onUpdateJob={updateJob} t={t} />
         ) : activeTab === 'search' ? (
           <JobSearch onAddJob={(job) => { addJob(job); showToast(`${job.company} ajouté !`); setActiveTab('tracker') }} existingJobs={jobs} />
         ) : (
