@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSettings, SETTINGS_DEFAULTS } from '../hooks/useSettings'
 import { useExtensionDetect } from '../hooks/useExtensionDetect'
 import { useJobs } from '../hooks/useJobs'
+import { useLanguage } from '../hooks/useLanguage'
 import NotificationSettings from './NotificationSettings'
 import { supabase } from '../services/supabase'
 import { indexeddb } from '../services/indexeddb'
@@ -96,6 +97,7 @@ const CATEGORIES = [
 export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
   const { settings, updateSetting, resetSettings } = useSettings()
   const { deduplicateViaServer } = useJobs()
+  const { t, language, setLanguage, availableLanguages } = useLanguage()
   const extensionInstalled = useExtensionDetect()
   const [activeTab, setActiveTab] = useState('profile')
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -710,6 +712,22 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
             {/* Appearance Tab */}
             {activeTab === 'appearance' && (
               <>
+                <Card title="Langue" subtitle="Sélectionnez votre langue préférée">
+                  <Row label="Langue" hint="La langue s'appliquera immédiatement">
+                    <select
+                      value={language}
+                      onChange={e => setLanguage(e.target.value)}
+                      className="w-full sm:w-auto text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all"
+                    >
+                      {availableLanguages.map(lang => (
+                        <option key={lang} value={lang}>
+                          {lang === 'en' ? '🇬🇧 English' : lang === 'fr' ? '🇫🇷 Français' : lang}
+                        </option>
+                      ))}
+                    </select>
+                  </Row>
+                </Card>
+
                 <Card title="Thème de l'application" subtitle="Choisissez le style visuel qui vous convient le mieux">
                   <Row label="Thème" hint="Sélectionnez le thème de l'interface">
                     <div className="space-y-3">

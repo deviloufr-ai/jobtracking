@@ -3,6 +3,7 @@ import { useJobs, getStatus } from './hooks/useJobs'
 import { useExtensionImport } from './hooks/useExtensionImport'
 import { useExtensionDetect } from './hooks/useExtensionDetect'
 import { useSettings } from './hooks/useSettings'
+import { useLanguage } from './hooks/useLanguage'
 import './styles/themes.css'
 import ErrorBoundary from './components/ErrorBoundary'
 import Stats from './components/Stats'
@@ -87,11 +88,11 @@ function ExtensionButton() {
 
   return (
     <div
-      title="Extension Firefox JobTrackr active"
+      title={t('extension.title')}
       className="flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg"
     >
       <span>🦊</span>
-      <span className="hidden sm:inline">Extension ✓</span>
+      <span className="hidden sm:inline">{t('extension.label')}</span>
     </div>
   )
 }
@@ -99,6 +100,7 @@ function ExtensionButton() {
 export default function App() {
   const { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, reprocessJobs, checkAllPositions, findDuplicateInList } = useJobs()
   const { settings } = useSettings()
+  const { t } = useLanguage()
   const extensionInstalled = useExtensionDetect()
   const { permission: notificationPermission } = useNotificationPermission()
   useNotificationScenarios(jobs, notificationPermission)
@@ -424,9 +426,10 @@ export default function App() {
   }
 
   const handleClearAll = async () => {
-    if (!window.confirm(`Effacer toutes les ${jobs.length} candidatures ? Cette action est irreversible.`)) return
+    const msg = t('footer.clearConfirm').replace('{{count}}', jobs.length)
+    if (!window.confirm(msg)) return
     await clearAllJobs()
-    showToast('Toutes les candidatures ont été effacées (Supabase synchronisé)')
+    showToast(t('notifications.allApplicationsCleared'))
   }
 
   const ThHeader = ({ col, label }) => (
@@ -440,10 +443,10 @@ export default function App() {
 
   // ── nav tabs config ─────────────────────────────────────────────────────────
   const NAV_TABS = [
-    { id: 'tracker',  label: 'Candidatures', icon: '📋', badge: jobs.length || null },
-    { id: 'search',   label: 'Recherche',    icon: '🔎', badge: null },
-    { id: 'cv',       label: 'Mon CV',       icon: '📄', badge: null },
-    { id: 'settings', label: 'Réglages',     icon: '⚙️',  badge: null },
+    { id: 'tracker',  label: t('nav.tabs.tracker'), icon: '📋', badge: jobs.length || null },
+    { id: 'search',   label: t('nav.tabs.search'),    icon: '🔎', badge: null },
+    { id: 'cv',       label: t('nav.tabs.cv'),       icon: '📄', badge: null },
+    { id: 'settings', label: t('nav.tabs.settings'),     icon: '⚙️',  badge: null },
   ]
 
   const goTab = (id) => { setActiveTab(id); setMobileMenuOpen(false) }
@@ -473,8 +476,8 @@ export default function App() {
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Synchronisation des données</h2>
-            <p className="text-sm text-gray-500">Récupération de vos candidatures depuis Supabase...</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">{t('header.loading')}</h2>
+            <p className="text-sm text-gray-500">{t('header.loadingDesc')}</p>
           </div>
         </div>
       </ErrorBoundary>
@@ -509,7 +512,7 @@ export default function App() {
 
             {/* Nav links */}
             <nav className="flex-1 overflow-y-auto py-3 px-3">
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-2">Navigation</p>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-2">{t('mobileMenu.navigation')}</p>
               {NAV_TABS.map(tab => (
                 <button key={tab.id} onClick={() => goTab(tab.id)}
                   className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-colors mb-0.5 ${
@@ -525,11 +528,11 @@ export default function App() {
               ))}
 
               <div className="my-3 border-t border-gray-100" />
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-2">Ajouter</p>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-2">{t('mobileMenu.add')}</p>
               {[
-                { icon: '📧', label: 'Gmail', sub: 'Sync automatique', action: () => { setMobileMenuOpen(false); setShowGmail(true) } },
-                { icon: '🖼️', label: 'Screenshot', sub: 'Capture d\'écran', action: () => { setMobileMenuOpen(false); setShowImageImport(true) } },
-                { icon: '✏️', label: 'Manuel', sub: 'Saisie manuelle', action: () => { setMobileMenuOpen(false); setModal('add') } },
+                { icon: '📧', label: t('mobileMenu.gmail'), sub: t('mobileMenu.gmailSub'), action: () => { setMobileMenuOpen(false); setShowGmail(true) } },
+                { icon: '🖼️', label: t('mobileMenu.screenshot'), sub: t('mobileMenu.screenshotSub'), action: () => { setMobileMenuOpen(false); setShowImageImport(true) } },
+                { icon: '✏️', label: t('mobileMenu.manual'), sub: t('mobileMenu.manualSub'), action: () => { setMobileMenuOpen(false); setModal('add') } },
               ].map(item => (
                 <button key={item.label} onClick={item.action}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-50 transition-colors mb-0.5">
@@ -570,7 +573,7 @@ export default function App() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                   </svg>
-                  Connecter Gmail
+                  {t('mobileMenu.connectGmail')}
                 </button>
               )}
             </div>
@@ -639,7 +642,7 @@ export default function App() {
             {/* Refresh — desktop only (mobile is in drawer) */}
             {(gmailUser || gmailConnected) && (
               <button onClick={() => doRefresh(false)} disabled={refreshing}
-                title={lastRefresh ? `Dernière sync : ${lastRefresh}` : 'Synchroniser Gmail & Calendar'}
+                title={lastRefresh ? `${t('nav.lastSync')}: ${lastRefresh}` : t('nav.refresh')}
                 className="hidden sm:flex items-center justify-center w-8 h-8 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-30">
                 <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -661,7 +664,7 @@ export default function App() {
 
             {/* + Add dropdown */}
             <div className="relative">
-              <button onClick={() => setShowAddMenu(v => !v)} title="Ajouter une candidature"
+              <button onClick={() => setShowAddMenu(v => !v)} title={t('nav.add')}
                 className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:opacity-90 active:scale-95 transition-all shadow-sm shadow-indigo-200">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
               </button>
@@ -669,23 +672,23 @@ export default function App() {
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowAddMenu(false)} />
                   <div className="absolute right-0 top-10 z-50 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden py-1.5">
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-4 pt-1 pb-2">Importer via</p>
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-4 pt-1 pb-2">{t('addMenu.import')}</p>
                     <button onClick={() => { setShowAddMenu(false); setShowGmail(true) }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors">
                       <span className="text-base">📧</span>
-                      <div className="text-left"><div className="font-medium">Gmail</div><div className="text-[11px] text-gray-400">Sync automatique des emails</div></div>
+                      <div className="text-left"><div className="font-medium">{t('addMenu.gmail')}</div><div className="text-[11px] text-gray-400">{t('addMenu.gmailDesc')}</div></div>
                     </button>
                     <button onClick={() => { setShowAddMenu(false); setShowImageImport(true) }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors">
                       <span className="text-base">🖼️</span>
-                      <div className="text-left"><div className="font-medium">Screenshot</div><div className="text-[11px] text-gray-400">Colle une capture d'écran</div></div>
+                      <div className="text-left"><div className="font-medium">{t('addMenu.screenshot')}</div><div className="text-[11px] text-gray-400">{t('addMenu.screenshotDesc')}</div></div>
                     </button>
                     {extensionInstalled === false && (
                       <>
                         <a href="/jobtracker-addon-1.5.0.xpi"
                           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-orange-700 hover:bg-orange-50 transition-colors">
                           <span className="text-base">🦊</span>
-                          <div className="text-left"><div className="font-medium">Installer Extension</div><div className="text-[11px] text-gray-400">Importer depuis n'importe quelle offre</div></div>
+                          <div className="text-left"><div className="font-medium">{t('addMenu.installExt')}</div><div className="text-[11px] text-gray-400">{t('addMenu.installExtDesc')}</div></div>
                         </a>
                         <div className="mx-4 my-1.5 border-t border-gray-100" />
                       </>
@@ -695,7 +698,7 @@ export default function App() {
                         <button disabled
                           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-green-700 bg-green-50 cursor-default">
                           <span className="text-base">🦊</span>
-                          <div className="text-left"><div className="font-medium">Extension Firefox</div><div className="text-[11px] text-gray-400">Importation activée ✓</div></div>
+                          <div className="text-left"><div className="font-medium">{t('addMenu.extActive')}</div><div className="text-[11px] text-gray-400">{t('addMenu.extActiveDesc')}</div></div>
                         </button>
                         <div className="mx-4 my-1.5 border-t border-gray-100" />
                       </>
@@ -703,7 +706,7 @@ export default function App() {
                     <button onClick={() => { setShowAddMenu(false); setModal('add') }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors">
                       <span className="text-base">✏️</span>
-                      <div className="text-left"><div className="font-medium">Manuel</div><div className="text-[11px] text-gray-400">Saisie manuelle</div></div>
+                      <div className="text-left"><div className="font-medium">{t('addMenu.manual')}</div><div className="text-[11px] text-gray-400">{t('addMenu.manualDesc')}</div></div>
                     </button>
                   </div>
                 </>
@@ -727,7 +730,7 @@ export default function App() {
               <button onClick={() => setShowGmail(true)}
                 className="hidden sm:flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-100 transition-all">
                 <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-                <span>Connecté</span>
+                <span>{t('nav.connected')}</span>
               </button>
             ) : (
               <button onClick={() => setShowGmail(true)}
@@ -735,7 +738,7 @@ export default function App() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                 </svg>
-                <span>Connexion</span>
+                <span>{t('nav.connectGmail')}</span>
               </button>
             )}
 
@@ -790,19 +793,19 @@ export default function App() {
               {jobs.length === 0 ? (
                 <>
                   <div className="text-4xl mb-3">📭</div>
-                  <p className="text-gray-500 font-medium">Aucune candidature pour l instant</p>
-                  <p className="text-gray-400 text-sm mt-1 mb-6">Ajoutez-en une manuellement, importez depuis Gmail ou via screenshot</p>
+                  <p className="text-gray-500 font-medium">{t('empty.noApplications')}</p>
+                  <p className="text-gray-400 text-sm mt-1 mb-6">{t('empty.noApplicationsDesc')}</p>
                   <div className="flex gap-3 justify-center flex-wrap">
-                    <button onClick={() => setShowImageImport(true)} className="border border-gray-200 text-gray-600 text-sm px-4 py-2 rounded-lg hover:bg-purple-50 transition-colors">🖼️ Screenshot</button>
-                    <button onClick={() => setShowGmail(true)} className="border border-gray-200 text-gray-600 text-sm px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">📧 Gmail</button>
-                    <button onClick={() => setModal('add')} className="bg-indigo-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-indigo-700 transition-colors">+ Ajouter manuellement</button>
+                    <button onClick={() => setShowImageImport(true)} className="border border-gray-200 text-gray-600 text-sm px-4 py-2 rounded-lg hover:bg-purple-50 transition-colors">{t('empty.screenshot')}</button>
+                    <button onClick={() => setShowGmail(true)} className="border border-gray-200 text-gray-600 text-sm px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">{t('empty.gmail')}</button>
+                    <button onClick={() => setModal('add')} className="bg-indigo-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-indigo-700 transition-colors">{t('empty.addManually')}</button>
                   </div>
                 </>
               ) : (
                 <>
                   <div className="text-4xl mb-3">🔍</div>
-                  <p className="text-gray-500 font-medium">Aucune candidature trouvee</p>
-                  <button onClick={() => setFilters(DEFAULT_FILTERS)} className="mt-3 text-sm text-indigo-600 hover:underline">Reinitialiser les filtres</button>
+                  <p className="text-gray-500 font-medium">{t('empty.noResults')}</p>
+                  <button onClick={() => setFilters(DEFAULT_FILTERS)} className="mt-3 text-sm text-indigo-600 hover:underline">{t('empty.resetFilters')}</button>
                 </>
               )}
             </div>
@@ -814,7 +817,7 @@ export default function App() {
                 {filtered.some(j => j.favorite) && (
                   <>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-yellow-600">⭐ Favoris ({filtered.filter(j => j.favorite).length})</span>
+                      <span className="text-sm font-semibold text-yellow-600">⭐ {t('stats.favorites')} ({filtered.filter(j => j.favorite).length})</span>
                     </div>
                     <div className="space-y-2.5">
                       {filtered.filter(j => j.favorite).map(job => (
@@ -829,7 +832,7 @@ export default function App() {
                   <>
                     {filtered.some(j => j.favorite) && (
                       <div className="flex items-center gap-2 mt-2">
-                        <span className="text-sm font-semibold text-gray-600">Autres candidatures ({filtered.filter(j => !j.favorite).length})</span>
+                        <span className="text-sm font-semibold text-gray-600">{t('stats.otherApplications')} ({filtered.filter(j => !j.favorite).length})</span>
                       </div>
                     )}
                     <div className="space-y-2.5">
@@ -847,15 +850,15 @@ export default function App() {
                 {filtered.some(j => j.favorite) && (
                   <div className="overflow-x-auto">
                     <div className="flex items-center gap-2 mb-3">
-                      <span className="text-sm font-semibold text-yellow-600">⭐ Favoris ({filtered.filter(j => j.favorite).length})</span>
+                      <span className="text-sm font-semibold text-yellow-600">⭐ {t('stats.favorites')} ({filtered.filter(j => j.favorite).length})</span>
                     </div>
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-yellow-100 bg-yellow-50/60">
-                          <ThHeader col="company" label="Entreprise / Poste" />
-                          <ThHeader col="status" label="Statut" />
-                          <ThHeader col="date" label="Date" />
-                          <th className="hidden md:table-cell py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Notes</th>
+                          <ThHeader col="company" label={t('table.company')} />
+                          <ThHeader col="status" label={t('table.status')} />
+                          <ThHeader col="date" label={t('table.date')} />
+                          <th className="hidden md:table-cell py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('table.notes')}</th>
                           <th className="py-3 px-2 w-12"></th>
                         </tr>
                       </thead>
@@ -872,16 +875,16 @@ export default function App() {
                 <div className="overflow-x-auto">
                   {filtered.some(j => j.favorite) && (
                     <div className="flex items-center gap-2 mb-3">
-                      <span className="text-sm font-semibold text-gray-600">Autres candidatures ({filtered.filter(j => !j.favorite).length})</span>
+                      <span className="text-sm font-semibold text-gray-600">{t('stats.otherApplications')} ({filtered.filter(j => !j.favorite).length})</span>
                     </div>
                   )}
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-gray-100 bg-gray-50/60">
-                        <ThHeader col="company" label="Entreprise / Poste" />
-                        <ThHeader col="status" label="Statut" />
-                        <ThHeader col="date" label="Date" />
-                        <th className="hidden md:table-cell py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Notes</th>
+                        <ThHeader col="company" label={t('table.company')} />
+                        <ThHeader col="status" label={t('table.status')} />
+                        <ThHeader col="date" label={t('table.date')} />
+                        <th className="hidden md:table-cell py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('table.notes')}</th>
                         <th className="py-3 px-2 w-12"></th>
                       </tr>
                     </thead>
@@ -903,11 +906,11 @@ export default function App() {
             <div className="flex items-center gap-2 flex-wrap justify-end">
               <button onClick={mergeDuplicates}
                 className="text-xs text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors border border-transparent hover:border-indigo-200">
-                🔀 Fusionner les doublons
+                {t('footer.mergeDuplicates')}
               </button>
               <button onClick={handleClearAll}
                 className="text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors border border-transparent hover:border-red-200">
-                🗑️ Effacer toutes les données
+                {t('footer.clearAll')}
               </button>
             </div>
           )}
