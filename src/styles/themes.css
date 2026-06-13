@@ -105,3 +105,53 @@
 [data-theme="dark"] .placeholder-gray-400::placeholder {
   color: var(--theme-text-faint) !important;
 }
+
+/* Dark theme - Table styling */
+[data-theme="dark"] table {
+  background-color: var(--theme-surface) !important;
+  color: var(--theme-text) !important;
+}
+
+[data-theme="dark"] thead {
+  background-color: var(--theme-surface2) !important;
+}
+
+[data-theme="dark"] tbody tr {
+  border-color: var(--theme-border) !important;
+  background-color: var(--theme-surface) !important;
+}
+
+[data-theme="dark"] tbody tr:hover {
+  background-color: var(--theme-surface2) !important;
+}
+
+[data-theme="dark"] td,
+[data-theme="dark"] th {
+  color: var(--theme-text) !important;
+  border-color: var(--theme-border) !important;
+}
+
+[data-theme="dark"] th {
+  color: var(--theme-text-dim) !important;
+}
+
+/* Dark theme - Cards and panels */
+[data-theme="dark"] .rounded-xl,
+[data-theme="dark"] .rounded-2xl,
+[data-theme="dark"] .rounded-lg {
+  background-color: var(--theme-surface) !important;
+}
+
+/* Dark theme - Badges and status pills */
+[data-theme="dark"] .inline-flex.items-center {
+  background-color: inherit !important;
+}
+
+/* Dark theme - Expand buttons and interactive elements */
+[data-theme="dark"] button {
+  color: var(--theme-text) !important;
+}
+
+[data-theme="dark"] button:hover {
+  background-color: var(--theme-surface2) !important;
+}
