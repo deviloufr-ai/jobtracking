@@ -276,7 +276,7 @@ export default function App() {
 
   const { refreshing, lastRefresh, doRefresh } = useAutoRefresh(jobs, addJobWithNotif, updateJobWithNotif, (msg, duration) => {
     showToast(msg, duration)
-  }, reprocessJobs)
+  }, reprocessJobs, settings)
   useExtensionImport(addJobWithNotif, showToast)
 
   // Re-evaluate jobs when archive settings change

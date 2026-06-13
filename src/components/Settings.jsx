@@ -553,8 +553,8 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                 <Row label="Sync Gmail automatique" hint="Intervalle entre deux synchronisations">
                   <NumInput value={settings.autoRefreshHours} onChange={v => updateSetting('autoRefreshHours', v)} min={1} max={72} suffix="h" />
                 </Row>
-                <Row label="Période de recherche Gmail" hint="Fenêtre d'import des emails">
-                  <NumInput value={settings.gmailPeriodMonths} onChange={v => updateSetting('gmailPeriodMonths', v)} min={1} max={12} suffix="m" />
+                <Row label="Période de recherche Gmail" hint="Combien de jours à remonter pour importer les emails">
+                  <NumInput value={settings.gmailPeriodDays} onChange={v => updateSetting('gmailPeriodDays', v)} min={1} max={365} suffix="j" />
                 </Row>
                 <Row label="Vérifier disponibilité du poste" hint="Auto-détecte si le poste est toujours ouvert">
                   <NumInput value={settings.checkPositionAfterDays} onChange={v => updateSetting('checkPositionAfterDays', v)} min={0} max={365} suffix="j" />
