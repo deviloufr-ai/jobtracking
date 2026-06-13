@@ -66,8 +66,10 @@ export function useSettings() {
   }, [])
 
   const updateSetting = useCallback((key, value) => {
+    console.log('🎨 updateSetting called:', { key, value })
     setSettings(prev => {
       const next = { ...prev, [key]: value }
+      console.log('🎨 Setting state to:', next)
 
       // Save locally
       saveSettingsLocal(next)
