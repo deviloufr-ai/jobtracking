@@ -118,7 +118,7 @@ function getUrgentRules(t = (key) => key) {
   {
     // Interview prep — only when NO test technique keyword (test takes priority)
     match: j => j.status === 'interview' && !hasKeyword(j, ...TEST_KWS),
-    icon: '🎯', urgency: 'medium',
+    icon: '🎯', type: 'prep', urgency: 'medium',
     label: job => formatTrans(t('nextActionRules.prepareInterview'), { company: job.company }),
     tip: () => t('nextActionRules.prepareStar'),
   },

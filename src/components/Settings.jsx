@@ -915,7 +915,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
               <Card title="Extension Firefox">
                 <Row label="Status" hint="Installez l'extension pour importer les offres directement">
                   {extensionInstalled === false && (
-                    <a href="/jobtracker-addon-1.5.0.xpi" className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600">
+                    <a href="/jobtracker-addon-1.5.1.xpi" className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600">
                       📥 Installer
                     </a>
                   )}
