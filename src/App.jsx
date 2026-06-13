@@ -154,7 +154,9 @@ export default function App() {
 
   // Apply theme on load and when settings change
   useEffect(() => {
-    applyTheme(settings.theme || 'light')
+    const theme = settings.theme || 'light'
+    applyTheme(theme)
+    document.documentElement.setAttribute('data-theme', theme)
   }, [settings.theme])
 
   // Initialize sync only when user leaves landing page (actively logs in)
@@ -467,7 +469,6 @@ export default function App() {
           backgroundColor: 'var(--theme-bg)',
           color: 'var(--theme-text)'
         }}
-        data-theme={settings.theme || 'light'}
       >
 
       {/* ── Mobile drawer overlay ──────────────────────────────────────────── */}
