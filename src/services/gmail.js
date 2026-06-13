@@ -578,8 +578,9 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
   const runQuery = async (query) => {
     try {
       log(`📨 Running query: ${query.slice(0, 80)}...`)
+      const maxResults = Math.max(1, Math.floor(Math.min(effectiveMonths * 20, 100)))
       const data = await gmailFetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${Math.floor(Math.min(effectiveMonths * 20, 100))}&q=${encodeURIComponent(query)}`,
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${maxResults}&q=${encodeURIComponent(query)}`,
         token
       )
       const newCount = (data.messages || []).length

@@ -257,6 +257,52 @@ export const fr = {
     hidden: 'Masqué — cliquer pour reset',
   },
 
+  // JobRow / JobCard
+  jobActions: {
+    edit: 'Modifier',
+    delete: 'Supprimer',
+    favorite: 'Favoris',
+    archive: 'Archiver',
+    restore: 'Restaurer',
+    addStep: 'Ajouter une étape',
+    steps: 'Étapes',
+    notes: 'Notes',
+    url: 'URL',
+    status: 'Statut',
+    date: 'Date',
+  },
+
+  // GmailImport
+  gmailImport: {
+    title: 'Importer depuis Gmail',
+    connect: 'Connecter Gmail',
+    disconnect: 'Déconnecter',
+    importing: 'Importation...',
+    import: 'Importer',
+    noEmails: 'Aucun email trouvé',
+    found: 'candidatures trouvées dans Gmail',
+    importSuccess: 'Importation réussie!',
+  },
+
+  // CVManager
+  cvManager: {
+    title: 'Mes CV',
+    upload: 'Télécharger un CV',
+    uploadNew: 'Télécharger',
+    noCV: 'Aucun CV téléchargé',
+    generate: 'Générer un CV',
+    delete: 'Supprimer',
+    preview: 'Aperçu',
+  },
+
+  // NextAction
+  nextAction: {
+    title: 'Prochaines étapes',
+    urgentActions: 'Actions urgentes',
+    recommendedSteps: 'Étapes recommandées',
+    noActions: 'Aucune action requise',
+  },
+
   // Common
   common: {
     notes: 'Notes',
@@ -269,5 +315,8 @@ export const fr = {
     close: 'Fermer',
     add: 'Ajouter',
     ok: 'Ok',
+    loading: 'Chargement...',
+    error: 'Erreur',
+    success: 'Succès',
   },
 }

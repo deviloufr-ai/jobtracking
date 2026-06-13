@@ -257,6 +257,52 @@ export const en = {
     hidden: 'Hidden — click to reset',
   },
 
+  // JobRow / JobCard
+  jobActions: {
+    edit: 'Edit',
+    delete: 'Delete',
+    favorite: 'Favorite',
+    archive: 'Archive',
+    restore: 'Restore',
+    addStep: 'Add step',
+    steps: 'Steps',
+    notes: 'Notes',
+    url: 'URL',
+    status: 'Status',
+    date: 'Date',
+  },
+
+  // GmailImport
+  gmailImport: {
+    title: 'Import from Gmail',
+    connect: 'Connect Gmail',
+    disconnect: 'Disconnect',
+    importing: 'Importing...',
+    import: 'Import',
+    noEmails: 'No emails found',
+    found: 'applications found in Gmail',
+    importSuccess: 'Import successful!',
+  },
+
+  // CVManager
+  cvManager: {
+    title: 'My CVs',
+    upload: 'Upload CV',
+    uploadNew: 'Upload',
+    noCV: 'No CV uploaded',
+    generate: 'Generate CV',
+    delete: 'Delete',
+    preview: 'Preview',
+  },
+
+  // NextAction
+  nextAction: {
+    title: 'Next steps',
+    urgentActions: 'Urgent actions',
+    recommendedSteps: 'Recommended steps',
+    noActions: 'No actions required',
+  },
+
   // Common
   common: {
     notes: 'Notes',
@@ -269,5 +315,8 @@ export const en = {
     close: 'Close',
     add: 'Add',
     ok: 'OK',
+    loading: 'Loading...',
+    error: 'Error',
+    success: 'Success',
   },
 }

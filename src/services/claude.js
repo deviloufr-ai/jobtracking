@@ -669,9 +669,18 @@ RETOURNER UN JSON VALIDE UNIQUEMENT :
     // Strip markdown code fences
     clean = clean.replace(/^```(?:json)?\s*/i, '').replace(/\s*```[\s\S]*$/, '').trim()
     const start = clean.indexOf('{')
-    const end = clean.lastIndexOf('}')
-    if (start === -1 || end === -1) {
+    if (start === -1) {
       console.warn('Validation response missing JSON, returning unvalidated jobs')
+      return { jobs: parsedJobs, changelog: { merged: [], flagged: [] } }
+    }
+    // Count braces to find matching closing }
+    let depth = 0, end = -1
+    for (let i = start; i < clean.length; i++) {
+      if (clean[i] === '{') depth++
+      else if (clean[i] === '}') { depth--; if (depth === 0) { end = i; break } }
+    }
+    if (end === -1) {
+      console.warn('Validation response missing closing brace, returning unvalidated jobs')
       return { jobs: parsedJobs, changelog: { merged: [], flagged: [] } }
     }
 
@@ -712,6 +721,7 @@ RETOURNER UN JSON VALIDE UNIQUEMENT :
     return { jobs: cleaned, changelog }
   } catch (e) {
     console.error('Validation parse error, returning unvalidated jobs:', e.message)
+    console.error('Raw response preview:', raw.slice(0, 200))
     return { jobs: parsedJobs, changelog: { merged: [], flagged: [] } }
   }
 }
