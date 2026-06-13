@@ -414,6 +414,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
               hasUseCase={!!job.useCase?.title}
               checkingPosition={checkingPosition}
               positionStatus={getPositionStatus()}
+              t={t}
             />
           </div>
         </td>

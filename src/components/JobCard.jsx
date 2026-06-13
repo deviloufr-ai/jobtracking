@@ -177,29 +177,29 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
         <button
           onClick={e => { e.stopPropagation(); onAddStep(job.id) }}
           className="text-xs bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition-colors font-medium flex-1 min-w-[100px]"
-          title="Ajouter une étape"
+          title={t('jobCard.addStep')}
         >
-          ➕ Étape
+          ➕ {t('jobCard.addStep')}
         </button>
         <button
           onClick={e => { e.stopPropagation(); handleEnrich() }}
           disabled={enriching}
           className="text-xs bg-cyan-50 text-cyan-700 hover:bg-cyan-100 px-2.5 py-1.5 rounded-lg transition-colors font-medium disabled:opacity-50 flex-1 min-w-[100px]"
-          title="Synchroniser Gmail & Calendar"
+          title={t('nav.refresh')}
         >
-          {enriching ? '⟳' : '🔄'} Sync
+          {enriching ? '⟳' : '🔄'} {t('jobCard.sync')}
         </button>
         <button
           onClick={e => { e.stopPropagation(); onEdit(job) }}
           className="text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 px-2.5 py-1.5 rounded-lg transition-colors font-medium flex-1 min-w-[80px]"
-          title="Modifier"
+          title={t('jobCard.edit')}
         >
-          ✏️ Éditer
+          ✏️ {t('jobCard.edit')}
         </button>
         <button
           onClick={e => { e.stopPropagation(); onDelete(job) }}
           className="text-xs bg-red-50 text-red-700 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition-colors font-medium flex-1 min-w-[80px]"
-          title="Supprimer"
+          title={t('jobCard.delete')}
         >
           🗑️
         </button>
@@ -208,7 +208,7 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
       {/* Expanded details */}
       {expanded && (
         <div className="mt-4 pt-4 border-t border-gray-200">
-          <p className="text-xs text-gray-500 text-center mb-3">Détails complets disponibles en mode desktop</p>
+          <p className="text-xs text-gray-500 text-center mb-3">{t('jobCard.fullDetailsDesktop')}</p>
           <div className="text-xs text-gray-600 space-y-2">
             <p><span className="font-semibold">ID:</span> {job.id.slice(0, 8)}</p>
             {job.salaryMin || job.salaryMax ? (

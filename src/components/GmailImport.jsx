@@ -16,7 +16,7 @@ const MONTH_OPTIONS = [
   { value: 24, label: '24 mois' },
 ]
 
-export default function GmailImport({ onImport, onUpdate, onClose, existingJobs, onUserChange }) {
+export default function GmailImport({ onImport, onUpdate, onClose, existingJobs, onUserChange, t = (key) => key }) {
   const [step, setStep] = useState(STEPS.idle)
   const [connectedAccounts, setConnectedAccounts] = useState(() => getConnectedAccounts())
   const [scanAccount, setScanAccount] = useState(null) // null = all accounts
@@ -55,7 +55,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
 
   const handleConnect = async () => {
     if (!isGmailConfigured()) {
-      setError('Clé Google Client ID manquante. Ajoutez VITE_GOOGLE_CLIENT_ID dans votre fichier .env')
+      setError(t('gmailImport.errorConfigMissing'))
       return
     }
     try {
@@ -65,7 +65,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
       refreshAccountList()
       setStep(STEPS.idle)
     } catch (e) {
-      setError('Connexion Gmail annulée ou échouée : ' + e.message)
+      setError(t('gmailImport.errorConnectionFailed') + e.message)
       setStep(STEPS.idle)
     }
   }
@@ -87,7 +87,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
           setError(null)
           await refreshToken()
         } catch {
-          setError('Session expirée — veuillez vous reconnecter.')
+          setError(t('gmailImport.errorSessionExpired'))
           refreshAccountList()
           setStep(STEPS.idle)
           return
@@ -130,7 +130,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
       setEmailCount(emails.length)
 
       if (emails.length === 0) {
-        setError(`Aucun email trouvé sur ${months} mois. Essayez d'augmenter la période ou vérifiez vos autorisations Gmail.`)
+        setError(t('gmailImport.errorNothingFound').replace('{months}', Math.round(months)))
         setStep(STEPS.idle)
         return
       }

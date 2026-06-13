@@ -284,6 +284,10 @@ export const fr = {
     noEmails: 'Aucun email trouvé',
     found: 'candidatures trouvées dans Gmail',
     importSuccess: 'Importation réussie!',
+    errorConfigMissing: 'Clé Google Client ID manquante. Ajoutez VITE_GOOGLE_CLIENT_ID dans votre fichier .env',
+    errorConnectionFailed: 'Connexion Gmail annulée ou échouée : ',
+    errorSessionExpired: 'Session expirée — veuillez vous reconnecter.',
+    errorNothingFound: 'Aucun email trouvé sur {months} mois. Essayez d\'augmenter la période ou vérifiez vos autorisations Gmail.',
   },
 
   // CVManager
@@ -295,6 +299,8 @@ export const fr = {
     generate: 'Générer un CV',
     delete: 'Supprimer',
     preview: 'Aperçu',
+    uploading: 'Téléchargement...',
+    selectForJob: 'Sélectionner pour cette candidature',
   },
 
   // NextAction
@@ -303,6 +309,60 @@ export const fr = {
     urgentActions: 'Actions urgentes',
     recommendedSteps: 'Étapes recommandées',
     noActions: 'Aucune action requise',
+  },
+
+  // RowActions
+  rowActions: {
+    viewCV: 'Voir le CV',
+    generateCV: 'Générer un CV',
+    draftEmail: 'Rédiger un email',
+    thankYou: 'Email de remerciement',
+    followUp: 'Email de relance',
+    star: 'Ajouter aux favoris',
+    archive: 'Archiver',
+  },
+
+  // JobCard
+  jobCard: {
+    addStep: 'Ajouter une étape',
+    sync: 'Sync',
+    edit: 'Éditer',
+    delete: 'Supprimer',
+    fullDetailsDesktop: 'Détails complets disponibles en mode desktop',
+    salary: 'Salaire',
+    id: 'ID',
+    location: 'Localisation',
+  },
+
+  // AdvicePanel
+  advicePanel: {
+    tipsForStep: 'Conseils pour cette étape',
+    personalizedAdvice: 'Conseils personnalisés',
+    loading: 'Chargement des conseils...',
+    noAdvice: 'Aucun conseil spécifique',
+  },
+
+  // CVGenerator
+  cvGenerator: {
+    title: 'Générer un CV',
+    selectCV: 'Sélectionner un CV à personnaliser',
+    before: 'Original',
+    after: 'Personnalisé',
+    generating: 'Génération...',
+    download: 'Télécharger PDF',
+    noCV: 'Aucun CV sélectionné',
+  },
+
+  // JobSearch
+  jobSearch: {
+    title: 'Recherche d\'emploi',
+    location: 'Localisation',
+    keyword: 'Mot-clé',
+    search: 'Rechercher',
+    searching: 'Recherche...',
+    results: 'Offres d\'emploi',
+    noResults: 'Aucune offre trouvée',
+    addToTracker: 'Ajouter au suivi',
   },
 
   // Common

@@ -14,6 +14,7 @@ export default function RowActions({
   hasUseCase = false,
   checkingPosition = false,
   positionStatus = null,
+  t = (key) => key,
 }) {
   const actions = [
     // Timeline actions (only when expanded)
@@ -21,14 +22,14 @@ export default function RowActions({
       {
         id: 'add',
         icon: '➕',
-        label: 'Ajouter une étape',
+        label: t('jobActions.addStep'),
         onClick: onAddStep,
         color: 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'
       },
       {
         id: 'sync',
         icon: '🔄',
-        label: 'Synchroniser Gmail & Calendar',
+        label: t('nav.refresh'),
         onClick: onSync,
         disabled: enriching,
         color: 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
@@ -36,7 +37,7 @@ export default function RowActions({
       {
         id: 'case',
         icon: '📋',
-        label: 'Cas pratique',
+        label: t('rowActions.draftEmail'),
         onClick: onUseCase,
         color: hasUseCase ? 'text-purple-600 hover:text-purple-700 hover:bg-purple-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
       },
@@ -44,7 +45,7 @@ export default function RowActions({
         {
           id: 'check',
           icon: positionStatus === true ? '✓' : positionStatus === false ? '✗' : '🔍',
-          label: positionStatus === true ? 'Poste ouvert' : positionStatus === false ? 'Poste fermé' : 'Vérifier disponibilité',
+          label: positionStatus === true ? t('filters.all') : positionStatus === false ? t('empty.noResults') : t('filters.search'),
           onClick: onCheckPosition,
           disabled: checkingPosition,
           color: positionStatus === true ? 'text-green-600 hover:text-green-700 hover:bg-green-50' : positionStatus === false ? 'text-red-600 hover:text-red-700 hover:bg-red-50' : 'text-orange-600 hover:text-orange-700 hover:bg-orange-50'
@@ -57,14 +58,14 @@ export default function RowActions({
     {
       id: 'edit',
       icon: '✏️',
-      label: 'Modifier la candidature',
+      label: t('jobActions.edit'),
       onClick: onEdit,
       color: 'text-gray-500 hover:text-indigo-600 hover:bg-indigo-50'
     },
     {
       id: 'delete',
       icon: '🗑️',
-      label: 'Supprimer',
+      label: t('jobActions.delete'),
       onClick: onDelete,
       color: 'text-gray-500 hover:text-red-600 hover:bg-red-50'
     }

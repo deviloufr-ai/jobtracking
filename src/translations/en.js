@@ -284,6 +284,10 @@ export const en = {
     noEmails: 'No emails found',
     found: 'applications found in Gmail',
     importSuccess: 'Import successful!',
+    errorConfigMissing: 'Google Client ID key missing. Add VITE_GOOGLE_CLIENT_ID to your .env file',
+    errorConnectionFailed: 'Gmail connection canceled or failed: ',
+    errorSessionExpired: 'Session expired — please reconnect.',
+    errorNothingFound: 'No emails found in {months} months. Try increasing the period or check your Gmail permissions.',
   },
 
   // CVManager
@@ -295,6 +299,8 @@ export const en = {
     generate: 'Generate CV',
     delete: 'Delete',
     preview: 'Preview',
+    uploading: 'Uploading...',
+    selectForJob: 'Select for this application',
   },
 
   // NextAction
@@ -303,6 +309,60 @@ export const en = {
     urgentActions: 'Urgent actions',
     recommendedSteps: 'Recommended steps',
     noActions: 'No actions required',
+  },
+
+  // RowActions
+  rowActions: {
+    viewCV: 'View CV',
+    generateCV: 'Generate CV',
+    draftEmail: 'Draft email',
+    thankYou: 'Thank you email',
+    followUp: 'Follow-up email',
+    star: 'Add to favorites',
+    archive: 'Archive',
+  },
+
+  // JobCard
+  jobCard: {
+    addStep: 'Add step',
+    sync: 'Sync',
+    edit: 'Edit',
+    delete: 'Delete',
+    fullDetailsDesktop: 'Full details available in desktop mode',
+    salary: 'Salary',
+    id: 'ID',
+    location: 'Location',
+  },
+
+  // AdvicePanel
+  advicePanel: {
+    tipsForStep: 'Tips for this step',
+    personalizedAdvice: 'Personalized advice',
+    loading: 'Loading advice...',
+    noAdvice: 'No specific advice',
+  },
+
+  // CVGenerator
+  cvGenerator: {
+    title: 'Generate CV',
+    selectCV: 'Select a CV to customize',
+    before: 'Original',
+    after: 'Customized',
+    generating: 'Generating...',
+    download: 'Download PDF',
+    noCV: 'No CV selected',
+  },
+
+  // JobSearch
+  jobSearch: {
+    title: 'Job Search',
+    location: 'Location',
+    keyword: 'Keyword',
+    search: 'Search',
+    searching: 'Searching...',
+    results: 'Job listings',
+    noResults: 'No jobs found',
+    addToTracker: 'Add to tracker',
   },
 
   // Common
