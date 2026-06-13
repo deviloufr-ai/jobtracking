@@ -270,6 +270,8 @@ export const fr = {
     url: 'URL',
     status: 'Statut',
     date: 'Date',
+    tips: 'Conseils pour cette étape',
+    you: 'Vous',
   },
 
   // GmailImport

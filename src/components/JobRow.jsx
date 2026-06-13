@@ -60,7 +60,7 @@ function StepTips({ note }) {
       {/* Tooltip */}
       <div className="absolute right-0 top-full mt-1.5 z-30 hidden group-hover/tips:block w-72
         bg-amber-50 border border-amber-200 rounded-lg shadow-lg p-3">
-        <p className="text-[10px] font-semibold text-amber-700 mb-2 uppercase tracking-wide">Conseils pour cette étape</p>
+        <p className="text-[10px] font-semibold text-amber-700 mb-2 uppercase tracking-wide">{t('jobActions.tips') || 'Conseils pour cette étape'}</p>
         <ul className="space-y-1.5">
           {tips.map((t, i) => (
             <li key={i} className="flex gap-2 text-[11px] text-amber-900">
@@ -77,10 +77,10 @@ function StepTips({ note }) {
 }
 
 // Fix #20 — getSourceLabel moved outside component (pure function, no need for closure)
-function getSourceLabel(entry, companyName) {
+function getSourceLabel(entry, companyName, t) {
   if (entry.source === 'calendar') return null
   if (entry.source === 'email') {
-    if (entry.fromMe) return 'Vous'
+    if (entry.fromMe) return t('jobActions.you')
     if (entry.from) {
       const match = entry.from.match(/^([^<]+)/)
       return match ? match[1].trim().split(' ')[0] : entry.from.split('@')[0]
@@ -90,7 +90,7 @@ function getSourceLabel(entry, companyName) {
   return null
 }
 
-export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, onViewSavedCV, forceExpand, onForceExpandDone, checkAllPositions }) {
+export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, onViewSavedCV, forceExpand, onForceExpandDone, checkAllPositions, t = (key) => key }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
   const [showUseCase, setShowUseCase] = useState(false)
@@ -491,7 +491,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                           const angleMatch = rawFrom.match(/<([^>]+@[^>]+)>/)
                           const fromEmail = angleMatch ? angleMatch[1].trim() : (rawFrom.includes('@') && !rawFrom.includes(' ') ? rawFrom : null)
                           const showSender = entry.source === 'email' && !entry.fromMe && fromEmail && !isNoReply(fromEmail)
-                          const sourceLabel = getSourceLabel(entry, job.company)
+                          const sourceLabel = getSourceLabel(entry, job.company, t)
                           const emailCount = history.filter(h => h.source === 'email').length
                           return (
                         <>

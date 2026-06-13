@@ -3,7 +3,7 @@ import { enrichJobTimeline } from '../services/enrichTimeline'
 import { STATUSES, getStatus } from '../hooks/useJobs'
 import RowActions from './RowActions'
 
-function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, forceExpand, onForceExpandDone, checkAllPositions }) {
+function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, forceExpand, onForceExpandDone, checkAllPositions, t = (key) => key }) {
   const [expanded, setExpanded] = useState(false)
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [enriching, setEnriching] = useState(false)
