@@ -105,11 +105,17 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
   // Listen for theme changes
   useEffect(() => {
     const handleThemeChange = (e) => {
+      console.log('🎨 Settings heard theme-changed event:', e.detail.theme)
       setCurrentTheme(e.detail.theme)
     }
     window.addEventListener('theme-changed', handleThemeChange)
     return () => window.removeEventListener('theme-changed', handleThemeChange)
   }, [])
+
+  // Debug: log currentTheme whenever it changes
+  useEffect(() => {
+    console.log('🎨 Settings currentTheme state updated to:', currentTheme)
+  }, [currentTheme])
   const [confirmDeleteHistory, setConfirmDeleteHistory] = useState(false)
   const [deleteHistoryDetails, setDeleteHistoryDetails] = useState(null)
   const [deleteHistoryLoading, setDeleteHistoryLoading] = useState(false)
@@ -556,11 +562,11 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                             />
                           </div>
                           <div className="flex-1">
-                            <p className={`font-semibold ${settings.theme === theme.id ? 'text-indigo-700' : 'text-gray-900'}`}>
+                            <p className={`font-semibold ${currentTheme === theme.id ? 'text-indigo-700' : 'text-gray-900'}`}>
                               {theme.label}
                             </p>
                           </div>
-                          {settings.theme === theme.id && (
+                          {currentTheme === theme.id && (
                             <span className="text-lg">✓</span>
                           )}
                         </button>
