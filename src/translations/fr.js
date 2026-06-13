@@ -141,6 +141,32 @@ export const fr = {
     notes: 'Notes',
   },
 
+  // Settings Sidebar
+  settingsSidebar: {
+    profile: 'Profil',
+    goals: 'Objectifs',
+    automation: 'Automatisation',
+    apiClaude: 'API Claude',
+    notifications: 'Notifications',
+    followups: 'Rappels',
+    appearance: 'Apparence',
+    data: 'Données',
+    extension: 'Extension',
+  },
+
+  // Settings Descriptions
+  settingsDesc: {
+    profile: 'Gérez vos informations professionnelles',
+    goals: 'Définissez vos cibles de candidatures',
+    automation: 'Configurez l\'automatisation de votre recherche',
+    apiClaude: 'Configurez votre propre clé API Claude',
+    notifications: 'Gérez vos notifications',
+    followups: 'Définissez les délais de suivi',
+    appearance: 'Choisissez le thème de l\'application',
+    data: 'Exportez, importez ou réinitialisez vos données',
+    extension: 'Gérez l\'extension Firefox',
+  },
+
   // Common
   common: {
     notes: 'Notes',

@@ -82,16 +82,16 @@ function TextInput({ value, onChange, placeholder, multiline = false, rows = 2 }
     : <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={cls} />
 }
 
-const CATEGORIES = [
-  { id: 'profile', label: 'Profil', icon: '👤' },
-  { id: 'goals', label: 'Objectifs', icon: '🎯' },
-  { id: 'automation', label: 'Automatisation', icon: '⚙️' },
-  { id: 'api', label: 'API Claude', icon: '🔑' },
-  { id: 'notifications', label: 'Notifications', icon: '🔔' },
-  { id: 'followups', label: 'Rappels', icon: '⏰' },
-  { id: 'appearance', label: 'Apparence', icon: '🎨' },
-  { id: 'data', label: 'Données', icon: '💾' },
-  { id: 'extension', label: 'Extension', icon: '🦊' },
+const getCATEGORIES = (t) => [
+  { id: 'profile', label: t('settingsSidebar.profile'), icon: '👤' },
+  { id: 'goals', label: t('settingsSidebar.goals'), icon: '🎯' },
+  { id: 'automation', label: t('settingsSidebar.automation'), icon: '⚙️' },
+  { id: 'api', label: t('settingsSidebar.apiClaude'), icon: '🔑' },
+  { id: 'notifications', label: t('settingsSidebar.notifications'), icon: '🔔' },
+  { id: 'followups', label: t('settingsSidebar.followups'), icon: '⏰' },
+  { id: 'appearance', label: t('settingsSidebar.appearance'), icon: '🎨' },
+  { id: 'data', label: t('settingsSidebar.data'), icon: '💾' },
+  { id: 'extension', label: t('settingsSidebar.extension'), icon: '🦊' },
 ]
 
 export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
@@ -99,6 +99,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
   const { deduplicateViaServer } = useJobs()
   const { t, language, setLanguage, availableLanguages } = useLanguage()
   const extensionInstalled = useExtensionDetect()
+  const CATEGORIES = getCATEGORIES(t)
   const [activeTab, setActiveTab] = useState('profile')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
@@ -408,15 +409,15 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">{currentCategory?.icon} {currentCategory?.label}</h1>
               <p className="text-gray-500 text-sm mt-1">
-                {activeTab === 'profile' && 'Gérez vos informations professionnelles'}
-                {activeTab === 'goals' && 'Définissez vos cibles de candidatures'}
-                {activeTab === 'automation' && 'Configurez l\'automatisation de votre recherche'}
-                {activeTab === 'api' && 'Configurez votre propre clé API Claude'}
-                {activeTab === 'notifications' && 'Gérez vos notifications'}
-                {activeTab === 'followups' && 'Définissez les délais de suivi'}
-                {activeTab === 'appearance' && 'Choisissez le thème de l\'application'}
-                {activeTab === 'data' && 'Exportez, importez ou réinitialisez vos données'}
-                {activeTab === 'extension' && 'Gérez l\'extension Firefox'}
+                {activeTab === 'profile' && t('settingsDesc.profile')}
+                {activeTab === 'goals' && t('settingsDesc.goals')}
+                {activeTab === 'automation' && t('settingsDesc.automation')}
+                {activeTab === 'api' && t('settingsDesc.apiClaude')}
+                {activeTab === 'notifications' && t('settingsDesc.notifications')}
+                {activeTab === 'followups' && t('settingsDesc.followups')}
+                {activeTab === 'appearance' && t('settingsDesc.appearance')}
+                {activeTab === 'data' && t('settingsDesc.data')}
+                {activeTab === 'extension' && t('settingsDesc.extension')}
               </p>
             </div>
             <button
