@@ -3,7 +3,7 @@ import { connectGmail, disconnectGmail, refreshToken, fetchJobEmails, fetchJobEm
 import { fetchCalendarEvents } from '../services/calendar'
 import { buildJobsFromEmails } from '../hooks/useAutoRefresh'
 import { clearEmailCache } from '../services/claude'
-import { getStatus, isAtsRejection } from '../hooks/useJobs'
+import { getStatus, isAtsRejection, findDuplicateJob } from '../hooks/useJobs'
 
 const STEPS = { idle: 'idle', connecting: 'connecting', fetching: 'fetching', parsing: 'parsing', review: 'review' }
 
@@ -218,9 +218,20 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
           if (newCal.length) job.history = [...job.history, ...newCal].sort((a, b) => new Date(a.date) - new Date(b.date))
         }
       }
-      const normalize = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-      const jobByKey = new Map(existingJobs.map(j => [`${normalize(j.company)}_${normalize(j.position)}`, j]))
-      const jobByCompany = new Map(existingJobs.map(j => [normalize(j.company), j]))
+      // Proper normalization that matches useJobs.js — removes legal suffixes, domains, generic words
+      const normalizeCompany = (name = '') => {
+        return name.toLowerCase()
+          .replace(/\s+(sas|sasu|sarl|sa|srl|inc|ltd|llc|gmbh|bv|nv|ag|spa|oy|ab)\.?\s*$/i, '')
+          .replace(/\.(io|com|fr|co|net|org|eu|de|uk|be|ch|ca|us|tech|dev)\s*$/i, '')
+          .replace(/\b(technologies|digital|solutions|group|labs|studio|hq|services|consulting|innovation|ventures|project|projects)\b/gi, '')
+          .replace(/[^a-z0-9]/g, '')
+      }
+      const normalizePosition = (pos = '') => {
+        return (pos || '').toLowerCase().trim().replace(/\s*[hf]\/[hf]\s*/gi, '').trim()
+      }
+
+      const jobByKey = new Map(existingJobs.map(j => [`${normalizeCompany(j.company)}|||${normalizePosition(j.position)}`, j]))
+      const jobByCompany = new Map(existingJobs.map(j => [normalizeCompany(j.company), j]))
 
       // Also track newly parsed jobs in this batch to prevent duplicates within same scan
       // e.g., two Winside emails parsed as separate jobs but should merge
@@ -229,10 +240,10 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
       // Exact match first, then company-only fallback — job boards often give
       // a different position title than what was originally imported
       const findExisting = p => {
-        const key = `${normalize(p.company)}_${normalize(p.position)}`
+        const key = `${normalizeCompany(p.company)}|||${normalizePosition(p.position)}`
         if (jobByKey.has(key)) return jobByKey.get(key)
 
-        const normCo = normalize(p.company)
+        const normCo = normalizeCompany(p.company)
         // Try exact company match in existing jobs
         if (jobByCompany.has(normCo)) return jobByCompany.get(normCo)
 
@@ -242,7 +253,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         // Fallback: partial match (one is substring of other)
         // e.g., "cognite" matches "cognite project" or vice versa
         for (const existing of existingJobs) {
-          const existingNorm = normalize(existing.company)
+          const existingNorm = normalizeCompany(existing.company)
           if (normCo.includes(existingNorm) || existingNorm.includes(normCo)) {
             return existing
           }
@@ -277,7 +288,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         if (!p._updateOnly && (!findExisting(p) || isReApplication(p))) {
           newJobs.push(p)
           // Add to newJobsByCompany so next job in batch can find this one
-          const normCo = normalize(p.company)
+          const normCo = normalizeCompany(p.company)
           if (!newJobsByCompany.has(normCo)) {
             newJobsByCompany.set(normCo, p)
           }
