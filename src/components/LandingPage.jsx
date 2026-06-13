@@ -470,14 +470,22 @@ export default function LandingPage({ onLogin }) {
           </div>
           <div className="feature-grid">
             {[
-              { icon: '📋', title: 'Tableau de bord unifié', desc: 'Toutes vos candidatures, filtrées par statut, période ou mot-clé. Stats et tendances d\'activité en un coup d\'œil.' },
-              { icon: '📧', title: 'Sync Gmail automatique', desc: '12 requêtes en parallèle au démarrage. L\'IA lit vos emails par lots et met à jour chaque candidature, sans saisie.' },
-              { icon: '⏰', title: 'Statuts & timeline', desc: '10 statuts métier, détection automatique des refus ATS, historique daté et fusionné par candidature.' },
-              { icon: '⚡', title: 'Prochaines actions', desc: 'Moteur de règles : relances en retard, entretiens imminents, alertes urgentes hiérarchisées.' },
-              { icon: '📅', title: 'Calendrier & réunions', desc: 'Intégration Google Calendar. Détection des entretiens à venir, liens de visio en un clic.' },
-              { icon: '💬', title: 'Relances générées par IA', desc: 'Brouillon contextualisé prêt à envoyer — jamais adressé à une boîte ATS sans réponse.' },
-              { icon: '⭐', title: 'Préparation entretien', desc: '3 réponses STAR générées par candidature. Copie rapide, prêtes pour le grand oral.' },
-              { icon: '📄', title: 'CV adaptatif', desc: 'Upload PDF, réécriture par l\'IA selon la fiche de poste, export en un clic — avant/après côte à côte.' }
+              { icon: '📋', title: 'Tableau de bord unifié', desc: 'Vue centralisée de toutes vos candidatures avec filtres avancés (statut, période, mot-clé), statistiques en temps réel et indicateurs de tendance.' },
+              { icon: '📧', title: 'Sync Gmail automatique', desc: '12 requêtes parallèles au démarrage. L\'IA parsing automatiquement vos emails par lots, détecte les offres et met à jour chaque candidature sans saisie.' },
+              { icon: '⏰', title: 'Statuts & timeline', desc: '10 statuts métier, détection automatique des refus ATS (Ashby, Greenhouse, Lever...), historique complet daté et consolidé par candidature.' },
+              { icon: '⚡', title: 'Prochaines actions', desc: 'Moteur de recommandations : identifie les relances en retard, entretiens imminents, alertes urgentes hiérarchisées par priorité.' },
+              { icon: '📅', title: 'Calendrier & réunions', desc: 'Intégration Google Calendar native. Détecte automatiquement les entretiens à venir, affiche les liens Zoom/Teams, rappel J-1 avec notifications.' },
+              { icon: '💬', title: 'Relances générées par IA', desc: 'Génère un brouillon d\'email contextualisé prêt à envoyer. Détecte automatiquement si la boîte recruteuse est un ATS (pas de relance envoyée).' },
+              { icon: '⭐', title: 'Préparation entretien', desc: '3 réponses STAR personnalisées par candidature, basées sur la fiche de poste. Format prêt à copier-coller, entraînement au simulateur intégré.' },
+              { icon: '📄', title: 'CV adaptatif', desc: 'Upload PDF, réécriture IA dynamique selon la JD, split-view avant/après, export PDF optimisé, historique de versions.' },
+              { icon: '🔎', title: 'Recherche d\'emploi', desc: 'Intégration Adzuna : parcourez les offres directement dans l\'app, ajoutez-les à votre pipeline avec un clic.' },
+              { icon: '🖼️', title: 'Import screenshot', desc: 'Prenez une capture d\'écran d\'une offre LinkedIn/job board. L\'IA extrait tous les détails (poste, entreprise, lien, description) automatiquement.' },
+              { icon: '🦊', title: 'Extension Firefox', desc: 'Importez directement depuis n\'importe quel site job board. Analyse complète de la page, extraction du contenu, ajout one-click au pipeline.' },
+              { icon: '⭐', title: 'Favoris & archives', desc: 'Marquez les candidatures intéressantes, archivez automatiquement après 60j (sent) ou 90j (rejected). Récupérez-les facilement si nécessaire.' },
+              { icon: '🔔', title: 'Notifications intelligentes', desc: 'Alertes pour nouveaux événements, relances en retard, entretiens imminents. Notifications desktop native ou in-app au choix.' },
+              { icon: '🤖', title: 'Conseils IA personnalisés', desc: 'Panel de conseils adaptatif par statut candidature. Suggestions pour optimiser votre taux de réponse, timing de relance, prep d\'entretien.' },
+              { icon: '💾', title: 'Multi-device sync', desc: 'Supabase synchronisation : accédez à vos candidatures depuis n\'importe quel appareil. Modifications instantanées sur tous les devices.' },
+              { icon: '📊', title: 'Analytics & insights', desc: 'Tendances d\'activité (candidatures/semaine, taux réponse, pipeline velocity), insights personnalisés pour ajuster votre stratégie.' }
             ].map((item, i) => (
               <div key={i} className="feature">
                 <div className="icon">{item.icon}</div>
@@ -490,30 +498,253 @@ export default function LandingPage({ onLogin }) {
 
         <hr className="rule" />
 
+        {/* HOW IT WORKS */}
+        <section>
+          <div className="section-head">
+            <div className="kicker">Comment ça marche</div>
+            <h2>Un workflow en 4 étapes pour dominer votre recherche.</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
+            {[
+              {
+                step: '1',
+                title: 'Importer',
+                desc: 'Gmail, screenshot, extension Firefox, ou ajout manuel — les candidatures arrivent dans votre pipeline.'
+              },
+              {
+                step: '2',
+                title: 'Enrichir',
+                desc: 'L\'IA analyse vos emails, détecte les statuts, consolide l\'historique, prépare des réponses STAR et des relances.'
+              },
+              {
+                step: '3',
+                title: 'Agir',
+                desc: 'Suivez les recommandations (relances urgentes, entretiens à préparer). Utilisez les brouillons IA, les CV adaptés, les notes de prep.'
+              },
+              {
+                step: '4',
+                title: 'Réussir',
+                desc: 'Décrochez l\'offre. Quand c\'est fait, l\'historique reste : analyse de votre stratégie, amélioration continue.'
+              }
+            ].map((item, i) => (
+              <div key={i} style={{
+                background: '#161b26',
+                border: '1px solid #2b3242',
+                borderRadius: '12px',
+                padding: '24px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  fontSize: '36px',
+                  fontWeight: '700',
+                  color: '#7b7bf7',
+                  marginBottom: '12px'
+                }}>
+                  {item.step}
+                </div>
+                <div style={{
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  marginBottom: '8px',
+                  color: '#eef0f6'
+                }}>
+                  {item.title}
+                </div>
+                <div style={{
+                  fontSize: '14px',
+                  color: '#9aa3ba',
+                  lineHeight: 1.5
+                }}>
+                  {item.desc}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <hr className="rule" />
+
+        {/* AI CAPABILITIES */}
+        <section>
+          <div className="section-head">
+            <div className="kicker">L'IA à votre service</div>
+            <h2>6 niveaux d'automatisation, du parsing au coaching entretien.</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+            {[
+              { icon: '📧', level: 'Niveau 1', title: 'Parsing emails', desc: 'Parse par lots de 15 emails, extraction structurée des offres.' },
+              { icon: '🏷️', level: 'Niveau 2', title: 'Détection statut', desc: 'Identifie automatiquement refus ATS, étapes de process, entreprises.' },
+              { icon: '⭐', level: 'Niveau 3', title: 'Réponses STAR', desc: 'Génère 3 anecdotes STAR prêtes pour l\'entretien oral.' },
+              { icon: '💌', level: 'Niveau 4', title: 'Relances IA', desc: 'Brouillon d\'email contextualisé, détection boîte ATS (pas d\'envoi).' },
+              { icon: '📄', level: 'Niveau 5', title: 'CV adaptatif', desc: 'Réécriture PDF selon la JD, optimisation scoring recruteur.' },
+              { icon: '🔍', level: 'Niveau 6', title: 'Analyse offre', desc: 'Scrape JD, extrait mots-clés, suggests prep points via extension.' }
+            ].map((item, i) => (
+              <div key={i} style={{
+                background: '#161b26',
+                border: '1px solid #2b3242',
+                borderRadius: '12px',
+                padding: '20px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                  <div style={{ fontSize: '28px' }}>{item.icon}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '12px', color: '#6b7488', fontWeight: '600', marginBottom: '4px' }}>
+                      {item.level}
+                    </div>
+                    <div style={{ fontSize: '15px', fontWeight: '600', marginBottom: '6px', color: '#eef0f6' }}>
+                      {item.title}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#9aa3ba' }}>
+                      {item.desc}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <hr className="rule" />
+
         {/* NUMBERS */}
         <section>
           <div className="section-head">
-            <div className="kicker">En chiffres</div>
-            <h2>Pensé pour la charge réelle d'une recherche active.</h2>
+            <div className="kicker">Conçu pour la réalité</div>
+            <h2>Les chiffres d'une recherche active intense.</h2>
+            <p>JobTrackr ne vous limite pas — c'est pensé pour gérer la vraie charge d'une recherche parallèle massive.</p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
             {[
-              { value: '40+', label: 'candidatures suivies en parallèle sans perte de contexte' },
-              { value: '12', label: 'requêtes Gmail synchronisées à chaque ouverture' },
-              { value: '6', label: 'tâches déléguées à l\'IA, de l\'email à l\'entretien' },
-              { value: '1 clic', label: 'pour une relance, une réponse STAR ou un CV adapté' }
+              { value: '40+', label: 'candidatures actives en parallèle, sans perte d\'information' },
+              { value: '100%', label: 'données locales — jamais envoyées à des tiers' },
+              { value: '10', label: 'statuts métier granulaires pour classifier chaque étape' },
+              { value: '6', label: 'niveaux d\'IA (parsing → coaching d\'entretien)' },
+              { value: '12', label: 'requêtes Gmail parallèles au démarrage' },
+              { value: '<2s', label: 'temps moyen pour activer une relance IA' },
+              { value: '1 clic', label: 'pour exporter votre CV adapté en PDF' },
+              { value: '∞', label: 'historique consolidé, jamais perdu' }
             ].map((card, i) => (
               <div key={i} style={{ border: '1px solid #2b3242', borderRadius: '12px', padding: '22px 20px', textAlign: 'left' }}>
-                <div style={{ fontFamily: '\'IBM Plex Mono\', monospace', fontSize: '30px', fontWeight: '600', color: '#7b7bf7', marginBottom: '6px' }}>
+                <div style={{ fontFamily: '\'IBM Plex Mono\', monospace', fontSize: '28px', fontWeight: '600', color: '#7b7bf7', marginBottom: '8px' }}>
                   {card.value}
                 </div>
-                <div style={{ fontSize: '12.5px', color: '#9aa3ba' }}>
+                <div style={{ fontSize: '12.5px', color: '#9aa3ba', lineHeight: '1.45' }}>
                   {card.label}
                 </div>
               </div>
             ))}
           </div>
         </section>
+
+        {/* USE CASES */}
+        <hr className="rule" />
+        <section>
+          <div className="section-head">
+            <div className="kicker">Pour qui?</div>
+            <h2>Fait pour les recherches actives, dès 15 candidatures parallèles.</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+            {[
+              {
+                icon: '🚀',
+                title: 'Candidat en recherche active',
+                desc: 'Vous envoyez 20-50 candidatures/mois, gérez les relances, les entretiens, les offres. Excel vous a déjà laissé tomber.'
+              },
+              {
+                icon: '📚',
+                title: 'Junior en transition',
+                desc: 'Vous changez de secteur ou démarrez votre carrière. Besoin d\'une stratégie claire, de prep intensive, de feedback sur votre CV.'
+              },
+              {
+                icon: '🎯',
+                title: 'Senior en repositionnement',
+                desc: 'Vous avez 10+ ans d\'expérience, vous visez 5-10 opportunités haut de gamme. Besoin d\'une analyse précise, pas du bruit.'
+              }
+            ].map((item, i) => (
+              <div key={i} style={{
+                background: '#161b26',
+                border: '1px solid #2b3242',
+                borderRadius: '12px',
+                padding: '28px'
+              }}>
+                <div style={{ fontSize: '36px', marginBottom: '12px' }}>{item.icon}</div>
+                <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '10px', color: '#eef0f6' }}>
+                  {item.title}
+                </div>
+                <div style={{ fontSize: '14px', color: '#9aa3ba', lineHeight: '1.6' }}>
+                  {item.desc}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <hr className="rule" />
+
+        {/* COMPARISON */}
+        <section>
+          <div className="section-head">
+            <div className="kicker">Pourquoi JobTrackr?</div>
+            <h2>Les alternatives qui ne tiennent pas la charge.</h2>
+          </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '1px',
+            background: '#2b3242',
+            border: '1px solid #2b3242',
+            borderRadius: '12px',
+            overflow: 'hidden'
+          }}>
+            {[
+              {
+                name: 'Excel / Google Sheets',
+                issues: [
+                  '❌ Pas de sync automatique',
+                  '❌ Pas d\'IA (tout manuel)',
+                  '❌ Historique perdu après 20 lignes',
+                  '❌ Impossible multi-device'
+                ]
+              },
+              {
+                name: 'CRM générique (Pipedrive)',
+                issues: [
+                  '❌ Pensé pour les ventes B2B',
+                  '❌ Sur-dimensionné pour 1 personne',
+                  '❌ Pas de Gmail sync native',
+                  '❌ L\'IA est un plugin payant'
+                ]
+              },
+              {
+                name: '✓ JobTrackr',
+                issues: [
+                  '✓ Gmail sync + Calendrier intégrés',
+                  '✓ 6 niveaux d\'IA inclus',
+                  '✓ Illimité (40+ candidatures easy)',
+                  '✓ Multi-device Supabase natif'
+                ]
+              }
+            ].map((item, i) => (
+              <div key={i} style={{
+                background: '#161b26',
+                padding: '24px'
+              }}>
+                <div style={{ fontSize: '15px', fontWeight: '600', marginBottom: '16px', color: i === 2 ? '#7b7bf7' : '#eef0f6' }}>
+                  {item.name}
+                </div>
+                <div style={{ space: '8px' }}>
+                  {item.issues.map((issue, j) => (
+                    <div key={j} style={{ fontSize: '13px', color: '#9aa3ba', marginBottom: '8px', lineHeight: '1.5' }}>
+                      {issue}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <hr className="rule" />
 
         {/* FOOTER */}
         <footer>
