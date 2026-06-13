@@ -67,7 +67,7 @@ function SortIcon({ col, sort }) {
 
 // Detect if JobTrackr Firefox extension is installed
 // The extension injects a custom attribute on <html> or responds to a postMessage
-function ExtensionButton() {
+function ExtensionButton({ t }) {
   const [installed, setInstalled] = useState(null) // null = checking
 
   useEffect(() => {
@@ -637,7 +637,7 @@ export default function App() {
 
           {/* Right actions */}
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-            <ExtensionButton />
+            <ExtensionButton t={t} />
 
             {/* Refresh — desktop only (mobile is in drawer) */}
             {(gmailUser || gmailConnected) && (
