@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Politique de Confidentialité - JobTrackr</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: #f8f9fa;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: white;
+      min-height: 100vh;
+    }
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 30px;
+      color: #1a1a1a;
+    }
+    h2 {
+      font-size: 1.5em;
+      margin-top: 40px;
+      margin-bottom: 15px;
+      color: #2c3e50;
+      border-bottom: 2px solid #4f46e5;
+      padding-bottom: 10px;
+    }
+    p {
+      margin-bottom: 15px;
+      color: #555;
+    }
+    ul {
+      margin: 15px 0 15px 30px;
+    }
+    li {
+      margin-bottom: 8px;
+      color: #666;
+    }
+    strong {
+      color: #2c3e50;
+    }
+    a {
+      color: #4f46e5;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .meta {
+      margin-top: 60px;
+      padding-top: 20px;
+      border-top: 1px solid #ddd;
+      font-size: 0.9em;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Politique de Confidentialité</h1>
+
+    <section>
+      <h2>1. Introduction</h2>
+      <p>JobTrackr (« l'Application ») est engagée à protéger votre vie privée. Cette Politique de Confidentialité explique comment nous collectons, utilisons, divulguons et traitons vos données personnelles.</p>
+      <p><strong>Principe fondamental:</strong> Vos données vous appartiennent. Nous ne les vendons jamais à des tiers. Elles sont stockées de manière sécurisée et traitées uniquement pour améliorer votre expérience.</p>
+    </section>
+
+    <section>
+      <h2>2. Données Collectées</h2>
+      <p><strong>Données d'authentification:</strong></p>
+      <ul>
+        <li>Email Google (via OAuth Google)</li>
+        <li>Nom et photo de profil (le cas échéant)</li>
+        <li>Token d'accès Gmail (stocké localement sur votre appareil)</li>
+      </ul>
+
+      <p><strong>Données de candidatures:</strong></p>
+      <ul>
+        <li>Informations des offres d'emploi (entreprise, poste, lien, description)</li>
+        <li>Historique des candidatures et statuts</li>
+        <li>Emails échangés avec les recruteurs (parsés depuis Gmail)</li>
+        <li>Dates d'entretiens (récupérées depuis Google Calendar)</li>
+        <li>Notes personnelles et mémos</li>
+      </ul>
+
+      <p><strong>Données de CV:</strong></p>
+      <ul>
+        <li>Fichiers PDF uploadés</li>
+        <li>Texte extrait et versions adaptées</li>
+      </ul>
+
+      <p><strong>Données de profil:</strong></p>
+      <ul>
+        <li>Informations professionnelles optionnelles (expérience, compétences, etc.)</li>
+        <li>Préférences et paramètres de l'application</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>3. Comment Nous Utilisons Vos Données</h2>
+      <ul>
+        <li><strong>Fonctionnalité de base:</strong> Traiter et afficher vos candidatures</li>
+        <li><strong>Sync Gmail/Calendar:</strong> Récupérer et enrichir automatiquement vos données</li>
+        <li><strong>Analyse IA:</strong> Générer des réponses STAR, des relances, adapter votre CV (via Claude API)</li>
+        <li><strong>Recommandations:</strong> Identifier les relances en retard, entretiens imminents</li>
+        <li><strong>Amélioration:</strong> Analyser les tendances d'utilisation (anonymisées) pour améliorer l'app</li>
+        <li><strong>Communication:</strong> Vous envoyer des notifications sur l'app ou par email</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>4. Stockage et Sécurité</h2>
+      <p><strong>Où vos données sont stockées:</strong></p>
+      <ul>
+        <li><strong>Appareil local:</strong> localStorage pour cache et paramètres</li>
+        <li><strong>Supabase:</strong> Base de données sécurisée pour sync multi-device (chiffrement en transit TLS 1.2+)</li>
+        <li><strong>Google APIs:</strong> Nous n'hébergeons pas vos emails - Gmail API les récupère en lecture seule</li>
+      </ul>
+
+      <p><strong>Sécurité:</strong></p>
+      <ul>
+        <li>Tokens OAuth stockés localement, jamais sur nos serveurs</li>
+        <li>Pas de mots de passe stockés (authentification via Google OAuth uniquement)</li>
+        <li>Chiffrement des données en transit (HTTPS/TLS)</li>
+        <li>Accès aux données contrôlé par authentification</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>5. Partage de Données Tierces</h2>
+      <p><strong>Nous partageons vos données UNIQUEMENT avec:</strong></p>
+      <ul>
+        <li><strong>Google:</strong> OAuth, Gmail API, Calendar API (à votre demande explicite)</li>
+        <li><strong>Anthropic:</strong> Claude API pour traitement IA (voir détails ci-dessous)</li>
+        <li><strong>Adzuna:</strong> API de recherche d'emploi (requêtes volontaires uniquement)</li>
+        <li><strong>Supabase:</strong> Stockage de données de sync multi-device</li>
+      </ul>
+
+      <p><strong>Traitement IA (Claude API):</strong></p>
+      <p>Quand vous utilisez des features IA (STAR, relances, CV adaptatif), le contenu est envoyé à Anthropic (Claude) via proxy Vercel Serverless. Le texte est traité temporairement et n'est pas utilisé pour entraîner les modèles Anthropic. Voir la <a href="https://www.anthropic.com/privacy" target="_blank">Privacy Policy Anthropic</a>.</p>
+    </section>
+
+    <section>
+      <h2>6. Droits de l'Utilisateur</h2>
+      <p>Vous avez le droit de:</p>
+      <ul>
+        <li><strong>Accéder:</strong> Télécharger vos données en JSON (Settings → Données)</li>
+        <li><strong>Rectifier:</strong> Modifier vos informations à tout moment</li>
+        <li><strong>Supprimer:</strong> Effacer toutes vos données (Settings → Données → Réinitialiser)</li>
+        <li><strong>Porter:</strong> Exporter vos candidatures pour utiliser ailleurs</li>
+        <li><strong>Retirer le consentement:</strong> Déconnecter votre compte Google</li>
+      </ul>
+
+      <p><strong>Pour exercer ces droits, contactez:</strong> deviloufr@gmail.com</p>
+    </section>
+
+    <section>
+      <h2>7. Cookies & Tracking</h2>
+      <p><strong>Pas de cookies de tracking.</strong> JobTrackr n'utilise pas de cookies pour vous tracker ou vous profiler. Les données stockées le sont uniquement pour la fonctionnalité de l'app.</p>
+      <p>Vercel (hébergeur) peut utiliser des analytics anonymisées. Vous pouvez vous en exempter via les paramètres de votre navigateur.</p>
+    </section>
+
+    <section>
+      <h2>8. Conformité Légale</h2>
+      <p>JobTrackr respecte le RGPD (Règlement Général sur la Protection des Données) pour les utilisateurs en Europe et les lois de confidentialité applicables dans votre juridiction.</p>
+      <p>Si vous avez des préoccupations, vous pouvez contacter l'autorité de protection des données de votre pays.</p>
+    </section>
+
+    <section>
+      <h2>9. Modifications de Cette Politique</h2>
+      <p>Nous pouvons mettre à jour cette Politique à tout moment. Les changements significants seront communiqués via l'app ou par email. Votre utilisation continue implique l'acceptation des changements.</p>
+    </section>
+
+    <section>
+      <h2>10. Contact</h2>
+      <p><strong>Email:</strong> deviloufr@gmail.com</p>
+      <p><strong>Projet:</strong> <a href="https://github.com/deviloufr-ai/jobtracking" target="_blank">GitHub JobTrackr</a></p>
+    </section>
+
+    <div class="meta">
+      <p><strong>Dernière mise à jour:</strong> Janvier 2026</p>
+      <p><strong>Version:</strong> 1.0</p>
+    </div>
+  </div>
+</body>
+</html>
