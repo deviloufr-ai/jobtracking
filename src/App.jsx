@@ -891,20 +891,7 @@ export default function App() {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-yellow-100 bg-yellow-50/60">
-                          <th className="py-3 px-2 w-8">
-                            <input type="checkbox" className="w-4 h-4 cursor-pointer" checked={filtered.filter(j => j.favorite).every(j => selectedJobIds.has(j.id)) && filtered.filter(j => j.favorite).length > 0} onChange={(e) => {
-                              const favJobs = filtered.filter(j => j.favorite)
-                              if (e.target.checked) {
-                                setSelectedJobIds(prev => new Set([...prev, ...favJobs.map(j => j.id)]))
-                              } else {
-                                setSelectedJobIds(prev => {
-                                  const newSet = new Set(prev)
-                                  favJobs.forEach(j => newSet.delete(j.id))
-                                  return newSet
-                                })
-                              }
-                            }} />
-                          </th>
+                          <th className="py-3 px-2 w-8"></th>
                           <ThHeader col="company" label={t('table.company')} />
                           <ThHeader col="status" label={t('table.status')} />
                           <ThHeader col="date" label={t('table.date')} />
@@ -931,20 +918,7 @@ export default function App() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-gray-100 bg-gray-50/60">
-                        <th className="py-3 px-2 w-8">
-                          <input type="checkbox" className="w-4 h-4 cursor-pointer" checked={filtered.filter(j => !j.favorite).every(j => selectedJobIds.has(j.id)) && filtered.filter(j => !j.favorite).length > 0} onChange={(e) => {
-                            const nonFavJobs = filtered.filter(j => !j.favorite)
-                            if (e.target.checked) {
-                              setSelectedJobIds(prev => new Set([...prev, ...nonFavJobs.map(j => j.id)]))
-                            } else {
-                              setSelectedJobIds(prev => {
-                                const newSet = new Set(prev)
-                                nonFavJobs.forEach(j => newSet.delete(j.id))
-                                return newSet
-                              })
-                            }
-                          }} />
-                        </th>
+                        <th className="py-3 px-2 w-8"></th>
                         <ThHeader col="company" label={t('table.company')} />
                         <ThHeader col="status" label={t('table.status')} />
                         <ThHeader col="date" label={t('table.date')} />
