@@ -213,6 +213,7 @@ function getNextStepsRules(t = (key) => key) {
     cta: t('nextActionRules.draftEmail'),
   },
 ]
+}
 
 const URGENCY_DOT = {
   high:   'bg-red-500',
