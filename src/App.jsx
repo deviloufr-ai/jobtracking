@@ -762,7 +762,7 @@ export default function App() {
         ) : activeTab === 'cv' ? (
           <CVManager jobs={jobs} preselectedJob={selectedJobForCV} onUpdateJob={updateJob} t={t} />
         ) : activeTab === 'search' ? (
-          <JobSearch onAddJob={(job) => { addJob(job); showToast(`${job.company} ajouté !`); setActiveTab('tracker') }} existingJobs={jobs} />
+          <JobSearch onAddJob={(job) => { addJob(job); showToast(`${job.company} ajouté !`); setActiveTab('tracker') }} existingJobs={jobs} t={t} />
         ) : (
           <>
         <div className="flex gap-6 items-start">

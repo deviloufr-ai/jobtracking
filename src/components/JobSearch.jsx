@@ -11,7 +11,7 @@ const CONTRACT_LABELS = {
 const STORAGE_KEY_HISTORY = 'jobSearch_history'
 const STORAGE_KEY_LAST = 'jobSearch_last'
 
-export default function JobSearch({ onAddJob, existingJobs }) {
+export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) {
   const [query, setQuery] = useState('Product Manager')
   const [location, setLocation] = useState('france')
   const [results, setResults] = useState(null)
@@ -50,7 +50,7 @@ export default function JobSearch({ onAddJob, existingJobs }) {
       setResults(data)
       if (p === 1) saveSearchToHistory(q, loc)
     } catch (e) {
-      setError('Erreur lors de la recherche : ' + e.message)
+      setError(t('jobSearch.searching') + ' error: ' + e.message)
     }
     setLoading(false)
   }, [])
@@ -116,10 +116,10 @@ export default function JobSearch({ onAddJob, existingJobs }) {
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
         <span className="text-base">🔎</span>
-        <h3 className="text-sm font-semibold text-gray-800">Recherche d'offres</h3>
+        <h3 className="text-sm font-semibold text-gray-800">{t('jobSearch.title')}</h3>
         {!isAdzunaConfigured() && (
           <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full ml-auto">
-            Mode démo — <a href="https://developer.adzuna.com/" target="_blank" rel="noopener noreferrer" className="underline">Obtenir une clé Adzuna</a>
+            Demo mode — <a href="https://developer.adzuna.com/" target="_blank" rel="noopener noreferrer" className="underline">Get an Adzuna key</a>
           </span>
         )}
       </div>
@@ -194,7 +194,7 @@ export default function JobSearch({ onAddJob, existingJobs }) {
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
               </svg>
             ) : '🔍'}
-            Rechercher
+            {t('jobSearch.search')}
           </button>
         </div>
       </div>
