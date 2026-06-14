@@ -228,6 +228,44 @@ export function deduplicateJobs(jobs) {
   return result
 }
 
+// Physically reconcile duplicate jobs. deduplicateJobs() only hides duplicates
+// at render time — the loser rows live on in IndexedDB + Supabase and get
+// re-fetched on every poll, so they keep coming back (Bug: doublon). This merges
+// the group (losers' history is already folded into the keeper by
+// deduplicateJobs), then DELETES the loser rows everywhere and tombstones their
+// IDs so polling can't resurrect them. Returns the deduped, _merged-stripped list.
+export function reconcileDuplicateJobs(jobs) {
+  const deduped = deduplicateJobs(jobs)
+  const keptIds = new Set(deduped.map(j => j.id))
+  const droppedIds = jobs.filter(j => !keptIds.has(j.id)).map(j => j.id)
+
+  if (droppedIds.length > 0) {
+    const coordinator = getSyncCoordinator()
+    droppedIds.forEach(id => {
+      markJobIdAsDeleted(id)
+      if (coordinator) {
+        coordinator.mutate('jobs', 'delete', { id })
+          .catch(err => console.error('Failed to delete merged duplicate from Supabase:', err))
+      } else {
+        indexeddb.deleteJob(id).catch(err => console.warn('Failed to delete merged duplicate locally:', err))
+      }
+    })
+    // Re-sync keepers that absorbed history so the merge is durable remotely.
+    if (coordinator) {
+      deduped.forEach(job => {
+        if (job._merged) {
+          const { _merged, _mergedIds, ...clean } = job
+          coordinator.mutate('jobs', 'update', clean, { syncHistory: true })
+            .catch(err => console.error('Failed to sync merged keeper:', err))
+        }
+      })
+    }
+    console.log(`🧹 Reconciled ${droppedIds.length} duplicate job(s) — removed loser rows`)
+  }
+
+  return deduped.map(({ _merged, _mergedIds, ...j }) => j)
+}
+
 function splitPipeNotes(jobs) {
   return jobs.map(j => {
     if (!j.history) return j
@@ -393,13 +431,47 @@ function dedupeNoteParts(notes) {
   return parts.join(' | ')
 }
 
+// Collapse entries that share a canonical identity (same gmailId, or same
+// date+status+note) regardless of where they sit in the timeline. This runs
+// BEFORE the same-date clustering below so that re-imported emails whose notes
+// were mutated (e.g. a trailing "✓") or whose status changed (reviewing→done)
+// no longer survive as separate repeated entries. When two copies collide we
+// keep the richer one (more populated fields) and merge their gmailIds.
+function collapseByCanonicalKey(history) {
+  const byKey = new Map()
+  for (const entry of history) {
+    const key = historyEntryKey(entry)
+    const existing = byKey.get(key)
+    if (!existing) {
+      byKey.set(key, entry)
+      continue
+    }
+    // Prefer the entry carrying more metadata (meetingLink/from/body/longer note)
+    const score = e => (e.meetingLink ? 2 : 0) + (e.from ? 1 : 0) + (e.body ? 1 : 0) + (e.note || '').length / 1000
+    const winner = score(entry) > score(existing) ? entry : existing
+    const loser = winner === entry ? existing : entry
+    // Preserve any gmailIds from the discarded copy
+    const ids = new Set([
+      ...(winner.gmailIds || (winner.gmailId ? [winner.gmailId] : [])),
+      ...(loser.gmailIds || (loser.gmailId ? [loser.gmailId] : [])),
+    ])
+    const mergedWinner = { ...winner }
+    if (ids.size > 1) mergedWinner.gmailIds = [...ids]
+    byKey.set(key, mergedWinner)
+  }
+  return [...byKey.values()]
+}
+
 export function deduplicateHistory(jobs) {
   return jobs.map(j => {
     if (!j.history || j.history.length <= 1) return j
 
+    // Pass 0: global collapse by canonical key (gmailId-first). Idempotent.
+    const collapsed = collapseByCanonicalKey(j.history)
+
     // Group by date
     const byDate = new Map()
-    for (const entry of j.history) {
+    for (const entry of collapsed) {
       if (!byDate.has(entry.date)) {
         byDate.set(entry.date, [])
       }
@@ -568,23 +640,55 @@ function markJobIdAsDeleted(jobId) {
   }
 }
 
-// Track deleted history entries to prevent re-import from Supabase
-// Uses full note + date + status for accurate matching
-function isDeletedHistoryEntry(jobId, date, status, note) {
-  const deleted = JSON.parse(localStorage.getItem(DELETED_HISTORY_ENTRIES_KEY) || '[]')
-  const key = `${jobId}||${date}||${status}||${note || ''}`
-  return deleted.includes(key)
+// ─── Canonical history-entry identity ─────────────────────────────────────────
+// ONE key used by every dedup + tombstone path. Previously each path keyed
+// differently (date_note(100), date_status, date||status||note, date_note(80)),
+// so an entry deduped by one path was re-admitted by another. A Gmail email is
+// uniquely identified by its gmailId; everything else falls back to a normalized
+// date+status+note. Note normalization strips the trailing "✓" that
+// autoCompletePastMeetings used to append, so a re-imported email and its
+// auto-completed copy collapse to the same key.
+export function normalizeNoteForKey(note = '') {
+  return (note || '')
+    .replace(/\s*✓\s*$/, '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .slice(0, 120)
 }
 
-function markHistoryEntryAsDeleted(jobId, date, status, note) {
+export function historyEntryKey(entry) {
+  if (!entry) return ''
+  if (entry.gmailId) return `gmail:${entry.gmailId}`
+  const date = (entry.date || '').toString()
+  return `${date}||${entry.status || ''}||${normalizeNoteForKey(entry.note)}`
+}
+
+// Track deleted history entries so they can never be re-imported from Supabase
+// or re-added by the additive poll merge. Keyed by jobId + canonical entry key.
+export function isDeletedHistoryEntry(jobId, entry) {
   const deleted = JSON.parse(localStorage.getItem(DELETED_HISTORY_ENTRIES_KEY) || '[]')
-  const key = `${jobId}||${date}||${status}||${note || ''}`
+  return deleted.includes(`${jobId}::${historyEntryKey(entry)}`)
+}
+
+export function markHistoryEntryAsDeleted(jobId, entry) {
+  const deleted = JSON.parse(localStorage.getItem(DELETED_HISTORY_ENTRIES_KEY) || '[]')
+  const key = `${jobId}::${historyEntryKey(entry)}`
   if (!deleted.includes(key)) {
     deleted.push(key)
     // Keep only last 1000 deletions to prevent localStorage overflow
     if (deleted.length > 1000) deleted.splice(0, 100)
     localStorage.setItem(DELETED_HISTORY_ENTRIES_KEY, JSON.stringify(deleted))
   }
+}
+
+// Drop any tombstoned entries from a history array (used in every merge path).
+export function filterDeletedHistory(jobId, history) {
+  if (!Array.isArray(history) || history.length === 0) return history
+  const deleted = JSON.parse(localStorage.getItem(DELETED_HISTORY_ENTRIES_KEY) || '[]')
+  if (deleted.length === 0) return history
+  const deletedSet = new Set(deleted)
+  return history.filter(entry => !deletedSet.has(`${jobId}::${historyEntryKey(entry)}`))
 }
 
 // Keep old functions for backwards compatibility with auto-refresh
@@ -693,13 +797,7 @@ async function syncLocalJobsToSupabase(stableSyncId) {
         let remoteHistory = (historyByJobId.get(remoteJob.id) || []).map(entry => convertHistoryFromSupabase(entry))
 
         // Filter out deleted history entries (prevents re-import of locally-deleted entries)
-        // Use full note + date + status for accurate matching
-        const deletedEntries = JSON.parse(localStorage.getItem(DELETED_HISTORY_ENTRIES_KEY) || '[]')
-        const deletedSet = new Set(deletedEntries) // Convert to Set for O(1) lookup
-        remoteHistory = remoteHistory.filter(entry => {
-          const key = `${remoteJob.id}||${entry.date}||${entry.status}||${entry.note || ''}`
-          return !deletedSet.has(key)
-        })
+        remoteHistory = filterDeletedHistory(remoteJob.id, remoteHistory)
 
         const deduped = deduplicateHistory([{ history: remoteHistory }])[0].history
 
@@ -711,23 +809,24 @@ async function syncLocalJobsToSupabase(stableSyncId) {
         // Merge with local job: prefer remote (source of truth), but keep local notes if remote is missing
         const localJob = await indexeddb.getJob(remoteJobDeserialized.id)
         if (localJob) {
-          // Create map of remote entries by date+status for lookup
-          const remoteByKey = new Map(
-            deduped.map(h => [`${h.date}_${h.status}`, h])
-          )
+          // Use the canonical entry key (gmailId-first) so local manual additions
+          // are matched against remote consistently with every other dedup path.
+          const remoteByKey = new Set(deduped.map(historyEntryKey))
 
           // Add any local entries that don't exist in remote (manual local additions)
           const allEntries = [...deduped]
           for (const localEntry of (localJob.history || [])) {
-            const key = `${localEntry.date}_${localEntry.status}`
-            if (!remoteByKey.has(key)) {
+            if (!remoteByKey.has(historyEntryKey(localEntry))) {
               allEntries.push(localEntry)
             }
           }
 
+          // Drop tombstoned entries and collapse duplicates before persisting.
+          const cleaned = deduplicateHistory([{ history: filterDeletedHistory(remoteJobDeserialized.id, allEntries) }])[0].history
+
           const merged = {
             ...localJob,
-            history: allEntries.sort((a, b) => new Date(a.date) - new Date(b.date)),
+            history: cleaned.sort((a, b) => new Date(a.date) - new Date(b.date)),
             updated_at: remoteJobDeserialized.updated_at
           }
           await indexeddb.saveJob(merged)
@@ -888,11 +987,12 @@ export function useJobs() {
         // Ensure all loaded jobs have sorted history
         let sortedJobs = validJobs.map(job => sortJobHistory(job))
 
-        // Deduplicate semantic duplicates (same date + status + similar notes)
+        // Drop tombstoned entries, then deduplicate semantic duplicates
         sortedJobs = sortedJobs.map(job => {
           if (!job.history || job.history.length <= 1) return job
 
-          const deduped = deduplicateHistory([job])[0].history
+          const filtered = filterDeletedHistory(job.id, job.history)
+          const deduped = deduplicateHistory([{ ...job, history: filtered }])[0].history
           if (deduped.length < job.history.length) {
             console.log(`📊 Deduped ${job.company}: ${job.history.length} → ${deduped.length} entries`)
           }
@@ -922,9 +1022,10 @@ export function useJobs() {
     const handleSync = (event) => {
       console.log('Data synced from Supabase, reloading...', event.detail)
       loadJobs().then(() => {
-        // Auto-deduplicate after sync to prevent visible duplicates
-        console.log('🔄 Auto-deduplicating jobs after sync...')
-        setJobs(prev => deduplicateJobs(prev))
+        // Auto-reconcile after sync: physically remove duplicate rows (not just
+        // hide them) so they don't return on the next poll.
+        console.log('🔄 Auto-reconciling duplicate jobs after sync...')
+        setJobs(prev => reconcileDuplicateJobs(prev))
       })
     }
     window.addEventListener('jobtrackr:datasync', handleSync)
@@ -1046,6 +1147,19 @@ export function useJobs() {
     const job = jobs.find(j => j.id === id)
     if (!job) return
 
+    // If history shrank, tombstone the removed entries so the additive poll
+    // merge / Supabase re-fetch can never resurrect them. Without this, a
+    // deleted timeline entry reappears on the next sync (Bug: "deleted on
+    // historic not working").
+    if (data.history && Array.isArray(job.history)) {
+      const newKeys = new Set(data.history.map(historyEntryKey))
+      for (const oldEntry of job.history) {
+        if (!newKeys.has(historyEntryKey(oldEntry))) {
+          markHistoryEntryAsDeleted(id, oldEntry)
+        }
+      }
+    }
+
     const updated = { ...job, ...data, updated_at: new Date().toISOString() }
     const final = data.history ? sortJobHistory(updated) : updated
 
@@ -1153,7 +1267,7 @@ export function useJobs() {
   }
 
   const mergeDuplicates = () => {
-    setJobs(prev => deduplicateJobs(prev))
+    setJobs(prev => reconcileDuplicateJobs(prev))
   }
 
   const toggleFavorite = (id) => {

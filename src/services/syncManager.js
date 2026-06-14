@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
 import { convertHistoryToSupabase } from './fieldConversion'
+import { historyEntryKey } from '../hooks/useJobs'
 
 // Simple UUID generation
 function generateId() {
@@ -226,12 +227,12 @@ class SyncManager {
     if (options.syncHistory !== false && table === 'jobs' && history && Array.isArray(history) && result.data && result.data[0]) {
       const jobId = result.data[0].id || record.id
 
-      // Deduplicate history before syncing (by date+note)
+      // Deduplicate history before syncing, using the canonical entry key
+      // (gmailId-first) so it matches every other dedup/tombstone path.
       const seen = new Set()
       const deduped = []
       for (const entry of history) {
-        const normNote = (entry.note || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 100)
-        const key = `${entry.date}_${normNote}`
+        const key = historyEntryKey(entry)
         if (!seen.has(key)) {
           seen.add(key)
           deduped.push(entry)

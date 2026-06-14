@@ -1,7 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
 import { convertHistoryFromSupabase, snakeToCamel, deserializeJobFields } from './fieldConversion'
-import { isDeletedJobId, deduplicateHistory } from '../hooks/useJobs'
+import { isDeletedJobId, deduplicateHistory, filterDeletedHistory } from '../hooks/useJobs'
 
 const POLL_INTERVAL = 300000 // 5 minutes
 
@@ -96,23 +96,22 @@ class PollManager {
             historyByJob.get(entry.job_id).push(entry)
           }
 
-          // Convert and deduplicate each job's history.
-          // Key on date+note (matching the push key in syncManager) — NOT date+status.
-          // Keying on status would collapse two distinct events on the same day into
-          // one, silently losing timeline entries on every poll.
+          // Convert and deduplicate each job's history using the canonical entry
+          // key (gmailId-first), matching the push key in syncManager and every
+          // other dedup/tombstone path. Also drop tombstoned entries here so a
+          // remote copy of a locally-deleted entry never re-enters the cache.
           for (const [jobId, jobHistory] of historyByJob) {
             const seen = new Set()
             const deduped = []
             for (const entry of jobHistory) {
               const converted = convertHistoryFromSupabase(entry)
-              const normNote = (converted.note || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 100)
-              const key = `${converted.date}_${normNote}`
+              const key = historyEntryKey(converted)
               if (!seen.has(key)) {
                 seen.add(key)
                 deduped.push(converted)
               }
             }
-            historyByJobId.set(jobId, deduped)
+            historyByJobId.set(jobId, filterDeletedHistory(jobId, deduped))
           }
         }
       }
@@ -232,7 +231,11 @@ class PollManager {
       const ordered = base === local
         ? [...localHistory, ...remoteHistory]
         : [...remoteHistory, ...localHistory]
-      const history = deduplicateHistory([{ history: ordered }])[0].history
+      // Drop tombstoned entries BEFORE dedup so a deletion on this device can't be
+      // resurrected by a stale remote copy on the next poll.
+      const jobId = base.id || local.id || remoteConverted.id
+      const cleaned = filterDeletedHistory(jobId, ordered)
+      const history = deduplicateHistory([{ history: cleaned }])[0].history
       return { ...base, history }
     }
 

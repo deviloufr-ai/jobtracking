@@ -31,9 +31,12 @@ function autoCompletePastMeetings(history) {
       for (let j = i - 1; j >= 0; j--) {
         const prevEntry = updated[j]
         if (prevEntry.source === 'email' && prevEntry.status !== 'done' && prevEntry.status !== 'rejected' && prevEntry.status !== 'rejected_ats' && prevEntry.status !== 'cancelled') {
-          // Mark previous entry as done since the meeting happened
+          // Mark previous entry as done since the meeting happened.
+          // Do NOT mutate the note text (previously appended " ✓"): the mutated
+          // note no longer matched the freshly-parsed email on the next refresh,
+          // so the same entry was re-imported as a duplicate. Use a flag instead.
           prevEntry.status = 'done'
-          prevEntry.note = `${prevEntry.note} ✓`
+          prevEntry.autoCompleted = true
           break
         }
       }
