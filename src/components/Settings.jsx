@@ -3,6 +3,7 @@ import { useSettings, SETTINGS_DEFAULTS } from '../hooks/useSettings'
 import { useExtensionDetect } from '../hooks/useExtensionDetect'
 import { useJobs } from '../hooks/useJobs'
 import { useLanguage } from '../hooks/useLanguage'
+import { useCVs } from '../hooks/useCVs'
 import NotificationSettings from './NotificationSettings'
 import { supabase } from '../services/supabase'
 import { indexeddb } from '../services/indexeddb'
@@ -100,6 +101,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
   const { settings, updateSetting, resetSettings } = useSettings()
   const { deduplicateViaServer } = useJobs()
   const { t, language, setLanguage, availableLanguages } = useLanguage()
+  const { cvs } = useCVs()
   const extensionInstalled = useExtensionDetect()
   const CATEGORIES = getCATEGORIES(t)
   const [activeTab, setActiveTab] = useState('profile')
@@ -229,8 +231,6 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
 
   async function handleExtractFromCV() {
     try {
-      const rawCVs = localStorage.getItem('jobtrackr_cvs')
-      const cvs = rawCVs ? JSON.parse(rawCVs) : []
       if (!cvs.length) { setExtractError('Aucun CV uploadé — va dans Mon CV pour en ajouter un.'); return }
       const cv = cvs.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))[0]
       setExtracting(true)

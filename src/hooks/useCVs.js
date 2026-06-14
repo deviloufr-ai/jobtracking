@@ -37,9 +37,11 @@ export function useCVs() {
     return entry
   }
 
-  const deleteCV = (id) => {
+  const deleteCV = async (id) => {
+    // Delete from IndexedDB first
+    await indexeddb.deleteCV(id).catch(err => console.error('Failed to delete CV from IndexedDB:', err))
+    // Then update state to trigger save effect
     setCVs(prev => prev.filter(c => c.id !== id))
-    indexeddb.deleteCV(id).catch(err => console.error('Failed to delete CV from IndexedDB:', err))
   }
 
   const renameCV = (id, name) => {
