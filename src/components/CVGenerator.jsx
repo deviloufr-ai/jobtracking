@@ -308,32 +308,50 @@ function renderStandard(md, pic) {
   const { name, contact, sections } = parseCV(md)
 
   const expStyles = {
-    block:   'margin-bottom:6px;padding-bottom:2px;page-break-inside:avoid',
-    title:   'font-size:10.5pt;font-weight:800;color:#0f172a;margin:0 0 2px 0;page-break-after:avoid',
-    company: 'font-size:9pt;font-weight:700;color:#1e40af;margin-bottom:1px',
-    dates:   'font-size:8.5pt;color:#1e40af;font-weight:600',
-    p:       'font-size:9pt;color:#334155;margin:3px 0;line-height:1.4',
-    li:      'font-size:9pt;color:#1e293b;padding-left:0;margin:3px 0 3px 0;line-height:1.4',
+    block:   'margin-bottom:7px;padding-bottom:0px;page-break-inside:avoid',
+    title:   'font-size:11pt;font-weight:900;color:#0f172a;margin:0 0 3px 0;page-break-after:avoid;letter-spacing:-0.02em',
+    company: 'font-size:9.5pt;font-weight:700;color:#1e40af;display:inline',
+    dates:   'font-size:8.5pt;color:#64748b;font-weight:600;display:inline;margin-left:8px',
+    p:       'font-size:9pt;color:#334155;margin:4px 0;line-height:1.45',
+    li:      'font-size:9pt;color:#1e293b;padding-left:0;margin:4px 0;line-height:1.45',
     bullet:  '– ',
   }
 
   const header = `
-    <div style="padding:16px 18px 8px;border-bottom:2px solid #0f172a">
-      <div style="font-size:18pt;font-weight:900;color:#0f172a;margin-bottom:4px;line-height:1.1;letter-spacing:-0.01em">${name}</div>
-      ${contact ? `<div style="font-size:8.5pt;color:#475569;line-height:1.6;letter-spacing:0.01em">${contact}</div>` : ''}
+    <div style="padding:18px 24px 10px;border-bottom:2.5px solid #0f172a">
+      <div style="font-size:20pt;font-weight:900;color:#0f172a;margin-bottom:6px;line-height:1.1;letter-spacing:-0.015em">${name}</div>
+      ${contact ? `<div style="font-size:8pt;color:#64748b;line-height:1.7;letter-spacing:0.015em;font-weight:500">${contact}</div>` : ''}
     </div>`
 
   const body = sections.map(s => {
     const blocks = groupBlocks(s.items)
-    const inner  = blocks.map(b => expBlock(b, expStyles)).join('')
+    const inner  = blocks.map(b => {
+      if (b.standalone) {
+        const it = b.standalone
+        if (it.type === 'p')  return `<div style="${expStyles.p}">${fmt(it.text)}</div>`
+        if (it.type === 'li') return `<div style="${expStyles.li}">${expStyles.bullet} ${fmt(it.text)}</div>`
+        return ''
+      }
+      const company = b.meta[0] || ''
+      const dates   = b.meta[1] || ''
+      const extra   = b.meta.slice(2)
+      const bullets = b.bullets
+      return `
+        <div style="${expStyles.block}">
+          ${b.title ? `<div style="${expStyles.title}">${fmt(b.title)}</div>` : ''}
+          ${(company || dates) ? `<div style="margin:2px 0 2px 0">${company ? `<span style="${expStyles.company}">${fmt(company)}</span>` : ''} ${dates ? `<span style="${expStyles.dates}">| ${fmt(dates)}</span>` : ''}</div>` : ''}
+          ${extra.map(t => `<div style="${expStyles.p}">${fmt(t)}</div>`).join('')}
+          ${bullets.map(t => `<div style="${expStyles.li}">${expStyles.bullet}${fmt(t)}</div>`).join('')}
+        </div>`
+    }).join('')
     return `
-      <div style="margin-top:8px;margin-bottom:2px;page-break-inside:avoid">
-        <div style="font-size:9pt;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;page-break-after:avoid">${s.title}</div>
+      <div style="margin-top:10px;margin-bottom:3px;page-break-inside:avoid">
+        <div style="font-size:9.5pt;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;padding-bottom:3px;border-bottom:1.5px solid #e2e8f0;page-break-after:avoid">${s.title}</div>
         ${inner}
       </div>`
   }).join('')
 
-  return `${header}<div style="padding:12px 24px 16px;font-family:Arial,Helvetica,sans-serif;line-height:1.3">${body}</div>`
+  return `${header}<div style="padding:12px 24px 16px;font-family:Arial,Helvetica,sans-serif">${body}</div>`
 }
 
 // ── Template: MINIMAL ────────────────────────────────────────────────────────
