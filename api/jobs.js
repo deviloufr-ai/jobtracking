@@ -66,8 +66,9 @@ export default async function handler(req, res) {
       const end = start + perPage - 1
       params.append('range', `${start}-${end}`)
 
-      if (location && location !== 'france') {
-        params.append('commune', location) // assuming location is INSEE code
+      // Only add commune if it's a valid INSEE code (5 digits)
+      if (location && location !== 'france' && /^\d{5}$/.test(location)) {
+        params.append('commune', location)
       }
 
       url = `https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search?${params}`
