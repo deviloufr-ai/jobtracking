@@ -2,10 +2,16 @@
 import * as adzuna from './adzuna'
 import * as remoteOk from './remoteOk'
 import * as jSearch from './jSearch'
+import * as franceTravail from './franceTravail'
 
 const STORAGE_KEY = 'jobSearch_api'
 
 const APIs = {
+  francetravail: {
+    name: 'France Travail',
+    service: franceTravail,
+    isConfigured: () => true,
+  },
   remoteok: {
     name: 'RemoteOK',
     service: remoteOk,
@@ -33,7 +39,7 @@ export function getAvailableAPIs() {
 
 export function getSavedAPI() {
   const saved = localStorage.getItem(STORAGE_KEY)
-  return saved && APIs[saved] ? saved : 'remoteok'
+  return saved && APIs[saved] ? saved : 'francetravail'
 }
 
 export function setActiveAPI(apiId) {
