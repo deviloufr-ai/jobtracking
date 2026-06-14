@@ -316,8 +316,8 @@ function renderStandard(md, pic) {
     title:   'font-size:11.5pt;font-weight:800;color:#0f172a;margin:0 0 1px 0;page-break-after:avoid;letter-spacing:-0.01em',
     company: 'font-size:9.5pt;font-weight:700;color:#1e40af;display:inline',
     dates:   'font-size:9pt;color:#64748b;font-weight:600;display:inline',
-    p:       'font-size:9.5pt;color:#334155;margin:5px 0;line-height:1.55',
-    li:      'font-size:9.5pt;color:#1e293b;margin:5px 0;line-height:1.5;padding-left:1.1em;text-indent:-1.1em',
+    p:       'font-size:9.5pt;color:#334155;margin:5px 0;line-height:1.55;page-break-inside:avoid',
+    li:      'font-size:9.5pt;color:#1e293b;margin:5px 0;line-height:1.5;padding-left:1.1em;text-indent:-1.1em;page-break-inside:avoid',
     bullet:  '– ',
   }
 
@@ -329,7 +329,7 @@ function renderStandard(md, pic) {
 
   const body = sections.map(s => {
     const blocks = groupBlocks(s.items)
-    const inner  = blocks.map(b => {
+    const items  = blocks.map(b => {
       if (b.standalone) {
         const it = b.standalone
         if (it.type === 'p')  return `<div style="${expStyles.p}">${fmt(it.text)}</div>`
@@ -347,12 +347,16 @@ function renderStandard(md, pic) {
           ${extra.map(t => `<div style="${expStyles.p}">${fmt(t)}</div>`).join('')}
           ${bullets.map(t => `<div style="${expStyles.li}">${expStyles.bullet}${fmt(t)}</div>`).join('')}
         </div>`
-    }).join('')
-    return `
-      <div style="margin-top:18px">
-        <div style="font-size:10pt;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:10px;padding-bottom:5px;border-bottom:1.5px solid #cbd5e1;page-break-after:avoid">${s.title}</div>
-        ${inner}
-      </div>`
+    }).filter(Boolean)
+
+    const sectionTitle = `<div style="font-size:10pt;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:10px;padding-bottom:5px;border-bottom:1.5px solid #cbd5e1">${s.title}</div>`
+
+    // Glue the section header to its first item so a header is never orphaned
+    // at the bottom of a page.
+    const firstUnit = `<div class="cv-block" style="page-break-inside:avoid">${sectionTitle}${items[0] || ''}</div>`
+    const rest      = items.slice(1).join('')
+
+    return `<div style="margin-top:18px">${firstUnit}${rest}</div>`
   }).join('')
 
   return `${header}<div style="padding:6px ${STD_SIDE} 8px;font-family:Arial,Helvetica,sans-serif">${body}</div>`
