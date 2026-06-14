@@ -793,12 +793,13 @@ export function useJobs() {
           try {
             const notes = job.notes || ''
             const history = job.history || []
-            // Reject jobs with notes > 100KB or history > 500 entries
-            if (notes.length > 102400) {
+            // Reject jobs with notes > 1MB or history > 5000 entries (very conservative)
+            // These are extreme thresholds that only catch truly corrupted data
+            if (notes.length > 1048576) {
               console.warn(`Job ${job.id} has oversized notes (${notes.length} chars), clearing`)
               return false
             }
-            if (history.length > 500) {
+            if (history.length > 5000) {
               console.warn(`Job ${job.id} has oversized history (${history.length} entries), clearing`)
               return false
             }
