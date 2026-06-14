@@ -26,7 +26,7 @@ export const ROME_CODES = [
 
   // Finance
   { code: 'M1401', label: 'Comptable', keywords: ['comptable', 'accountant', 'accounting', 'finance', 'cfo'] },
-  { code: 'M1402', label: 'Contrôleur de gestion', keywords: ['contrôleur', 'controller', 'business analyst'] },
+  { code: 'M1405', label: 'Contrôleur de gestion', keywords: ['contrôleur', 'controller', 'business analyst'] },
 
   // Customer Service
   { code: 'K2402', label: 'Agent de relation client', keywords: ['service client', 'customer service', 'support', 'agent service'] },
