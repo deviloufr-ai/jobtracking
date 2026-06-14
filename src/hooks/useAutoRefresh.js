@@ -336,6 +336,14 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
   const refreshingRef = useRef(refreshing)
   const reprocessJobsRef = useRef(reprocessJobs)
   const settingsRef = useRef(settings)
+  // doRefresh is memoized with [] deps, so it captures addJob/updateJob from the
+  // FIRST render. The first-render updateJob closes over an empty jobs array
+  // (before IndexedDB loads), so `jobs.find(...)` finds nothing and the update
+  // silently no-ops — existing jobs never got their status/history upgraded on
+  // refresh (Bug: Dashlane stayed "À faire" despite "todo → reviewing"). Call
+  // the LATEST callbacks via refs instead.
+  const addJobRef = useRef(addJob)
+  const updateJobRef = useRef(updateJob)
 
   // Keep refs in sync
   useEffect(() => {
@@ -350,6 +358,12 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
   useEffect(() => {
     settingsRef.current = settings
   }, [settings])
+  useEffect(() => {
+    addJobRef.current = addJob
+  }, [addJob])
+  useEffect(() => {
+    updateJobRef.current = updateJob
+  }, [updateJob])
 
   const doRefresh = useCallback(async (silent = false) => {
     if (!isConnected() || refreshingRef.current) return
@@ -359,6 +373,9 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
     // deps, so the `jobs` param is captured from the first render (empty array
     // before IndexedDB load) — using it for dedup re-imports everything as new.
     const jobs = jobsRef.current
+    // Same reason: use the latest addJob/updateJob, not the first-render ones.
+    const addJob = addJobRef.current
+    const updateJob = updateJobRef.current
 
     try {
       // Simple time-based sync: scan emails from user-configured lookback period
