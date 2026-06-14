@@ -603,9 +603,29 @@ export function findDuplicateJob(jobs, company, position) {
 }
 
 // Sync local jobs to Supabase + fetch Supabase jobs (multi-device sync)
+const SYNC_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+const SYNC_CACHE_KEY = 'jobtrackr_last_sync_time'
+
+function shouldSkipSupabaseSync() {
+  const lastSync = localStorage.getItem(SYNC_CACHE_KEY)
+  if (!lastSync) return false // First time, always sync
+  return Date.now() - parseInt(lastSync) < SYNC_CACHE_TTL
+}
+
+function recordSyncTime() {
+  localStorage.setItem(SYNC_CACHE_KEY, Date.now().toString())
+}
+
 let syncInProgress = false
 async function syncLocalJobsToSupabase(stableSyncId) {
   if (!stableSyncId || syncInProgress) return Promise.resolve()
+
+  // Skip if cache is fresh
+  if (shouldSkipSupabaseSync()) {
+    console.log('⏭️ Skipping Supabase sync (cache fresh)')
+    return Promise.resolve()
+  }
+
   syncInProgress = true
 
   try {
@@ -745,6 +765,7 @@ async function syncLocalJobsToSupabase(stableSyncId) {
     }
 
     console.log('✓ Sync complete')
+    recordSyncTime()
   } catch (err) {
     console.warn('⚠ Sync failed (non-critical):', err.message)
   } finally {
