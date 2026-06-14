@@ -482,6 +482,15 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                 </Card>
 
                 <Card title="Expérience et compétences">
+                  <Row label="Entreprises" wide hint="Une par ligne, ex: Acme Inc (2020-2023)">
+                    <TextInput
+                      multiline
+                      rows={3}
+                      value={Array.isArray(profile.companies) ? profile.companies.join('\n') : (profile.companies || '')}
+                      onChange={v => updateProfile('companies', v.split('\n').filter(c => c.trim()))}
+                      placeholder="Acme Inc (2020-2023)&#10;Google (2018-2020)&#10;Startup XYZ (2015-2018)"
+                    />
+                  </Row>
                   <Row label="Résumé d'expérience" wide hint="Vos 18 ans d'expérience en résumé">
                     <TextInput multiline rows={3} value={profile.experience} onChange={v => updateProfile('experience', v)} placeholder="18 ans d'expérience en product management..." />
                   </Row>
@@ -496,28 +505,13 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                   </Row>
                 </Card>
 
-                {(profile?.key_achievements?.length > 0 || profile?.companies?.length > 0) && (
-                  <Card title="Données extraites (lecture seule)">
-                    {profile?.companies?.length > 0 && (
-                      <div>
-                        <p className="text-xs font-medium text-gray-600 mb-2">Entreprises</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {profile.companies.map((c, i) => (
-                            <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{c}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {profile?.key_achievements?.length > 0 && (
-                      <div>
-                        <p className="text-xs font-medium text-gray-600 mb-2">Réalisations clés</p>
-                        <ul className="space-y-1">
-                          {profile.key_achievements.map((a, i) => (
-                            <li key={i} className="text-xs text-gray-600 flex gap-2"><span className="text-indigo-400">·</span>{a}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                {profile?.key_achievements?.length > 0 && (
+                  <Card title="Réalisations clés">
+                    <ul className="space-y-1">
+                      {profile.key_achievements.map((a, i) => (
+                        <li key={i} className="text-xs text-gray-600 flex gap-2"><span className="text-indigo-400">·</span>{a}</li>
+                      ))}
+                    </ul>
                   </Card>
                 )}
 
