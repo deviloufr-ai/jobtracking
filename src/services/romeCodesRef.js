@@ -2,8 +2,8 @@
 // Maps job titles (in French & English) to ROME codes for accurate searching
 export const ROME_CODES = [
   // Management & Product
-  { code: 'M1402', label: 'Chargé de produit', keywords: ['chargé de produit', 'product manager', 'responsable produit', 'pm', 'product'] },
-  { code: 'M1403', label: 'Chef de projet', keywords: ['chef de projet', 'project manager', 'pm', 'project lead'] },
+  { code: 'M1402', label: 'Chargé de produit', keywords: ['chargé de produit', 'chef de produit', 'product manager', 'responsable produit', 'pm', 'product'] },
+  { code: 'M1403', label: 'Chef de projet', keywords: ['chef de projet', 'project manager', 'pm', 'project lead', 'chef projet'] },
   { code: 'M1201', label: 'Directeur général', keywords: ['directeur général', 'ceo', 'president', 'director', 'directeur'] },
 
   // IT & Development
