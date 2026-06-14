@@ -465,35 +465,27 @@ export default function LandingPage({ onLogin }) {
         <section>
           <div className="section-head">
             <div className="kicker">Fonctionnalités</div>
-            <h2>Un cockpit unique, alimenté par vos emails.</h2>
-            <p>Tout ce qu'il faut pour gérer une recherche active, sans jamais ouvrir un tableur.</p>
+            <h2>Votre allié IA pour gérer la vraie recherche.</h2>
+            <p>Tout ce qu'il faut pour organiser, enrichir et accélérer vos candidatures — sans jamais ouvrir un tableur.</p>
           </div>
           <div className="feature-grid">
             {[
-              { icon: '📋', title: 'Tableau de bord unifié', desc: 'Vue centralisée de toutes vos candidatures avec filtres avancés (statut, période, mot-clé), statistiques en temps réel et indicateurs de tendance.' },
-              { icon: '📧', title: 'Sync Gmail automatique', desc: '12 requêtes parallèles au démarrage. L\'IA parsing automatiquement vos emails par lots, détecte les offres et met à jour chaque candidature sans saisie.' },
-              { icon: '⏰', title: 'Statuts & timeline', desc: '10 statuts métier, détection automatique des refus ATS (Ashby, Greenhouse, Lever...), historique complet daté et consolidé par candidature.' },
-              { icon: '⚡', title: 'Prochaines actions', desc: 'Moteur de recommandations : identifie les relances en retard, entretiens imminents, alertes urgentes hiérarchisées par priorité.' },
-              { icon: '📅', title: 'Calendrier & réunions', desc: 'Intégration Google Calendar native. Détecte automatiquement les entretiens à venir, affiche les liens Zoom/Teams, rappel J-1 avec notifications.' },
-              { icon: '💬', title: 'Relances générées par IA', desc: 'Génère un brouillon d\'email contextualisé prêt à envoyer. Détecte automatiquement si la boîte recruteuse est un ATS (pas de relance envoyée).' },
-              { icon: '⭐', title: 'Réponses STAR personnalisées', desc: '3 anecdotes STAR générées par candidature, basées sur la fiche de poste. Format prêt à copier-coller pour l\'entretien oral.' },
-              { icon: '📄', title: 'CV adaptatif', desc: 'Upload PDF, réécriture IA dynamique selon la JD, split-view avant/après, export PDF optimisé, historique de versions.' },
-              { icon: '💌', title: 'Génération lettre de motivation', desc: 'Génère une lettre personnalisée par candidature. Adaptée au poste, à l\'entreprise, intégration facile avec votre email.' },
-              { icon: '🔎', title: 'Recherche d\'emploi intégrée', desc: 'Intégration Adzuna : parcourez les offres directement dans l\'app, ajoutez-les à votre pipeline avec un clic, sans changement d\'onglet.' },
-              { icon: '🖼️', title: 'Import screenshot', desc: 'Prenez une capture d\'écran d\'une offre LinkedIn/job board. L\'IA extrait tous les détails (poste, entreprise, lien, description) automatiquement.' },
-              { icon: '🦊', title: 'Extension Firefox', desc: 'Importez directement depuis n\'importe quel site job board. Analyse complète de la page, extraction du contenu, ajout one-click au pipeline.' },
-              { icon: '⭐', title: 'Favoris & archives', desc: 'Marquez les candidatures intéressantes, archivez automatiquement après 60j (sent) ou 90j (rejected). Récupérez-les facilement si nécessaire.' },
-              { icon: '🔔', title: 'Notifications intelligentes', desc: 'Alertes pour nouveaux événements, relances en retard, entretiens imminents. Notifications desktop native ou in-app au choix.' },
-              { icon: '🤖', title: 'Conseils IA personnalisés', desc: 'Panel de conseils adaptatif par statut candidature. Suggestions pour optimiser taux de réponse, timing de relance, prep d\'entretien.' },
-              { icon: '🎯', title: 'Suivi d\'objectifs', desc: 'Définissez et suivez vos objectifs de candidatures, taux de réussite. Visualisez votre progression semaine par semaine.' },
-              { icon: '💾', title: 'Multi-device sync', desc: 'Supabase synchronisation : accédez à vos candidatures depuis n\'importe quel appareil. Modifications instantanées sur tous les devices.' },
-              { icon: '📊', title: 'Analytics & insights', desc: 'Tendances d\'activité (candidatures/semaine, taux réponse, pipeline velocity), insights personnalisés pour ajuster votre stratégie.' },
-              { icon: '🎨', title: 'Thèmes multiples', desc: 'Mode clair, sombre, midnight, ocean, forest, sunset, minimal. Adaptez l\'interface à votre préférence, synchronisé sur tous les devices.' },
-              { icon: '🔗', title: 'Fusion de doublons', desc: 'Détecte les candidatures dupliquées, fusionne l\'historique automatiquement. Consolide les informations des doublons en un seul enregistrement.' },
-              { icon: '👁️', title: 'Prévisualisation CV', desc: 'Visualisez votre CV généré avant export. Format une page optimisé, mise en page moderne, prêt à imprimer ou envoyer.' },
-              { icon: '🔀', title: 'Sélection en masse', desc: 'Sélectionnez plusieurs candidatures à la fois, fusionnez-les en un clic, appliquez des actions groupées rapidement.' },
-              { icon: '✏️', title: 'Édition avancée', desc: 'Modifiez tous les détails d\'une candidature, ajoutez des étapes historiques, annotez avec dates et contexte complet.' },
-              { icon: '🔍', title: 'Recherche full-text', desc: 'Cherchez par entreprise, poste, ou mots-clés. Filtrez par statut, période, favoris, archives — en temps réel sans latence.' }
+              { icon: '📋', title: 'Tableau de bord intelligent', desc: 'Vue d\'ensemble claire de toutes vos candidatures. Filtrez par statut, période, ou mots-clés. Statistiques et tendances en temps réel pour suivre votre progression.' },
+              { icon: '📧', title: 'Gmail synchronisé automatiquement', desc: 'Connectez-vous une fois, et vos emails font le travail. L\'IA détecte les offres, les relances, les refus — tout se met à jour sans que vous ayez à saisir quoi que ce soit.' },
+              { icon: '⏰', title: 'Historique complet et intelligent', desc: '10 statuts professionnels, détection automatique des refus ATS (Ashby, Greenhouse, Lever...). Un timeline daté pour chaque candidature, consolidé et facile à lire.' },
+              { icon: '⚡', title: 'Quoi faire maintenant?', desc: 'Un moteur qui vous dit clairement: qui relancer, quel entretien préparer, où avancer. Alertes classées par urgence pour rester focalisé.' },
+              { icon: '📅', title: 'Entretiens bien synchronisés', desc: 'Google Calendar intégré. Les entretiens apparaissent automatiquement avec les liens Zoom/Teams. Rappel J-1, rien n\'est oublié.' },
+              { icon: '💌', title: 'Rédaction IA: emails & CVs', desc: 'Brouillons d\'emails intelligents prêts à envoyer. CVs réadaptés par candidature. Lettres de motivation générées en 2 clics. Prêts à copier-coller ou customiser.' },
+              { icon: '⭐', title: 'Préparation entretien', desc: '3 réponses STAR générées par fiche de poste. Conseils IA contextualisés. Visualisez votre CV avant export, format une page optimisé.' },
+              { icon: '🎯', title: 'Ajouter des candidatures facilement', desc: 'Gmail, screenshot (LinkedIn, job boards), extension Firefox, ou ajout manuel. 4 façons différentes, tous les chemins mènent au pipeline.' },
+              { icon: '🎯', title: 'Suivre vos progrès', desc: 'Objectifs de candidatures, taux de réussite, insights personnalisés. Voyez semaine après semaine comment vous avancez vers votre objectif.' },
+              { icon: '🤖', title: 'Conseils IA à chaque étape', desc: 'Des suggestions vraiment utiles basées sur votre situation: quand relancer sans être lourd, comment optimiser votre taux de réponse, comment préparer cet entretien.' },
+              { icon: '💾', title: 'Sur tous vos appareils', desc: 'Synchronisation instantanée. Accédez à vos candidatures sur le téléphone, la tablette, l\'ordi — tout reste à jour partout.' },
+              { icon: '🎨', title: 'Votre style', desc: 'Mode clair, sombre, ou l\'un de nos 6 thèmes spécialisés (midnight, ocean, forest...). Adaptez l\'interface à votre préférence, c\'est synchronisé partout.' },
+              { icon: '📊', title: 'Analytics pour s\'améliorer', desc: 'Tendances (candidatures/semaine, taux réponse, velocity). Insights personnalisés pour ajuster votre stratégie et faire mieux la prochaine fois.' },
+              { icon: '🔔', title: 'Notifications quand ça compte', desc: 'Alertes pour les nouveaux emails, les relances en retard, les entretiens imminents. Desktop ou in-app, c\'est vous qui choisissez.' },
+              { icon: '🔀', title: 'Gestion flexible', desc: 'Sélectionnez plusieurs candidatures à la fois. Fusionnez les doublons automatiquement. Nettoyez et organisez en quelques clics.' },
+              { icon: '🔍', title: 'Recherche instantanée', desc: 'Tapez pour chercher: par entreprise, poste, ou mots-clés spécifiques. Résultats en temps réel, jamais d\'attente.' }
             ].map((item, i) => (
               <div key={i} className="feature">
                 <div className="icon">{item.icon}</div>
@@ -681,71 +673,6 @@ export default function LandingPage({ onLogin }) {
                 </div>
                 <div style={{ fontSize: '14px', color: '#9aa3ba', lineHeight: '1.6' }}>
                   {item.desc}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <hr className="rule" />
-
-        {/* COMPARISON */}
-        <section>
-          <div className="section-head">
-            <div className="kicker">Pourquoi JobTrackr?</div>
-            <h2>Les alternatives qui ne tiennent pas la charge.</h2>
-          </div>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '1px',
-            background: '#2b3242',
-            border: '1px solid #2b3242',
-            borderRadius: '12px',
-            overflow: 'hidden'
-          }}>
-            {[
-              {
-                name: 'Excel / Google Sheets',
-                issues: [
-                  '❌ Pas de sync automatique',
-                  '❌ Pas d\'IA (tout manuel)',
-                  '❌ Historique perdu après 20 lignes',
-                  '❌ Impossible multi-device'
-                ]
-              },
-              {
-                name: 'CRM générique (Pipedrive)',
-                issues: [
-                  '❌ Pensé pour les ventes B2B',
-                  '❌ Sur-dimensionné pour 1 personne',
-                  '❌ Pas de Gmail sync native',
-                  '❌ L\'IA est un plugin payant'
-                ]
-              },
-              {
-                name: '✓ JobTrackr',
-                issues: [
-                  '✓ Gmail sync + Calendrier intégrés',
-                  '✓ 6 niveaux d\'IA inclus',
-                  '✓ Illimité (40+ candidatures easy)',
-                  '✓ Multi-device Supabase natif'
-                ]
-              }
-            ].map((item, i) => (
-              <div key={i} style={{
-                background: '#161b26',
-                padding: '24px'
-              }}>
-                <div style={{ fontSize: '15px', fontWeight: '600', marginBottom: '16px', color: i === 2 ? '#7b7bf7' : '#eef0f6' }}>
-                  {item.name}
-                </div>
-                <div style={{ space: '8px' }}>
-                  {item.issues.map((issue, j) => (
-                    <div key={j} style={{ fontSize: '13px', color: '#9aa3ba', marginBottom: '8px', lineHeight: '1.5' }}>
-                      {issue}
-                    </div>
-                  ))}
                 </div>
               </div>
             ))}
