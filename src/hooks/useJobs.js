@@ -790,8 +790,8 @@ export function useJobs() {
     return () => window.removeEventListener('jobtrackr:datasync', handleSync)
   }, [])
 
-  // Apply processing pipeline (dedup is manual-only to avoid false merges)
-  const jobs = useMemo(() => deduplicateHistory(autoStale(rawJobs)), [rawJobs, settingsKey])
+  // Apply processing pipeline: dedup jobs first, then history, then archive validation
+  const jobs = useMemo(() => deduplicateJobs(deduplicateHistory(autoStale(rawJobs))), [rawJobs, settingsKey])
 
   // Persist to IndexedDB whenever jobs change
   useEffect(() => {
