@@ -39,7 +39,7 @@ export function useCVs() {
 
   const deleteCV = (id) => {
     setCVs(prev => prev.filter(c => c.id !== id))
-    // CVs are stored locally only
+    indexeddb.deleteCV(id).catch(err => console.error('Failed to delete CV from IndexedDB:', err))
   }
 
   const renameCV = (id, name) => {

@@ -170,6 +170,15 @@ class IndexedDBService {
     })
   }
 
+  async deleteCV(id) {
+    const store = await this.getStore(STORES.CVS, 'readwrite')
+    return new Promise((resolve, reject) => {
+      const request = store.delete(id)
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve(request.result)
+    })
+  }
+
   // Settings (single record)
   async saveSettings(settings) {
     const store = await this.getStore(STORES.SETTINGS, 'readwrite')
