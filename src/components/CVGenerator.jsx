@@ -475,15 +475,15 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
     reader.onload = ev => {
       const img = new Image()
       img.onload = () => {
-        // Compress: resize to 200x200px max, convert to webp/jpeg
+        // Compress: resize to 160x160px max for optimal balance
         const canvas = document.createElement('canvas')
-        const maxSize = 200
+        const maxSize = 160
         let w = img.width, h = img.height
         if (w > h) { h = Math.round((h * maxSize) / w); w = maxSize }
         else { w = Math.round((w * maxSize) / h); h = maxSize }
         canvas.width = w; canvas.height = h
         canvas.getContext('2d').drawImage(img, 0, 0, w, h)
-        const b64 = canvas.toDataURL('image/jpeg', 0.85)  // JPEG quality 0.85 for good balance
+        const b64 = canvas.toDataURL('image/jpeg', 0.82)  // Optimized JPEG quality
         setProfilePic(b64)
         localStorage.setItem('cv_profile_picture', b64)
       }
@@ -571,30 +571,30 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
     `
     element.appendChild(style)
 
-    // Configure html2pdf options for balanced quality and file size
+    // Configure html2pdf options for optimal quality and file size
     const options = {
       margin: 0,
       filename: `${filename}.pdf`,
-      image: { type: 'jpeg', quality: 0.85 },  // JPEG with 85% quality
+      image: { type: 'jpeg', quality: 0.88 },  // Optimized JPEG quality
       html2canvas: {
-        scale: 1.2,            // Balanced scale for crisp text
+        scale: 2,              // Higher scale for crisp text rendering
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
-        imageTimeout: 10000
+        imageTimeout: 10000,
+        letterRendering: true
       },
       jsPDF: {
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4',
-        compress: true,        // Enable PDF compression
+        compress: true,
         hotfixes: ['px_scaling']
       },
       pagebreak: {
         mode: ['css', 'legacy'],
-        before: false,
-        after: false
+        avoid: ['tr', 'li', 'div']
       }
     }
 
