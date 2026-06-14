@@ -812,7 +812,26 @@ export function useJobs() {
         const validJobs = (cachedJobs || []).filter(isValidJob)
         if (validJobs.length < (cachedJobs?.length || 0)) {
           console.warn(`Filtered out corrupted jobs. Before: ${cachedJobs?.length}, After: ${validJobs.length}`)
-          // Clear IndexedDB if corrupted data detected
+          console.warn('⚠️ IMPORTANT: Corrupted data detected. Force syncing to Supabase before clearing...')
+
+          // Force a fresh sync to Supabase before clearing any data
+          // This ensures corrupted records don't get lost permanently
+          try {
+            // Clear the sync cache to force a fresh upload
+            localStorage.removeItem(SYNC_CACHE_KEY)
+
+            const syncUserId = await resolveSyncUserId().catch(() => getSyncUserIdForSupabase())
+            // Sync ALL cached jobs (including corrupted ones) to Supabase as backup
+            // even though they'll be filtered locally
+            if (cachedJobs && cachedJobs.length > 0) {
+              console.log('📤 Backing up', cachedJobs.length, 'jobs to Supabase before clearing...')
+              await syncLocalJobsToSupabase(syncUserId)
+            }
+          } catch (e) {
+            console.warn('Failed to backup to Supabase:', e)
+          }
+
+          // NOW clear the corrupted data from IndexedDB after sync attempt
           try {
             await indexeddb.clear()
           } catch (e) {
