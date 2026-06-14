@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { searchJobs, getSavedAPI, setActiveAPI, getAvailableAPIs, getAPIName } from '../services/jobSearch'
 import { FRENCH_LOCATIONS, getLocationsByQuery, getLocationLabel } from '../services/adzunaLocations'
+import { ROME_CODES, searchRomeCodes } from '../services/romeCodesRef'
 
 const CONTRACT_LABELS = {
   permanent: 'CDI',
@@ -14,6 +15,10 @@ const STORAGE_KEY_LAST = 'jobSearch_last'
 
 export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) {
   const [query, setQuery] = useState('Product Manager')
+  const [romeCode, setRomeCode] = useState('')
+  const [romeInput, setRomeInput] = useState('')
+  const [romeSuggestions, setRomeSuggestions] = useState([])
+  const [showRomeSuggestions, setShowRomeSuggestions] = useState(false)
   const [location, setLocation] = useState('france')
   const [locationInput, setLocationInput] = useState(getLocationLabel('france'))
   const [locationSuggestions, setLocationSuggestions] = useState([])
@@ -30,6 +35,7 @@ export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) 
   const [availableAPIs, setAvailableAPIs] = useState(getAvailableAPIs())
   const queryInputRef = useRef(null)
   const locationInputRef = useRef(null)
+  const romeInputRef = useRef(null)
 
   const getSearchHistory = () => {
     const stored = localStorage.getItem(STORAGE_KEY_HISTORY)
@@ -45,20 +51,21 @@ export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) 
     localStorage.setItem(STORAGE_KEY_LAST, JSON.stringify(newSearch))
   }
 
-  const handleSearch = useCallback(async (p = 1, q = query, loc = location) => {
-    if (!q.trim()) return
+  const handleSearch = useCallback(async (p = 1, q = query, loc = location, rome = romeCode) => {
+    const searchQuery = rome || q.trim()
+    if (!searchQuery) return
     setLoading(true)
     setError(null)
     setPage(p)
     try {
-      const data = await searchJobs(activeAPI, { query: q, location: loc, page: p })
+      const data = await searchJobs(activeAPI, { query: searchQuery, location: loc, page: p })
       setResults(data)
-      if (p === 1) saveSearchToHistory(q, loc)
+      if (p === 1) saveSearchToHistory(searchQuery, loc)
     } catch (e) {
       setError(t('jobSearch.searching') + ' error: ' + e.message)
     }
     setLoading(false)
-  }, [activeAPI])
+  }, [activeAPI, query, romeCode])
 
   useEffect(() => {
     const last = localStorage.getItem(STORAGE_KEY_LAST)
@@ -133,6 +140,23 @@ export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) 
     setActiveAPIState(newAPI)
     setActiveAPI(newAPI)
     setResults(null)
+  }
+
+  const handleRomeInputChange = (input) => {
+    setRomeInput(input)
+    const suggestions = searchRomeCodes(input)
+    setRomeSuggestions(suggestions)
+  }
+
+  const handleSelectRome = (rome) => {
+    setRomeCode(rome.code)
+    setRomeInput(rome.label)
+    setShowRomeSuggestions(false)
+  }
+
+  const handleClearRome = () => {
+    setRomeCode('')
+    setRomeInput('')
   }
 
   return (
@@ -222,8 +246,44 @@ export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) 
               </div>
             )}
           </div>
+          <div className="relative min-w-[200px]">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">📋</span>
+            <input
+              ref={romeInputRef}
+              className="w-full pl-8 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              placeholder="ROME code (M1402, H2202...)"
+              value={romeInput}
+              onChange={e => handleRomeInputChange(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSearch(1, query, location, romeCode)}
+              onFocus={() => setShowRomeSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowRomeSuggestions(false), 150)}
+              autoComplete="off"
+            />
+            {romeCode && (
+              <button
+                onClick={handleClearRome}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            )}
+            {showRomeSuggestions && romeSuggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                {romeSuggestions.map((rome, i) => (
+                  <button
+                    key={i}
+                    onMouseDown={() => handleSelectRome(rome)}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-indigo-50 border-b border-gray-100 last:border-0"
+                  >
+                    <span className="font-mono font-bold text-indigo-600">{rome.code}</span>
+                    <span className="ml-2">{rome.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
-            onClick={() => handleSearch(1, query, location)}
+            onClick={() => handleSearch(1, query, location, romeCode)}
             disabled={loading}
             className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
           >
