@@ -269,6 +269,70 @@ class SyncManager {
     return { success: true, data: result.data }
   }
 
+  // One-time bulk upload of local jobs to Supabase. Replaces the legacy
+  // syncLocalJobsToSupabase() upload half: pushes any local-only jobs (created
+  // while the coordinator wasn't ready, imported offline, or pre-existing legacy
+  // data) and replaces their history with the deduplicated local copy.
+  // The caller MUST poll (fetch+merge remote) first, so local history already
+  // contains the merged superset before we delete+reinsert remote rows.
+  async pushAllJobs(userId, jobs) {
+    if (!userId || !isSupabaseConfigured() || !jobs?.length) {
+      return { success: true, skipped: true }
+    }
+
+    try {
+      // Upsert all job rows in one round-trip (insert new, update existing).
+      const jobRows = jobs.map(job => {
+        const { history, ...rest } = job
+        const cleaned = this.camelToSnake(this.stripLocalOnlyFields(rest))
+        return { ...cleaned, user_id: userId }
+      })
+
+      const { error: upsertErr } = await supabase
+        .from('jobs')
+        .upsert(jobRows, { onConflict: 'id' })
+      if (upsertErr) {
+        console.warn('Bulk job upsert failed:', upsertErr.message)
+      }
+
+      // Replace history per job (delete + insert deduped via canonical key).
+      for (const job of jobs) {
+        const history = Array.isArray(job.history) ? job.history : []
+        if (history.length === 0) continue
+
+        const seen = new Set()
+        const deduped = []
+        for (const entry of history) {
+          const key = historyEntryKey(entry)
+          if (!seen.has(key)) {
+            seen.add(key)
+            deduped.push(entry)
+          }
+        }
+
+        try {
+          await supabase.from('job_history').delete().eq('job_id', job.id)
+          const rows = deduped.map(entry => ({
+            job_id: job.id,
+            user_id: userId,
+            ...convertHistoryToSupabase(entry)
+          }))
+          if (rows.length > 0) {
+            await supabase.from('job_history').insert(rows)
+          }
+        } catch (err) {
+          console.warn('Failed to push history for job', job.id, err.message)
+        }
+      }
+
+      console.log('📤 Bulk-uploaded', jobs.length, 'local jobs to Supabase')
+      return { success: true }
+    } catch (err) {
+      console.warn('pushAllJobs failed (non-critical):', err.message)
+      return { success: false, error: err.message }
+    }
+  }
+
   async handleConflict(table, record) {
     // Fetch remote version
     const { data: remoteData, error } = await supabase

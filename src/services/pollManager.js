@@ -25,8 +25,10 @@ class PollManager {
     this.listeners.forEach(listener => listener(data))
   }
 
-  // Perform one poll cycle
-  async poll(userId) {
+  // Perform one poll cycle. Pass { fullSync: true } to ignore lastSyncTime and
+  // fetch ALL of the user's jobs (used for the coordinator's first poll, giving
+  // parity with the retired legacy full-fetch).
+  async poll(userId, { fullSync = false } = {}) {
     if (!isSupabaseConfigured()) {
       console.warn('⚠ Supabase not configured, skipping poll')
       return
@@ -59,8 +61,8 @@ class PollManager {
         .select('*')
         .eq('user_id', userId)
 
-      // If we have a last sync time, only fetch changes
-      if (this.lastSyncTime) {
+      // If we have a last sync time, only fetch changes (unless a full sync is requested)
+      if (this.lastSyncTime && !fullSync) {
         jobsQuery.gt('updated_at', this.lastSyncTime)
       }
 

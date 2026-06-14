@@ -5,8 +5,7 @@ import { indexeddb } from '../services/indexeddb'
 import { syncManager } from '../services/syncManager'
 import { getSyncCoordinator } from '../services/syncCoordinator'
 import { supabase, isSupabaseConfigured } from '../services/supabase'
-import { getSyncUserIdForSupabase, getCachedUser, resolveSyncUserId } from '../services/gmail'
-import { convertHistoryFromSupabase, convertHistoryToSupabase, snakeToCamel, deserializeJobFields } from '../services/fieldConversion'
+import { getSyncUserIdForSupabase, resolveSyncUserId } from '../services/gmail'
 import { deduplicateJobsViaEdgeFunction, formatDeduplicateResult } from '../services/deduplicateService'
 import { GENERIC_POSITIONS_SET, isGenericPosition } from '../constants/positions'
 
@@ -727,180 +726,11 @@ export function findDuplicateJob(jobs, company, position) {
   return null
 }
 
-// Sync local jobs to Supabase + fetch Supabase jobs (multi-device sync)
-const SYNC_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
-const SYNC_CACHE_KEY = 'jobtrackr_last_sync_time'
-
-function shouldSkipSupabaseSync() {
-  const lastSync = localStorage.getItem(SYNC_CACHE_KEY)
-  if (!lastSync) return false // First time, always sync
-  return Date.now() - parseInt(lastSync) < SYNC_CACHE_TTL
-}
-
-function recordSyncTime() {
-  localStorage.setItem(SYNC_CACHE_KEY, Date.now().toString())
-}
-
-let syncInProgress = false
-async function syncLocalJobsToSupabase(stableSyncId) {
-  if (!stableSyncId || syncInProgress) return Promise.resolve()
-
-  // Skip if cache is fresh
-  if (shouldSkipSupabaseSync()) {
-    console.log('⏭️ Skipping Supabase sync (cache fresh)')
-    return Promise.resolve()
-  }
-
-  syncInProgress = true
-
-  try {
-    // Skip legacy email-based migration — not needed with stable UUID approach
-
-    // FETCH jobs from Supabase for this user (other devices' jobs)
-    const { data: supabaseJobs, error: fetchError } = await supabase
-      .from('jobs')
-      .select('*')
-      .eq('user_id', stableSyncId)
-
-    if (!fetchError && supabaseJobs?.length) {
-      console.log('📥 Fetching', supabaseJobs.length, 'jobs from Supabase...')
-
-      // Fetch history for these jobs
-      const { data: allHistory } = await supabase
-        .from('job_history')
-        .select('*')
-        .eq('user_id', stableSyncId)
-
-      const historyByJobId = new Map()
-      if (allHistory) {
-        allHistory.forEach(entry => {
-          if (!historyByJobId.has(entry.job_id)) {
-            historyByJobId.set(entry.job_id, [])
-          }
-          historyByJobId.get(entry.job_id).push(entry)
-        })
-      }
-
-      // Merge Supabase jobs with history into local IndexedDB
-      for (const remoteJob of supabaseJobs) {
-        // Skip jobs that were explicitly deleted locally
-        if (isDeletedJobId(remoteJob.id)) {
-          console.log('⏭️  Skipped deleted job ID:', remoteJob.id)
-          continue
-        }
-
-        // Convert job from snake_case to camelCase
-        const remoteJobInCamel = snakeToCamel(remoteJob)
-        // Deserialize JSON fields (positionLinks, positionChecks)
-        const remoteJobDeserialized = deserializeJobFields(remoteJobInCamel)
-        // Get history for this job and convert snake_case to camelCase
-        let remoteHistory = (historyByJobId.get(remoteJob.id) || []).map(entry => convertHistoryFromSupabase(entry))
-
-        // Filter out deleted history entries (prevents re-import of locally-deleted entries)
-        remoteHistory = filterDeletedHistory(remoteJob.id, remoteHistory)
-
-        const deduped = deduplicateHistory([{ history: remoteHistory }])[0].history
-
-        const jobWithHistory = {
-          ...remoteJobDeserialized,
-          history: deduped
-        }
-
-        // Merge with local job: prefer remote (source of truth), but keep local notes if remote is missing
-        const localJob = await indexeddb.getJob(remoteJobDeserialized.id)
-        if (localJob) {
-          // Use the canonical entry key (gmailId-first) so local manual additions
-          // are matched against remote consistently with every other dedup path.
-          const remoteByKey = new Set(deduped.map(historyEntryKey))
-
-          // Add any local entries that don't exist in remote (manual local additions)
-          const allEntries = [...deduped]
-          for (const localEntry of (localJob.history || [])) {
-            if (!remoteByKey.has(historyEntryKey(localEntry))) {
-              allEntries.push(localEntry)
-            }
-          }
-
-          // Drop tombstoned entries and collapse duplicates before persisting.
-          const cleaned = deduplicateHistory([{ history: filterDeletedHistory(remoteJobDeserialized.id, allEntries) }])[0].history
-
-          const merged = {
-            ...localJob,
-            history: cleaned.sort((a, b) => new Date(a.date) - new Date(b.date)),
-            updated_at: remoteJobDeserialized.updated_at
-          }
-          await indexeddb.saveJob(merged)
-        } else {
-          // New job from another device, save it
-          await indexeddb.saveJob(jobWithHistory)
-          console.log('  ✓ Fetched job:', remoteJobDeserialized.company, '(' + deduped.length + ' history entries)')
-        }
-      }
-    }
-
-    // UPLOAD local jobs to Supabase + sync history for all jobs
-    const localJobs = await indexeddb.getAllJobs()
-    if (localJobs?.length) {
-      console.log('📤 Uploading', localJobs.length, 'local jobs to Supabase...')
-      console.log('  Sample job history:', localJobs[0]?.history?.length, 'entries in', localJobs[0]?.company)
-
-      // Check which jobs already exist in Supabase
-      const { data: existingJobs } = await supabase
-        .from('jobs')
-        .select('id')
-        .eq('user_id', stableSyncId)
-
-      const existingIds = new Set(existingJobs?.map(j => j.id) || [])
-
-      // Upload new jobs and sync history for all jobs
-      for (const job of localJobs) {
-        const historyCount = job.history?.length || 0
-
-        if (!existingIds.has(job.id)) {
-          // New job - insert and sync history
-          try {
-            const jobToSync = { ...job, history: job.history || [] }
-            await syncManager.mutate(stableSyncId, 'jobs', 'insert', jobToSync)
-            console.log('  ✓ Synced new job:', job.company, 'with', historyCount, 'history entries')
-          } catch (err) {
-            console.warn('  ✗ Failed to sync job:', job.company, err.message)
-          }
-        } else if (historyCount > 0) {
-          // Existing job - delete and re-insert to clean up corrupted data
-          try {
-            // Delete all old history for this job (cleans up any pipe-concatenated entries)
-            await supabase.from('job_history').delete().eq('job_id', job.id)
-
-            // Deduplicate history before sending to Supabase
-            const dedupedHistory = deduplicateHistory([job])[0].history
-
-            const historyEntries = dedupedHistory.map(entry => ({
-              job_id: job.id,
-              user_id: stableSyncId,
-              ...convertHistoryToSupabase(entry)
-            }))
-
-            // Re-insert all history entries (clean slate, no conflicts)
-            if (historyEntries.length > 0) {
-              await supabase.from('job_history').insert(historyEntries)
-            }
-
-            console.log('  ✓ Synced history for:', job.company, '(' + dedupedHistory.length + ' entries)')
-          } catch (err) {
-            console.warn('  ✗ Failed to sync history for:', job.company, err.message)
-          }
-        }
-      }
-    }
-
-    console.log('✓ Sync complete')
-    recordSyncTime()
-  } catch (err) {
-    console.warn('⚠ Sync failed (non-critical):', err.message)
-  } finally {
-    syncInProgress = false
-  }
-}
+// NOTE: The legacy syncLocalJobsToSupabase() full fetch+upload was retired in
+// favour of a single sync path: SyncCoordinator → pollManager.poll() (fetch+merge,
+// first poll is a full sync) + syncManager (per-mutation push + one-time
+// pushAllJobs bulk upload on coordinator init). Running both paths in parallel
+// caused the races behind the doublon / deleted-history bugs.
 
 // Main hook
 export function useJobs() {
@@ -959,18 +789,13 @@ export function useJobs() {
           console.warn(`Filtered out corrupted jobs. Before: ${cachedJobs?.length}, After: ${validJobs.length}`)
           console.warn('⚠️ IMPORTANT: Corrupted data detected. Force syncing to Supabase before clearing...')
 
-          // Force a fresh sync to Supabase before clearing any data
-          // This ensures corrupted records don't get lost permanently
+          // Back up ALL cached jobs (including corrupted ones) to Supabase before
+          // clearing, so corrupted records aren't lost permanently.
           try {
-            // Clear the sync cache to force a fresh upload
-            localStorage.removeItem(SYNC_CACHE_KEY)
-
             const syncUserId = await resolveSyncUserId().catch(() => getSyncUserIdForSupabase())
-            // Sync ALL cached jobs (including corrupted ones) to Supabase as backup
-            // even though they'll be filtered locally
             if (cachedJobs && cachedJobs.length > 0) {
               console.log('📤 Backing up', cachedJobs.length, 'jobs to Supabase before clearing...')
-              await syncLocalJobsToSupabase(syncUserId)
+              await syncManager.pushAllJobs(syncUserId, cachedJobs)
             }
           } catch (e) {
             console.warn('Failed to backup to Supabase:', e)
@@ -1030,19 +855,10 @@ export function useJobs() {
     }
     window.addEventListener('jobtrackr:datasync', handleSync)
 
-    // Resolve sync user ID (waits for Supabase lookup if needed) then sync
-    // This is critical for incognito mode where localStorage is fresh
-    resolveSyncUserId().then(syncUserId => {
-      syncLocalJobsToSupabase(syncUserId).then(() => {
-        // Reload jobs from IndexedDB after Supabase sync completes
-        loadJobs()
-      })
-    }).catch(err => {
-      console.error('Failed to resolve sync user ID:', err)
-      // Fallback: continue with sync anyway using getSyncUserIdForSupabase
-      const syncUserId = getSyncUserIdForSupabase()
-      syncLocalJobsToSupabase(syncUserId).then(() => loadJobs())
-    })
+    // Remote fetch + upload is owned entirely by the SyncCoordinator
+    // (initialized in App.jsx once the user is logged in): its first poll does a
+    // full fetch+merge and fires `jobtrackr:datasync`, which loadJobs() above
+    // reacts to. No separate sync kick-off needed here anymore.
 
     return () => window.removeEventListener('jobtrackr:datasync', handleSync)
   }, [])

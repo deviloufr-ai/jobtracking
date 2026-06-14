@@ -44,9 +44,26 @@ class SyncCoordinator {
       // Initialize IndexedDB if needed
       await indexeddb.initialized
 
-      // Start polling immediately and on interval
-      await this.doPoll()
+      // First poll = FULL fetch+merge of remote into the local cache (parity
+      // with the retired legacy syncLocalJobsToSupabase fetch half).
+      await this.doPoll({ fullSync: true })
 
+      // Then one-time bulk upload of any local-only jobs (created while the
+      // coordinator wasn't ready, imported offline, or pre-existing legacy data).
+      // This replaces the legacy upload half. Poll above already merged remote
+      // into local, so local history is the superset before we push.
+      try {
+        const localJobs = await indexeddb.getAllJobs()
+        if (localJobs?.length) {
+          await syncManager.pushAllJobs(this.userId, localJobs)
+          // Let useJobs reload the merged result.
+          window.dispatchEvent(new CustomEvent('jobtrackr:datasync', { detail: { source: 'initial-upload' } }))
+        }
+      } catch (err) {
+        console.warn('Initial bulk upload failed (non-critical):', err.message)
+      }
+
+      // Subsequent polls are incremental.
       this.pollTimer = setInterval(() => {
         this.doPoll()
       }, POLL_INTERVAL)
@@ -89,12 +106,12 @@ class SyncCoordinator {
   // Polling
   // ────────────────────────────────────────────────────────────────────────────
 
-  async doPoll() {
+  async doPoll(options = {}) {
     if (!this.userId || !this.isOnline) {
       return
     }
 
-    return pollManager.poll(this.userId)
+    return pollManager.poll(this.userId, options)
   }
 
   // Manual poll trigger
