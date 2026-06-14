@@ -446,6 +446,22 @@ export const fr = {
     profileCheckmark: 'profil ✓',
   },
 
+  // UpcomingMeetings
+  upcomingMeetings: {
+    title: 'Meetings à venir',
+    today: "Aujourd'hui",
+    tomorrow: 'Demain',
+  },
+
+  // Goals
+  goals: {
+    title: 'Objectifs',
+    applicationsPerWeek: 'Candidatures / semaine',
+    responseRate: 'Taux de réponse',
+    interviewsPerMonth: 'Entretiens / mois',
+    thisWeek: 'cette semaine',
+  },
+
   // Common
   common: {
     notes: 'Notes',

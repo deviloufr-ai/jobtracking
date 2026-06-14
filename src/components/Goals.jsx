@@ -14,7 +14,7 @@ function ProgressBar({ value, max, color = 'bg-indigo-500' }) {
   )
 }
 
-export default function Goals({ jobs }) {
+export default function Goals({ jobs, t = (key) => key }) {
   const { settings, updateSettings } = useSettings()
   const goals = { weeklyApps: settings.weeklyApps, responseRate: settings.responseRate, monthlyInterviews: settings.monthlyInterviews }
   const [editing, setEditing] = useState(false)
@@ -56,16 +56,16 @@ export default function Goals({ jobs }) {
 
   const items = [
     {
-      label: 'Candidatures / semaine',
+      label: t('goals.applicationsPerWeek'),
       value: stats.weeklyApps,
       target: goals.weeklyApps,
-      unit: 'cette semaine',
+      unit: t('goals.thisWeek'),
       color: 'bg-indigo-500',
       icon: '📨',
       key: 'weeklyApps',
     },
     {
-      label: 'Taux de réponse',
+      label: t('goals.responseRate'),
       value: stats.responseRate,
       target: goals.responseRate,
       unit: '% actuel',
@@ -75,7 +75,7 @@ export default function Goals({ jobs }) {
       isPercent: true,
     },
     {
-      label: 'Entretiens / mois',
+      label: t('goals.interviewsPerMonth'),
       value: stats.monthlyInterviews,
       target: goals.monthlyInterviews,
       unit: 'ce mois',
@@ -89,7 +89,7 @@ export default function Goals({ jobs }) {
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-4">
       <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-2">
         <span className="text-base">🏆</span>
-        <h3 className="text-sm font-semibold text-gray-800">Objectifs</h3>
+        <h3 className="text-sm font-semibold text-gray-800">{t('goals.title')}</h3>
         <button
           onClick={() => { setDraft(goals); setEditing(v => !v) }}
           className="ml-auto text-xs text-gray-400 hover:text-indigo-500 transition-colors"

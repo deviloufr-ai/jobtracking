@@ -34,8 +34,8 @@ function formatDate(dateStr) {
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate()
 
-  if (isSameDay(d, now)) return { label: "Aujourd'hui", urgent: true }
-  if (isSameDay(d, tomorrow)) return { label: 'Demain', urgent: true }
+  if (isSameDay(d, now)) return { label: 'today', urgent: true }
+  if (isSameDay(d, tomorrow)) return { label: 'tomorrow', urgent: true }
   if (d <= in7) return {
     label: d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' }),
     urgent: false,
@@ -55,7 +55,7 @@ function getMeetingPlatform(url = '') {
   return { name: 'Visio', emoji: '📹' }
 }
 
-export default function UpcomingMeetings({ jobs }) {
+export default function UpcomingMeetings({ jobs, t = (key) => key }) {
   const meetings = useMemo(() => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -112,7 +112,7 @@ export default function UpcomingMeetings({ jobs }) {
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-2">
         <span className="text-base">📅</span>
-        <h3 className="text-sm font-semibold text-gray-800">Meetings à venir</h3>
+        <h3 className="text-sm font-semibold text-gray-800">{t('upcomingMeetings.title')}</h3>
         <span className="ml-auto text-xs bg-indigo-100 text-indigo-600 font-medium px-2 py-0.5 rounded-full">
           {meetings.length}
         </span>
@@ -147,7 +147,7 @@ export default function UpcomingMeetings({ jobs }) {
                 {state === 'imminent' && <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />}
                 {state !== 'imminent' && state !== 'done' && urgent && <span>⚡</span>}
                 {state === 'done' && <span>✓</span>}
-                <span>{label}</span>
+                <span>{label === 'today' ? t('upcomingMeetings.today') : label === 'tomorrow' ? t('upcomingMeetings.tomorrow') : label}</span>
                 {time && <span className="font-normal opacity-80">{time}</span>}
               </div>
 

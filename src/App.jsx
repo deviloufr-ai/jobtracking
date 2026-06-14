@@ -964,8 +964,8 @@ export default function App() {
         {/* Right sidebar — meetings à venir (top-aligned with stats) */}
         <div className="w-80 flex-shrink-0 hidden xl:block">
           <div className="sticky top-24">
-            <UpcomingMeetings jobs={jobs} />
-            <Goals jobs={jobs} />
+            <UpcomingMeetings jobs={jobs} t={t} />
+            <Goals jobs={jobs} t={t} />
           </div>
         </div>
         </div>{/* end flex row */}
