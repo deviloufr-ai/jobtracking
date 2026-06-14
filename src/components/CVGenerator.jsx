@@ -486,8 +486,8 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
     }
     try {
       const res  = await fetch('/api/fetch-jd', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({url:job.url}) })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
       setJdText(data.text); setStep('ready_to_generate')
     } catch(e) { setJdError(e.message); setStep('manual_jd') }
   }
@@ -501,8 +501,8 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
         setGeneratedCV(mock); setEditableCV(mock); setStep('preview'); return
       }
       const res  = await fetch('/api/generate-cv', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({cvText:cv.text,jobDescription:jdText,company:job.company,position:job.position,language:selectedLanguage}) })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
       setGeneratedCV(data.cv); setEditableCV(data.cv); setStep('preview')
     } catch(e) { setJdError(e.message); setStep('ready_to_generate') }
   }
