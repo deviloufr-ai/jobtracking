@@ -888,33 +888,15 @@ export function useJobs() {
         // Ensure all loaded jobs have sorted history
         let sortedJobs = validJobs.map(job => sortJobHistory(job))
 
-        // CRITICAL: Filter out deleted history entries on initial load
-        // Otherwise deleted entries reappear when the app refreshes
-        const deletedEntries = JSON.parse(localStorage.getItem(DELETED_HISTORY_ENTRIES_KEY) || '[]')
-        const deletedSet = new Set(deletedEntries)
-
-        if (deletedEntries.length > 0) {
-          console.log('🗑️ Loaded deleted entries:', deletedEntries.length, 'entries')
-        }
-
+        // Deduplicate semantic duplicates (same date + status + similar notes)
         sortedJobs = sortedJobs.map(job => {
-          if (!job.history || job.history.length === 0) return job
+          if (!job.history || job.history.length <= 1) return job
 
-          const originalCount = job.history.length
-          const filtered = job.history.filter(entry => {
-            const key = `${job.id}||${entry.date}||${entry.status}||${entry.note || ''}`
-            const isDeleted = deletedSet.has(key)
-            if (isDeleted) {
-              console.log(`  ✓ Filtered deleted entry from ${job.company}: ${entry.date} ${entry.status}`)
-            }
-            return !isDeleted
-          })
-
-          if (filtered.length < originalCount) {
-            console.log(`  📊 ${job.company}: ${originalCount} → ${filtered.length} entries (removed ${originalCount - filtered.length})`)
+          const deduped = deduplicateHistory([job])[0].history
+          if (deduped.length < job.history.length) {
+            console.log(`📊 Deduped ${job.company}: ${job.history.length} → ${deduped.length} entries`)
           }
-
-          return { ...job, history: filtered }
+          return { ...job, history: deduped }
         })
 
         setJobs(sortedJobs)

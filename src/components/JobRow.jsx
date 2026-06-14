@@ -244,30 +244,6 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
   const handleDeleteStep = (displayIdx) => {
     // Fix #18 — confirmation is now handled inline (two-step UI), no window.confirm
     const idx = toOriginalIdx(displayIdx)
-    const deletedEntry = history[idx]
-
-    // Mark deleted entry with FULL note to avoid re-import from Supabase
-    // Use full note + date + status for unique identification
-    if (deletedEntry && window.localStorage) {
-      const deletedKey = 'jobtrackr_deleted_history_entries'
-      const deleted = JSON.parse(localStorage.getItem(deletedKey) || '[]')
-      const key = `${job.id}||${deletedEntry.date}||${deletedEntry.status}||${deletedEntry.note || ''}`
-
-      console.log(`🗑️ Marking deleted: ${job.company} - ${deletedEntry.date} ${deletedEntry.status}`)
-      console.log(`   Key: ${key}`)
-
-      if (!deleted.includes(key)) {
-        deleted.push(key)
-        if (deleted.length > 1000) deleted.splice(0, 100)
-        localStorage.setItem(deletedKey, JSON.stringify(deleted))
-        console.log(`   ✓ Saved to localStorage (total: ${deleted.length} deleted entries)`)
-      } else {
-        console.log(`   ⚠ Already marked as deleted`)
-      }
-    } else {
-      console.log(`⚠ Could not mark deleted - deletedEntry: ${!!deletedEntry}, localStorage: ${!!window.localStorage}`)
-    }
-
     const updated = history.filter((_, i) => i !== idx)
     onUpdateHistory(job.id, updated)
     setConfirmDeleteIdx(null)
