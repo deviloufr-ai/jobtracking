@@ -891,8 +891,7 @@ export default function App() {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-yellow-100 bg-yellow-50/60">
-                          <th className="py-3 px-4"></th>
-                          <ThHeader col="company" label={t('table.company')} />
+                          <th onClick={() => handleSort('company')} className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-indigo-600 select-none">{t('table.company')}<SortIcon col="company" sort={sort} /></th>
                           <ThHeader col="status" label={t('table.status')} />
                           <ThHeader col="date" label={t('table.date')} />
                           <th className="hidden md:table-cell py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('table.notes')}</th>
@@ -918,8 +917,7 @@ export default function App() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-gray-100 bg-gray-50/60">
-                        <th className="py-3 px-4"></th>
-                        <ThHeader col="company" label={t('table.company')} />
+                        <th onClick={() => handleSort('company')} className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-indigo-600 select-none">{t('table.company')}<SortIcon col="company" sort={sort} /></th>
                         <ThHeader col="status" label={t('table.status')} />
                         <ThHeader col="date" label={t('table.date')} />
                         <th className="hidden md:table-cell py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('table.notes')}</th>
