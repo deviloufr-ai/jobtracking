@@ -11,6 +11,33 @@ const escapeHtml = s => (s || '')
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&#39;')
 
+// Format phone number: remove extra spaces
+const cleanPhone = (phone) => {
+  if (!phone) return ''
+  return phone.replace(/\s+/g, ' ').trim()
+}
+
+// Format LinkedIn URL: ensure it's a full URL
+const cleanLinkedIn = (url) => {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  if (url.startsWith('linkedin.com')) return 'https://' + url
+  return 'https://linkedin.com/in/' + url.replace(/^.*\//, '')
+}
+
+// Format email: ensure it's clean
+const cleanEmail = (email) => {
+  if (!email) return ''
+  return email.toLowerCase().trim()
+}
+
+// Format date range: standardize to consistent format (Month YYYY – Month YYYY)
+const formatDateRange = (dateStr) => {
+  if (!dateStr) return ''
+  // Replace various dashes with en-dash
+  return dateStr.replace(/[-–—]/g, '–').replace(/\s+/g, ' ').trim()
+}
+
 // ── Inline markdown formatter ──────────────────────────────────────────────────
 const fmt = t => escapeHtml(t || '')
   .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -42,7 +69,25 @@ function parseCV(raw) {
     }
   }
   if (cur) sections.push(cur)
-  return { name, contact: contact.join(' · '), sections }
+
+  // Clean up contact info
+  const cleanedContact = contact.map(line => {
+    // Clean phone numbers
+    if (line.match(/\+\d+[\d\s]+\d+/)) {
+      return cleanPhone(line)
+    }
+    // Clean LinkedIn URLs
+    if (line.toLowerCase().includes('linkedin')) {
+      return cleanLinkedIn(line)
+    }
+    // Clean emails
+    if (line.includes('@')) {
+      return cleanEmail(line)
+    }
+    return line
+  })
+
+  return { name, contact: cleanedContact.join(' · '), sections }
 }
 
 // ── Profile picture HTML snippet ───────────────────────────────────────────────
@@ -100,7 +145,7 @@ function expBlock(block, styles) {
   const metaRow = (company || dates) ? `
     <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:1px 0 2px;flex-wrap:wrap">
       ${company ? `<span style="${styles.company}">${fmt(company)}</span>` : '<span></span>'}
-      ${dates   ? `<span style="${styles.dates}">${fmt(dates)}</span>` : ''}
+      ${dates   ? `<span style="${styles.dates}">${fmt(formatDateRange(dates))}</span>` : ''}
     </div>` : ''
 
   return `
