@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { searchJobs, getSavedAPI, setActiveAPI, getAvailableAPIs, getAPIName } from '../services/jobSearch'
 import { FRENCH_LOCATIONS, getLocationsByQuery, getLocationLabel } from '../services/adzunaLocations'
-import { ROME_CODES, searchRomeCodes } from '../services/romeCodesRef'
+import { ROME_CODES, searchRomeCodes, detectRomeCode } from '../services/romeCodesRef'
 
 const CONTRACT_LABELS = {
   permanent: 'CDI',
@@ -52,8 +52,18 @@ export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) 
   }
 
   const handleSearch = useCallback(async (p = 1, q = query, loc = location, rome = romeCode) => {
-    const searchQuery = rome || q.trim()
+    let searchQuery = rome || q.trim()
     if (!searchQuery) return
+
+    // Auto-detect ROME code if not already set
+    if (!rome && q.trim()) {
+      const detectedRome = detectRomeCode(q)
+      if (detectedRome) {
+        searchQuery = detectedRome
+        setRomeCode(detectedRome)
+      }
+    }
+
     setLoading(true)
     setError(null)
     setPage(p)
