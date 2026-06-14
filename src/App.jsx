@@ -280,7 +280,7 @@ export default function App() {
   const { refreshing, lastRefresh, doRefresh } = useAutoRefresh(jobs, addJobWithNotif, updateJobWithNotif, (msg, duration) => {
     showToast(msg, duration)
   }, reprocessJobs, settings)
-  useExtensionImport(addJobWithNotif, showToast)
+  useExtensionImport(addJobWithNotif, showToast, findDuplicateInList)
 
   // Re-evaluate jobs when archive settings change
   useEffect(() => {

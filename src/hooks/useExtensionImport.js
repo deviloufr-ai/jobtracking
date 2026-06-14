@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 
-export function useExtensionImport(addJob, showToast) {
+export function useExtensionImport(addJob, showToast, findDuplicate) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('add') !== '1') return
@@ -46,6 +46,18 @@ export function useExtensionImport(addJob, showToast) {
     }
 
     function createJob(jobDescription) {
+      // Skip if this posting is already tracked — the extension import path
+      // bypasses the Add-modal's duplicate check, so without this the same
+      // posting imported twice would create a doublon.
+      if (findDuplicate) {
+        const existing = findDuplicate(company, position)
+        if (existing) {
+          if (showToast) showToast(`ℹ️ ${company} est déjà dans JobTrackr`)
+          window.history.replaceState({}, '', window.location.pathname)
+          return
+        }
+      }
+
       const job = {
         company,
         position,

@@ -27,6 +27,23 @@ export function useCVs() {
   useEffect(() => {
     if (!loading) {
       Promise.all(cvs.map(cv => indexeddb.saveCV(cv))).catch(err => console.error('Failed to save CVs:', err))
+      // Mirror the most-recent CV into localStorage so the Firefox extension's
+      // sync.js (which can only read localStorage synchronously) can pick it up.
+      // CVs themselves live in IndexedDB; this is a lightweight read-only copy.
+      try {
+        if (cvs.length > 0) {
+          const base = [...cvs].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
+          localStorage.setItem('jobtrackr_base_cv', JSON.stringify({
+            name: base.name || null,
+            text: base.text || '',
+            createdAt: base.createdAt || null,
+          }))
+        } else {
+          localStorage.removeItem('jobtrackr_base_cv')
+        }
+      } catch (e) {
+        // localStorage quota or serialization issue — non-critical
+      }
     }
   }, [cvs, loading])
 
