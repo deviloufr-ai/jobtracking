@@ -1,3 +1,4 @@
+import { Analytics } from '@vercel/analytics/react'
 import { useMigration } from './hooks/useMigration'
 import { usePolling } from './hooks/usePolling'
 import { MigrationDialog } from './components/MigrationDialog'
@@ -20,6 +21,7 @@ export default function Root() {
         error={migration.error}
       />
       <App />
+      <Analytics />
     </>
   )
 }
