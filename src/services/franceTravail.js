@@ -1,9 +1,17 @@
 // France Travail API - Official French government job board with OAuth2
 // https://www.francetravail.io/
 
+import { romeCodeToKeyword } from './romeCodesRef'
+
 export async function searchJobs({ query = '', location = 'france', page = 1, resultsPerPage = 20 }) {
+  // Convert ROME code to keyword if query is a ROME code (4-char code like M1402)
+  let searchQuery = query
+  if (/^[A-Z]\d{3}$/.test(query)) {
+    searchQuery = romeCodeToKeyword(query)
+  }
+
   const params = new URLSearchParams({
-    query,
+    query: searchQuery,
     location,
     page,
     per_page: resultsPerPage,

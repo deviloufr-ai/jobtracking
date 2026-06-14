@@ -87,3 +87,11 @@ export function getRomeLabel(code) {
   const rome = ROME_CODES.find(r => r.code === code)
   return rome ? rome.label : code
 }
+
+// Convert ROME code back to primary keyword for API search
+export function romeCodeToKeyword(code) {
+  const rome = ROME_CODES.find(r => r.code === code)
+  if (!rome) return code // Return code if not found
+  // Return the first keyword (primary search term)
+  return rome.keywords[0] || rome.label
+}
