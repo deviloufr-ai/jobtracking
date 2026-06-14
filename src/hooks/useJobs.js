@@ -561,6 +561,136 @@ export function deduplicateHistory(jobs) {
   })
 }
 
+// ─── Same-day topic consolidation ─────────────────────────────────────────────
+// deduplicateHistory only merges entries that share the SAME date AND status.
+// This collapses entries on the SAME DATE that describe the SAME TOPIC even when
+// their status or sender differs (e.g. several emails about the "test technique"
+// or a back-and-forth about "négociation salariale" on one day). Calendar/meeting
+// entries are never merged. Topic similarity uses 5-char stem prefixes of
+// significant words so morphological variants (salaire/salarial/salariale) still
+// cluster. Idempotent: re-running on already-merged history is stable.
+const TOPIC_STOPWORDS = new Set([
+  'pour', 'avec', 'dans', 'vous', 'nous', 'votre', 'notre', 'cette', 'etre',
+  'sont', 'elle', 'plus', 'tout', 'tous', 'mais', 'donc', 'cela', 'leur', 'sans',
+  'this', 'that', 'with', 'your', 'have', 'from', 'will', 'would', 'about',
+  'offre', 'poste', 'email', 'mail', 'recu', 'recue',
+])
+
+function topicStems(note = '') {
+  const stems = new Set()
+  for (const w of normalizeForComparison(note)) {
+    if (TOPIC_STOPWORDS.has(w)) continue
+    stems.add(w.slice(0, 5))
+  }
+  return stems
+}
+
+function sharedStemCount(a, b) {
+  let n = 0
+  for (const s of a) if (b.has(s)) n++
+  return n
+}
+
+// Join notes into one ' · '-separated string with no duplicate/nested parts.
+// Splits on existing ' · ' / ' | ' separators first so re-merging stays idempotent.
+function combineTopicNotes(notes) {
+  const parts = []
+  const seen = new Set()
+  for (const note of notes) {
+    for (const raw of (note || '').split(/ · | \| /)) {
+      const part = raw.trim()
+      const norm = part.toLowerCase()
+      if (part && !seen.has(norm)) { seen.add(norm); parts.push(part) }
+    }
+  }
+  return parts.join(' · ')
+}
+
+const TOPIC_STATUS_ORDER = ['todo', 'sent', 'reviewing', 'interview', 'waiting', 'done', 'offer', 'rejected', 'rejected_ats', 'cancelled', 'archived']
+
+function mergeTopicGroup(group) {
+  // Representative = entry carrying the most metadata, then the longest note.
+  const score = e => (e.body ? 2 : 0) + (e.from ? 1 : 0) + (e.note || '').length / 1000
+  const rep = group.reduce((a, b) => (score(b) > score(a) ? b : a))
+  const note = combineTopicNotes(group.map(e => e.note))
+
+  // Status = the most frequent status in the group (the dominant stage),
+  // tie-broken by the most advanced status. Per-entry status is cosmetic
+  // (timeline dot) and does not change the job's top-level status.
+  const counts = new Map()
+  for (const e of group) counts.set(e.status, (counts.get(e.status) || 0) + 1)
+  let status = group[0].status, bestN = -1
+  for (const [s, n] of counts) {
+    if (n > bestN || (n === bestN && TOPIC_STATUS_ORDER.indexOf(s) > TOPIC_STATUS_ORDER.indexOf(status))) {
+      status = s; bestN = n
+    }
+  }
+
+  const ids = new Set()
+  for (const e of group) {
+    if (e.gmailId) ids.add(e.gmailId)
+    for (const id of e.gmailIds || []) ids.add(id)
+  }
+  const merged = { ...rep, note, status }
+  if (ids.size > 1) merged.gmailIds = [...ids]
+  else if (ids.size === 1) { merged.gmailId = [...ids][0]; delete merged.gmailIds }
+  return merged
+}
+
+export function mergeHistoryBySameDayTopic(history) {
+  if (!Array.isArray(history) || history.length <= 1) return history
+  const isMeeting = h => h.meetingLink || h.source === 'calendar' || (h.note || '').includes('📅')
+
+  const byDate = new Map()
+  for (const e of history) {
+    const d = e.date || 'unknown'
+    if (!byDate.has(d)) byDate.set(d, [])
+    byDate.get(d).push(e)
+  }
+
+  const out = []
+  for (const [, entries] of byDate) {
+    // Meetings are always preserved untouched.
+    const meetings = entries.filter(isMeeting)
+    const regular = entries.filter(e => !isMeeting(e))
+    out.push(...meetings)
+
+    if (regular.length <= 1) { out.push(...regular); continue }
+
+    // Transitively cluster entries that share >= 2 topic stems.
+    const stems = regular.map(e => topicStems(e.note))
+    const cluster = new Array(regular.length).fill(-1)
+    let next = 0
+    for (let i = 0; i < regular.length; i++) {
+      if (cluster[i] !== -1) continue
+      cluster[i] = next
+      let grew = true
+      while (grew) {
+        grew = false
+        for (let j = 0; j < regular.length; j++) {
+          if (cluster[j] !== -1) continue
+          for (let k = 0; k < regular.length; k++) {
+            if (cluster[k] !== next) continue
+            if (sharedStemCount(stems[j], stems[k]) >= 2) { cluster[j] = next; grew = true; break }
+          }
+        }
+      }
+      next++
+    }
+
+    const groups = new Map()
+    regular.forEach((e, i) => {
+      if (!groups.has(cluster[i])) groups.set(cluster[i], [])
+      groups.get(cluster[i]).push(e)
+    })
+    for (const [, group] of groups) {
+      out.push(group.length === 1 ? group[0] : mergeTopicGroup(group))
+    }
+  }
+
+  return out.sort((a, b) => new Date(a.date) - new Date(b.date))
+}
+
 function revalidateArchives(jobs) {
   const settings = loadSettings()
   return jobs.map(j => {
@@ -862,6 +992,36 @@ export function useJobs() {
 
     return () => window.removeEventListener('jobtrackr:datasync', handleSync)
   }, [])
+
+  // One-time cleanup: consolidate same-day same-topic history entries on already
+  // stored jobs and re-sync the merged result to Supabase. Guarded by a version
+  // flag so it runs once. Future refreshes keep history clean via useAutoRefresh.
+  useEffect(() => {
+    if (loading || rawJobs.length === 0) return
+    const FLAG = 'jobtrackr_topic_merge_v1'
+    if (localStorage.getItem(FLAG)) return
+    localStorage.setItem(FLAG, '1')
+
+    const coordinator = getSyncCoordinator()
+    const merged = []
+    for (const job of rawJobs) {
+      if (!job.history || job.history.length <= 1) continue
+      const newHistory = mergeHistoryBySameDayTopic(job.history)
+      if (newHistory.length >= job.history.length) continue
+      const updated = { ...job, history: newHistory, updated_at: new Date().toISOString() }
+      merged.push(updated)
+      indexeddb.saveJob(updated).catch(err => console.warn('topic-merge local save failed:', err))
+      if (coordinator) {
+        coordinator.mutate('jobs', 'update', updated, { syncHistory: true })
+          .catch(err => console.error('topic-merge re-sync failed:', err))
+      }
+    }
+    if (merged.length > 0) {
+      const byId = new Map(merged.map(j => [j.id, j]))
+      setJobs(prev => prev.map(j => byId.get(j.id) || j))
+      console.log(`🧹 Topic-merge cleanup: consolidated history for ${merged.length} job(s)`)
+    }
+  }, [loading, rawJobs])
 
   // Apply processing pipeline: dedup jobs first, then history, then archive validation
   const jobs = useMemo(() => {

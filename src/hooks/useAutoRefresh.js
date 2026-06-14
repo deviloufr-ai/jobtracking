@@ -3,7 +3,7 @@ import { isConnected, fetchJobEmails, fetchJobEmailsForAccount, getConnectedAcco
 import { parseEmailsForJobs, validateAndCleanJobs } from '../services/claude'
 import { fetchCalendarEvents } from '../services/calendar'
 import { extractJobUrlsFromEmail, rankUrlsByJobRelevance } from '../services/positionChecker'
-import { isAtsRejection, isDeletedJob } from './useJobs'
+import { isAtsRejection, isDeletedJob, mergeHistoryBySameDayTopic } from './useJobs'
 import { normalize, isJobBoard } from '../constants/jobBoards'
 import { isGenericPosition as isGenericPos } from '../constants/positions'
 
@@ -291,7 +291,7 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
     const newCalEntries = calEntries.filter(e => !existingKeys.has(`${e.date}-${e.status}`))
     const merged = [...history, ...newCalEntries].sort((a, b) => new Date(a.date) - new Date(b.date))
     const deduplicated = deduplicateHistoryBySemantics(merged)
-    const mergedHistory = autoCompletePastMeetings(deduplicated)
+    const mergedHistory = mergeHistoryBySameDayTopic(autoCompletePastMeetings(deduplicated))
 
     const latest = sorted[sorted.length - 1]
     // Pick best position: prefer non-generic over "Unknown"
@@ -508,7 +508,7 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
               const merged = [...(firstJobData.history || []), ...newEntries]
                 .sort((a, b) => new Date(a.date) - new Date(b.date))
               const deduplicated = deduplicateHistoryBySemantics(merged)
-              const mergedHistory = autoCompletePastMeetings(deduplicated)
+              const mergedHistory = mergeHistoryBySameDayTopic(autoCompletePastMeetings(deduplicated))
 
               // Merge position links from this duplicate too
               const allLinks = [...new Set([...(firstJobData.positionLinks || []), ...(p.positionLinks || [])])]
@@ -542,7 +542,7 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
             const merged = [...(existing.history || []), ...newEntries]
               .sort((a, b) => new Date(a.date) - new Date(b.date))
             const deduplicated = deduplicateHistoryBySemantics(merged)
-            const mergedHistory = autoCompletePastMeetings(deduplicated)
+            const mergedHistory = mergeHistoryBySameDayTopic(autoCompletePastMeetings(deduplicated))
             // Upgrade status if new emails show a higher-priority status.
             const pIdx = STATUS_ORDER.indexOf(p.status)
             const exIdx = STATUS_ORDER.indexOf(existing.status)
