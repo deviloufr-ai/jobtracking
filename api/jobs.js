@@ -66,30 +66,40 @@ async function getFranceTravailToken() {
   const CLIENT_SECRET = process.env.FRANCE_TRAVAIL_SECRET
 
   if (!CLIENT_ID || !CLIENT_SECRET) {
-    throw new Error('France Travail credentials not configured')
+    throw new Error('France Travail credentials not configured: CLIENT_ID=' + !!CLIENT_ID + ', CLIENT_SECRET=' + !!CLIENT_SECRET)
   }
 
-  const response = await fetch('https://entreprise.francetravail.fr/connexion/oauth2/access_token?realm=partenaire', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      scope: 'o2dsoffre api_offresdemploiv2',
+  try {
+    const response = await fetch('https://entreprise.francetravail.fr/connexion/oauth2/access_token?realm=partenaire', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
+        scope: 'o2dsoffre api_offresdemploiv2',
+      })
     })
-  })
 
-  if (!response.ok) {
-    throw new Error(`OAuth token error: ${response.status}`)
+    const text = await response.text()
+
+    if (!response.ok) {
+      throw new Error(`OAuth error ${response.status}: ${text.slice(0, 200)}`)
+    }
+
+    if (!text) {
+      throw new Error('OAuth response is empty')
+    }
+
+    const data = JSON.parse(text)
+    cachedToken = data.access_token
+    tokenExpiry = Date.now() + (data.expires_in * 1000) - 60000
+    return cachedToken
+  } catch (e) {
+    throw new Error(`OAuth failed: ${e.message}`)
   }
-
-  const data = await response.json()
-  cachedToken = data.access_token
-  tokenExpiry = Date.now() + (data.expires_in * 1000) - 60000 // Refresh 1 min before expiry
-  return cachedToken
 }
 
 export default async function handler(req, res) {
