@@ -394,6 +394,7 @@ export default function LandingPage({ onLogin }) {
           <div className="eyebrow">Copilote IA pour la recherche d'emploi</div>
           <h1>Gérez 50 candidatures en parallèle sans y passer vos soirées.</h1>
           <p className="lede">JobTrackerAI synchronise vos emails, détecte les statuts, priorise vos relances et prépare vos entretiens — pour que vous gardiez le contrôle sur 15 à 50 candidatures en parallèle, sans y passer vos soirées.</p>
+          <p style={{ marginTop: '12px', fontSize: '14px', color: '#7b7bf7' }}>💡 Vous aurez besoin d'une clé API Anthropic (gratuite) pour les fonctionnalités IA.</p>
           <div className="ctas">
             <button className="btn btn-primary" onClick={onLogin}>
               Se connecter avec Google

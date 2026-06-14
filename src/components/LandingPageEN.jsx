@@ -394,6 +394,7 @@ export default function LandingPageEN({ onLogin }) {
           <div className="eyebrow">AI copilot for job search</div>
           <h1>Manage 50 applications in parallel without burning out.</h1>
           <p className="lede">JobTrackerAI syncs your emails, detects statuses, prioritizes follow-ups, and prepares your interviews — so you stay in control of 15-50 applications at once, without sacrificing your evenings.</p>
+          <p style={{ marginTop: '12px', fontSize: '14px', color: '#7b7bf7' }}>💡 You'll need an Anthropic API key (free) to use AI features.</p>
           <div className="ctas">
             <button className="btn btn-primary" onClick={onLogin}>
               Sign in with Google
