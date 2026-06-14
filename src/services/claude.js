@@ -619,6 +619,13 @@ TÂCHES À EFFECTUER :
    - Profil consulté (pas candidature) → SUPPRIMER
    - Confidence 0 → SUPPRIMER
 
+   ⚠️ NE JAMAIS SUPPRIMER un accusé de réception de candidature :
+   "thank you for applying", "thanks for applying", "application received",
+   "we received your application", "merci de votre candidature",
+   "nous avons bien reçu votre candidature", "your application has been received".
+   Ces emails = statut "reviewing" VALIDE (la candidature progresse) → CONSERVER.
+   Ils ne sont PAS des newsletters ni des emails transactionnels purs.
+
 ═════════════════════════════════════════════════════════════════
 
 JOBS À TRAITER :

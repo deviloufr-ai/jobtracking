@@ -14,6 +14,7 @@ const PROFILE_DEFAULTS = {
   name: '',
   title: '',
   email: '',
+  phone: '',
   linkedin: '',
   website: '',
   experience: '',
@@ -466,6 +467,9 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                   </Row>
                   <Row label="Email" hint="Adresse de contact">
                     <TextInput value={profile.email} onChange={v => updateProfile('email', v)} placeholder="devilalex@example.com" />
+                  </Row>
+                  <Row label="Téléphone" hint="Utilisé par l'autofill de l'extension">
+                    <TextInput value={profile.phone} onChange={v => updateProfile('phone', v)} placeholder="+33 6 12 34 56 78" />
                   </Row>
                   <Row label="LinkedIn" hint="Profil LinkedIn">
                     <TextInput value={profile.linkedin} onChange={v => updateProfile('linkedin', v)} placeholder="https://linkedin.com/in/devilalex" />
