@@ -91,7 +91,7 @@ const STATUS_PRIORITY = {
 // Import all the deduplication/processing functions from original useJobs
 // (These are pure functions, no changes needed)
 export function deduplicateJobs(jobs) {
-  const normPos = p => (p || '').toLowerCase().trim().replace(/\s*[hf]\/[hf]\s*/gi, '').trim()
+  const normPos = p => (p || '').toLowerCase().trim().replace(/\s*\(?[hf]\/[hf]\)?\s*/gi, '').trim()
   const isGenericPos = p => GENERIC_POSITIONS_SET.has(normPos(p))
 
   const groups = new Map()
