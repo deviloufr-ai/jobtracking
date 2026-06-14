@@ -52,17 +52,25 @@ export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) 
   }
 
   const handleSearch = useCallback(async (p = 1, q = query, loc = location, rome = romeCode) => {
-    let searchQuery = rome || q.trim()
-    if (!searchQuery) return
+    // Always auto-detect ROME code from query (unless explicitly provided via ROME input field)
+    let searchQuery = q.trim()
+    let detectedRome = null
 
-    // Auto-detect ROME code if not already set
-    if (!rome && q.trim()) {
-      const detectedRome = detectRomeCode(q)
+    if (searchQuery) {
+      detectedRome = detectRomeCode(searchQuery)
       if (detectedRome) {
         searchQuery = detectedRome
         setRomeCode(detectedRome)
+      } else if (rome) {
+        // If detection failed but user manually set a ROME code, use that
+        searchQuery = rome
       }
+    } else if (rome) {
+      // If no query but ROME code is set, use ROME code
+      searchQuery = rome
     }
+
+    if (!searchQuery) return
 
     setLoading(true)
     setError(null)
