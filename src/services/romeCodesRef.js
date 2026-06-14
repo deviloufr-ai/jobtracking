@@ -51,14 +51,26 @@ export function detectRomeCode(query) {
   const codeMatch = ROME_CODES.find(r => r.code.toLowerCase() === q)
   if (codeMatch) return codeMatch.code
 
-  // Keyword match
+  // Find matches with their best matching keyword length
+  let bestMatch = null
+  let bestMatchLength = 0
+
   for (const rome of ROME_CODES) {
-    if (rome.keywords.some(kw => q.includes(kw) || kw.includes(q))) {
-      return rome.code
+    for (const kw of rome.keywords) {
+      // Exact keyword match - highest priority
+      if (kw === q) {
+        return rome.code
+      }
+
+      // Query contains keyword or keyword contains query
+      if ((q.includes(kw) || kw.includes(q)) && kw.length > bestMatchLength) {
+        bestMatch = rome.code
+        bestMatchLength = kw.length
+      }
     }
   }
 
-  return null
+  return bestMatch
 }
 
 export function searchRomeCodes(query) {
