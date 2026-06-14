@@ -54,5 +54,14 @@ export function useCVs() {
     }
   }
 
-  return { cvs, addCV, deleteCV, renameCV, loading }
+  const updateCV = (id, updates) => {
+    setCVs(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c))
+    const cv = cvs.find(c => c.id === id)
+    if (cv) {
+      const updated = { ...cv, ...updates }
+      syncManager.mutate('cvs', 'update', updated).catch(err => console.error('Failed to sync CV update:', err))
+    }
+  }
+
+  return { cvs, addCV, deleteCV, renameCV, updateCV, loading }
 }

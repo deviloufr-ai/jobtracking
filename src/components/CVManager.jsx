@@ -12,7 +12,7 @@ function loadProfile() {
 }
 
 export default function CVManager({ jobs, preselectedJob, onUpdateJob, t = (key) => key }) {
-  const { cvs, addCV, deleteCV, renameCV } = useCVs()
+  const { cvs, addCV, deleteCV, renameCV, updateCV } = useCVs()
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
   const [generatorState, setGeneratorState] = useState(null)
@@ -52,9 +52,7 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob, t = (key)
 
   function handleSaveEdit() {
     if (!editingCvId) return
-    const cv = cvs.find(c => c.id === editingCvId)
-    if (!cv) return
-    addCV({ ...cv, text: editingText })
+    updateCV(editingCvId, { text: editingText })
     setEditingCvId(null)
     setEditingText('')
   }
