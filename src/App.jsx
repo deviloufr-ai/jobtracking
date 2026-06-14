@@ -36,6 +36,7 @@ import NotificationPermissionBanner from './components/NotificationPermissionBan
 import { useNotificationPermission } from './hooks/useNotificationPermission'
 import { useNotificationScenarios } from './hooks/useNotificationScenarios'
 import LandingPage from './components/LandingPage'
+import LandingPageEN from './components/LandingPageEN'
 
 const DEFAULT_FILTERS = { search: '', statuses: {}, period: 'all' }
 const DEFAULT_SORT = { col: 'date', dir: 'desc' }
@@ -496,10 +497,12 @@ export default function App() {
 
   // Show landing page if no user
   if (showLandingPage) {
+    const isEnglish = navigator.language.startsWith('en')
+    const LandingComponent = isEnglish ? LandingPageEN : LandingPage
     return (
       <ErrorBoundary>
         {!showGmail ? (
-          <LandingPage onLogin={() => setShowGmail(true)} />
+          <LandingComponent onLogin={() => setShowGmail(true)} />
         ) : (
           <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={() => { setShowGmail(false); const connected = isConnected(); setGmailConnected(connected); setGmailUser(connected ? getCachedUser() : null) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u) }} existingJobs={jobs} t={t} />
         )}

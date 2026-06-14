@@ -1,4 +1,4 @@
-export default function LandingPage({ onLogin }) {
+export default function LandingPageEN({ onLogin }) {
   return (
     <div style={{
       background: '#0c0f16',
@@ -385,48 +385,48 @@ export default function LandingPage({ onLogin }) {
             JobTrackr
           </div>
           <button onClick={onLogin} className="btn btn-primary">
-            Se connecter avec Google
+            Sign in with Google
           </button>
         </div>
 
         {/* HERO */}
         <section className="hero">
-          <div className="eyebrow">Copilote IA pour la recherche d'emploi</div>
-          <h1>Gérez 50 candidatures en parallèle sans y passer vos soirées.</h1>
-          <p className="lede">JobTrackr synchronise vos emails, détecte les statuts, priorise vos relances et prépare vos entretiens — pour que vous gardiez le contrôle sur 15 à 50 candidatures en parallèle, sans y passer vos soirées.</p>
+          <div className="eyebrow">AI copilot for job search</div>
+          <h1>Manage 50 applications in parallel without burning out.</h1>
+          <p className="lede">JobTrackr syncs your emails, detects statuses, prioritizes follow-ups, and prepares your interviews — so you stay in control of 15-50 applications at once, without sacrificing your evenings.</p>
           <div className="ctas">
             <button className="btn btn-primary" onClick={onLogin}>
-              Se connecter avec Google
+              Sign in with Google
             </button>
             <a href="https://github.com/deviloufr-ai/jobtracking" target="_blank" rel="noreferrer" className="btn btn-secondary">
-              Code source sur GitHub
+              View on GitHub
             </a>
           </div>
 
           {/* SIGNATURE PIPELINE */}
           <div className="pipeline">
-            <div className="pipeline-label">Le cœur du produit — chaque candidature suit ce pipeline, automatiquement tenu à jour</div>
+            <div className="pipeline-label">The core of the product — each application flows through this pipeline, automatically updated</div>
             <div className="pipeline-track">
               <div className="runner"></div>
               <div className="stage active">
                 <div className="node">01</div>
-                <div className="stage-title">Envoyée</div>
-                <div className="stage-desc">Détectée et créée automatiquement depuis Gmail, sans saisie.</div>
+                <div className="stage-title">Applied</div>
+                <div className="stage-desc">Auto-detected from Gmail and added instantly — no manual entry.</div>
               </div>
               <div className="stage active">
                 <div className="node">02</div>
-                <div className="stage-title">En cours</div>
-                <div className="stage-desc">Statut mis à jour à chaque échange — accusés, relances, refus ATS.</div>
+                <div className="stage-title">In Progress</div>
+                <div className="stage-desc">Status updated with every exchange — confirmations, rejections, follow-ups.</div>
               </div>
               <div className="stage">
                 <div className="node">03</div>
-                <div className="stage-title">Entretien</div>
-                <div className="stage-desc">Prép. STAR générée, meeting détecté, rappel J-1.</div>
+                <div className="stage-title">Interview</div>
+                <div className="stage-desc">STAR answers ready, meeting detected, day-before reminder.</div>
               </div>
               <div className="stage">
                 <div className="node">04</div>
-                <div className="stage-title">Offre</div>
-                <div className="stage-desc">Objectif atteint — le pipeline a fait son travail.</div>
+                <div className="stage-title">Offer</div>
+                <div className="stage-desc">Goal reached — the pipeline did its job.</div>
               </div>
             </div>
           </div>
@@ -437,18 +437,18 @@ export default function LandingPage({ onLogin }) {
         {/* PROBLEM */}
         <section>
           <div className="section-head">
-            <div className="kicker">Le problème</div>
-            <h2>Chercher un emploi sans outil adapté, c'est un deuxième emploi.</h2>
-            <p>Au-delà de 20 candidatures actives, les outils classiques ne tiennent plus la charge — et c'est le candidat qui compense.</p>
+            <div className="kicker">The Challenge</div>
+            <h2>Job search without the right tool is a second job.</h2>
+            <p>Beyond 20 active applications, traditional tools collapse — and you end up compensating.</p>
           </div>
           <div className="problem-grid">
             {[
-              { num: '01 / Dispersion', title: 'Cinq canaux, zéro hub', desc: 'LinkedIn, jobboards, emails directs, réseau, candidatures spontanées — aucune vue d\'ensemble.' },
-              { num: '02 / Contexte perdu', title: '"Où en étais-je avec eux ?"', desc: 'Impossible de retrouver l\'historique d\'une candidature sans rouvrir 10 emails.' },
-              { num: '03 / Emails noyés', title: 'Refus ATS invisibles', desc: 'Confirmations, relances et refus automatiques se perdent dans la boîte de réception.' },
-              { num: '04 / Pas de priorités', title: 'Quoi faire aujourd\'hui ?', desc: 'Aucun signal pour savoir qui relancer, quel entretien préparer, ce qui est mort.' },
-              { num: '05 / CV rigide', title: 'Le même CV partout', desc: 'Envoyé tel quel, sans adaptation à la fiche de poste — au détriment du taux de réponse.' },
-              { num: '06 / Outils inadaptés', title: 'CRM lourd ou Excel mort', desc: 'Les CRM sont pensés pour des équipes commerciales. Excel craque dès la 30ᵉ ligne.' }
+              { num: '01 / Scattered', title: '5 channels, zero hub', desc: 'LinkedIn, job boards, direct emails, referrals, cold applications — impossible to see it all.' },
+              { num: '02 / Lost Context', title: '"Where am I with them?"', desc: 'No way to trace application history without reopening 10 emails.' },
+              { num: '03 / Buried Emails', title: 'ATS rejections disappear', desc: 'Confirmations, follow-ups, and auto-rejections get lost in your inbox noise.' },
+              { num: '04 / No Priorities', title: 'What should I do today?', desc: 'No signal for who to follow up with, what interview to prep, what\'s dead in the water.' },
+              { num: '05 / Generic CV', title: 'Same CV everywhere', desc: 'Sent as-is without tailoring to the job description — killing your response rate.' },
+              { num: '06 / Wrong Tools', title: 'Heavy CRM or broken Excel', desc: 'CRMs are built for sales teams. Excel dies after row 30.' }
             ].map((item, i) => (
               <div key={i} className="problem-item">
                 <div className="num">{item.num}</div>
@@ -464,28 +464,28 @@ export default function LandingPage({ onLogin }) {
         {/* FEATURES */}
         <section>
           <div className="section-head">
-            <div className="kicker">Fonctionnalités</div>
-            <h2>Votre allié IA pour gérer la vraie recherche.</h2>
-            <p>Tout ce qu'il faut pour organiser, enrichir et accélérer vos candidatures — sans jamais ouvrir un tableur.</p>
+            <div className="kicker">Features</div>
+            <h2>Your AI ally for real job search.</h2>
+            <p>Everything you need to organize, enrich, and speed up your applications — without ever opening a spreadsheet.</p>
           </div>
           <div className="feature-grid">
             {[
-              { icon: '📋', title: 'Tableau de bord intelligent', desc: 'Vue d\'ensemble claire de toutes vos candidatures. Filtrez par statut, période, ou mots-clés. Statistiques et tendances en temps réel pour suivre votre progression.' },
-              { icon: '📧', title: 'Gmail synchronisé automatiquement', desc: 'Connectez-vous une fois, et vos emails font le travail. L\'IA détecte les offres, les relances, les refus — tout se met à jour sans que vous ayez à saisir quoi que ce soit.' },
-              { icon: '⏰', title: 'Historique complet et intelligent', desc: '10 statuts professionnels, détection automatique des refus ATS (Ashby, Greenhouse, Lever...). Un timeline daté pour chaque candidature, consolidé et facile à lire.' },
-              { icon: '⚡', title: 'Quoi faire maintenant?', desc: 'Un moteur qui vous dit clairement: qui relancer, quel entretien préparer, où avancer. Alertes classées par urgence pour rester focalisé.' },
-              { icon: '📅', title: 'Entretiens bien synchronisés', desc: 'Google Calendar intégré. Les entretiens apparaissent automatiquement avec les liens Zoom/Teams. Rappel J-1, rien n\'est oublié.' },
-              { icon: '💌', title: 'Rédaction IA: emails & CVs', desc: 'Brouillons d\'emails intelligents prêts à envoyer. CVs réadaptés par candidature. Lettres de motivation générées en 2 clics. Prêts à copier-coller ou customiser.' },
-              { icon: '⭐', title: 'Préparation entretien', desc: '3 réponses STAR générées par fiche de poste. Conseils IA contextualisés. Visualisez votre CV avant export, format une page optimisé.' },
-              { icon: '🎯', title: 'Ajouter des candidatures facilement', desc: 'Gmail, screenshot (LinkedIn, job boards), extension Firefox, ou ajout manuel. 4 façons différentes, tous les chemins mènent au pipeline.' },
-              { icon: '🎯', title: 'Suivre vos progrès', desc: 'Objectifs de candidatures, taux de réussite, insights personnalisés. Voyez semaine après semaine comment vous avancez vers votre objectif.' },
-              { icon: '🤖', title: 'Conseils IA à chaque étape', desc: 'Des suggestions vraiment utiles basées sur votre situation: quand relancer sans être lourd, comment optimiser votre taux de réponse, comment préparer cet entretien.' },
-              { icon: '💾', title: 'Sur tous vos appareils', desc: 'Synchronisation instantanée. Accédez à vos candidatures sur le téléphone, la tablette, l\'ordi — tout reste à jour partout.' },
-              { icon: '🎨', title: 'Votre style', desc: 'Mode clair, sombre, ou l\'un de nos 6 thèmes spécialisés (midnight, ocean, forest...). Adaptez l\'interface à votre préférence, c\'est synchronisé partout.' },
-              { icon: '📊', title: 'Analytics pour s\'améliorer', desc: 'Tendances (candidatures/semaine, taux réponse, velocity). Insights personnalisés pour ajuster votre stratégie et faire mieux la prochaine fois.' },
-              { icon: '🔔', title: 'Notifications quand ça compte', desc: 'Alertes pour les nouveaux emails, les relances en retard, les entretiens imminents. Desktop ou in-app, c\'est vous qui choisissez.' },
-              { icon: '🔀', title: 'Gestion flexible', desc: 'Sélectionnez plusieurs candidatures à la fois. Fusionnez les doublons automatiquement. Nettoyez et organisez en quelques clics.' },
-              { icon: '🔍', title: 'Recherche instantanée', desc: 'Tapez pour chercher: par entreprise, poste, ou mots-clés spécifiques. Résultats en temps réel, jamais d\'attente.' }
+              { icon: '📋', title: 'Smart Dashboard', desc: 'Clear overview of all your applications. Filter by status, timeframe, or keywords. Real-time stats and trends show your progress.' },
+              { icon: '📧', title: 'Gmail Auto-Synced', desc: 'Connect once, your emails do the work. AI detects offers, rejections, follow-ups — everything updates automatically, zero manual entry.' },
+              { icon: '⏰', title: 'Smart History', desc: '10 professional statuses, auto-detects ATS rejections (Ashby, Greenhouse, Lever...). A dated timeline for every application, consolidated and easy to scan.' },
+              { icon: '⚡', title: 'What\'s Next?', desc: 'An engine that tells you clearly: who to follow up with, which interview to prep, where to push. Alerts ranked by urgency so you stay focused.' },
+              { icon: '📅', title: 'Interviews Synced', desc: 'Google Calendar built in. Interviews auto-populate with Zoom/Teams links. Day-before reminder, nothing falls through the cracks.' },
+              { icon: '💌', title: 'AI Writing: Emails & CVs', desc: 'Smart email drafts ready to send. Tailored CVs per application. Cover letters generated in 2 clicks. Ready to copy-paste or customize.' },
+              { icon: '⭐', title: 'Interview Prep', desc: '3 STAR answers generated per job description. Contextualized advice. See your CV before export, optimized one-page format.' },
+              { icon: '🎯', title: 'Add Applications Easily', desc: 'Gmail, screenshots (LinkedIn, job boards), Firefox extension, or manual. 4 different ways, all paths lead to your pipeline.' },
+              { icon: '🎯', title: 'Track Your Progress', desc: 'Application goals, success rate, personalized insights. See week-by-week how you\'re moving toward your target.' },
+              { icon: '🤖', title: 'AI Advice at Every Step', desc: 'Real suggestions based on your situation: how to follow up without being pushy, optimizing your response rate, prepping for that interview.' },
+              { icon: '💾', title: 'On All Your Devices', desc: 'Instant sync. Check applications on phone, tablet, or desktop — everything stays current everywhere.' },
+              { icon: '🎨', title: 'Your Style', desc: 'Light, dark, or one of 6 specialty themes (midnight, ocean, forest...). Customize the interface to your taste, synced everywhere.' },
+              { icon: '📊', title: 'Analytics to Improve', desc: 'Trends (applications/week, response rate, velocity). Personalized insights to refine your strategy and do better next time.' },
+              { icon: '🔔', title: 'Alerts That Matter', desc: 'Notifications for new emails, overdue follow-ups, upcoming interviews. Desktop or in-app, your choice.' },
+              { icon: '🔀', title: 'Flexible Management', desc: 'Select multiple applications at once. Auto-merge duplicates. Clean up and organize in a few clicks.' },
+              { icon: '🔍', title: 'Instant Search', desc: 'Type to find: by company, role, or specific keywords. Real-time results, never a wait.' }
             ].map((item, i) => (
               <div key={i} className="feature">
                 <div className="icon">{item.icon}</div>
@@ -501,30 +501,30 @@ export default function LandingPage({ onLogin }) {
         {/* HOW IT WORKS */}
         <section>
           <div className="section-head">
-            <div className="kicker">Comment ça marche</div>
-            <h2>Un workflow en 4 étapes pour dominer votre recherche.</h2>
+            <div className="kicker">How It Works</div>
+            <h2>A 4-step workflow to own your search.</h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
             {[
               {
                 step: '1',
-                title: 'Importer',
-                desc: 'Gmail, screenshot, extension Firefox, ou ajout manuel — les candidatures arrivent dans votre pipeline.'
+                title: 'Add',
+                desc: 'Gmail, screenshots, Firefox extension, or manual entry — applications flow into your pipeline.'
               },
               {
                 step: '2',
-                title: 'Enrichir',
-                desc: 'L\'IA analyse vos emails, détecte les statuts, consolide l\'historique, prépare des réponses STAR et des relances.'
+                title: 'Enrich',
+                desc: 'AI analyzes your emails, detects statuses, consolidates history, generates STAR answers and follow-ups.'
               },
               {
                 step: '3',
-                title: 'Agir',
-                desc: 'Suivez les recommandations (relances urgentes, entretiens à préparer). Utilisez les brouillons IA, les CV adaptés, les notes de prep.'
+                title: 'Act',
+                desc: 'Follow recommendations (urgent follow-ups, interviews to prep). Use AI drafts, tailored CVs, prep notes.'
               },
               {
                 step: '4',
-                title: 'Réussir',
-                desc: 'Décrochez l\'offre. Quand c\'est fait, l\'historique reste : analyse de votre stratégie, amélioration continue.'
+                title: 'Succeed',
+                desc: 'Land the offer. Your history stays: analyze your strategy, continuous improvement.'
               }
             ].map((item, i) => (
               <div key={i} style={{
@@ -567,17 +567,17 @@ export default function LandingPage({ onLogin }) {
         {/* AI CAPABILITIES */}
         <section>
           <div className="section-head">
-            <div className="kicker">L'IA à votre service</div>
-            <h2>6 niveaux d'automatisation, du parsing au coaching entretien.</h2>
+            <div className="kicker">AI at Your Service</div>
+            <h2>6 levels of automation, from parsing to interview coaching.</h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
             {[
-              { icon: '📧', level: 'Niveau 1', title: 'Parsing emails', desc: 'Parse par lots de 15 emails, extraction structurée des offres.' },
-              { icon: '🏷️', level: 'Niveau 2', title: 'Détection statut', desc: 'Identifie automatiquement refus ATS, étapes de process, entreprises.' },
-              { icon: '⭐', level: 'Niveau 3', title: 'Réponses STAR', desc: 'Génère 3 anecdotes STAR prêtes pour l\'entretien oral.' },
-              { icon: '💌', level: 'Niveau 4', title: 'Relances IA', desc: 'Brouillon d\'email contextualisé, détection boîte ATS (pas d\'envoi).' },
-              { icon: '📄', level: 'Niveau 5', title: 'CV adaptatif', desc: 'Réécriture PDF selon la JD, optimisation scoring recruteur.' },
-              { icon: '🔍', level: 'Niveau 6', title: 'Analyse offre', desc: 'Scrape JD, extrait mots-clés, suggests prep points via extension.' }
+              { icon: '📧', level: 'Level 1', title: 'Email Parsing', desc: 'Batch processes 15 emails, structured extraction of offers.' },
+              { icon: '🏷️', level: 'Level 2', title: 'Status Detection', desc: 'Auto-detects ATS rejections, process stages, companies.' },
+              { icon: '⭐', level: 'Level 3', title: 'STAR Answers', desc: 'Generates 3 STAR stories ready for interviews.' },
+              { icon: '💌', level: 'Level 4', title: 'Smart Follow-ups', desc: 'Contextualized email drafts, detects ATS boxes (no auto-send).' },
+              { icon: '📄', level: 'Level 5', title: 'Adaptive CV', desc: 'Rewrites PDF by job description, optimizes recruiter scoring.' },
+              { icon: '🔍', level: 'Level 6', title: 'Job Analysis', desc: 'Scrapes JD, extracts keywords, suggests prep points via extension.' }
             ].map((item, i) => (
               <div key={i} style={{
                 background: '#161b26',
@@ -609,20 +609,20 @@ export default function LandingPage({ onLogin }) {
         {/* NUMBERS */}
         <section>
           <div className="section-head">
-            <div className="kicker">Conçu pour la réalité</div>
-            <h2>Les chiffres d'une recherche active intense.</h2>
-            <p>JobTrackr ne vous limite pas — c'est pensé pour gérer la vraie charge d'une recherche parallèle massive.</p>
+            <div className="kicker">Built for Reality</div>
+            <h2>The numbers behind intense job search.</h2>
+            <p>JobTrackr doesn't hold you back — it's designed for the real load of managing massive parallel applications.</p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
             {[
-              { value: '40+', label: 'candidatures actives en parallèle, sans perte d\'information' },
-              { value: '100%', label: 'données locales — jamais envoyées à des tiers' },
-              { value: '10', label: 'statuts métier granulaires pour classifier chaque étape' },
-              { value: '6', label: 'niveaux d\'IA (parsing → coaching d\'entretien)' },
-              { value: '12', label: 'requêtes Gmail parallèles au démarrage' },
-              { value: '<2s', label: 'temps moyen pour activer une relance IA' },
-              { value: '1 clic', label: 'pour exporter votre CV adapté en PDF' },
-              { value: '∞', label: 'historique consolidé, jamais perdu' }
+              { value: '40+', label: 'active applications in parallel, zero information lost' },
+              { value: '100%', label: 'local data — never sent to third parties' },
+              { value: '10', label: 'professional statuses to classify every step' },
+              { value: '6', label: 'AI levels (parsing → interview coaching)' },
+              { value: '12', label: 'parallel Gmail queries on startup' },
+              { value: '<2s', label: 'average time to activate an AI follow-up' },
+              { value: '1 click', label: 'to export your tailored CV as PDF' },
+              { value: '∞', label: 'consolidated history, never lost' }
             ].map((card, i) => (
               <div key={i} style={{ border: '1px solid #2b3242', borderRadius: '12px', padding: '22px 20px', textAlign: 'left' }}>
                 <div style={{ fontFamily: '\'IBM Plex Mono\', monospace', fontSize: '28px', fontWeight: '600', color: '#7b7bf7', marginBottom: '8px' }}>
@@ -640,25 +640,25 @@ export default function LandingPage({ onLogin }) {
         <hr className="rule" />
         <section>
           <div className="section-head">
-            <div className="kicker">Pour qui?</div>
-            <h2>Fait pour les recherches actives, dès 15 candidatures parallèles.</h2>
+            <div className="kicker">For Whom?</div>
+            <h2>Built for active searches, from 15+ parallel applications.</h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
             {[
               {
                 icon: '🚀',
-                title: 'Candidat en recherche active',
-                desc: 'Vous envoyez 20-50 candidatures/mois, gérez les relances, les entretiens, les offres. Excel vous a déjà laissé tomber.'
+                title: 'Active Job Seeker',
+                desc: 'You send 20-50 applications/month, manage follow-ups, juggle interviews, negotiate offers. Excel already failed you.'
               },
               {
                 icon: '📚',
-                title: 'Junior en transition',
-                desc: 'Vous changez de secteur ou démarrez votre carrière. Besoin d\'une stratégie claire, de prep intensive, de feedback sur votre CV.'
+                title: 'Junior Transitioning',
+                desc: 'Changing fields or starting your career. Need a clear strategy, intensive prep, honest CV feedback.'
               },
               {
                 icon: '🎯',
-                title: 'Senior en repositionnement',
-                desc: 'Vous avez 10+ ans d\'expérience, vous visez 5-10 opportunités haut de gamme. Besoin d\'une analyse précise, pas du bruit.'
+                title: 'Senior Repositioning',
+                desc: '10+ years experience, targeting 5-10 premium opportunities. Need precise analysis, not noise.'
               }
             ].map((item, i) => (
               <div key={i} style={{
@@ -685,11 +685,11 @@ export default function LandingPage({ onLogin }) {
         <footer>
           <div className="footer-grid">
             <div>
-              <h4>Origine du projet</h4>
-              <p className="origin">Construit par <b>Alexandre Leblanc</b> — PM Senior, 18 ans d'expérience (gaming, AdTech, Web3, mobile), trilingue FR/EN/JP. JobTrackr est né d'une frustration personnelle en recherche active d'emploi, et est devenu la meilleure démonstration de ce qu'un PM peut livrer seul à l'intersection du product thinking, du no-code/low-code et de l'IA générative. Projet personnel, en développement continu depuis avril 2026, en production depuis la v0.5.</p>
+              <h4>About JobTrackr</h4>
+              <p className="origin">Built by <b>Alexandre Leblanc</b> — Senior PM, 18 years experience (gaming, AdTech, Web3, mobile), trilingual FR/EN/JP. JobTrackr grew from personal frustration during active job search, and became the best proof that a PM alone can ship something great at the intersection of product thinking, no-code/low-code, and generative AI. Personal project, continuous development since April 2026, production since v0.5.</p>
             </div>
             <div>
-              <h4>Stack technique</h4>
+              <h4>Tech Stack</h4>
               <div style={{ fontSize: '13.5px', color: '#9aa3ba', lineHeight: 1.9 }}>
                 React · Tailwind · Vite<br/>
                 Vercel Serverless<br/>
@@ -700,12 +700,12 @@ export default function LandingPage({ onLogin }) {
               </div>
             </div>
             <div>
-              <h4>Légal & Accès</h4>
+              <h4>Legal & Access</h4>
               <div className="footer-links">
                 <a href="https://jobtracking-three.vercel.app" target="_blank" rel="noreferrer">→ jobtracking-three.vercel.app</a>
                 <a href="https://github.com/deviloufr-ai/jobtracking" target="_blank" rel="noreferrer">→ github.com/deviloufr-ai/jobtracking</a>
-                <a href="/privacy-policy" target="_blank" rel="noreferrer">→ Politique de confidentialité</a>
-                <a href="/terms-of-service" target="_blank" rel="noreferrer">→ Conditions d'utilisation</a>
+                <a href="/privacy-policy" target="_blank" rel="noreferrer">→ Privacy Policy</a>
+                <a href="/terms-of-service" target="_blank" rel="noreferrer">→ Terms of Service</a>
               </div>
             </div>
           </div>
