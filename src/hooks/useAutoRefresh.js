@@ -7,8 +7,11 @@ import { isAtsRejection, isDeletedJob } from './useJobs'
 import { normalize, isJobBoard } from '../constants/jobBoards'
 import { isGenericPosition as isGenericPos } from '../constants/positions'
 
-const DEBUG = typeof window !== 'undefined' && localStorage?.getItem('debug') === '1'
-const log = (...args) => DEBUG && console.log(...args)
+// Read the flag dynamically on every call so `localStorage.debug = '1'` takes
+// effect immediately, without needing a page reload (the flag used to be
+// captured once at module load).
+const isDebug = () => typeof window !== 'undefined' && localStorage?.getItem('debug') === '1'
+const log = (...args) => { if (isDebug()) console.log(...args) }
 
 // Auto-mark previous history items as done when their corresponding meeting has finished
 function autoCompletePastMeetings(history) {
