@@ -382,7 +382,7 @@ export default function LandingPageEN({ onLogin }) {
         <div className="nav">
           <div className="wordmark">
             <span className="dot"></span>
-            JobTrackr
+            JobTrackerAI
           </div>
           <button onClick={onLogin} className="btn btn-primary">
             Sign in with Google
@@ -393,7 +393,7 @@ export default function LandingPageEN({ onLogin }) {
         <section className="hero">
           <div className="eyebrow">AI copilot for job search</div>
           <h1>Manage 50 applications in parallel without burning out.</h1>
-          <p className="lede">JobTrackr syncs your emails, detects statuses, prioritizes follow-ups, and prepares your interviews — so you stay in control of 15-50 applications at once, without sacrificing your evenings.</p>
+          <p className="lede">JobTrackerAI syncs your emails, detects statuses, prioritizes follow-ups, and prepares your interviews — so you stay in control of 15-50 applications at once, without sacrificing your evenings.</p>
           <div className="ctas">
             <button className="btn btn-primary" onClick={onLogin}>
               Sign in with Google
@@ -611,7 +611,7 @@ export default function LandingPageEN({ onLogin }) {
           <div className="section-head">
             <div className="kicker">Built for Reality</div>
             <h2>The numbers behind intense job search.</h2>
-            <p>JobTrackr doesn't hold you back — it's designed for the real load of managing massive parallel applications.</p>
+            <p>JobTrackerAI doesn't hold you back — it's designed for the real load of managing massive parallel applications.</p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
             {[
@@ -685,8 +685,8 @@ export default function LandingPageEN({ onLogin }) {
         <footer>
           <div className="footer-grid">
             <div>
-              <h4>About JobTrackr</h4>
-              <p className="origin">Built by <b>Alexandre Leblanc</b> — Senior PM, 18 years experience (gaming, AdTech, Web3, mobile), trilingual FR/EN/JP. JobTrackr grew from personal frustration during active job search, and became the best proof that a PM alone can ship something great at the intersection of product thinking, no-code/low-code, and generative AI. Personal project, continuous development since April 2026, production since v0.5.</p>
+              <h4>About JobTrackerAI</h4>
+              <p className="origin">Built by <b>Alexandre Leblanc</b> — Senior PM, 18 years experience (gaming, AdTech, Web3, mobile), trilingual FR/EN/JP. JobTrackerAI grew from personal frustration during active job search, and became the best proof that a PM alone can ship something great at the intersection of product thinking, no-code/low-code, and generative AI. Personal project, continuous development since April 2026, production since v0.5.</p>
             </div>
             <div>
               <h4>Tech Stack</h4>

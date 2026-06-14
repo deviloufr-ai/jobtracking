@@ -16,7 +16,7 @@ export default function PrivacyPolicy({ onClose }) {
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-3">1. Introduction</h2>
               <p>
-                JobTrackr (« l'Application ») est engagée à protéger votre vie privée. Cette Politique de Confidentialité explique comment nous collectons, utilisons, divulguons et traitons vos données personnelles.
+                JobTrackerAI (« l'Application ») est engagée à protéger votre vie privée. Cette Politique de Confidentialité explique comment nous collectons, utilisons, divulguons et traitons vos données personnelles.
               </p>
               <p>
                 <strong>Principe fondamental:</strong> Vos données vous appartiennent. Nous ne les vendons jamais à des tiers. Elles sont stockées de manière sécurisée et traitées uniquement pour améliorer votre expérience.
@@ -117,7 +117,7 @@ export default function PrivacyPolicy({ onClose }) {
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-3">7. Cookies & Tracking</h2>
               <p>
-                <strong>Pas de cookies de tracking.</strong> JobTrackr n'utilise pas de cookies pour vous tracker ou vous profiler. Les données stockées le sont uniquement pour la fonctionnalité de l'app.
+                <strong>Pas de cookies de tracking.</strong> JobTrackerAI n'utilise pas de cookies pour vous tracker ou vous profiler. Les données stockées le sont uniquement pour la fonctionnalité de l'app.
               </p>
               <p className="mt-2">
                 Vercel (hébergeur) peut utiliser des analytics anonymisées. Vous pouvez vous en exempter via les paramètres de votre navigateur.
@@ -127,7 +127,7 @@ export default function PrivacyPolicy({ onClose }) {
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-3">8. Conformité Légale</h2>
               <p>
-                JobTrackr respecte le RGPD (Règlement Général sur la Protection des Données) pour les utilisateurs en Europe et les lois de confidentialité applicables dans votre juridiction.
+                JobTrackerAI respecte le RGPD (Règlement Général sur la Protection des Données) pour les utilisateurs en Europe et les lois de confidentialité applicables dans votre juridiction.
               </p>
               <p className="mt-2">
                 Si vous avez des préoccupations, vous pouvez contacter l'autorité de protection des données de votre pays.
@@ -148,7 +148,7 @@ export default function PrivacyPolicy({ onClose }) {
               </p>
               <p className="mt-2">
                 <strong>Email:</strong> deviloufr@gmail.com<br/>
-                <strong>Projet:</strong> <a href="https://github.com/deviloufr-ai/jobtracking" className="text-indigo-600 hover:underline" target="_blank" rel="noreferrer">GitHub JobTrackr</a>
+                <strong>Projet:</strong> <a href="https://github.com/deviloufr-ai/jobtracking" className="text-indigo-600 hover:underline" target="_blank" rel="noreferrer">GitHub JobTrackerAI</a>
               </p>
             </section>
 

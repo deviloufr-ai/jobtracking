@@ -49,7 +49,7 @@ export default function NotificationSettings() {
       return
     }
 
-    sendBrowserNotification('Test — JobTrackr', {
+    sendBrowserNotification('Test — JobTrackerAI', {
       body: 'Ceci est une notification de test',
       tag: 'test-notification',
     })

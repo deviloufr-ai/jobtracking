@@ -16,14 +16,14 @@ export default function TermsOfService({ onClose }) {
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-3">1. Acceptation des Conditions</h2>
               <p>
-                En accédant et en utilisant JobTrackr (l'« Application »), vous acceptez d'être lié par ces Conditions d'Utilisation. Si vous n'acceptez pas ces conditions, vous ne devez pas utiliser l'Application.
+                En accédant et en utilisant JobTrackerAI (l'« Application »), vous acceptez d'être lié par ces Conditions d'Utilisation. Si vous n'acceptez pas ces conditions, vous ne devez pas utiliser l'Application.
               </p>
             </section>
 
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-3">2. Licence d'Utilisation</h2>
               <p>
-                JobTrackr vous accorde une licence limitée, non-exclusive et révocable pour utiliser l'Application à titre personnel et non-commercial. Vous n'avez pas le droit de:
+                JobTrackerAI vous accorde une licence limitée, non-exclusive et révocable pour utiliser l'Application à titre personnel et non-commercial. Vous n'avez pas le droit de:
               </p>
               <ul className="list-disc pl-6 space-y-2">
                 <li>Reproduire ou dupliquer l'Application</li>
@@ -74,7 +74,7 @@ export default function TermsOfService({ onClose }) {
 
               <p className="font-semibold mt-4">Droits d'utilisation:</p>
               <p>
-                En uploadant du contenu, vous accordez à JobTrackr une licence pour stocker, afficher et traiter ce contenu pour fournir l'Application, y compris:
+                En uploadant du contenu, vous accordez à JobTrackerAI une licence pour stocker, afficher et traiter ce contenu pour fournir l'Application, y compris:
               </p>
               <ul className="list-disc pl-6 space-y-2">
                 <li>Stockage sécurisé (localStorage, Supabase)</li>
@@ -90,7 +90,7 @@ export default function TermsOfService({ onClose }) {
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-3">6. Limitation de Responsabilité</h2>
               <p>
-                <strong>Fourni « Tel Quel »:</strong> JobTrackr est fourni sans garantie de quelque sorte. Nous ne garantissons pas:
+                <strong>Fourni « Tel Quel »:</strong> JobTrackerAI est fourni sans garantie de quelque sorte. Nous ne garantissons pas:
               </p>
               <ul className="list-disc pl-6 space-y-2">
                 <li>L'exactitude ou la complétude des données</li>
@@ -100,14 +100,14 @@ export default function TermsOfService({ onClose }) {
 
               <p className="font-semibold mt-4">Limitation de dommages:</p>
               <p>
-                En aucun cas JobTrackr ne sera responsable pour les dommages indirects, accidentels, spéciaux ou consécutifs (y compris les pertes de profits, de données ou d'opportunités d'emploi) même si informé de la possibilité de tels dommages.
+                En aucun cas JobTrackerAI ne sera responsable pour les dommages indirects, accidentels, spéciaux ou consécutifs (y compris les pertes de profits, de données ou d'opportunités d'emploi) même si informé de la possibilité de tels dommages.
               </p>
             </section>
 
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-3">7. Indemnisation</h2>
               <p>
-                Vous acceptez d'indemniser et de défendre JobTrackr contre les réclamations, dommages, pertes ou dépenses (y compris les frais d'avocat) découlant de:
+                Vous acceptez d'indemniser et de défendre JobTrackerAI contre les réclamations, dommages, pertes ou dépenses (y compris les frais d'avocat) découlant de:
               </p>
               <ul className="list-disc pl-6 space-y-2">
                 <li>Votre violation de ces Conditions</li>
@@ -120,7 +120,7 @@ export default function TermsOfService({ onClose }) {
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-3">8. Résiliation</h2>
               <p>
-                Vous pouvez arrêter d'utiliser l'Application à tout moment. JobTrackr peut résilier votre accès:
+                Vous pouvez arrêter d'utiliser l'Application à tout moment. JobTrackerAI peut résilier votre accès:
               </p>
               <ul className="list-disc pl-6 space-y-2">
                 <li>Immédiatement pour violation de ces Conditions</li>
@@ -132,7 +132,7 @@ export default function TermsOfService({ onClose }) {
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-3">9. Disponibilité et Maintenance</h2>
               <p>
-                JobTrackr est fourni sur une base « best effort ». Nous n'offrons aucune garantie de disponibilité continue. L'Application peut être indisponible pour:
+                JobTrackerAI est fourni sur une base « best effort ». Nous n'offrons aucune garantie de disponibilité continue. L'Application peut être indisponible pour:
               </p>
               <ul className="list-disc pl-6 space-y-2">
                 <li>Maintenance et mises à jour</li>
@@ -148,12 +148,12 @@ export default function TermsOfService({ onClose }) {
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-3">10. Propriété Intellectuelle</h2>
               <p>
-                <strong>Code source:</strong> Le code source de JobTrackr est disponible sur <a href="https://github.com/deviloufr-ai/jobtracking" className="text-indigo-600 hover:underline" target="_blank" rel="noreferrer">GitHub sous licence MIT</a>. Vous pouvez l'utiliser selon les termes de cette licence.
+                <strong>Code source:</strong> Le code source de JobTrackerAI est disponible sur <a href="https://github.com/deviloufr-ai/jobtracking" className="text-indigo-600 hover:underline" target="_blank" rel="noreferrer">GitHub sous licence MIT</a>. Vous pouvez l'utiliser selon les termes de cette licence.
               </p>
 
               <p className="font-semibold mt-4">Marques:</p>
               <p>
-                « JobTrackr » et le logo sont des marques d'Alexandre Leblanc. Vous n'avez pas le droit d'utiliser ces marques sans permission écrite.
+                « JobTrackerAI » et le logo sont des marques d'Alexandre Leblanc. Vous n'avez pas le droit d'utiliser ces marques sans permission écrite.
               </p>
             </section>
 
@@ -168,14 +168,14 @@ export default function TermsOfService({ onClose }) {
               </ul>
 
               <p className="mt-2">
-                JobTrackr ne peut pas être tenu responsable de la perte de données, même si nous les stockons.
+                JobTrackerAI ne peut pas être tenu responsable de la perte de données, même si nous les stockons.
               </p>
             </section>
 
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-3">12. Modifications des Conditions</h2>
               <p>
-                JobTrackr peut modifier ces Conditions à tout moment. Les changements entrent en vigueur immédiatement après publication. Votre utilisation continue implique l'acceptation des changements.
+                JobTrackerAI peut modifier ces Conditions à tout moment. Les changements entrent en vigueur immédiatement après publication. Votre utilisation continue implique l'acceptation des changements.
               </p>
             </section>
 
@@ -193,7 +193,7 @@ export default function TermsOfService({ onClose }) {
               </p>
               <p className="mt-2">
                 <strong>Email:</strong> deviloufr@gmail.com<br/>
-                <strong>Projet:</strong> <a href="https://github.com/deviloufr-ai/jobtracking" className="text-indigo-600 hover:underline" target="_blank" rel="noreferrer">GitHub JobTrackr</a>
+                <strong>Projet:</strong> <a href="https://github.com/deviloufr-ai/jobtracking" className="text-indigo-600 hover:underline" target="_blank" rel="noreferrer">GitHub JobTrackerAI</a>
               </p>
             </section>
 

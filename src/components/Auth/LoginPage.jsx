@@ -17,7 +17,7 @@ export function LoginPage() {
         <div className="bg-white rounded-lg shadow-xl p-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">JobTrackr</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">JobTrackerAI</h1>
             <p className="text-gray-600">Multi-device job application tracker</p>
           </div>
 

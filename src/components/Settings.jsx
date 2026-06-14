@@ -502,7 +502,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                     <TextInput multiline rows={2} value={profile.skills} onChange={v => updateProfile('skills', v)} placeholder="Product strategy, OKR, Agile, Data analytics..." />
                   </Row>
                   <Row label="Expérience IA / Projets récents" wide>
-                    <TextInput multiline rows={2} value={profile.ai_experience} onChange={v => updateProfile('ai_experience', v)} placeholder="Claude API, ComfyUI, JobTrackr..." />
+                    <TextInput multiline rows={2} value={profile.ai_experience} onChange={v => updateProfile('ai_experience', v)} placeholder="Claude API, ComfyUI, JobTrackerAI..." />
                   </Row>
                   <Row label="Motivation / Pitch par défaut" wide>
                     <TextInput multiline rows={2} value={profile.motivation} onChange={v => updateProfile('motivation', v)} placeholder="Passionné par les produits qui résolvent de vrais problèmes..." />
@@ -576,7 +576,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                     <span className="text-xl shrink-0">🔐</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-blue-700 font-medium">Votre clé API reste privée et stockée localement</p>
-                      <p className="text-xs text-blue-600 mt-0.5">Elle n'est jamais envoyée au serveur de JobTrackr</p>
+                      <p className="text-xs text-blue-600 mt-0.5">Elle n'est jamais envoyée au serveur de JobTrackerAI</p>
                     </div>
                   </div>
                 </Card>
@@ -659,7 +659,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                   <div className="space-y-3 text-sm text-gray-600">
                     <div>
                       <p className="font-semibold text-gray-900 mb-1">📍 Où est stockée ma clé ?</p>
-                      <p>Votre clé API est sauvegardée localement dans le stockage du navigateur (localStorage). Elle n'est jamais envoyée aux serveurs de JobTrackr.</p>
+                      <p>Votre clé API est sauvegardée localement dans le stockage du navigateur (localStorage). Elle n'est jamais envoyée aux serveurs de JobTrackerAI.</p>
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900 mb-1">🔄 Comment fonctionne la communication ?</p>
