@@ -856,16 +856,15 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
   )
 }
 
-// Memoize but compare history array length to catch deletions
+// Memoize but always re-render if job object changed (includes history changes)
 export default memo(JobRow, (prevProps, nextProps) => {
-  // Force re-render if job changed OR history length/order changed
-  if (prevProps.job.id !== nextProps.job.id) return false // ids differ, re-render
-  if (!prevProps.job.history || !nextProps.job.history) return prevProps.job.history === nextProps.job.history
-  if (prevProps.job.history.length !== nextProps.job.history.length) return false // length changed, re-render
+  // Always re-render if the job object itself changed
+  // (setJobs creates new object, so this catches all updates including history changes)
+  if (prevProps.job !== nextProps.job) return false // job changed, re-render
 
-  // For other props, do shallow comparison
+  // For other props, check if they changed
   for (const key in prevProps) {
-    if (key === 'job') continue // already compared above
+    if (key === 'job') continue // already checked above
     if (prevProps[key] !== nextProps[key]) return false // prop changed, re-render
   }
   return true // all props same, skip re-render
