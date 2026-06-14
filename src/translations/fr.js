@@ -87,7 +87,7 @@ export const fr = {
 
   // Stats & Actions
   stats: {
-    favorites: '⭐ Favoris',
+    favorites: 'Favoris',
     otherApplications: 'Autres candidatures',
   },
 
