@@ -129,11 +129,14 @@ function renderSimple(md) {
 }
 
 // ── Shared: render one experience sub-block (title + company + dates + bullets) ──
+// Leaf lines and the block wrapper carry page-break-inside:avoid (+ .cv-block)
+// so html2pdf never slices a line in half across a page boundary.
+const NB = 'page-break-inside:avoid'
 function expBlock(block, styles) {
   if (block.standalone) {
     const it = block.standalone
-    if (it.type === 'p')  return `<div style="${styles.p}">${fmt(it.text)}</div>`
-    if (it.type === 'li') return `<div style="${styles.li}">${styles.bullet} ${fmt(it.text)}</div>`
+    if (it.type === 'p')  return `<div class="cv-block" style="${styles.p};${NB}">${fmt(it.text)}</div>`
+    if (it.type === 'li') return `<div class="cv-block" style="${styles.li};${NB}">${styles.bullet} ${fmt(it.text)}</div>`
     return ''
   }
   const company = block.meta[0] || ''
@@ -149,12 +152,21 @@ function expBlock(block, styles) {
     </div>` : ''
 
   return `
-    <div style="${styles.block}">
+    <div class="cv-block" style="${styles.block};${NB}">
       ${block.title ? `<div style="${styles.title}">${fmt(block.title)}</div>` : ''}
       ${metaRow}
-      ${extra.map(t => `<div style="${styles.p}">${fmt(t)}</div>`).join('')}
-      ${bullets.map(t => `<div style="${styles.li}">${styles.bullet} ${fmt(t)}</div>`).join('')}
+      ${extra.map(t => `<div style="${styles.p};${NB}">${fmt(t)}</div>`).join('')}
+      ${bullets.map(t => `<div style="${styles.li};${NB}">${styles.bullet} ${fmt(t)}</div>`).join('')}
     </div>`
+}
+
+// ── Shared: render a section so its header is never orphaned ───────────────────
+// Glue the header to its first item in one no-break unit, then flow the rest.
+function glueSection(wrapperStyle, headerHTML, items) {
+  const list  = items.filter(Boolean)
+  const first = list[0] || ''
+  const rest  = list.slice(1).join('')
+  return `<div style="${wrapperStyle}"><div class="cv-block" style="${NB}">${headerHTML}${first}</div>${rest}</div>`
 }
 
 // ── Template: MODERN ─────────────────────────────────────────────────────────
@@ -182,16 +194,14 @@ function renderModern(md, pic) {
 
   const body = sections.map(s => {
     const blocks = groupBlocks(s.items)
-    const inner  = blocks.map(b => expBlock(b, expStyles)).join('')
-    return `
-      <div style="margin-bottom:2px">
+    const items  = blocks.map(b => expBlock(b, expStyles))
+    const headerHTML = `
         <div style="display:flex;align-items:center;gap:10px;margin:3px 0 2px;page-break-after:avoid">
           <div style="width:3px;height:14px;background:linear-gradient(180deg,#6366f1,#818cf8);border-radius:2px;flex-shrink:0"></div>
           <div style="font-size:7.5pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.08em">${s.title}</div>
           <div style="flex:1;height:1px;background:#e0e7ff"></div>
-        </div>
-        ${inner}
-      </div>`
+        </div>`
+    return glueSection('margin-bottom:2px', headerHTML, items)
   }).join('')
 
   return `${header}<div style="padding:3px 16px 5px">${body}</div>`
@@ -220,15 +230,13 @@ function renderClassic(md, pic) {
 
   const body = sections.map(s => {
     const blocks = groupBlocks(s.items)
-    const inner  = blocks.map(b => expBlock(b, expStyles)).join('')
-    return `
-      <div style="margin-bottom:3px">
+    const items  = blocks.map(b => expBlock(b, expStyles))
+    const headerHTML = `
         <div style="display:flex;align-items:center;gap:12px;margin:5px 0 4px;page-break-after:avoid">
           <div style="font-size:8pt;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.12em;white-space:nowrap">${s.title}</div>
           <div style="flex:1;height:1px;background:#94a3b8"></div>
-        </div>
-        ${inner}
-      </div>`
+        </div>`
+    return glueSection('margin-bottom:3px', headerHTML, items)
   }).join('')
 
   return `${header}<div style="padding:3px 16px 5px">${body}</div>`
@@ -268,20 +276,16 @@ function renderExecutive(md, pic) {
 
   const sidebarSection = s => {
     const blocks = groupBlocks(s.items)
-    return `
-      <div style="margin-bottom:8px">
-        <div style="font-size:7pt;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:#818cf8;padding-bottom:4px;margin-bottom:4px">${s.title}</div>
-        ${blocks.map(b => expBlock(b, sidebarExpStyles)).join('')}
-      </div>`
+    const items  = blocks.map(b => expBlock(b, sidebarExpStyles))
+    const headerHTML = `<div style="font-size:7pt;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:#818cf8;padding-bottom:4px;margin-bottom:4px">${s.title}</div>`
+    return glueSection('margin-bottom:8px', headerHTML, items)
   }
 
   const mainSection = s => {
     const blocks = groupBlocks(s.items)
-    return `
-      <div style="margin-bottom:3px">
-        <div style="font-size:8pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.1em;margin:5px 0 4px;padding-bottom:0px;page-break-after:avoid">${s.title}</div>
-        ${blocks.map(b => expBlock(b, mainExpStyles)).join('')}
-      </div>`
+    const items  = blocks.map(b => expBlock(b, mainExpStyles))
+    const headerHTML = `<div style="font-size:8pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.1em;margin:5px 0 4px;padding-bottom:0px;page-break-after:avoid">${s.title}</div>`
+    return glueSection('margin-bottom:3px', headerHTML, items)
   }
 
   return `
@@ -389,12 +393,9 @@ function renderMinimal(md, pic) {
 
   const body = sections.map(s => {
     const blocks = groupBlocks(s.items)
-    const inner  = blocks.map(b => expBlock(b, expStyles)).join('')
-    return `
-      <div style="margin:9px 0;padding-bottom:2px">
-        <div style="font-size:9.5pt;font-weight:800;color:#000;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;border-bottom:1.5px solid #e5e7eb;padding-bottom:2px">${s.title}</div>
-        ${inner}
-      </div>`
+    const items  = blocks.map(b => expBlock(b, expStyles))
+    const headerHTML = `<div style="font-size:9.5pt;font-weight:800;color:#000;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;border-bottom:1.5px solid #e5e7eb;padding-bottom:2px">${s.title}</div>`
+    return glueSection('margin:9px 0;padding-bottom:2px', headerHTML, items)
   }).join('')
 
   return `${header}<div style="padding:12px 24px 14px">${body}</div>`
