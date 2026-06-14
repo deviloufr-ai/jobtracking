@@ -250,7 +250,6 @@ export async function connectGmail(hint = '') {
         scope: SCOPES,
         hint,
         ux_mode: 'popup',
-        redirect_uri: REDIRECT_URI,
         callback: async (response) => {
           if (response.error) { reject(new Error(response.error)); return }
 
