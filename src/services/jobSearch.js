@@ -1,6 +1,7 @@
 // Job search service selector - supports multiple APIs
 import * as adzuna from './adzuna'
 import * as franceTravail from './franceTravail'
+import * as welcomeToTheJungle from './welcomeToTheJungle'
 
 const STORAGE_KEY = 'jobSearch_api'
 
@@ -13,6 +14,11 @@ const APIs = {
   franceTravail: {
     name: 'France Travail',
     service: franceTravail,
+    isConfigured: () => true, // Always available (free public API)
+  },
+  wttj: {
+    name: 'Welcome to the Jungle',
+    service: welcomeToTheJungle,
     isConfigured: () => true, // Always available (free public API)
   },
 }
