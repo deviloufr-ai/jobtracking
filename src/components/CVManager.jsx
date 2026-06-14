@@ -20,6 +20,8 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob, t = (key)
   const [extractedCvName, setExtractedCvName] = useState(() => loadProfile()?.extractedFrom || null)
   const [justExtracted, setJustExtracted] = useState(false)
   const [newCvId, setNewCvId] = useState(null) // CV just uploaded — prompt extraction
+  const [editingCvId, setEditingCvId] = useState(null)
+  const [editingText, setEditingText] = useState('')
   const fileRef = useRef()
 
   async function handleExtractProfile(cv) {
@@ -41,6 +43,20 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob, t = (key)
       alert('Erreur : ' + e.message)
     }
     setExtractingId(null)
+  }
+
+  function handleOpenEdit(cv) {
+    setEditingCvId(cv.id)
+    setEditingText(cv.text)
+  }
+
+  function handleSaveEdit() {
+    if (!editingCvId) return
+    const cv = cvs.find(c => c.id === editingCvId)
+    if (!cv) return
+    addCV({ ...cv, text: editingText })
+    setEditingCvId(null)
+    setEditingText('')
   }
 
   const handleUpload = async (file) => {
@@ -101,6 +117,42 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob, t = (key)
         onSaveCV={onUpdateJob}
         t={t}
       />
+    )
+  }
+
+  if (editingCvId) {
+    const editingCV = cvs.find(c => c.id === editingCvId)
+    return (
+      <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">Éditer le contenu du CV</h3>
+            <button onClick={() => setEditingCvId(null)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6">
+            <p className="text-sm text-gray-600 mb-3">{editingCV?.name}</p>
+            <textarea
+              value={editingText}
+              onChange={e => setEditingText(e.target.value)}
+              className="w-full h-[400px] text-sm border border-gray-200 rounded-lg p-3 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 resize-none"
+            />
+          </div>
+          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-2">
+            <button
+              onClick={() => setEditingCvId(null)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleSaveEdit}
+              className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              ✓ Enregistrer
+            </button>
+          </div>
+        </div>
+      </div>
     )
   }
 
@@ -186,6 +238,13 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob, t = (key)
                   <p className="text-xs text-gray-400">{cv.pages} page{cv.pages > 1 ? 's' : ''} · {formatSize(cv.size)} · {new Date(cv.createdAt).toLocaleDateString('fr-FR')}</p>
                 </div>
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => handleOpenEdit(cv)}
+                    className="text-xs font-medium text-blue-600 hover:text-white hover:bg-blue-500 border border-blue-200 hover:border-blue-500 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 whitespace-nowrap"
+                    title="Éditer le contenu"
+                  >
+                    ✎ Éditer
+                  </button>
                   <button
                     onClick={() => handleExtractProfile(cv)}
                     disabled={!!extractingId}
