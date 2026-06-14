@@ -1,5 +1,58 @@
 import { setupCORS } from './cors-helper.js'
 
+// Simple INSEE code detection (without importing the ref file)
+function detectInseeCode(location) {
+  if (!location || location === 'france') return null
+  const query = location.toLowerCase().trim()
+
+  // Exact code match (5 digits)
+  if (/^\d{5}$/.test(query)) return query
+
+  // City name to INSEE code mapping
+  const inseeMap = {
+    'paris': '75056',
+    'lyon': '69123',
+    'marseille': '13055',
+    'toulouse': '31555',
+    'nice': '06088',
+    'nantes': '44109',
+    'strasbourg': '67482',
+    'montpellier': '34172',
+    'bordeaux': '33063',
+    'lille': '59350',
+    'rennes': '35238',
+    'reims': '51454',
+    'le mans': '72181',
+    'havre': '76321',
+    'saint-étienne': '42218',
+    'toulon': '83137',
+    'grenoble': '38185',
+    'angers': '49007',
+    'dijon': '21231',
+    'brest': '29019',
+    'orléans': '45234',
+    'tours': '37261',
+    'nîmes': '30189',
+    'limoges': '87085',
+    'poitiers': '86194',
+    'caen': '14118',
+    'rouen': '76540',
+    'metz': '57463',
+    'quimper': '29232',
+    'besançon': '25056',
+    'ajaccio': '20004',
+    'bastia': '20033',
+    'amiens': '80021',
+    'douai': '59178',
+    'boulogne-billancourt': '92012',
+    'saint-denis': '93066',
+    'versailles': '78646',
+    'le mans': '72181',
+  }
+
+  return inseeMap[query] || null
+}
+
 let cachedToken = null
 let tokenExpiry = null
 
@@ -66,9 +119,10 @@ export default async function handler(req, res) {
       const end = start + perPage - 1
       params.append('range', `${start}-${end}`)
 
-      // Only add commune if it's a valid INSEE code (5 digits)
-      if (location && location !== 'france' && /^\d{5}$/.test(location)) {
-        params.append('commune', location)
+      // Auto-detect INSEE code from location and add if found
+      const inseeCode = detectInseeCode(location)
+      if (inseeCode) {
+        params.append('commune', inseeCode)
       }
 
       url = `https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search?${params}`
