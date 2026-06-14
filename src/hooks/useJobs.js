@@ -814,6 +814,22 @@ export function useJobs() {
   useEffect(() => {
     const loadJobs = async () => {
       try {
+        // Clear old/broken deletion tracking on first load to prevent stale deletions
+        const deletedKey = DELETED_HISTORY_ENTRIES_KEY
+        const stored = localStorage.getItem(deletedKey)
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored)
+            if (!Array.isArray(parsed) || parsed.length === 0) {
+              localStorage.removeItem(deletedKey)
+              console.log('🧹 Cleared empty/invalid deleted entries tracking')
+            }
+          } catch (e) {
+            localStorage.removeItem(deletedKey)
+            console.log('🧹 Cleared corrupted deleted entries tracking')
+          }
+        }
+
         await indexeddb.init()
         const cachedJobs = await indexeddb.getAllJobs()
 
