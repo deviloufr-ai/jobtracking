@@ -449,8 +449,9 @@ export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) 
                 {selectedJob.description && (
                   <div>
                     <div className="text-xs text-gray-500 font-medium mb-2">Description</div>
-                    <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                      {selectedJob.description}
+                    <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto pr-2">
+                      {selectedJob.description.substring(0, 2000)}
+                      {selectedJob.description.length > 2000 && '...'}
                     </div>
                   </div>
                 )}
