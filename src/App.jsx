@@ -395,8 +395,17 @@ export default function App() {
     // Sort history by date (chronological order)
     const sorted = [...history].sort((a, b) => new Date(a.date) - new Date(b.date))
     updateJob(id, { history: sorted })
-    if (job && history.length > (job.history?.length || 0))
-      pushNotif('update', `${job.company} — historique mis à jour`, { company: job.company, jobId: id })
+
+    // Show notification for both additions and deletions
+    if (job) {
+      const oldLen = job.history?.length || 0
+      const newLen = sorted.length
+      if (newLen > oldLen) {
+        pushNotif('update', `${job.company} — historique mis à jour`, { company: job.company, jobId: id })
+      } else if (newLen < oldLen) {
+        pushNotif('info', `${job.company} — entrée supprimée`, { company: job.company, jobId: id })
+      }
+    }
   }
 
   const handleEmailSent = (type, to) => {
