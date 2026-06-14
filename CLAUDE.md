@@ -16,7 +16,8 @@ Job application tracker with AI features. Built as a technical test for Publidat
 
 ## Key Environment Variables (Vercel)
 - `ANTHROPIC_API_KEY` — Claude API
-- `VITE_GOOGLE_CLIENT_ID` — Gmail OAuth
+- `VITE_GOOGLE_CLIENT_ID` — Gmail OAuth client ID
+- `GOOGLE_CLIENT_SECRET` — Gmail OAuth client secret (for refresh token flow)
 - `VITE_ADZUNA_APP_ID` + `VITE_ADZUNA_APP_KEY` — Job search
 
 ## Project Structure
@@ -72,7 +73,9 @@ Note: `&&` doesn't work in PowerShell, use `;` instead or separate commands.
 
 ## Known Issues / In Progress
 - Gmail import: email dates sometimes grouped on same date — fix in claude.js prompt
-- Gmail token expires after ~1h (token persisted in localStorage as workaround)
+- Gmail token refresh: ✅ **AUTOMATED** — uses refresh token flow for silent renewal, no user interaction needed
+  - Requires `GOOGLE_CLIENT_SECRET` in Vercel environment
+  - Old accounts without refresh tokens fall back to interactive re-auth
 - localStorage sync: local Cursor files often out of sync with Claude's container
 
 ## Firefox Extension

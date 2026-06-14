@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
+const REDIRECT_URI = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
 
 // Debug mode: set localStorage.debug = '1' to enable verbose logging
 const DEBUG = typeof window !== 'undefined' && localStorage?.getItem('debug') === '1'
@@ -232,7 +233,7 @@ function waitForGoogle() {
   })
 }
 
-// Connect a Gmail account — adds to the multi-account map
+// Connect a Gmail account — uses authorization code exchange for refresh token support
 // hint: optional email hint to pre-select account in Google picker
 export async function connectGmail(hint = '') {
   if (!CLIENT_ID) throw new Error('VITE_GOOGLE_CLIENT_ID manquant dans .env')
@@ -244,38 +245,61 @@ export async function connectGmail(hint = '') {
 
   return new Promise((resolve, reject) => {
     try {
-      const client = window.google.accounts.oauth2.initTokenClient({
+      const client = window.google.accounts.oauth2.initCodeClient({
         client_id: CLIENT_ID,
         scope: SCOPES,
         hint,
-        // Use 'select_account' to allow persistence + 'consent' only if needed
+        ux_mode: 'popup',
+        redirect_uri: REDIRECT_URI,
         callback: async (response) => {
           if (response.error) { reject(new Error(response.error)); return }
-          const token = response.access_token
-          // Fetch user info for this token
-          const user = await fetchUserInfo(token)
-          if (!user) { reject(new Error('Impossible de récupérer le profil')); return }
-          accounts[user.email] = {
-            token,
-            user,
-            tokenExpiry: new Date(Date.now() + 3600000).toISOString() // 1 hour from now
+
+          try {
+            // Exchange authorization code for tokens on backend
+            const tokenRes = await fetch('/api/exchange-auth-code', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code: response.code }),
+            })
+
+            if (!tokenRes.ok) {
+              const err = await tokenRes.json()
+              reject(new Error(err.error || 'Token exchange failed'))
+              return
+            }
+
+            const tokens = await tokenRes.json()
+            const token = tokens.accessToken
+
+            // Fetch user info for this token
+            const user = await fetchUserInfo(token)
+            if (!user) { reject(new Error('Impossible de récupérer le profil')); return }
+
+            // Store tokens with refresh token for silent refresh
+            accounts[user.email] = {
+              token,
+              refreshToken: tokens.refreshToken,
+              user,
+              tokenExpiry: new Date(Date.now() + (tokens.expiresIn || 3600) * 1000).toISOString()
+            }
+            saveAccounts(accounts)
+            console.log(`✅ Connected ${user.email} with refresh token support`)
+            resolve({ token, user })
+          } catch (err) {
+            reject(err)
           }
-          saveAccounts(accounts)
-          resolve({ token, user })
         },
       })
-      // Request token with select_account prompt for persistence
-      // This happens synchronously after initTokenClient, preserving user activation
-      client.requestAccessToken({ prompt: hint ? '' : 'select_account' })
+      // Request authorization code with appropriate prompt
+      client.requestCode()
     } catch (err) {
       reject(err)
     }
   })
 }
 
-// Auto-refresh token if expired
+// Auto-refresh token if expired (using refresh token for silent refresh)
 export async function ensureValidToken(email = '') {
-  // Fixed: corrected ternary operator logic
   const targetEmail = email || Object.keys(accounts)[0] || null
   if (!targetEmail) return null
 
@@ -287,12 +311,54 @@ export async function ensureValidToken(email = '') {
   const now = new Date()
 
   if (expiry && now >= new Date(expiry.getTime() - 5 * 60000)) {
-    // Token expired, need to refresh
-    try {
-      await connectGmail(targetEmail)
-    } catch (e) {
-      console.warn('Token refresh failed:', e.message)
-      return acct.token
+    // Token expired or expiring soon
+    if (acct.refreshToken) {
+      // Silent refresh using refresh token (no user interaction)
+      try {
+        const refreshRes = await fetch('/api/refresh-auth-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken: acct.refreshToken }),
+        })
+
+        if (!refreshRes.ok) {
+          const err = await refreshRes.json()
+          console.warn('Silent token refresh failed:', err.error)
+          // Fall back to interactive re-auth
+          await connectGmail(targetEmail)
+          return accounts[targetEmail]?.token || acct.token
+        }
+
+        const newTokens = await refreshRes.json()
+        accounts[targetEmail] = {
+          ...acct,
+          token: newTokens.accessToken,
+          tokenExpiry: new Date(Date.now() + (newTokens.expiresIn || 3600) * 1000).toISOString(),
+        }
+        saveAccounts(accounts)
+        console.log(`🔄 Silently refreshed token for ${targetEmail}`)
+        return newTokens.accessToken
+      } catch (e) {
+        console.warn('Silent refresh error:', e.message)
+        // Fall back to interactive re-auth
+        try {
+          await connectGmail(targetEmail)
+          return accounts[targetEmail]?.token || acct.token
+        } catch (reAuthErr) {
+          console.warn('Re-auth also failed:', reAuthErr.message)
+          return acct.token // Return stale token as last resort
+        }
+      }
+    } else {
+      // No refresh token (old format), fall back to interactive re-auth
+      console.log(`No refresh token for ${targetEmail}, triggering interactive re-auth`)
+      try {
+        await connectGmail(targetEmail)
+        return accounts[targetEmail]?.token || acct.token
+      } catch (e) {
+        console.warn('Re-auth failed:', e.message)
+        return acct.token
+      }
     }
   }
 
@@ -379,33 +445,50 @@ export async function sendEmail({ to, subject, body, fromAccount }) {
 }
 
 // ── Refresh token for a specific account ─────────────────────────────────────
+// First tries silent refresh using refresh token, falls back to interactive re-auth
 export async function refreshToken(email) {
   if (!CLIENT_ID) throw new Error('VITE_GOOGLE_CLIENT_ID manquant')
-  const hint = email || getCachedUser()?.email || ''
-  await waitForGoogle()
-  return new Promise((resolve, reject) => {
-    const client = window.google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: SCOPES,
-      hint,
-      callback: async (response) => {
-        if (response.error) { reject(new Error(response.error)); return }
-        const token = response.access_token
-        const user = await fetchUserInfo(token)
-        if (user) {
-          // Fixed: add tokenExpiry to refreshed token
-          accounts[user.email] = {
-            token,
-            user,
-            tokenExpiry: new Date(Date.now() + 3600000).toISOString()
-          }
-          saveAccounts(accounts)
-        }
-        resolve(token)
-      },
-    })
-    client.requestAccessToken({ prompt: '' })
-  })
+
+  const targetEmail = email || getCachedUser()?.email
+  if (!targetEmail) throw new Error('Aucun compte Gmail détecté')
+
+  const acct = accounts[targetEmail]
+  if (!acct) throw new Error(`Compte non trouvé: ${targetEmail}`)
+
+  // Try silent refresh first if we have a refresh token
+  if (acct.refreshToken) {
+    try {
+      console.log(`🔄 Attempting silent refresh for ${targetEmail}...`)
+      const refreshRes = await fetch('/api/refresh-auth-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: acct.refreshToken }),
+      })
+
+      if (!refreshRes.ok) {
+        const err = await refreshRes.json()
+        console.warn('Silent refresh failed:', err.error)
+        throw new Error(err.error || 'Silent refresh failed')
+      }
+
+      const newTokens = await refreshRes.json()
+      accounts[targetEmail] = {
+        ...acct,
+        token: newTokens.accessToken,
+        tokenExpiry: new Date(Date.now() + (newTokens.expiresIn || 3600) * 1000).toISOString(),
+      }
+      saveAccounts(accounts)
+      console.log(`✅ Silent refresh successful for ${targetEmail}`)
+      return newTokens.accessToken
+    } catch (e) {
+      console.warn('Silent refresh failed, falling back to interactive re-auth:', e.message)
+      // Fall through to interactive re-auth below
+    }
+  }
+
+  // Fall back to interactive re-auth
+  console.log(`🔐 Triggering interactive re-auth for ${targetEmail}`)
+  return await connectGmail(targetEmail).then(result => result.token)
 }
 
 // ── Gmail API fetch helper ────────────────────────────────────────────────────
