@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { searchJobs, isAdzunaConfigured } from '../services/adzuna'
+import { searchJobs } from '../services/welcomeToTheJungle'
 import { FRENCH_LOCATIONS, getLocationsByQuery, getLocationLabel } from '../services/adzunaLocations'
 
 const CONTRACT_LABELS = {
@@ -133,11 +133,6 @@ export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) 
       <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
         <span className="text-base">🔎</span>
         <h3 className="text-sm font-semibold text-gray-800">{t('jobSearch.title')}</h3>
-        {!isAdzunaConfigured() && (
-          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full ml-auto">
-            Demo mode — <a href="https://developer.adzuna.com/" target="_blank" rel="noopener noreferrer" className="underline">Get an Adzuna key</a>
-          </span>
-        )}
       </div>
 
       {/* Search bar */}
