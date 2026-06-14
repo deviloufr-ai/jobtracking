@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, memo } from 'react'
 import { enrichJobTimeline } from '../services/enrichTimeline'
 import AdvicePanel from './AdvicePanel'
 import { STATUSES, getStatus, getStatusLabel } from '../hooks/useJobs'
@@ -90,7 +90,7 @@ function getSourceLabel(entry, companyName, t) {
   return null
 }
 
-export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, onViewSavedCV, forceExpand, onForceExpandDone, checkAllPositions, t = (key) => key, isSelected = false, onSelect = null }) {
+function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, onViewSavedCV, forceExpand, onForceExpandDone, checkAllPositions, t = (key) => key, isSelected = false, onSelect = null }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
   const [showUseCase, setShowUseCase] = useState(false)
@@ -841,3 +841,5 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
     </>
   )
 }
+
+export default memo(JobRow)

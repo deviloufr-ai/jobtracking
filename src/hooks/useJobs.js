@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { loadSettings } from './useSettings'
 import { extractUrlsFromEmail, rankUrlsByJobRelevance, checkPositionUrl } from '../services/positionChecker'
 import { indexeddb } from '../services/indexeddb'
@@ -91,6 +91,9 @@ const STATUS_PRIORITY = {
 // Import all the deduplication/processing functions from original useJobs
 // (These are pure functions, no changes needed)
 export function deduplicateJobs(jobs) {
+  // Early exit: if few jobs, deduplication is cheap
+  if (jobs.length <= 2) return jobs
+
   const normPos = p => (p || '').toLowerCase().trim().replace(/\s*\(?[hf]\/[hf]\)?\s*/gi, '').trim()
   const isGenericPos = p => GENERIC_POSITIONS_SET.has(normPos(p))
 
@@ -430,24 +433,35 @@ export function deduplicateHistory(jobs) {
       }
 
       // Second pass: cluster similar entries on same date WITH SAME STATUS
+      // Skip expensive similarity clustering if few entries remain
+      if (withoutExactDupes.length <= 2) {
+        deduped.push(...withoutExactDupes)
+        continue
+      }
+
       // Never merge entries with different statuses—they're different events
       const clusters = []
       const used = new Set()
+      const normalizedCache = new Map()
 
       for (let i = 0; i < withoutExactDupes.length; i++) {
         if (used.has(i)) continue
 
         const cluster = [i]
         used.add(i)
-        const baseWords = normalizeForComparison(withoutExactDupes[i].note)
-        const baseStatus = withoutExactDupes[i].status
+        const baseEntry = withoutExactDupes[i]
+        const baseWords = normalizedCache.get(i) || normalizeForComparison(baseEntry.note)
+        normalizedCache.set(i, baseWords)
+        const baseStatus = baseEntry.status
 
         for (let j = i + 1; j < withoutExactDupes.length; j++) {
           if (used.has(j)) continue
+          const compareEntry = withoutExactDupes[j]
           // Only cluster if same status AND similar notes
-          if (withoutExactDupes[j].status !== baseStatus) continue
+          if (compareEntry.status !== baseStatus) continue
 
-          const compareWords = normalizeForComparison(withoutExactDupes[j].note)
+          const compareWords = normalizedCache.get(j) || normalizeForComparison(compareEntry.note)
+          normalizedCache.set(j, compareWords)
 
           if (notesAreSimilar(baseWords, compareWords)) {
             cluster.push(j)
@@ -743,6 +757,8 @@ export function useJobs() {
   const [rawJobs, setJobs] = useState([])
   const [settingsKey, setSettingsKey] = useState(0)
   const [loading, setLoading] = useState(true)
+  const saveTimeoutRef = useRef(null)
+  const lastSavedRef = useRef(null)
 
   // Load from IndexedDB on mount + when synced from other devices
   useEffect(() => {
@@ -793,11 +809,20 @@ export function useJobs() {
   // Apply processing pipeline: dedup jobs first, then history, then archive validation
   const jobs = useMemo(() => deduplicateJobs(deduplicateHistory(autoStale(rawJobs))), [rawJobs, settingsKey])
 
-  // Persist to IndexedDB whenever jobs change
+  // Debounce IndexedDB saves to avoid blocking on every mutation
   useEffect(() => {
-    if (!loading) {
-      indexeddb.saveJobs(jobs).catch(err => console.error('Failed to save jobs:', err))
-    }
+    if (loading) return
+
+    clearTimeout(saveTimeoutRef.current)
+    saveTimeoutRef.current = setTimeout(() => {
+      const jobsJson = JSON.stringify(jobs)
+      if (jobsJson !== lastSavedRef.current) {
+        lastSavedRef.current = jobsJson
+        indexeddb.saveJobs(jobs).catch(err => console.error('Failed to save jobs:', err))
+      }
+    }, 500)
+
+    return () => clearTimeout(saveTimeoutRef.current)
   }, [jobs, loading])
 
   // Listen for settings changes to re-evaluate archives

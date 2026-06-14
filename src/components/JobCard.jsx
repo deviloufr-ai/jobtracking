@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, memo } from 'react'
 import { enrichJobTimeline } from '../services/enrichTimeline'
 import { STATUSES, getStatus } from '../hooks/useJobs'
 import RowActions from './RowActions'
@@ -223,4 +223,4 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
   )
 }
 
-export default JobCard
+export default memo(JobCard)
