@@ -870,7 +870,21 @@ export function useJobs() {
         }
 
         // Ensure all loaded jobs have sorted history
-        const sortedJobs = validJobs.map(job => sortJobHistory(job))
+        let sortedJobs = validJobs.map(job => sortJobHistory(job))
+
+        // CRITICAL: Filter out deleted history entries on initial load
+        // Otherwise deleted entries reappear when the app refreshes
+        const deletedEntries = JSON.parse(localStorage.getItem(DELETED_HISTORY_ENTRIES_KEY) || '[]')
+        const deletedSet = new Set(deletedEntries)
+        sortedJobs = sortedJobs.map(job => {
+          if (!job.history || job.history.length === 0) return job
+          const filtered = job.history.filter(entry => {
+            const key = `${job.id}||${entry.date}||${entry.status}||${entry.note || ''}`
+            return !deletedSet.has(key)
+          })
+          return { ...job, history: filtered }
+        })
+
         setJobs(sortedJobs)
       } catch (err) {
         console.error('Failed to load jobs from IndexedDB:', err)
