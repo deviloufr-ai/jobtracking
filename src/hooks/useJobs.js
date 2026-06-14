@@ -569,19 +569,20 @@ function markJobIdAsDeleted(jobId) {
 }
 
 // Track deleted history entries to prevent re-import from Supabase
-function isDeletedHistoryEntry(jobId, date, note) {
+// Uses full note + date + status for accurate matching
+function isDeletedHistoryEntry(jobId, date, status, note) {
   const deleted = JSON.parse(localStorage.getItem(DELETED_HISTORY_ENTRIES_KEY) || '[]')
-  const key = `${jobId}||${date}||${(note || '').slice(0, 50)}`
+  const key = `${jobId}||${date}||${status}||${note || ''}`
   return deleted.includes(key)
 }
 
-function markHistoryEntryAsDeleted(jobId, date, note) {
+function markHistoryEntryAsDeleted(jobId, date, status, note) {
   const deleted = JSON.parse(localStorage.getItem(DELETED_HISTORY_ENTRIES_KEY) || '[]')
-  const key = `${jobId}||${date}||${(note || '').slice(0, 50)}`
+  const key = `${jobId}||${date}||${status}||${note || ''}`
   if (!deleted.includes(key)) {
     deleted.push(key)
-    // Keep only last 500 deletions to prevent localStorage overflow
-    if (deleted.length > 500) deleted.shift()
+    // Keep only last 1000 deletions to prevent localStorage overflow
+    if (deleted.length > 1000) deleted.splice(0, 100)
     localStorage.setItem(DELETED_HISTORY_ENTRIES_KEY, JSON.stringify(deleted))
   }
 }
@@ -692,10 +693,12 @@ async function syncLocalJobsToSupabase(stableSyncId) {
         let remoteHistory = (historyByJobId.get(remoteJob.id) || []).map(entry => convertHistoryFromSupabase(entry))
 
         // Filter out deleted history entries (prevents re-import of locally-deleted entries)
+        // Use full note + date + status for accurate matching
         const deletedEntries = JSON.parse(localStorage.getItem(DELETED_HISTORY_ENTRIES_KEY) || '[]')
+        const deletedSet = new Set(deletedEntries) // Convert to Set for O(1) lookup
         remoteHistory = remoteHistory.filter(entry => {
-          const key = `${remoteJob.id}||${entry.date}||${(entry.note || '').slice(0, 50)}`
-          return !deletedEntries.includes(key)
+          const key = `${remoteJob.id}||${entry.date}||${entry.status}||${entry.note || ''}`
+          return !deletedSet.has(key)
         })
 
         const deduped = deduplicateHistory([{ history: remoteHistory }])[0].history

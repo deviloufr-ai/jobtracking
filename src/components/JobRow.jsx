@@ -246,14 +246,15 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
     const idx = toOriginalIdx(displayIdx)
     const deletedEntry = history[idx]
 
-    // Mark deleted entry so it doesn't get re-imported from Supabase
+    // Mark deleted entry with FULL note to avoid re-import from Supabase
+    // Use full note + date + status for unique identification
     if (deletedEntry && window.localStorage) {
       const deletedKey = 'jobtrackr_deleted_history_entries'
       const deleted = JSON.parse(localStorage.getItem(deletedKey) || '[]')
-      const key = `${job.id}||${deletedEntry.date}||${(deletedEntry.note || '').slice(0, 50)}`
+      const key = `${job.id}||${deletedEntry.date}||${deletedEntry.status}||${deletedEntry.note || ''}`
       if (!deleted.includes(key)) {
         deleted.push(key)
-        if (deleted.length > 500) deleted.shift()
+        if (deleted.length > 1000) deleted.splice(0, 100) // Keep last 900
         localStorage.setItem(deletedKey, JSON.stringify(deleted))
       }
     }
