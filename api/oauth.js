@@ -25,11 +25,30 @@ async function handleCodeExchange(req, res) {
   const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET
 
   if (!CLIENT_ID || !CLIENT_SECRET) {
-    console.error('Missing Google OAuth credentials in environment')
-    return res.status(500).json({ error: 'Server misconfigured' })
+    console.error('Missing Google OAuth credentials:', {
+      hasClientId: !!CLIENT_ID,
+      hasClientSecret: !!CLIENT_SECRET
+    })
+    return res.status(500).json({
+      error: 'Server misconfigured',
+      details: 'Missing VITE_GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET'
+    })
+  }
+
+  if (!code) {
+    return res.status(400).json({ error: 'Authorization code required' })
   }
 
   try {
+    // Get redirect URI from request origin or environment
+    const origin = req.headers['x-forwarded-proto'] && req.headers['x-forwarded-host']
+      ? `${req.headers['x-forwarded-proto']}://${req.headers['x-forwarded-host']}`
+      : process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : 'http://localhost:3000'
+
+    console.log('OAuth token exchange:', { code: code?.slice(0, 10) + '...', redirectUri: origin })
+
     // Exchange code for tokens
     const response = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -39,9 +58,7 @@ async function handleCodeExchange(req, res) {
         client_secret: CLIENT_SECRET,
         code,
         grant_type: 'authorization_code',
-        redirect_uri: typeof window !== 'undefined'
-          ? window.location.origin
-          : `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}`,
+        redirect_uri: origin,
       }),
     })
 
