@@ -758,7 +758,6 @@ export function useJobs() {
   const [settingsKey, setSettingsKey] = useState(0)
   const [loading, setLoading] = useState(true)
   const saveTimeoutRef = useRef(null)
-  const lastSavedRef = useRef(null)
 
   // Load from IndexedDB on mount + when synced from other devices
   useEffect(() => {
@@ -815,11 +814,7 @@ export function useJobs() {
 
     clearTimeout(saveTimeoutRef.current)
     saveTimeoutRef.current = setTimeout(() => {
-      const jobsJson = JSON.stringify(jobs)
-      if (jobsJson !== lastSavedRef.current) {
-        lastSavedRef.current = jobsJson
-        indexeddb.saveJobs(jobs).catch(err => console.error('Failed to save jobs:', err))
-      }
+      indexeddb.saveJobs(jobs).catch(err => console.error('Failed to save jobs:', err))
     }, 500)
 
     return () => clearTimeout(saveTimeoutRef.current)
