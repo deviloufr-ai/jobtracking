@@ -704,7 +704,7 @@ async function syncLocalJobsToSupabase(stableSyncId) {
         } else {
           // New job from another device, save it
           await indexeddb.saveJob(jobWithHistory)
-          console.log('  ✓ Fetched job:', remoteJobDeserialized.company)
+          console.log('  ✓ Fetched job:', remoteJobDeserialized.company, '(' + deduped.length + ' history entries)')
         }
       }
     }
