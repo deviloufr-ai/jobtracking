@@ -786,11 +786,53 @@ export function useJobs() {
       try {
         await indexeddb.init()
         const cachedJobs = await indexeddb.getAllJobs()
+
+        // Validate jobs don't contain corrupted oversized data
+        // (prevents allocation overflow from huge notes/history)
+        const isValidJob = (job) => {
+          try {
+            const notes = job.notes || ''
+            const history = job.history || []
+            // Reject jobs with notes > 100KB or history > 500 entries
+            if (notes.length > 102400) {
+              console.warn(`Job ${job.id} has oversized notes (${notes.length} chars), clearing`)
+              return false
+            }
+            if (history.length > 500) {
+              console.warn(`Job ${job.id} has oversized history (${history.length} entries), clearing`)
+              return false
+            }
+            return true
+          } catch {
+            return false
+          }
+        }
+
+        const validJobs = (cachedJobs || []).filter(isValidJob)
+        if (validJobs.length < (cachedJobs?.length || 0)) {
+          console.warn(`Filtered out corrupted jobs. Before: ${cachedJobs?.length}, After: ${validJobs.length}`)
+          // Clear IndexedDB if corrupted data detected
+          try {
+            await indexeddb.clear()
+          } catch (e) {
+            console.warn('Failed to clear IndexedDB:', e)
+          }
+        }
+
         // Ensure all loaded jobs have sorted history
-        const sortedJobs = (cachedJobs || []).map(job => sortJobHistory(job))
+        const sortedJobs = validJobs.map(job => sortJobHistory(job))
         setJobs(sortedJobs)
       } catch (err) {
         console.error('Failed to load jobs from IndexedDB:', err)
+        // On allocation error, clear IndexedDB and retry
+        if (err.message?.includes('allocation') || err.name === 'RangeError') {
+          console.warn('⚠ Allocation error detected, clearing IndexedDB...')
+          try {
+            await indexeddb.clear()
+          } catch (e) {
+            console.error('Failed to clear IndexedDB:', e)
+          }
+        }
         setJobs([])
       } finally {
         setLoading(false)
@@ -827,7 +869,19 @@ export function useJobs() {
   }, [])
 
   // Apply processing pipeline: dedup jobs first, then history, then archive validation
-  const jobs = useMemo(() => deduplicateJobs(deduplicateHistory(autoStale(rawJobs))), [rawJobs, settingsKey])
+  const jobs = useMemo(() => {
+    try {
+      return deduplicateJobs(deduplicateHistory(autoStale(rawJobs)))
+    } catch (err) {
+      console.error('❌ Error in jobs processing pipeline:', err)
+      // If allocation error during processing, return raw jobs unprocessed
+      if (err.message?.includes('allocation') || err.name === 'RangeError') {
+        console.warn('⚠ Allocation error in pipeline, returning unprocessed jobs')
+        return rawJobs
+      }
+      throw err
+    }
+  }, [rawJobs, settingsKey])
 
   // Debounce IndexedDB saves to avoid blocking on every mutation
   useEffect(() => {
