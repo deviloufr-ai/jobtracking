@@ -161,11 +161,11 @@ export default function UpcomingMeetings({ jobs, t = (key) => key }) {
 
                 {m.meetingLink && state !== 'done' && (
                   <a href={m.meetingLink} target="_blank" rel="noopener noreferrer"
-                    title={`Rejoindre via ${platform?.name}`}
+                    title={platform ? t('upcomingMeetings.joinVia').replace('{platform}', platform.name) : t('upcomingMeetings.join')}
                     className={`flex-shrink-0 flex items-center gap-1 text-xs font-medium border px-2 py-1 rounded-lg transition-colors whitespace-nowrap ${joinCls}`}
                   >
                     <span>{platform?.emoji}</span>
-                    <span>Rejoindre</span>
+                    <span>{t('upcomingMeetings.join')}</span>
                   </a>
                 )}
               </div>

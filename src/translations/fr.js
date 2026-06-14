@@ -451,6 +451,8 @@ export const fr = {
     title: 'Meetings à venir',
     today: "Aujourd'hui",
     tomorrow: 'Demain',
+    join: 'Rejoindre',
+    joinVia: 'Rejoindre via {platform}',
   },
 
   // Goals
