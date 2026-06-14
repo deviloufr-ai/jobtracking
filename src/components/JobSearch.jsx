@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { searchJobs } from '../services/welcomeToTheJungle'
+import { searchJobs, getSavedAPI, setActiveAPI, getAvailableAPIs, getAPIName } from '../services/jobSearch'
 import { FRENCH_LOCATIONS, getLocationsByQuery, getLocationLabel } from '../services/adzunaLocations'
 
 const CONTRACT_LABELS = {
@@ -26,6 +26,8 @@ export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) 
   const [showQueryHistory, setShowQueryHistory] = useState(false)
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
   const [selectedJob, setSelectedJob] = useState(null)
+  const [activeAPI, setActiveAPIState] = useState(getSavedAPI())
+  const [availableAPIs, setAvailableAPIs] = useState(getAvailableAPIs())
   const queryInputRef = useRef(null)
   const locationInputRef = useRef(null)
 
@@ -49,14 +51,14 @@ export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) 
     setError(null)
     setPage(p)
     try {
-      const data = await searchJobs({ query: q, location: loc, page: p })
+      const data = await searchJobs(activeAPI, { query: q, location: loc, page: p })
       setResults(data)
       if (p === 1) saveSearchToHistory(q, loc)
     } catch (e) {
       setError(t('jobSearch.searching') + ' error: ' + e.message)
     }
     setLoading(false)
-  }, [])
+  }, [activeAPI])
 
   useEffect(() => {
     const last = localStorage.getItem(STORAGE_KEY_LAST)
@@ -127,12 +129,38 @@ export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) 
     setShowLocationSuggestions(false)
   }
 
+  const handleAPIChange = (newAPI) => {
+    setActiveAPIState(newAPI)
+    setActiveAPI(newAPI)
+    setResults(null)
+  }
+
   return (
     <div className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden ${selectedJob ? 'flex flex-col' : ''}`} style={selectedJob ? { minHeight: '70vh' } : {}}>
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-        <span className="text-base">🔎</span>
-        <h3 className="text-sm font-semibold text-gray-800">{t('jobSearch.title')}</h3>
+      <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2 justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-base">🔎</span>
+          <h3 className="text-sm font-semibold text-gray-800">{t('jobSearch.title')}</h3>
+        </div>
+        <div className="flex items-center gap-1 ml-auto">
+          <span className="text-xs text-gray-500">API:</span>
+          {availableAPIs.map(api => (
+            <button
+              key={api.id}
+              onClick={() => handleAPIChange(api.id)}
+              className={`text-xs px-2 py-1 rounded transition-colors ${
+                activeAPI === api.id
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              } ${!api.configured ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={!api.configured}
+              title={!api.configured ? 'API not configured' : `Switch to ${api.name}`}
+            >
+              {api.name}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Search bar */}
