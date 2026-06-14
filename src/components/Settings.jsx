@@ -717,7 +717,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                   <Row label="Langue" hint="La langue s'appliquera immédiatement">
                     <select
                       value={language}
-                      onChange={e => setLanguage(e.target.value)}
+                      onChange={e => { setLanguage(e.target.value); setTimeout(() => window.location.reload(), 300) }}
                       className="w-full sm:w-auto text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all"
                     >
                       {availableLanguages.map(lang => (
