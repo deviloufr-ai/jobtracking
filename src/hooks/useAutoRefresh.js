@@ -405,10 +405,30 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
         // Exact company+position match first
         const key = `${normalize(p.company)}_${normalize(p.position)}`
         if (jobByKey.has(key)) return jobByKey.get(key)
-        // Fall back to company-only ONLY if position is generic
-        // Don't merge "Product Manager" + "Lead Product Manager" at same company
+
+        const normCo = normalize(p.company)
+        // Fall back to company-only if the PARSED position is generic.
+        // (e.g. a "Thank you for applying" confirmation that carries no job title)
         if (isGenericPos(p.position)) {
-          return jobByCompany.get(normalize(p.company)) || null
+          return jobByCompany.get(normCo) || null
+        }
+
+        // Position-compatible company match: when an email at a known company
+        // gives a slightly different but related title (e.g. "Product Manager"
+        // vs the tracked "Product Manager - Mobile"), treat it as the same job.
+        // One title being a substring of the other = same role family. Without
+        // this, the email is wrongly imported as a NEW job and the existing
+        // one never gets its status upgraded (Bug: refresh didn't update status).
+        const candidate = jobByCompany.get(normCo)
+        if (candidate) {
+          const newPos = normalize(p.position)
+          const existPos = normalize(candidate.position)
+          if (
+            isGenericPos(candidate.position) ||
+            (newPos && existPos && (newPos.includes(existPos) || existPos.includes(newPos)))
+          ) {
+            return candidate
+          }
         }
         return null
       }
