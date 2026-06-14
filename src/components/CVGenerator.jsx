@@ -333,7 +333,7 @@ function renderStandard(md, pic) {
       </div>`
   }).join('')
 
-  return `${header}<div style="padding:8px 18px 12px;font-family:Arial,Helvetica,sans-serif;line-height:1.3">${body}</div>`
+  return `${header}<div style="padding:12px 24px 16px;font-family:Arial,Helvetica,sans-serif;line-height:1.3">${body}</div>`
 }
 
 // ── Template: MINIMAL ────────────────────────────────────────────────────────
