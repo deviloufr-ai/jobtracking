@@ -891,12 +891,12 @@ export default function App() {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-yellow-100 bg-yellow-50/60">
-                          <th className="py-3 px-2 w-8"></th>
+                          <th className="py-3 px-4"></th>
                           <ThHeader col="company" label={t('table.company')} />
                           <ThHeader col="status" label={t('table.status')} />
                           <ThHeader col="date" label={t('table.date')} />
                           <th className="hidden md:table-cell py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('table.notes')}</th>
-                          <th className="py-3 px-2 w-12"></th>
+                          <th className="py-3 px-4 w-20"></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -918,12 +918,12 @@ export default function App() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-gray-100 bg-gray-50/60">
-                        <th className="py-3 px-2 w-8"></th>
+                        <th className="py-3 px-4"></th>
                         <ThHeader col="company" label={t('table.company')} />
                         <ThHeader col="status" label={t('table.status')} />
                         <ThHeader col="date" label={t('table.date')} />
                         <th className="hidden md:table-cell py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('table.notes')}</th>
-                        <th className="py-3 px-2 w-12"></th>
+                        <th className="py-3 px-4 w-20"></th>
                       </tr>
                     </thead>
                     <tbody>

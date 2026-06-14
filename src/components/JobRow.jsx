@@ -310,7 +310,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
         onClick={() => setExpanded(v => !v)}
       >
         {/* Checkbox + Avatar + Company — clicking company/avatar triggers row expand */}
-        <td className="py-3.5 px-2">
+        <td className="py-3.5 px-4">
           <div className="flex items-center gap-3 min-w-0">
             {/* Checkbox */}
             <input type="checkbox" className="flex-shrink-0 accent-indigo-600 w-4 h-4 cursor-pointer" checked={isSelected} onChange={(e) => { e.stopPropagation(); onSelect?.(job.id) }} />
@@ -400,7 +400,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
         </td>
 
         {/* Actions */}
-        <td className="py-3.5 px-4" onClick={e => e.stopPropagation()}>
+        <td className="py-3.5 px-4 w-20" onClick={e => e.stopPropagation()}>
           <div className="opacity-0 group-hover:opacity-100 transition-opacity">
             <RowActions
               expanded={expanded}
