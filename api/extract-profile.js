@@ -22,6 +22,8 @@ Règles :
 - "skills" : liste des compétences clés séparées par des virgules (max 15)
 - "key_achievements" : 3-5 réalisations chiffrées ou marquantes du CV
 - "companies" : liste des entreprises par ordre chronologique inverse
+- "email" : adresse email de contact trouvée sur le CV, sinon ""
+- "linkedin" : URL LinkedIn, sinon ""
 - "ai_experience" : extraire uniquement si le CV mentionne IA/ML/LLM/outils IA, sinon ""
 - "recent_project" : projet le plus récent ou marquant, 1-2 phrases
 - "motivation" : inféré du ton et des choix de carrière, 1-2 phrases
@@ -31,6 +33,8 @@ Réponds UNIQUEMENT en JSON valide sans backticks :
 {
   "name": "Prénom Nom",
   "title": "Titre professionnel actuel ou visé",
+  "email": "email@example.com",
+  "linkedin": "https://linkedin.com/in/...",
   "experience": "Résumé du parcours...",
   "skills": ["compétence1", "compétence2", ...],
   "languages": "Langues parlées et niveaux",

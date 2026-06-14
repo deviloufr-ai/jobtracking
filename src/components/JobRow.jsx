@@ -361,7 +361,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                     className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-50 text-left ${s.key === job.status ? 'font-semibold' : ''}`}
                   >
                     <span className={`w-2 h-2 rounded-full ${s.dot}`} />
-                    {s.label}
+                    {getStatusLabel(s.key, t)}
                     {s.key === job.status && <span className="ml-auto text-indigo-500">✓</span>}
                   </button>
                 ))}
@@ -443,7 +443,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                     <div className="grid grid-cols-3 gap-2">
                       <select className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300"
                         value={newStep.status} onChange={e => setNewStep(s => ({ ...s, status: e.target.value }))}>
-                        {STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                        {STATUSES.map(s => <option key={s.key} value={s.key}>{getStatusLabel(s.key, t)}</option>)}
                       </select>
                       <input type="date" className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
                         value={newStep.date} onChange={e => setNewStep(s => ({ ...s, date: e.target.value }))} />
@@ -515,7 +515,7 @@ export default function JobRow({ job, onEdit, onDelete, onStatusChange, onAddSte
                               <div className="grid grid-cols-3 gap-2">
                                 <select className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300"
                                   value={editForm.status || entry.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
-                                  {STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                                  {STATUSES.map(s => <option key={s.key} value={s.key}>{getStatusLabel(s.key, t)}</option>)}
                                 </select>
                                 <input type="date" className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
                                   value={(editForm.date || entry.date)?.split('T')[0] || ''} onChange={e => setEditForm(f => {

@@ -12,6 +12,8 @@ const PROFILE_KEY = 'jobtrackr_profile'
 const PROFILE_DEFAULTS = {
   name: '',
   title: '',
+  email: '',
+  linkedin: '',
   website: '',
   experience: '',
   skills: '',
@@ -462,8 +464,14 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                   <Row label="Titre / Poste visé">
                     <TextInput value={profile.title} onChange={v => updateProfile('title', v)} placeholder="Senior Product Manager" />
                   </Row>
+                  <Row label="Email" hint="Adresse de contact">
+                    <TextInput value={profile.email} onChange={v => updateProfile('email', v)} placeholder="devilalex@example.com" />
+                  </Row>
+                  <Row label="LinkedIn" hint="Profil LinkedIn">
+                    <TextInput value={profile.linkedin} onChange={v => updateProfile('linkedin', v)} placeholder="https://linkedin.com/in/devilalex" />
+                  </Row>
                   <Row label="Site web / Portfolio" hint="Affiché dans le CV et les emails">
-                    <TextInput value={profile.website} onChange={v => updateProfile('website', v)} placeholder="https://linkedin.com/in/devilalex" />
+                    <TextInput value={profile.website} onChange={v => updateProfile('website', v)} placeholder="https://devilalex.com" />
                   </Row>
                   <Row label="Langues">
                     <TextInput value={profile.languages} onChange={v => updateProfile('languages', v)} placeholder="Français (natif), Anglais (courant)" />

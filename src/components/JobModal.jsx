@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { STATUSES } from '../hooks/useJobs'
+import { STATUSES, getStatusLabel } from '../hooks/useJobs'
 
 const EMPTY = { company: '', position: '', url: '', status: 'sent', date: new Date().toISOString().split('T')[0], notes: '' }
 
@@ -109,7 +109,7 @@ export default function JobModal({ job, onSave, onClose, findDuplicate, t = (key
               onChange={e => set('status', e.target.value)}
             >
               {STATUSES.map(s => (
-                <option key={s.key} value={s.key}>{s.label}</option>
+                <option key={s.key} value={s.key}>{getStatusLabel(s.key, t)}</option>
               ))}
             </select>
           </div>
@@ -134,7 +134,7 @@ export default function JobModal({ job, onSave, onClose, findDuplicate, t = (key
                 {t('jobModal.duplicateText')
                   .replace('{company}', duplicate.company)
                   .replace('{position}', duplicate.position)
-                  .replace('{status}', duplicate.status ? STATUSES.find(s => s.key === duplicate.status)?.label : 'Unknown')}
+                  .replace('{status}', duplicate.status ? getStatusLabel(duplicate.status, t) : 'Unknown')}
               </p>
               <p className="text-xs text-amber-600 mt-2">{t('jobModal.duplicateAsk')}</p>
             </div>
