@@ -971,9 +971,14 @@ export function useJobs() {
     delete job._emailBody
 
     setJobs(prev => [job, ...prev])
+
+    // Sync to coordinator if available, otherwise will sync on next batch
     const coordinator = getSyncCoordinator()
     if (coordinator) {
       coordinator.mutate('jobs', 'insert', job).catch(err => console.error('Failed to sync job:', err))
+    } else {
+      // Fallback: save to IndexedDB immediately so it syncs on next auto-sync
+      indexeddb.saveJob(job).catch(err => console.warn('Failed to save job to IndexedDB:', err))
     }
     return job
   }
@@ -988,6 +993,9 @@ export function useJobs() {
 
     // Update local state
     setJobs(prev => prev.map(j => j.id !== id ? j : final))
+
+    // Save to IndexedDB immediately (fallback if coordinator not ready)
+    indexeddb.saveJob(final).catch(err => console.warn('Failed to save job:', err))
 
     // Sync to Supabase. Only rewrite remote history when this update actually
     // touched history — otherwise we needlessly delete+reinsert the whole timeline.
