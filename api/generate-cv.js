@@ -25,7 +25,7 @@ export default async function handler(req, res) {
         max_tokens: 8000,
         messages: [{
           role: 'user',
-          content: `You are an expert CV writer and ATS specialist. Generate a ONE-PAGE CV adapted for the "${position}" role at "${company}".
+          content: `You are an expert CV writer and ATS specialist. Adapt this CV for the "${position}" role at "${company}".
 
 ${language === 'auto'
   ? 'DETECT the language of the job description and write the ENTIRE CV in THAT language.\nFrench JD → French CV. English JD → English CV.'
@@ -34,92 +34,88 @@ ${language === 'auto'
   : 'Write the ENTIRE CV in ENGLISH.'}
 
 ═══════════════════════════════════════════════════════════════════════════════
-ONE-PAGE REQUIREMENT (CRITICAL):
+CORE PRINCIPLE:
 ═══════════════════════════════════════════════════════════════════════════════
-This CV MUST fit on a single A4 page when printed at 10-11pt font with 12mm margins.
-
-Content strategy:
-1. Use ALL experience from original CV, but select the 5-6 most relevant roles for this position
-2. For older/less relevant roles: 1-2 bullets maximum (proof of experience, not detail)
-3. For recent/highly relevant roles: 2-3 bullets maximum (focused on role match)
-4. Consolidate older roles (pre-2015): combine under one entry if similar discipline
-5. Cut: promotions, minor projects, roles unrelated to target position
-6. Keep: achievements with quantified results, leadership, cross-functional work
+✓ KEEP ALL experiences from the original CV — no removal, no consolidation
+✓ ADAPT the language and bullets to highlight relevance to this job
+✓ DO NOT INVENT — use only actual achievements from the original CV
+✓ REORDER content to put most relevant experience first
+✓ MAKE IT VISUALLY ATTRACTIVE while staying ATS-compatible
 
 ═══════════════════════════════════════════════════════════════════════════════
 STRICT FORMAT RULES — ATS-Compatible:
 ═══════════════════════════════════════════════════════════════════════════════
 1. # Full Name
-2. Contact line: City · Email · Phone · LinkedIn (plain text, semicolon or dot separator, NO symbols)
+2. Contact line: City · Email · Phone · LinkedIn (plain text, NO symbols)
 3. ## Section Title (use standard names: Professional Experience, Technical Skills, Education, etc.)
 4. ### Job Title (e.g., Senior Product Manager)
 5. Company Name | Start Date – End Date | Location (pipe-separated, single line)
-6. - Bullet point (action verb + quantified result, max 12 words per bullet)
+6. - Bullet point (action verb + quantified result when available)
 7. Blank line after each role (before next ###)
-8. **Skills**: Listed inline or as comma-separated, alphabetical by relevance to JD
+8. **Skills**: Listed by category or comma-separated
 9. NO icons, boxes, colors (except **bold** for emphasis), images, or special Unicode characters
 
 ═══════════════════════════════════════════════════════════════════════════════
-CONTENT OPTIMIZATION:
+CONTENT ADAPTATION (NOT INVENTION):
 ═══════════════════════════════════════════════════════════════════════════════
 
-Profile/Summary (if included):
-- 1-2 sentences ONLY (30-50 words)
-- Start with title + years of experience
-- Highlight top 1-2 differentiators matching this role
-- Example: "Senior Product Manager with 15+ years scaling B2B SaaS. Expert in OKR-driven roadmaps and data-driven prioritization."
+For EACH experience in original CV:
+1. Keep the role title, company, dates, location as-is (factual)
+2. Adapt bullet descriptions to highlight JD relevance
+3. Reorder bullets: put most relevant to this job FIRST
+4. Keep original achievements — do NOT add new ones
+5. Example adaptation (not invention):
+   ORIGINAL: "Led product roadmap using OKR framework"
+   ADAPTED for job seeking "OKR + strategy" role: "Led product roadmap using OKR framework, driving quarterly planning and cross-functional alignment"
+   NOT INVENTED: "Led product roadmap using OKR framework and increased revenue by 50%" (if not in original)
 
-Experience Bullets:
-- Front-load with action verbs: Led, Drove, Built, Scaled, Improved, Launched, Grew, Delivered, Managed
-- Follow with: [what] [impact] [metric] in [timeframe]
-- Examples:
-  ✓ "Led $2.5M product pivot, achieving 40% user growth in 6 months"
-  ✓ "Reduced feature time-to-market from 12 to 7 weeks via cross-functional framework"
-  ✗ "Responsible for roadmap prioritization" (vague, no result)
+Profile/Summary:
+- 2-3 sentences (50-80 words)
+- Tailor to highlight skills matching top JD requirements
+- Use keywords from job description
+- Stay truthful to original CV context
 
 Job Description Keyword Integration:
 - Extract top 8-10 skills/keywords from the JD
-- Front-load these into: Profile, job titles, bullet keywords
-- Example JD keywords: "OKR, A/B testing, SQL, metrics, Figma" → weave into bullets and skills list
+- Use in Profile, section headers, bullet language
+- Front-load matching skills in bullets
+- Example: If JD emphasizes "mobile-first product strategy," reorder bullets to lead with mobile work
 
 Skills Section:
-- List TOP JD-required skills first (in order of relevance to position)
-- Then add original CV skills that strengthen candidacy
-- Format: **Category**: skill1, skill2, skill3 OR inline comma-separated list
-- Limit to 15-20 total skills (not every skill, only impactful ones)
+- Reorder to put JD-matching skills FIRST
+- Keep all original skills from CV
+- Add context where relevant (e.g., "Product Discovery — User research, A/B testing, OKR")
 
-Education:
-- School Name · Degree (Major, if relevant to role)
-- Only include if degree is relevant or prestigious
-- No GPA, no graduation dates (unless recent grad)
+Education & Other:
+- Keep exactly as in original CV
+- No changes needed
 
 ═══════════════════════════════════════════════════════════════════════════════
 ATS PARSER RULES (Non-negotiable):
 ═══════════════════════════════════════════════════════════════════════════════
-- Dates in format: "Month Year" or "Jan 2023" (NOT "2023-01" or "1/2023")
-- Locations: "City, Country" (NOT just country, NOT abbreviations like "NYC" for ATS)
-- Role titles: use standard job titles (not creative ones like "Growth Wizard")
-- Company names: exact legal name, no abbreviations
-- No Unicode bullets (use standard ASCII "-" for bullets)
-- No tabs or complex indentation
-- Single column layout only (no tables, no sidebars)
+- Dates: "Month Year" format (Jan 2023, May 2025)
+- Locations: "City, Country" (Tokyo, Remote (Europe/Asia))
+- Role titles: Standard job titles, no creative wording
+- Company names: Exact names, no abbreviations
+- No Unicode bullets (use standard ASCII "-")
+- No complex indentation or tables
+- Single column layout only
 
 ═══════════════════════════════════════════════════════════════════════════════
-RECRUITER SPEED-READ (First 15 seconds):
+VISUAL OPTIMIZATION (while staying ATS-safe):
 ═══════════════════════════════════════════════════════════════════════════════
-- Name at top (clear, professional)
-- Contact info: findable immediately
-- Profile summary: 1-2 sentences with role match + key insight
-- Most recent + most relevant role FIRST
-- Top 2-3 achievements: quantified wins (revenue, users, efficiency, time saved)
-- Skills: JD keywords prominently placed
-- → Goal: Recruiter sees role match within 15 seconds
+- Clear section hierarchy with consistent formatting
+- Company names and dates on same line (easier to scan)
+- 3-4 bullets per role (2-3 for shorter roles, more for extensive ones)
+- Bullets use strong action verbs at start: Led, Drove, Built, Scaled, Improved, Launched, etc.
+- No unnecessary bullet points — only impactful achievements
+- Skills section organized for easy scanning
 
 ═══════════════════════════════════════════════════════════════════════════════
 FINAL INSTRUCTIONS:
 ═══════════════════════════════════════════════════════════════════════════════
 
-ORIGINAL CV (full):
+ORIGINAL CV (full, keep ALL experiences):
 ${cvText}
 
 JOB DESCRIPTION (${company} - ${position}):
@@ -127,7 +123,8 @@ ${jobDescription}
 
 OUTPUT:
 Return ONLY the Markdown CV (no preamble, no comments, no "Here's your CV:").
-Ensure the output is structured, concise, and fits ONE A4 page when rendered at 10-11pt.`
+Multi-page is fine — use as much space as needed to show all experience.
+Focus on: honest adaptation, visual clarity, ATS compatibility.`
         }]
       })
     })
