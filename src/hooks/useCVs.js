@@ -33,34 +33,23 @@ export function useCVs() {
   const addCV = (cv) => {
     const entry = { ...cv, id: crypto.randomUUID(), createdAt: new Date().toISOString() }
     setCVs(prev => [entry, ...prev])
-
-    // Sync to Supabase
-    syncManager.mutate('cvs', 'insert', entry).catch(err => console.error('Failed to sync CV:', err))
-
+    // CVs are stored locally only, no Supabase sync needed yet
     return entry
   }
 
   const deleteCV = (id) => {
     setCVs(prev => prev.filter(c => c.id !== id))
-    syncManager.mutate('cvs', 'delete', { id }).catch(err => console.error('Failed to sync CV deletion:', err))
+    // CVs are stored locally only
   }
 
   const renameCV = (id, name) => {
     setCVs(prev => prev.map(c => c.id === id ? { ...c, name } : c))
-    const cv = cvs.find(c => c.id === id)
-    if (cv) {
-      const updated = { ...cv, name }
-      syncManager.mutate('cvs', 'update', updated).catch(err => console.error('Failed to sync CV rename:', err))
-    }
+    // CVs are stored locally only
   }
 
   const updateCV = (id, updates) => {
     setCVs(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c))
-    const cv = cvs.find(c => c.id === id)
-    if (cv) {
-      const updated = { ...cv, ...updates }
-      syncManager.mutate('cvs', 'update', updated).catch(err => console.error('Failed to sync CV update:', err))
-    }
+    // CVs are stored locally only
   }
 
   return { cvs, addCV, deleteCV, renameCV, updateCV, loading }
