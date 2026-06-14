@@ -256,7 +256,7 @@ export async function connectGmail(hint = '') {
 
           try {
             // Exchange authorization code for tokens on backend
-            const tokenRes = await fetch('/api/exchange-auth-code', {
+            const tokenRes = await fetch('/api/oauth', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ code: response.code }),
@@ -315,7 +315,7 @@ export async function ensureValidToken(email = '') {
     if (acct.refreshToken) {
       // Silent refresh using refresh token (no user interaction)
       try {
-        const refreshRes = await fetch('/api/refresh-auth-token', {
+        const refreshRes = await fetch('/api/oauth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refreshToken: acct.refreshToken }),
@@ -459,7 +459,7 @@ export async function refreshToken(email) {
   if (acct.refreshToken) {
     try {
       console.log(`🔄 Attempting silent refresh for ${targetEmail}...`)
-      const refreshRes = await fetch('/api/refresh-auth-token', {
+      const refreshRes = await fetch('/api/oauth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken: acct.refreshToken }),

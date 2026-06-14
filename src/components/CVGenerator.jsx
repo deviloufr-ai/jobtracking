@@ -303,37 +303,37 @@ function renderExecutive(md, pic) {
     </table>`
 }
 
-// ── Template: STANDARD (ATS-optimized, one-page) ─────────────────────────────
+// ── Template: STANDARD (Polished, one-page, ATS-optimized) ──────────────────
 function renderStandard(md, pic) {
   const { name, contact, sections } = parseCV(md)
 
   const expStyles = {
-    block:   'margin-bottom:3px;padding-bottom:0px;page-break-inside:avoid',
-    title:   'font-size:10pt;font-weight:900;color:#0f172a;margin:0 0 1px 0;page-break-after:avoid',
-    company: 'font-size:9pt;font-weight:700;color:#1e40af',
-    dates:   'font-size:8.5pt;color:#64748b;font-weight:normal',
-    p:       'font-size:8.5pt;color:#334155;margin:1px 0;line-height:1.3',
-    li:      'font-size:8.5pt;color:#1e293b;padding-left:11px;margin:1px 0;line-height:1.35',
-    bullet:  '–',
+    block:   'margin-bottom:6px;padding-bottom:2px;page-break-inside:avoid',
+    title:   'font-size:10.5pt;font-weight:800;color:#0f172a;margin:0 0 2px 0;page-break-after:avoid',
+    company: 'font-size:9pt;font-weight:700;color:#1e40af;margin-bottom:1px',
+    dates:   'font-size:8.5pt;color:#1e40af;font-weight:600',
+    p:       'font-size:9pt;color:#334155;margin:3px 0;line-height:1.4',
+    li:      'font-size:9pt;color:#1e293b;padding-left:0;margin:3px 0 3px 0;line-height:1.4',
+    bullet:  '– ',
   }
 
   const header = `
-    <div style="padding:12px 16px 8px;border-bottom:1.5px solid #0f172a">
-      <div style="font-size:16pt;font-weight:900;color:#0f172a;letter-spacing:-0.01em;margin-bottom:3px;line-height:1.1">${name}</div>
-      ${contact ? `<div style="font-size:7.5pt;color:#475569;line-height:1.5;letter-spacing:0.02em">${contact}</div>` : ''}
+    <div style="padding:16px 18px 8px;border-bottom:2px solid #0f172a">
+      <div style="font-size:18pt;font-weight:900;color:#0f172a;margin-bottom:4px;line-height:1.1;letter-spacing:-0.01em">${name}</div>
+      ${contact ? `<div style="font-size:8.5pt;color:#475569;line-height:1.6;letter-spacing:0.01em">${contact}</div>` : ''}
     </div>`
 
   const body = sections.map(s => {
     const blocks = groupBlocks(s.items)
     const inner  = blocks.map(b => expBlock(b, expStyles)).join('')
     return `
-      <div style="margin:6px 0 2px 0;page-break-inside:avoid">
-        <div style="font-size:7.5pt;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.1em;margin:4px 0 2px 0;page-break-after:avoid">${s.title}</div>
+      <div style="margin-top:8px;margin-bottom:2px;page-break-inside:avoid">
+        <div style="font-size:9pt;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;page-break-after:avoid">${s.title}</div>
         ${inner}
       </div>`
   }).join('')
 
-  return `${header}<div style="padding:6px 14px 8px;font-family:Arial,Helvetica,sans-serif">${body}</div>`
+  return `${header}<div style="padding:8px 18px 12px;font-family:Arial,Helvetica,sans-serif;line-height:1.3">${body}</div>`
 }
 
 // ── Template: MINIMAL ────────────────────────────────────────────────────────
