@@ -1,5 +1,3 @@
-import { setupCORS } from './cors-helper.js'
-
 // Simple INSEE code detection (without importing the ref file)
 function detectInseeCode(location) {
   if (!location || location === 'france') return null
