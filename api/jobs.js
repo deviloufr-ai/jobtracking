@@ -39,19 +39,18 @@ export default async function handler(req, res) {
       const pageNum = Math.max(1, parseInt(page) || 1)
       url = `https://api.welcometothejungle.com/companies/search?${params}&page=${pageNum}`
     } else {
-      // France Travail (default)
+      // WTTJ (default)
       const params = new URLSearchParams({
-        motcles: query,
-        nbresultats: per_page,
-        sort: 'date',
+        query,
+        per_page,
       })
 
       if (location && location !== 'france') {
-        params.append('lieuTravail', location)
+        params.append('location', location)
       }
 
       const pageNum = Math.max(1, parseInt(page) || 1)
-      url = `https://api.francetravail.io/search?${params}&page=${pageNum}`
+      url = `https://api.welcometothejungle.com/companies/search?${params}&page=${pageNum}`
     }
 
     response = await fetch(url, {
