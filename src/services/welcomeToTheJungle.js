@@ -3,13 +3,14 @@
 
 export async function searchJobs({ query = '', location = 'france', page = 1, resultsPerPage = 20 }) {
   const params = new URLSearchParams({
+    provider: 'wttj',
     query,
     location,
     page,
     per_page: resultsPerPage,
   })
 
-  const res = await fetch(`/api/wttj?${params}`)
+  const res = await fetch(`/api/jobs?${params}`)
   if (!res.ok) throw new Error(`WTTJ API error ${res.status}`)
   const data = await res.json()
 

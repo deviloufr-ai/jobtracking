@@ -15,13 +15,14 @@ export async function searchJobs({ query = '', location = 'france', page = 1, re
   }
 
   const params = new URLSearchParams({
+    provider: 'adzuna',
     query,
     location,
     page,
-    results_per_page: resultsPerPage,
+    per_page: resultsPerPage,
   })
 
-  const res = await fetch(`/api/adzuna?${params}`)
+  const res = await fetch(`/api/jobs?${params}`)
   if (!res.ok) throw new Error(`Adzuna API error ${res.status}`)
   const data = await res.json()
 
