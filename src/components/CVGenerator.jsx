@@ -304,23 +304,27 @@ function renderExecutive(md, pic) {
 }
 
 // ── Template: STANDARD (Multi-page, visually attractive, ATS-optimized) ────
+// Horizontal page margins come from this template's padding (consistent on
+// every page). Top/bottom page margins come from html2pdf's `margin` option.
+const STD_SIDE = '52px'  // ≈ 13.8mm side margin on a 210mm-wide A4 element
+
 function renderStandard(md, pic) {
   const { name, contact, sections } = parseCV(md)
 
   const expStyles = {
-    block:   'margin-bottom:12px;padding-bottom:0px;page-break-inside:avoid',
-    title:   'font-size:11.5pt;font-weight:900;color:#0f172a;margin:0 0 2px 0;page-break-after:avoid;letter-spacing:-0.02em',
+    block:   'margin-bottom:13px;page-break-inside:avoid',
+    title:   'font-size:11.5pt;font-weight:800;color:#0f172a;margin:0 0 1px 0;page-break-after:avoid;letter-spacing:-0.01em',
     company: 'font-size:9.5pt;font-weight:700;color:#1e40af;display:inline',
-    dates:   'font-size:8.5pt;color:#64748b;font-weight:600;display:inline;margin-left:8px',
-    p:       'font-size:9pt;color:#334155;margin:6px 0;line-height:1.55',
-    li:      'font-size:9pt;color:#1e293b;padding-left:0;margin:6px 0;line-height:1.55',
-    bullet:  '– ',
+    dates:   'font-size:9pt;color:#64748b;font-weight:600;display:inline',
+    p:       'font-size:9.5pt;color:#334155;margin:5px 0;line-height:1.55',
+    li:      'font-size:9.5pt;color:#1e293b;margin:5px 0;line-height:1.5;padding-left:1.1em;text-indent:-1.1em',
+    bullet:  '– ',
   }
 
   const header = `
-    <div style="padding:20px 26px 14px;border-bottom:2.5px solid #0f172a;margin-bottom:16px">
-      <div style="font-size:22pt;font-weight:900;color:#0f172a;margin-bottom:8px;line-height:1.1;letter-spacing:-0.015em">${name}</div>
-      ${contact ? `<div style="font-size:8.5pt;color:#64748b;line-height:1.8;letter-spacing:0.015em;font-weight:500">${contact}</div>` : ''}
+    <div style="padding:24px ${STD_SIDE} 14px;border-bottom:2.5px solid #0f172a">
+      <div style="font-size:23pt;font-weight:900;color:#0f172a;margin-bottom:7px;line-height:1.05;letter-spacing:-0.02em">${name}</div>
+      ${contact ? `<div style="font-size:8.5pt;color:#64748b;line-height:1.6;letter-spacing:0.02em;font-weight:500">${contact}</div>` : ''}
     </div>`
 
   const body = sections.map(s => {
@@ -329,7 +333,7 @@ function renderStandard(md, pic) {
       if (b.standalone) {
         const it = b.standalone
         if (it.type === 'p')  return `<div style="${expStyles.p}">${fmt(it.text)}</div>`
-        if (it.type === 'li') return `<div style="${expStyles.li}">${expStyles.bullet} ${fmt(it.text)}</div>`
+        if (it.type === 'li') return `<div style="${expStyles.li}">${expStyles.bullet}${fmt(it.text)}</div>`
         return ''
       }
       const company = b.meta[0] || ''
@@ -337,21 +341,21 @@ function renderStandard(md, pic) {
       const extra   = b.meta.slice(2)
       const bullets = b.bullets
       return `
-        <div style="${expStyles.block}">
+        <div class="cv-block" style="${expStyles.block}">
           ${b.title ? `<div style="${expStyles.title}">${fmt(b.title)}</div>` : ''}
-          ${(company || dates) ? `<div style="margin:1px 0 6px 0">${company ? `<span style="${expStyles.company}">${fmt(company)}</span>` : ''} ${dates ? `<span style="${expStyles.dates}">| ${fmt(dates)}</span>` : ''}</div>` : ''}
+          ${(company || dates) ? `<div style="margin:0 0 6px 0">${company ? `<span style="${expStyles.company}">${fmt(company)}</span>` : ''}${(company && dates) ? `<span style="color:#cbd5e1;margin:0 7px">|</span>` : ''}${dates ? `<span style="${expStyles.dates}">${fmt(dates)}</span>` : ''}</div>` : ''}
           ${extra.map(t => `<div style="${expStyles.p}">${fmt(t)}</div>`).join('')}
           ${bullets.map(t => `<div style="${expStyles.li}">${expStyles.bullet}${fmt(t)}</div>`).join('')}
         </div>`
     }).join('')
     return `
-      <div style="margin-top:16px;margin-bottom:0px;page-break-inside:avoid">
-        <div style="font-size:10pt;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;padding-bottom:5px;border-bottom:1.5px solid #e2e8f0;page-break-after:avoid">${s.title}</div>
+      <div style="margin-top:18px">
+        <div style="font-size:10pt;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:10px;padding-bottom:5px;border-bottom:1.5px solid #cbd5e1;page-break-after:avoid">${s.title}</div>
         ${inner}
       </div>`
   }).join('')
 
-  return `${header}<div style="padding:0px 26px 20px;font-family:Arial,Helvetica,sans-serif">${body}</div>`
+  return `${header}<div style="padding:6px ${STD_SIDE} 8px;font-family:Arial,Helvetica,sans-serif">${body}</div>`
 }
 
 // ── Template: MINIMAL ────────────────────────────────────────────────────────
@@ -561,21 +565,24 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
     element.style.wordWrap = 'break-word'
     element.style.overflowWrap = 'break-word'
 
-    // Add style to remove page break visual separators and force single page
+    // Gentle page-break rules: let content flow across pages, but keep each
+    // experience block (and its bullets) intact when possible.
     const style = document.createElement('style')
     style.innerHTML = `
-      @page { margin: 0; padding: 0; size: A4; }
-      * { page-break-after: auto !important; page-break-inside: avoid !important; }
-      body { margin: 0; padding: 0; line-height: 1.2; }
-      div { page-break-inside: avoid; }
+      @page { size: A4; }
+      body { margin: 0; padding: 0; }
     `
     element.appendChild(style)
 
-    // Configure html2pdf options for optimal quality and file size
+    // Configure html2pdf options for optimal quality and file size.
+    // margin: [top, left, bottom, right] in mm — top/bottom apply to EVERY
+    // page so multi-page content never starts at the very edge. Horizontal
+    // margins are 0 here because the template provides them (consistent on
+    // all pages); setting them here too would double up.
     const options = {
-      margin: 0,
+      margin: [12, 0, 14, 0],
       filename: `${filename}.pdf`,
-      image: { type: 'jpeg', quality: 0.88 },  // Optimized JPEG quality
+      image: { type: 'jpeg', quality: 0.92 },
       html2canvas: {
         scale: 2,              // Higher scale for crisp text rendering
         useCORS: true,
@@ -594,7 +601,7 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
       },
       pagebreak: {
         mode: ['css', 'legacy'],
-        avoid: ['tr', 'li', 'div']
+        avoid: '.cv-block'
       }
     }
 
