@@ -16,7 +16,7 @@ async function getFranceTravailToken() {
     throw new Error('France Travail credentials not configured')
   }
 
-  const response = await fetch('https://api.francetravail.io/oauth/token', {
+  const response = await fetch('https://entreprise.francetravail.fr/connexion/oauth2/access_token?realm=partenaire', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -25,7 +25,7 @@ async function getFranceTravailToken() {
       grant_type: 'client_credentials',
       client_id: CLIENT_ID,
       client_secret: CLIENT_SECRET,
-      scope: 'api_offresdemploiv2 o2dsoffre',
+      scope: 'o2dsoffre api_offresdemploiv2',
     })
   })
 
@@ -55,17 +55,22 @@ export default async function handler(req, res) {
       headers['Authorization'] = `Bearer ${token}`
 
       const params = new URLSearchParams({
-        motcles: query,
-        nbresultats: per_page,
-        sort: 'date',
+        motsCles: query,
+        sort: '1', // Date descending
       })
 
+      // Pagination using range parameter (format: "p-d" where p=start, d=end)
+      const pageNum = Math.max(1, parseInt(page) || 1)
+      const perPage = Math.max(1, parseInt(per_page) || 20)
+      const start = (pageNum - 1) * perPage
+      const end = start + perPage - 1
+      params.append('range', `${start}-${end}`)
+
       if (location && location !== 'france') {
-        params.append('lieuTravail', location)
+        params.append('commune', location) // assuming location is INSEE code
       }
 
-      const pageNum = Math.max(1, parseInt(page) || 1)
-      url = `https://api.francetravail.io/offres/v2/search?${params}&page=${pageNum}`
+      url = `https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search?${params}`
     } else if (provider === 'remoteok') {
       const params = new URLSearchParams({
         search: query,
