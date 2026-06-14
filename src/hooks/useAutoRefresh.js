@@ -526,9 +526,20 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
               .sort((a, b) => new Date(a.date) - new Date(b.date))
             const deduplicated = deduplicateHistoryBySemantics(merged)
             const mergedHistory = autoCompletePastMeetings(deduplicated)
-            // Upgrade status if new emails show a higher-priority status
-            const newStatus = STATUS_ORDER.indexOf(p.status) > STATUS_ORDER.indexOf(existing.status)
-              ? p.status : existing.status
+            // Upgrade status if new emails show a higher-priority status.
+            const pIdx = STATUS_ORDER.indexOf(p.status)
+            const exIdx = STATUS_ORDER.indexOf(existing.status)
+            let newStatus = pIdx > exIdx ? p.status : existing.status
+            // Guard: an unrecognized parsed status returns indexOf === -1, which
+            // is never > 0, so a job stuck at 'todo' (index 0) would silently
+            // stay 'todo' even though an inbound email clearly means it has
+            // progressed (Bug: Dashlane stayed "À faire" after a confirmation
+            // email). A 'todo' job receiving any real email signal moves forward
+            // to the parsed status, or 'reviewing' when that status is unknown.
+            if (existing.status === 'todo' && newStatus === 'todo') {
+              newStatus = STATUS_ORDER.includes(p.status) ? p.status : 'reviewing'
+            }
+            log(`   ↳ ${existing.company}: status ${existing.status} → ${newStatus} (parsed: ${p.status})`)
             const updatePayload = { history: mergedHistory, status: newStatus, lastSyncTime: now }
             // Add position links if found (merge with existing if any)
             if (p.positionLinks?.length) {
