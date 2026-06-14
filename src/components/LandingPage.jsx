@@ -476,16 +476,24 @@ export default function LandingPage({ onLogin }) {
               { icon: '⚡', title: 'Prochaines actions', desc: 'Moteur de recommandations : identifie les relances en retard, entretiens imminents, alertes urgentes hiérarchisées par priorité.' },
               { icon: '📅', title: 'Calendrier & réunions', desc: 'Intégration Google Calendar native. Détecte automatiquement les entretiens à venir, affiche les liens Zoom/Teams, rappel J-1 avec notifications.' },
               { icon: '💬', title: 'Relances générées par IA', desc: 'Génère un brouillon d\'email contextualisé prêt à envoyer. Détecte automatiquement si la boîte recruteuse est un ATS (pas de relance envoyée).' },
-              { icon: '⭐', title: 'Préparation entretien', desc: '3 réponses STAR personnalisées par candidature, basées sur la fiche de poste. Format prêt à copier-coller, entraînement au simulateur intégré.' },
+              { icon: '⭐', title: 'Réponses STAR personnalisées', desc: '3 anecdotes STAR générées par candidature, basées sur la fiche de poste. Format prêt à copier-coller pour l\'entretien oral.' },
               { icon: '📄', title: 'CV adaptatif', desc: 'Upload PDF, réécriture IA dynamique selon la JD, split-view avant/après, export PDF optimisé, historique de versions.' },
-              { icon: '🔎', title: 'Recherche d\'emploi', desc: 'Intégration Adzuna : parcourez les offres directement dans l\'app, ajoutez-les à votre pipeline avec un clic.' },
+              { icon: '💌', title: 'Génération lettre de motivation', desc: 'Génère une lettre personnalisée par candidature. Adaptée au poste, à l\'entreprise, intégration facile avec votre email.' },
+              { icon: '🔎', title: 'Recherche d\'emploi intégrée', desc: 'Intégration Adzuna : parcourez les offres directement dans l\'app, ajoutez-les à votre pipeline avec un clic, sans changement d\'onglet.' },
               { icon: '🖼️', title: 'Import screenshot', desc: 'Prenez une capture d\'écran d\'une offre LinkedIn/job board. L\'IA extrait tous les détails (poste, entreprise, lien, description) automatiquement.' },
               { icon: '🦊', title: 'Extension Firefox', desc: 'Importez directement depuis n\'importe quel site job board. Analyse complète de la page, extraction du contenu, ajout one-click au pipeline.' },
               { icon: '⭐', title: 'Favoris & archives', desc: 'Marquez les candidatures intéressantes, archivez automatiquement après 60j (sent) ou 90j (rejected). Récupérez-les facilement si nécessaire.' },
               { icon: '🔔', title: 'Notifications intelligentes', desc: 'Alertes pour nouveaux événements, relances en retard, entretiens imminents. Notifications desktop native ou in-app au choix.' },
-              { icon: '🤖', title: 'Conseils IA personnalisés', desc: 'Panel de conseils adaptatif par statut candidature. Suggestions pour optimiser votre taux de réponse, timing de relance, prep d\'entretien.' },
+              { icon: '🤖', title: 'Conseils IA personnalisés', desc: 'Panel de conseils adaptatif par statut candidature. Suggestions pour optimiser taux de réponse, timing de relance, prep d\'entretien.' },
+              { icon: '🎯', title: 'Suivi d\'objectifs', desc: 'Définissez et suivez vos objectifs de candidatures, taux de réussite. Visualisez votre progression semaine par semaine.' },
               { icon: '💾', title: 'Multi-device sync', desc: 'Supabase synchronisation : accédez à vos candidatures depuis n\'importe quel appareil. Modifications instantanées sur tous les devices.' },
-              { icon: '📊', title: 'Analytics & insights', desc: 'Tendances d\'activité (candidatures/semaine, taux réponse, pipeline velocity), insights personnalisés pour ajuster votre stratégie.' }
+              { icon: '📊', title: 'Analytics & insights', desc: 'Tendances d\'activité (candidatures/semaine, taux réponse, pipeline velocity), insights personnalisés pour ajuster votre stratégie.' },
+              { icon: '🎨', title: 'Thèmes multiples', desc: 'Mode clair, sombre, midnight, ocean, forest, sunset, minimal. Adaptez l\'interface à votre préférence, synchronisé sur tous les devices.' },
+              { icon: '🔗', title: 'Fusion de doublons', desc: 'Détecte les candidatures dupliquées, fusionne l\'historique automatiquement. Consolide les informations des doublons en un seul enregistrement.' },
+              { icon: '👁️', title: 'Prévisualisation CV', desc: 'Visualisez votre CV généré avant export. Format une page optimisé, mise en page moderne, prêt à imprimer ou envoyer.' },
+              { icon: '🔀', title: 'Sélection en masse', desc: 'Sélectionnez plusieurs candidatures à la fois, fusionnez-les en un clic, appliquez des actions groupées rapidement.' },
+              { icon: '✏️', title: 'Édition avancée', desc: 'Modifiez tous les détails d\'une candidature, ajoutez des étapes historiques, annotez avec dates et contexte complet.' },
+              { icon: '🔍', title: 'Recherche full-text', desc: 'Cherchez par entreprise, poste, ou mots-clés. Filtrez par statut, période, favoris, archives — en temps réel sans latence.' }
             ].map((item, i) => (
               <div key={i} className="feature">
                 <div className="icon">{item.icon}</div>
