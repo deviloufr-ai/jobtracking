@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { searchJobs, isAdzunaConfigured } from '../services/adzuna'
+import { FRENCH_LOCATIONS, getLocationsByQuery, getLocationLabel } from '../services/adzunaLocations'
 
 const CONTRACT_LABELS = {
   permanent: 'CDI',
@@ -14,6 +15,8 @@ const STORAGE_KEY_LAST = 'jobSearch_last'
 export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) {
   const [query, setQuery] = useState('Product Manager')
   const [location, setLocation] = useState('france')
+  const [locationInput, setLocationInput] = useState(getLocationLabel('france'))
+  const [locationSuggestions, setLocationSuggestions] = useState([])
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -21,7 +24,7 @@ export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) 
   const [added, setAdded] = useState(new Set())
   const [sortOrder, setSortOrder] = useState('newest')
   const [showQueryHistory, setShowQueryHistory] = useState(false)
-  const [showLocationHistory, setShowLocationHistory] = useState(false)
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
   const [selectedJob, setSelectedJob] = useState(null)
   const queryInputRef = useRef(null)
   const locationInputRef = useRef(null)
@@ -106,9 +109,22 @@ export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) 
   const handleSelectHistory = (h) => {
     setQuery(h.query)
     setLocation(h.location)
+    setLocationInput(getLocationLabel(h.location))
     setShowQueryHistory(false)
-    setShowLocationHistory(false)
+    setShowLocationSuggestions(false)
     handleSearch(1, h.query, h.location)
+  }
+
+  const handleLocationInputChange = (input) => {
+    setLocationInput(input)
+    const suggestions = getLocationsByQuery(input)
+    setLocationSuggestions(suggestions)
+  }
+
+  const handleSelectLocation = (loc) => {
+    setLocation(loc.value)
+    setLocationInput(loc.label)
+    setShowLocationSuggestions(false)
   }
 
   return (
@@ -160,24 +176,24 @@ export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) 
             <input
               ref={locationInputRef}
               className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
-              placeholder="Paris, Remote, France..."
-              value={location}
-              onChange={e => setLocation(e.target.value)}
+              placeholder="Paris, Amiens, Île-de-France..."
+              value={locationInput}
+              onChange={e => handleLocationInputChange(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSearch(1, query, location)}
-              onFocus={() => setShowLocationHistory(true)}
-              onBlur={() => setTimeout(() => setShowLocationHistory(false), 150)}
+              onFocus={() => setShowLocationSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 150)}
+              autoComplete="off"
             />
-            {showLocationHistory && getSearchHistory().length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                {[...new Map(getSearchHistory().map(h => [h.location, h])).values()].map((h, i) => (
+            {showLocationSuggestions && locationSuggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                {locationSuggestions.map((loc, i) => (
                   <button
                     key={i}
-                    onClick={() => handleSelectHistory(h)}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-indigo-50 border-b border-gray-100 last:border-0 flex items-center gap-2"
+                    onMouseDown={() => handleSelectLocation(loc)}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-indigo-50 border-b border-gray-100 last:border-0 flex items-center justify-between"
                   >
-                    <span className="text-xs text-gray-400">📍</span>
-                    <span>{h.location}</span>
-                    <span className="ml-auto text-xs text-gray-400">{h.query}</span>
+                    <span>{loc.label}</span>
+                    {loc.region && <span className="ml-2 text-xs text-gray-400">{loc.region}</span>}
                   </button>
                 ))}
               </div>
