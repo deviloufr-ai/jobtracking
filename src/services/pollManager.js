@@ -1,7 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
 import { convertHistoryFromSupabase, snakeToCamel, deserializeJobFields } from './fieldConversion'
-import { isDeletedJobId, deduplicateHistory, filterDeletedHistory } from '../hooks/useJobs'
+import { isDeletedJobId, deduplicateHistory, filterDeletedHistory, historyEntryKey } from '../hooks/useJobs'
 
 const POLL_INTERVAL = 300000 // 5 minutes
 
