@@ -3,12 +3,29 @@ import { setupCORS } from './cors-helper.js'
 export default async function handler(req, res) {
   if (setupCORS(req, res, 'GET, OPTIONS')) return
 
-  const { provider = 'franceTravail', query = '', location = '', page = 1, per_page = 20 } = req.query
+  const { provider = 'remoteok', query = '', location = '', page = 1, per_page = 20 } = req.query
 
   try {
-    let url, response
+    let url
 
-    if (provider === 'adzuna') {
+    if (provider === 'remoteok') {
+      const params = new URLSearchParams({
+        search: query,
+        limit: per_page,
+        offset: (parseInt(page) - 1) * parseInt(per_page),
+      })
+      url = `https://remoteok.io/api?${params}`
+    } else if (provider === 'jsearch') {
+      const params = new URLSearchParams({
+        query,
+        page,
+        per_page,
+      })
+      if (location && location !== 'france') {
+        params.append('location', location)
+      }
+      url = `https://jsearch.io/api?${params}`
+    } else if (provider === 'adzuna') {
       const APP_ID = process.env.VITE_ADZUNA_APP_ID
       const APP_KEY = process.env.VITE_ADZUNA_APP_KEY
 
@@ -26,34 +43,11 @@ export default async function handler(req, res) {
 
       const pageNum = parseInt(page) || 1
       url = `https://api.adzuna.com/v1/api/jobs/fr/search/${pageNum}?${params}`
-    } else if (provider === 'wttj') {
-      const params = new URLSearchParams({
-        query,
-        per_page,
-      })
-
-      if (location && location !== 'france') {
-        params.append('location', location)
-      }
-
-      const pageNum = Math.max(1, parseInt(page) || 1)
-      url = `https://api.welcometothejungle.com/companies/search?${params}&page=${pageNum}`
     } else {
-      // WTTJ (default)
-      const params = new URLSearchParams({
-        query,
-        per_page,
-      })
-
-      if (location && location !== 'france') {
-        params.append('location', location)
-      }
-
-      const pageNum = Math.max(1, parseInt(page) || 1)
-      url = `https://api.welcometothejungle.com/companies/search?${params}&page=${pageNum}`
+      return res.status(400).json({ error: 'Unknown provider' })
     }
 
-    response = await fetch(url, {
+    const response = await fetch(url, {
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'JobTrackr/1.0'

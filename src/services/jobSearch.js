@@ -1,19 +1,25 @@
 // Job search service selector - supports multiple APIs
 import * as adzuna from './adzuna'
-import * as welcomeToTheJungle from './welcomeToTheJungle'
+import * as remoteOk from './remoteOk'
+import * as jSearch from './jSearch'
 
 const STORAGE_KEY = 'jobSearch_api'
 
 const APIs = {
+  remoteok: {
+    name: 'RemoteOK',
+    service: remoteOk,
+    isConfigured: () => true,
+  },
+  jsearch: {
+    name: 'JSearch',
+    service: jSearch,
+    isConfigured: () => true,
+  },
   adzuna: {
     name: 'Adzuna',
     service: adzuna,
     isConfigured: adzuna.isAdzunaConfigured,
-  },
-  wttj: {
-    name: 'Welcome to the Jungle',
-    service: welcomeToTheJungle,
-    isConfigured: () => true, // Always available (free public API)
   },
 }
 
@@ -27,7 +33,7 @@ export function getAvailableAPIs() {
 
 export function getSavedAPI() {
   const saved = localStorage.getItem(STORAGE_KEY)
-  return saved && APIs[saved] ? saved : 'franceTravail'
+  return saved && APIs[saved] ? saved : 'remoteok'
 }
 
 export function setActiveAPI(apiId) {
