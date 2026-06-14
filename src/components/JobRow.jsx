@@ -244,6 +244,20 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
   const handleDeleteStep = (displayIdx) => {
     // Fix #18 — confirmation is now handled inline (two-step UI), no window.confirm
     const idx = toOriginalIdx(displayIdx)
+    const deletedEntry = history[idx]
+
+    // Mark deleted entry so it doesn't get re-imported from Supabase
+    if (deletedEntry && window.localStorage) {
+      const deletedKey = 'jobtrackr_deleted_history_entries'
+      const deleted = JSON.parse(localStorage.getItem(deletedKey) || '[]')
+      const key = `${job.id}||${deletedEntry.date}||${(deletedEntry.note || '').slice(0, 50)}`
+      if (!deleted.includes(key)) {
+        deleted.push(key)
+        if (deleted.length > 500) deleted.shift()
+        localStorage.setItem(deletedKey, JSON.stringify(deleted))
+      }
+    }
+
     const updated = history.filter((_, i) => i !== idx)
     onUpdateHistory(job.id, updated)
     setConfirmDeleteIdx(null)
