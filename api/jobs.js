@@ -167,9 +167,22 @@ export default async function handler(req, res) {
 
     const response = await fetch(url, { headers })
 
+    if (!response.ok) {
+      const text = await response.text()
+      return res.status(response.status).json({
+        error: `API error ${response.status}: ${text.slice(0, 200)}`
+      })
+    }
+
     const text = await response.text()
     let data
-    try { data = JSON.parse(text) } catch { data = { error: text.slice(0, 200) } }
+    try {
+      data = JSON.parse(text)
+    } catch (e) {
+      return res.status(500).json({
+        error: `Failed to parse response: ${e.message}. Response: ${text.slice(0, 200)}`
+      })
+    }
     res.status(response.status).json(data)
   } catch (err) {
     res.status(500).json({ error: err.message })
