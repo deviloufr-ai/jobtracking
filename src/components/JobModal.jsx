@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { STATUSES, getStatusLabel } from '../hooks/useJobs'
+import ScoreJob from './ScoreJob'
 
-const EMPTY = { company: '', position: '', url: '', status: 'sent', date: new Date().toISOString().split('T')[0], notes: '' }
+const EMPTY = { company: '', position: '', url: '', status: 'sent', date: new Date().toISOString().split('T')[0], notes: '', description: '' }
 
 export default function JobModal({ job, onSave, onClose, findDuplicate, t = (key) => key }) {
   const [form, setForm] = useState(job ? { ...job } : { ...EMPTY })
   const [urlWarning, setUrlWarning] = useState(false)
   const [duplicate, setDuplicate] = useState(null)
+  const [activeTab, setActiveTab] = useState('details')
   const isEdit = !!job
 
   useEffect(() => {
@@ -49,85 +51,137 @@ export default function JobModal({ job, onSave, onClose, findDuplicate, t = (key
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
         </div>
 
-        <div className="space-y-4">
-          {/* Company */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('jobModal.companyLabel')} <span className="text-red-500">{t('jobModal.required')}</span>
-            </label>
-            <input
-              autoFocus
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              placeholder={t('jobModal.companyPlaceholder')}
-              value={form.company}
-              onChange={e => set('company', e.target.value)}
+        {/* Tabs */}
+        <div className="flex gap-2 border-b border-gray-200 mb-4">
+          <button
+            onClick={() => setActiveTab('details')}
+            className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'details'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            {t('jobModal.detailsTab') || 'Details'}
+          </button>
+          <button
+            onClick={() => setActiveTab('score')}
+            className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'score'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            {t('jobModal.scoreTab') || '📊 Score'}
+          </button>
+        </div>
+
+        <div className="space-y-4 max-h-96 overflow-y-auto">
+          {activeTab === 'details' && (
+            <>
+              {/* Company */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('jobModal.companyLabel')} <span className="text-red-500">{t('jobModal.required')}</span>
+                </label>
+                <input
+                  autoFocus
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  placeholder={t('jobModal.companyPlaceholder')}
+                  value={form.company}
+                  onChange={e => set('company', e.target.value)}
+                />
+              </div>
+
+              {/* Position */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('jobModal.positionLabel')} <span className="text-red-500">{t('jobModal.required')}</span>
+                </label>
+                <input
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  placeholder={t('jobModal.positionPlaceholder')}
+                  value={form.position}
+                  onChange={e => set('position', e.target.value)}
+                />
+              </div>
+
+              {/* URL + Date row */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('jobModal.urlLabel')}</label>
+                  <input
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    placeholder="https://..."
+                    value={form.url}
+                    onChange={e => handleUrl(e.target.value)}
+                  />
+                  {urlWarning && <p className="text-xs text-orange-500 mt-1">{t('jobModal.urlInvalid')}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('jobModal.dateLabel')}</label>
+                  <input
+                    type="date"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    value={form.date}
+                    onChange={e => set('date', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('jobModal.statusLabel')}</label>
+                <select
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                  value={form.status}
+                  onChange={e => set('status', e.target.value)}
+                >
+                  {STATUSES.map(s => (
+                    <option key={s.key} value={s.key}>{getStatusLabel(s.key, t)}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Job Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('jobModal.descriptionLabel') || 'Job Description'} <span className="text-gray-400 text-xs">(for scoring)</span>
+                </label>
+                <textarea
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+                  rows={4}
+                  placeholder={t('jobModal.descriptionPlaceholder') || 'Paste the job description here to enable CV matching...'}
+                  value={form.description || ''}
+                  onChange={e => set('description', e.target.value)}
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('jobModal.notesLabel')}</label>
+                <textarea
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+                  rows={3}
+                  placeholder={t('jobModal.notesPlaceholder')}
+                  value={form.notes}
+                  onChange={e => set('notes', e.target.value)}
+                />
+              </div>
+            </>
+          )}
+
+          {activeTab === 'score' && (
+            <ScoreJob
+              job={form}
+              onUpdateScore={(scoreData) => {
+                set('score', scoreData.score)
+                set('scoreDetails', scoreData.scoreDetails)
+              }}
+              t={t}
             />
-          </div>
+          )}
 
-          {/* Position */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('jobModal.positionLabel')} <span className="text-red-500">{t('jobModal.required')}</span>
-            </label>
-            <input
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              placeholder={t('jobModal.positionPlaceholder')}
-              value={form.position}
-              onChange={e => set('position', e.target.value)}
-            />
-          </div>
-
-          {/* URL + Date row */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('jobModal.urlLabel')}</label>
-              <input
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                placeholder="https://..."
-                value={form.url}
-                onChange={e => handleUrl(e.target.value)}
-              />
-              {urlWarning && <p className="text-xs text-orange-500 mt-1">{t('jobModal.urlInvalid')}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('jobModal.dateLabel')}</label>
-              <input
-                type="date"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                value={form.date}
-                onChange={e => set('date', e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Status */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('jobModal.statusLabel')}</label>
-            <select
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
-              value={form.status}
-              onChange={e => set('status', e.target.value)}
-            >
-              {STATUSES.map(s => (
-                <option key={s.key} value={s.key}>{getStatusLabel(s.key, t)}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('jobModal.notesLabel')}</label>
-            <textarea
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
-              rows={3}
-              placeholder={t('jobModal.notesPlaceholder')}
-              value={form.notes}
-              onChange={e => set('notes', e.target.value)}
-            />
-          </div>
-
-          {/* Duplicate warning */}
-          {duplicate && (
+          {activeTab === 'details' && duplicate && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-sm text-amber-800 font-medium">{t('jobModal.duplicateWarning')}</p>
               <p className="text-xs text-amber-700 mt-1">
