@@ -1,4 +1,29 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
+import { fetchCalendarEvents, isCalendarConnected } from '../services/calendar'
+
+// Normalize for fuzzy company matching: lowercase, strip accents + punctuation
+function normalize(text = '') {
+  return text
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // strip accents
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+// A calendar event is "job-related" if its title matches a tracked company
+// OR it looks like an interview/test/offer (type detected in calendar.js).
+// Returns the matched job (for position enrichment) or null.
+function matchJob(event, activeJobs) {
+  const title = normalize(event.title)
+  for (const job of activeJobs) {
+    const company = normalize(job.company)
+    if (company.length >= 3 && (title.includes(company) || company.includes(title))) {
+      return job
+    }
+  }
+  return null
+}
 
 function formatTime(rawStart) {
   if (!rawStart || rawStart.length === 10) return null // date-only, no time
@@ -56,60 +81,76 @@ function getMeetingPlatform(url = '') {
 }
 
 export default function UpcomingMeetings({ jobs, t = (key) => key }) {
+  const [rawEvents, setRawEvents] = useState([])
+  const [loading, setLoading] = useState(false)
+
+  // Active jobs only — used to match calendar events to a tracked application
+  // (so we can show the company + position and filter out non-job events).
+  const activeJobs = useMemo(
+    () => jobs.filter(j => !['archived','rejected','rejected_ats','cancelled'].includes(j.status)),
+    [jobs]
+  )
+
+  // Fetch upcoming events straight from Google Calendar — reliable times, no
+  // dependency on Gmail-sync enrichment having run.
+  const load = useCallback(async () => {
+    if (!isCalendarConnected()) return
+    setLoading(true)
+    try {
+      const events = await fetchCalendarEvents('', 2) // ~2 months ahead
+      setRawEvents(events)
+    } catch {
+      setRawEvents([])
+    }
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
   const meetings = useMemo(() => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const today = new Date(); today.setHours(0, 0, 0, 0)
     const in60 = new Date(today); in60.setDate(today.getDate() + 60)
 
-    const past7 = new Date(today); past7.setDate(today.getDate() - 7)
-
     const events = []
-    for (const job of jobs) {
-      if (['archived','rejected','rejected_ats','cancelled'].includes(job.status)) continue
-      for (const entry of job.history || []) {
-        if (!entry.date) continue
-        const d = new Date(entry.date)
-        d.setHours(0, 0, 0, 0)
+    for (const e of rawEvents) {
+      if (!e.date) continue
+      const d = new Date(e.date); d.setHours(0, 0, 0, 0)
+      if (d < today || d > in60) continue
 
-        const hasCalendar = entry.source === 'calendar'
-        const hasMeetingLink = !!entry.meetingLink
-        if (!hasCalendar && !hasMeetingLink) continue
+      // "Only job-related": keep events that match a tracked company OR look
+      // like an interview/test/offer (type detected from the title).
+      const job = matchJob(e, activeJobs)
+      const isInterviewType = ['interview', 'test', 'offer'].includes(e.type)
+      if (!job && !isInterviewType) continue
 
-        // Calendar entries: only future (they have the real meeting date)
-        // Email entries with meeting link: show if within last 7 days or future
-        //   (email date is receipt date, meeting itself may still be upcoming)
-        if (hasCalendar && (d < today || d > in60)) continue
-        if (!hasCalendar && hasMeetingLink && (d < past7 || d > in60)) continue
-
-        events.push({
-          date: entry.date,
-          // ISO datetime if available. Calendar/email enrichment merges the time
-          // into `date` (e.g. 2026-06-15T10:00:00) but doesn't always set rawStart,
-          // so fall back to `date` when it carries a time component.
-          rawStart: entry.rawStart || (entry.date?.includes('T') ? entry.date : null),
-          note: entry.note || '',
-          company: job.company,
-          position: job.position,
-          meetingLink: entry.meetingLink,
-          source: entry.source,
-          isUpcoming: entry.isUpcoming,
-        })
-      }
+      events.push({
+        date: e.date,
+        rawStart: e.rawStart || null, // full datetime straight from the Calendar API
+        // When matched to a job, the company is the job's name, so the event
+        // title is the useful "what/who" detail. With no match, the title is
+        // already shown as the heading — surface the location instead.
+        note: job ? (e.title || '') : '',
+        company: job ? job.company : e.title,
+        position: job ? job.position : (e.location ? `📍 ${e.location}` : ''),
+        meetingLink: e.meetingLink,
+        source: 'calendar',
+        isUpcoming: e.isUpcoming,
+      })
     }
 
-    // Sort by date (nearest first), deduplicate by date+company+note
+    // Sort by start time (nearest first), deduplicate by date+company+note
     const seen = new Set()
     return events
-      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .sort((a, b) => new Date(a.rawStart || a.date) - new Date(b.rawStart || b.date))
       .filter(e => {
         const k = `${e.date}-${e.company}-${e.note}`
         if (seen.has(k)) return false
         seen.add(k)
         return true
       })
-  }, [jobs])
+  }, [rawEvents, activeJobs])
 
-  if (meetings.length === 0) return null
+  if (!isCalendarConnected() || meetings.length === 0) return null
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
