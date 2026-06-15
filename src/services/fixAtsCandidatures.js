@@ -29,17 +29,18 @@ function normPos(p) {
 const emailEntries = (job) =>
   (job.history || []).filter(h => h.gmailId && h.source !== 'calendar' && !h.meetingLink)
 
-// A job is a repair candidate when its company is an ATS/job board (employer hidden)
-// AND its timeline references ≥2 distinct source emails — the tell-tale of several
-// applications collapsed together.
-export function isAtsSplitCandidate(job) {
+// A job needs review when its company is an ATS/job board name (employer hidden or
+// mis-labelled) AND its timeline references at least one source email we can
+// re-analyze. ≥2 distinct emails → likely several applications to split apart;
+// exactly 1 → likely just a mis-named company to relabel (e.g. "Jobgether" that's
+// really "UNIPILE" via Indeed).
+export function isAtsReviewCandidate(job) {
   if (!job || !isJobBoard(job.company)) return false
-  const ids = new Set(emailEntries(job).map(h => h.gmailId))
-  return ids.size >= 2
+  return new Set(emailEntries(job).map(h => h.gmailId)).size >= 1
 }
 
 export function collectAtsCandidates(jobs) {
-  return (jobs || []).filter(isAtsSplitCandidate)
+  return (jobs || []).filter(isAtsReviewCandidate)
 }
 
 // Attach an entry that has no usable recovery (manual note / meeting / failed
@@ -73,25 +74,28 @@ export function planAtsSplit(job, recovered) {
     const pos = normPos(rec.position)
     if (!pos) { leftovers.push(entry); continue }
 
-    // When the real employer is known (companyFromAts === false) it keys the group;
-    // otherwise the ATS name keys it and the position does the differentiating.
-    const realCompany = !rec.companyFromAts && rec.company ? rec.company : null
-    const key = `${normalize(realCompany || job.company)}|||${pos}`
+    // Use the company Claude recovered FOR THIS EMAIL: the real employer when found
+    // (companyFromAts === false), otherwise the ATS name derived from this email's
+    // sender (e.g. "Indeed") — NOT the original merged job's company, which may be a
+    // different job board the email never came from.
+    const recCompany = rec.company || job.company
+    const key = `${normalize(recCompany)}|||${pos}`
 
     let g = groups.get(key)
     if (!g) {
-      g = { company: realCompany || job.company, companyFromAts: !realCompany, position: rec.position, history: [] }
+      g = { company: recCompany, companyFromAts: !!rec.companyFromAts, position: rec.position, history: [] }
       groups.set(key, g)
-    } else if (realCompany && g.companyFromAts) {
+    } else if (!rec.companyFromAts && g.companyFromAts) {
       // Upgrade a previously ATS-only group once a real employer surfaces for it.
-      g.company = realCompany
+      g.company = recCompany
       g.companyFromAts = false
     }
     g.history.push(entry)
   }
 
-  // Nothing meaningful to split — leave the job untouched.
-  if (groups.size < 2) return null
+  // No email entry could be re-analyzed at all — leave the job untouched. (size === 1
+  // is NOT skipped here: the orchestrator uses it to relabel a mis-named ATS job.)
+  if (groups.size === 0) return null
 
   // Pass 2: fold leftovers (manual/meeting/unrecovered) into the nearest group.
   for (const entry of leftovers) {
@@ -144,24 +148,45 @@ export async function runAtsCandidatureFix(jobs, { dryRun = true, applySplit, on
           console.warn(`  ✗ Could not fetch email ${h.gmailId}:`, e.message)
         }
       }
-      if (emails.length < 2) { report.skipped++; continue }
+      if (emails.length === 0) { report.skipped++; continue }
 
       onProgress?.({ stage: 'analyze', company: job.company, count: emails.length })
       const recovered = await recoverAtsEmployers(emails)
       const groups = planAtsSplit(job, recovered)
 
       if (!groups) {
-        console.log(`  ⏭️  ${job.company} / ${job.position}: only one distinct position — left as is`)
+        console.log(`  ⏭️  ${job.company} / ${job.position}: nothing recovered — left as is`)
         report.skipped++
         continue
       }
 
-      const plan = {
+      // 1 distinct candidature → relabel only (fix the mis-named company / position).
+      if (groups.length === 1) {
+        const g = groups[0]
+        const companyChanged = normalize(g.company) !== normalize(job.company)
+        const positionChanged = (g.position || '').trim() && g.position.trim() !== (job.position || '').trim()
+        if (!companyChanged && !positionChanged) {
+          console.log(`  ⏭️  ${job.company} / ${job.position}: already correct`)
+          report.skipped++
+          continue
+        }
+        report.plans.push({ jobId: job.id, type: 'relabel', from: { company: job.company, position: job.position }, into: { company: g.company, position: g.position } })
+        console.log(`  🏷️  ${job.company} / ${job.position} → ${g.company} / ${g.position} (relabel)`)
+        if (!dryRun && applySplit) {
+          await applySplit(job, [g])
+          report.applied++
+          onProgress?.({ stage: 'applied', company: g.company })
+        }
+        continue
+      }
+
+      // ≥2 distinct candidatures → split.
+      report.plans.push({
         jobId: job.id,
+        type: 'split',
         from: { company: job.company, position: job.position, entries: (job.history || []).length },
         into: groups.map(g => ({ company: g.company, position: g.position, status: g.status, date: g.date, entries: g.history.length })),
-      }
-      report.plans.push(plan)
+      })
       console.log(`  ✂️  ${job.company} / ${job.position} → ${groups.length} candidatures:`)
       groups.forEach(g => console.log(`       • ${g.company} — ${g.position} (${g.history.length} étapes, ${g.status}, dès ${g.date})`))
 

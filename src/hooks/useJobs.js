@@ -1555,10 +1555,32 @@ export function useJobs() {
   // absorbed (_mergedIds) are deleted + tombstoned so the next poll can't resurrect
   // the merge, and entries that leave the primary are history-tombstoned.
   const applyAtsSplit = (originalJob, groups) => {
-    if (!originalJob || !Array.isArray(groups) || groups.length < 2) return
+    if (!originalJob || !Array.isArray(groups) || groups.length < 1) return
     const coordinator = getSyncCoordinator()
     const primaryId = originalJob.id
     const extraIds = (originalJob._mergedIds || []).filter(id => id && id !== primaryId)
+
+    // Single group → relabel only: fix the mis-named company / position, keep the
+    // status, date, notes and timeline exactly as they are.
+    if (groups.length === 1) {
+      const g = groups[0]
+      const relabeled = { ...originalJob, company: g.company, position: g.position, updated_at: new Date().toISOString() }
+      delete relabeled._merged
+      delete relabeled._mergedIds
+      setJobs(prev => {
+        const kept = prev.filter(j => j.id === primaryId || !extraIds.includes(j.id))
+        return kept.map(j => (j.id === primaryId ? relabeled : j))
+      })
+      extraIds.forEach(id => {
+        markJobIdAsDeleted(id)
+        if (coordinator) coordinator.mutate('jobs', 'delete', { id }).catch(err => console.error('relabel: delete extra row failed', err))
+        else indexeddb.deleteJob(id).catch(() => {})
+      })
+      if (coordinator) coordinator.mutate('jobs', 'update', relabeled, { syncHistory: false }).catch(err => console.error('relabel: update failed', err))
+      else indexeddb.saveJob(relabeled).catch(() => {})
+      console.log(`🏷️ Relabeled "${originalJob.company}" → "${g.company}" / ${g.position}`)
+      return
+    }
 
     const [primaryGroup, ...rest] = groups
 

@@ -578,24 +578,39 @@ export async function recoverAtsEmployers(emails) {
     if (i > 0) await new Promise(r => setTimeout(r, 1500))
 
     const emailsText = batch.map((e, j) => {
-      const body = (e.body?.trim() || e.snippet || '').slice(0, 900)
+      const body = (e.body?.trim() || e.snippet || '').slice(0, 1500)
       return `[${j + 1}] De: ${e.from}\nSujet: ${e.subject}\nDate: ${e.date}\nContenu: ${body}`
     }).join('\n\n---\n\n')
 
     const prompt = `Pour CHAQUE email [N], extrais avec HAUTE PRÉCISION :
-- position : le titre EXACT du poste concerné (garder qualificatifs : "Senior", "Lead", "H/F"…). JAMAIS inventer ni normaliser. Si aucun titre clair → position: "" et confidence: 0.
-- company : la VRAIE entreprise qui recrute, si elle est trouvable dans l'email.
-  * Cherche après "chez", "at", "for", "dans l'entreprise", "·", dans le sujet ("Re: Candidature POSTE - ENTREPRISE"), ou dans le domaine de l'expéditeur.
-  * Si l'employeur réel N'EST PAS trouvable (l'ATS le masque) → company = le nom de l'ATS/job board (ex: "Jobgether", "LinkedIn") ET companyFromAts: true.
-  * Si tu trouves la vraie entreprise → company = cette entreprise ET companyFromAts: false.
-- companyFromAts : true seulement quand l'employeur réel est inconnu, false sinon.
+
+- position : le titre EXACT du poste concerné (garder qualificatifs : "Senior", "Lead", "H/F", parenthèses…). JAMAIS inventer ni normaliser. Si aucun titre clair → position: "" et confidence: 0.
+
+- company : la VRAIE entreprise qui recrute. CHERCHE-LA ACTIVEMENT — elle est presque toujours présente, même dans un email de confirmation Indeed/LinkedIn.
+  PATTERNS PRIORITAIRES (l'employeur réel, PAS le job board) :
+  • "Les éléments suivants ont été envoyés à <ENTREPRISE>" → ENTREPRISE  (confirmation Indeed)
+  • "Votre candidature a été envoyée à <ENTREPRISE>" / "Your application was sent to <ENTREPRISE>"
+  • "<ENTREPRISE> - Remote" / "<ENTREPRISE> · Paris" / "<ENTREPRISE> — France"  (ligne sous le titre du poste)
+  • "Bonne chance !" précédé/suivi du nom de l'entreprise
+  • "chez <X>", "at <X>", "for <X>", "dans l'entreprise <X>", sujet "Candidature POSTE - ENTREPRISE"
+  • domaine de l'expéditeur si c'est l'entreprise (pas indeed.com / linkedin.com / jobgether.com)
+  RÈGLES :
+  • Indeed, LinkedIn, Jobgether, Welcome to the Jungle… sont des JOB BOARDS, JAMAIS l'employeur. Ne les mets en company QUE si aucun employeur réel n'est trouvable.
+  • Si tu trouves l'employeur réel → company = cet employeur, companyFromAts: false.
+  • Si (et seulement si) l'employeur réel est introuvable → company = le nom du job board d'où vient l'email (ex: "Indeed", "LinkedIn", "Jobgether" — déduit de l'expéditeur), companyFromAts: true.
+
+- companyFromAts : true UNIQUEMENT quand l'employeur réel est introuvable. false dès qu'une vraie entreprise est trouvée.
 - confidence : 0-100 selon la clarté du poste.
 
-RÈGLE CLÉ : deux emails pour des POSTES DIFFÉRENTS sont des candidatures DIFFÉRENTES, même via le même ATS. Ne fusionne jamais des postes distincts.
+RÈGLE CLÉ : deux emails pour des POSTES DIFFÉRENTS sont des candidatures DIFFÉRENTES, même via le même job board. Ne fusionne jamais des postes distincts.
+
+EXEMPLE (confirmation Indeed) :
+  Sujet: "Candidature envoyée"  Contenu: "Head of Operations (évolution COO / DG) … UNIPILE - Remote … Les éléments suivants ont été envoyés à UNIPILE."
+  → { "company": "UNIPILE", "companyFromAts": false, "position": "Head of Operations (évolution COO / DG)", "confidence": 95 }
 
 RÉPONDS UNIQUEMENT avec ce tableau JSON :
 [
-  { "emailId": 1, "company": "...", "companyFromAts": true, "position": "...", "confidence": 0-100 }
+  { "emailId": 1, "company": "...", "companyFromAts": false, "position": "...", "confidence": 0-100 }
 ]
 
 EMAILS :
