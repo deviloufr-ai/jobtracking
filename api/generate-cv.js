@@ -59,6 +59,22 @@ STRICT FORMAT RULES — ATS-Compatible:
 9. NO icons, boxes, colors (except **bold** for emphasis), images, or special Unicode characters
 
 ═══════════════════════════════════════════════════════════════════════════════
+TONE & LANGUAGE (Make it sound naturally human, not AI-polished):
+═══════════════════════════════════════════════════════════════════════════════
+- AVOID: Repetitive structure where every bullet = "Led X, drove Y, resulting in Z%"
+- AVOID: Corporate jargon overload (synergy, leverage, optimize obsessively)
+- AVOID: Every bullet has a metric—mix quantitative + qualitative outcomes
+- DO: Vary sentence structure (some short, some longer; some start with action verb, some with context)
+- DO: Use specific details/context that feels genuine (not generic)
+- DO: Balance precise metrics with human-scale observations ("faster feedback loops", "team morale improved")
+- DO: Sound like a real person reflecting on what they actually did
+
+Example (HUMAN, not AI-obvious):
+BAD (AI-obvious): "Led cross-functional team, implemented A/B testing framework, resulting in 23% conversion improvement"
+GOOD (human): "Built A/B testing framework from scratch—took time to teach the team stats, but we caught 3 major UX issues that were killing conversions"
+ALSO GOOD: "Owned product roadmap for 18-month cycle; shipped features we knew users actually wanted (80% adoption, not lab metrics)"
+
+═══════════════════════════════════════════════════════════════════════════════
 ROLE SELECTION ALGORITHM (CRITICAL — this determines page count):
 ═══════════════════════════════════════════════════════════════════════════════
 
@@ -72,17 +88,21 @@ STEP 2: For SELECTED roles only (not all):
 2. Adapt bullet descriptions to highlight JD relevance
 3. Reorder bullets: put most relevant to job FIRST
 4. Keep original achievements — do NOT add new ones
-5. Example adaptation (not invention):
+5. Vary phrasing (not all bullets follow same pattern)
+6. Example adaptations (HUMAN, not AI-obvious):
    ORIGINAL: "Led product roadmap using OKR framework"
-   ADAPTED: "Led product roadmap via OKR methodology, delivering 8+ features quarterly with 92% on-time delivery"
-   NOT INVENTED: "Led product roadmap and increased revenue by 50%" (if not in original)
+   ADAPTED (specific): "Ran quarterly OKR planning cycles—wrote outcomes, partnered with eng to validate, shipped ~8 features per cycle"
+   or: "Managed product roadmap via OKRs; this meant saying no to 60% of feature requests, but improved ship quality"
+   NOT: "Led OKR-driven roadmap, delivering features with 92% on-time delivery" (too templated)
 
 Profile/Summary:
 - 2-3 sentences (60-90 words max) — absolutely NO longer
 - Lead with operating model/scope (OKR-driven, data-informed, etc.), not just years of experience
-- Tailor to highlight skills matching top JD requirements
-- Use 4-6 top keywords from job description
+- Sound CONVERSATIONAL, not like a robot wrote it (e.g., "shipped 40+ features" beats "led feature delivery initiatives")
+- Use 4-6 top keywords from job description, but naturally woven in
 - Stay truthful to original CV context
+- Example (HUMAN): "Product Manager focused on shipping what users actually need. 10 years in B2B SaaS—worked with teams to validate ideas before building, which cut wasted effort in half."
+- Example (TOO AI): "Strategic Product Manager with expertise in user-centric discovery, data-driven roadmap prioritization, and cross-functional team alignment across B2B SaaS verticals."
 
 Job Description Keyword Integration:
 - Extract top 8-10 skills/keywords from the JD
@@ -93,7 +113,10 @@ Job Description Keyword Integration:
 Skills Section:
 - SELECT TOP 10-12 JD-MATCHING SKILLS ONLY (cut generic/outdated skills)
 - Organize by category, put most JD-relevant category first
-- Add brief proof/context: "Product Discovery — User research, A/B testing, OKR" (not just list)
+- Add brief proof/context that sounds natural: "Product Discovery — user interviews, A/B testing, prioritization frameworks"
+- Vary the format slightly (not every line identical structure)
+- Example (HUMAN): "Product Strategy: OKR planning, roadmap prioritization, competitive analysis"
+- Example (TOO AI): "Strategic Product Management: OKR framework implementation, data-driven roadmap optimization, competitive landscape analysis"
 - Remove: soft skills (communication, leadership) unless specifically required by JD
 
 Education:
