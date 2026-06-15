@@ -17,17 +17,21 @@ function saveLS(map) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(map)) } catch {}
 }
 
-// Pick the best logo from Clearbit suggestions, guarding against wildly wrong
-// matches: keep a suggestion only when its name or domain loosely matches the
-// query (autocomplete is fuzzy and returns unrelated brands for short names).
+// Resolve a logo URL from Clearbit suggestions. Clearbit's autocomplete no longer
+// embeds a `logo` field (the free logo API was wound down) but still returns the
+// company DOMAIN — so we build a logo URL from the domain via unavatar.io (keyless,
+// aggregates favicon/logo sources). ?fallback=false makes it 404 when no logo is
+// found, so the <img> onError cleanly falls back to initials instead of showing a
+// generic placeholder. Guard against wildly wrong matches: keep a suggestion only
+// when its name or domain loosely matches the query (autocomplete is fuzzy).
 function pickLogo(name, list) {
   if (!Array.isArray(list)) return null
   const q = norm(name)
   const match = list.find(c => {
     const n = norm(c?.name), d = norm(c?.domain)
-    return c?.logo && (n === q || n.includes(q) || q.includes(n) || d.includes(q))
+    return c?.domain && (n === q || n.includes(q) || q.includes(n) || d.includes(q))
   })
-  return match?.logo || null
+  return match?.domain ? `https://unavatar.io/${match.domain}?fallback=false` : null
 }
 
 // undefined = not resolved yet · null = resolved, no logo · string = logo URL
