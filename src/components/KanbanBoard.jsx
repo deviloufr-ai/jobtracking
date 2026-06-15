@@ -21,9 +21,9 @@ function timeAgo(job, t = (k) => k) {
   return `${Math.floor(days / 365)}y`
 }
 
-// Rejections are hidden by default in the kanban to keep the active pipeline focused.
-// Archived is handled separately via the showArchived toggle.
-const KANBAN_DEFAULT_HIDDEN = ['rejected', 'rejected_ats']
+// Closed/terminal statuses are hidden by default in the kanban to keep the active
+// pipeline focused. Archived is handled separately via the showArchived toggle.
+const KANBAN_DEFAULT_HIDDEN = ['rejected', 'rejected_ats', 'done']
 
 // Columns shown in the kanban, honoring the status include/exclude filters + archived toggle.
 // By default rejected / rejected (ATS) / archived columns are hidden; the user can bring any
