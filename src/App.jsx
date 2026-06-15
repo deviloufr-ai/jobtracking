@@ -39,6 +39,7 @@ import { useNotifications } from './hooks/useNotifications'
 import NotificationPermissionBanner from './components/NotificationPermissionBanner'
 import { useNotificationPermission } from './hooks/useNotificationPermission'
 import { useNotificationScenarios } from './hooks/useNotificationScenarios'
+import { useDebugLogs } from './hooks/useDebugLogs'
 import LandingPage from './components/LandingPage'
 import LandingPageEN from './components/LandingPageEN'
 
@@ -121,6 +122,7 @@ function ExtensionButton({ t }) {
 export default function App() {
   const { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, reprocessJobs, checkAllPositions, findDuplicateInList } = useJobs()
   const { settings } = useSettings()
+  useDebugLogs() // Control console.log visibility based on debugLogsEnabled setting
   const { t } = useLanguage()
   const extensionInstalled = useExtensionDetect()
   const { permission: notificationPermission } = useNotificationPermission()
