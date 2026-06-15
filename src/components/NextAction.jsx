@@ -307,14 +307,14 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
                 STAR ✦
               </button>
             )}
-            {(rule.source === 'urgent' || rule.type === 'email') && rule.label(job).toLowerCase().includes('remerciement') && onDraftEmail && hasRealEmail(job) && (
+            {(rule.source === 'urgent' || rule.type === 'email') && (rule.label(job).toLowerCase().includes('remerciement') || rule.label(job).toLowerCase().includes('thank')) && onDraftEmail && hasRealEmail(job) && (
               <button onClick={e => { e.stopPropagation(); onDraftEmail(job, 'remerciement') }} className="flex-shrink-0 text-xs font-medium bg-pink-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-pink-600 transition-colors whitespace-nowrap">
-                Rédiger ✦
+                {rule.label(job).toLowerCase().includes('thank') ? 'Draft' : 'Rédiger'} ✦
               </button>
             )}
-            {rule.label(job).toLowerCase().includes('relancer') && onDraftEmail && (
+            {(rule.label(job).toLowerCase().includes('relancer') || rule.label(job).toLowerCase().includes('follow up')) && onDraftEmail && (
               <button onClick={e => { e.stopPropagation(); onDraftEmail(job, 'relance') }} className="flex-shrink-0 text-xs font-medium bg-blue-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap">
-                Rédiger ✦
+                {rule.label(job).toLowerCase().includes('follow') ? 'Draft' : 'Rédiger'} ✦
               </button>
             )}
             {rule.source === 'urgent' && rule.icon === '🎯' && onSTAR && !rule.label(job).toLowerCase().includes('test') && (
