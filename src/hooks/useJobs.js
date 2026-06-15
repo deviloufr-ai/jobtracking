@@ -9,7 +9,7 @@ import { getSyncUserIdForSupabase, resolveSyncUserId } from '../services/gmail'
 import { deduplicateJobsViaEdgeFunction, formatDeduplicateResult } from '../services/deduplicateService'
 import { GENERIC_POSITIONS_SET, isGenericPosition } from '../constants/positions'
 import { isJobBoard } from '../constants/jobBoards'
-import { runAtsCandidatureFix } from '../services/fixAtsCandidatures'
+import { runAtsCandidatureFix, debugAtsRecovery } from '../services/fixAtsCandidatures'
 
 const ENRICH_TTL_DAYS = 30
 
@@ -1657,7 +1657,16 @@ export function useJobs() {
         applySplit: applyAtsSplit,
         onProgress: opts.onProgress,
       })
-    return () => { delete window.fixAtsCandidatures }
+    // Diagnostic: window.debugAtsRecovery('Head of Operations') — find a job by id
+    // or company/position substring and dump what recovery actually receives.
+    window.debugAtsRecovery = (query = '') => {
+      const q = String(query).toLowerCase()
+      const job = jobsRef.current.find(j => j.id === query) ||
+        jobsRef.current.find(j => `${j.company} ${j.position}`.toLowerCase().includes(q))
+      if (!job) { console.warn('debugAtsRecovery: no job matching', query); return }
+      return debugAtsRecovery(job)
+    }
+    return () => { delete window.fixAtsCandidatures; delete window.debugAtsRecovery }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

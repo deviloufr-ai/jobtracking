@@ -120,6 +120,31 @@ export function planAtsSplit(job, recovered) {
   })
 }
 
+// Diagnostic: dump exactly what the recovery sees for one job — the extracted
+// email body (post-HTML-strip) + Claude's recovery result — so we can tell whether
+// a missed employer is absent from the text (e.g. only in a logo image) or whether
+// Claude is misreading it. Exposed as window.debugAtsRecovery(query).
+export async function debugAtsRecovery(job) {
+  if (!job) { console.warn('debugAtsRecovery: no job'); return null }
+  const seen = new Set()
+  const toFetch = emailEntries(job).filter(h => !seen.has(h.gmailId) && seen.add(h.gmailId))
+  console.log(`🔬 ${job.company} / ${job.position} — ${toFetch.length} source email(s)`)
+
+  const emails = []
+  for (const h of toFetch) {
+    try {
+      const e = await fetchEmailRawById(h.gmailId, h.receivedBy || '')
+      emails.push(e)
+      console.log(`\n──────── ${e.gmailId} ────────\nFROM: ${e.from}\nSUBJECT: ${e.subject}\nBODY (${e.body.length} chars):\n${e.body}`)
+    } catch (err) {
+      console.warn(`  ✗ fetch ${h.gmailId} failed:`, err.message)
+    }
+  }
+  const recovered = await recoverAtsEmployers(emails)
+  console.log('\n🔬 RECOVERED:', recovered)
+  return { emails, recovered }
+}
+
 // Orchestrator. For every candidate job: fetch its source emails, recover the real
 // position/employer via Claude, plan a split, and either log it (dryRun) or apply
 // it durably through `applySplit(jobId, groups)`. Returns a report.
