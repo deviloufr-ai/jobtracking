@@ -1,5 +1,4 @@
 import { useState, useRef, useMemo } from 'react'
-import html2pdf from 'html2pdf.js'
 import { useCVs } from '../hooks/useCVs'
 
 export default function MotivationLetterGenerator({ job, onClose, cvText, initialContent, onSaveLetter }) {
@@ -98,8 +97,10 @@ export default function MotivationLetterGenerator({ job, onClose, cvText, initia
     setTimeout(() => setSaved(false), 3000)
   }
 
-  const exportPDF = () => {
+  const exportPDF = async () => {
     if (!letterText) return
+
+    const { default: html2pdf } = await import('html2pdf.js')
 
     // Save letter first
     saveLetter()

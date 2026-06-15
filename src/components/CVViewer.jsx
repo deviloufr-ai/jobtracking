@@ -1,4 +1,3 @@
-import html2pdf from 'html2pdf.js'
 import { renderCV, BASE_PRINT_CSS } from './CVGenerator'
 
 export default function CVViewer({ job, onClose }) {
@@ -7,7 +6,8 @@ export default function CVViewer({ job, onClose }) {
   const { markdown, template, filename } = job.cvSaved
   const html = renderCV(markdown, template, null)
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
+    const { default: html2pdf } = await import('html2pdf.js')
     const element = document.createElement('div')
     element.innerHTML = html
     element.style.padding = '20px'

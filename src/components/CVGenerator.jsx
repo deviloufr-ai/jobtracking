@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import html2pdf from 'html2pdf.js'
 
 const IS_DEV = import.meta.env.DEV
 
@@ -536,6 +535,7 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
 
   // ── Export PDF with optional server-side compression ──────────────────────
   const handleExportPDF = async () => {
+    const { default: html2pdf } = await import('html2pdf.js')
     const md       = editableCV || generatedCV
     const html     = renderCV(md, template, profilePic)
     const cvData   = parseCV(md)
