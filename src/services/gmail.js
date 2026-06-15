@@ -694,16 +694,37 @@ function decodeBase64(str) {
   catch { try { return atob(str.replace(/-/g, '+').replace(/_/g, '/')) } catch { return '' } }
 }
 
-function extractBody(payload) {
+// Strip HTML to text, but keep <img alt> / title text — ATS emails (Indeed,
+// LinkedIn) often render the employer name as a logo image or inside markup the
+// text/plain part omits entirely.
+function htmlToText(data) {
+  return decodeBase64(data)
+    .replace(/<(?:img|area)\b[^>]*\b(?:alt|title)=["']([^"']+)["'][^>]*>/gi, ' $1 ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+// preferHtml: ATS confirmation emails (Indeed/LinkedIn) ship a gutted text/plain
+// part that drops the real employer + position — only the text/html part carries
+// them. For those senders we extract the HTML instead of the plain text.
+function extractBody(payload, { preferHtml = false } = {}) {
   if (!payload) return ''
-  if (payload.body?.data) return decodeBase64(payload.body.data)
+  if (payload.body?.data) {
+    return payload.mimeType === 'text/html' ? htmlToText(payload.body.data) : decodeBase64(payload.body.data)
+  }
   if (payload.parts) {
     const plain = payload.parts.find(p => p.mimeType === 'text/plain')
-    if (plain?.body?.data) return decodeBase64(plain.body.data)
     const html = payload.parts.find(p => p.mimeType === 'text/html')
-    if (html?.body?.data) return decodeBase64(html.body.data).replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim()
+    const order = preferHtml ? [html, plain] : [plain, html]
+    for (const part of order) {
+      if (!part?.body?.data) continue
+      return part.mimeType === 'text/html' ? htmlToText(part.body.data) : decodeBase64(part.body.data)
+    }
     for (const part of payload.parts) {
-      if (part.parts) { const nested = extractBody(part); if (nested) return nested }
+      if (part.parts) { const nested = extractBody(part, { preferHtml }); if (nested) return nested }
     }
   }
   return ''
@@ -731,10 +752,10 @@ export async function fetchEmailRawById(gmailId, accountEmail = '') {
     fromMe: isSent,
     date: get('Date'),
     snippet: data.snippet || '',
-    // Keep far more body than the import path (2000) — ATS confirmation emails
-    // (Indeed/LinkedIn) bury the real employer ("envoyés à UNIPILE") well past the
-    // bloated HTML preheader, so the recovery prompt needs the fuller text.
-    body: extractBody(data.payload).slice(0, 8000),
+    // Prefer the HTML part: ATS text/plain parts drop the employer + position.
+    // Keep far more body than the import path too — the real employer can sit past
+    // the bloated HTML preheader.
+    body: extractBody(data.payload, { preferHtml: true }).slice(0, 8000),
   }
 }
 
@@ -755,7 +776,10 @@ async function fetchEmailDetail(id, token) {
       return null
     }
 
-    const body = extractBody(data.payload).slice(0, 4000)
+    // ATS senders ship a gutted text/plain part — pull the HTML for them so the
+    // import parser sees the real employer + position, not just "candidature envoyée".
+    const preferHtml = /indeed\.com|linkedin\.com|jobgether\.com|welcometothejungle|hellowork|apec\.fr/i.test(from)
+    const body = extractBody(data.payload, { preferHtml }).slice(0, 4000)
 
     // Drop job-alert / digest emails based on sender + subject patterns
     const fromRaw = get('From').toLowerCase()
