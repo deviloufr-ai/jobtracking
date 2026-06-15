@@ -81,11 +81,32 @@ function KanbanCard({ job, onEdit, onToggleFavorite, onDragStart, onDragEnd, acc
   )
 }
 
+const COLUMN_ORDER_KEY = 'jobtrackr_kanban_order'
+
+// Load the persisted column order, reconciled against the current STATUSES list
+// (drop unknown keys, append any newly-added statuses at the end).
+function loadColumnOrder() {
+  const defaults = STATUSES.map(s => s.key)
+  try {
+    const saved = JSON.parse(localStorage.getItem(COLUMN_ORDER_KEY) || 'null')
+    if (!Array.isArray(saved)) return defaults
+    const known = saved.filter(k => defaults.includes(k))
+    const missing = defaults.filter(k => !known.includes(k))
+    return [...known, ...missing]
+  } catch {
+    return defaults
+  }
+}
+
 export default function KanbanBoard({ jobs, filters, showArchived, onStatusChange, onEdit, onToggleFavorite, t = (k) => k }) {
   const [dragJob, setDragJob] = useState(null)
   const [dragOverKey, setDragOverKey] = useState(null)
+  const [dragColKey, setDragColKey] = useState(null)
+  const [columnOrder, setColumnOrder] = useState(loadColumnOrder)
 
-  const columns = visibleColumns(filters, showArchived)
+  // Visible columns, sorted by the user's custom order
+  const columns = [...visibleColumns(filters, showArchived)]
+    .sort((a, b) => columnOrder.indexOf(a.key) - columnOrder.indexOf(b.key))
 
   const handleDragStart = (e, job) => {
     setDragJob(job)
@@ -93,11 +114,32 @@ export default function KanbanBoard({ jobs, filters, showArchived, onStatusChang
   }
   const handleDragEnd = () => { setDragJob(null); setDragOverKey(null) }
 
+  const handleColumnDragStart = (e, key) => {
+    e.stopPropagation()
+    setDragColKey(key)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+  const handleColumnDragEnd = () => { setDragColKey(null); setDragOverKey(null) }
+
+  const reorderColumns = (fromKey, toKey) => {
+    if (fromKey === toKey) return
+    setColumnOrder(prev => {
+      const arr = prev.filter(k => k !== fromKey)
+      const idx = arr.indexOf(toKey)
+      arr.splice(idx < 0 ? arr.length : idx, 0, fromKey)
+      try { localStorage.setItem(COLUMN_ORDER_KEY, JSON.stringify(arr)) } catch {}
+      return arr
+    })
+  }
+
   const handleDrop = (statusKey) => {
-    if (dragJob && dragJob.status !== statusKey) {
+    if (dragColKey) {
+      reorderColumns(dragColKey, statusKey)
+    } else if (dragJob && dragJob.status !== statusKey) {
       onStatusChange(dragJob.id, statusKey)
     }
     setDragJob(null)
+    setDragColKey(null)
     setDragOverKey(null)
   }
 
@@ -105,7 +147,9 @@ export default function KanbanBoard({ jobs, filters, showArchived, onStatusChang
     <div className="flex gap-3 overflow-x-auto pb-3">
       {columns.map(col => {
         const colJobs = jobs.filter(j => j.status === col.key)
-        const isTarget = dragOverKey === col.key && dragJob && dragJob.status !== col.key
+        const isCardTarget = dragOverKey === col.key && dragJob && dragJob.status !== col.key
+        const isColTarget = dragOverKey === col.key && dragColKey && dragColKey !== col.key
+        const isColDragging = dragColKey === col.key
         const accent = col.key === 'interview' ? '#a855f7'
           : col.key === 'offer' || col.key === 'done' ? '#22c55e'
           : null
@@ -115,12 +159,23 @@ export default function KanbanBoard({ jobs, filters, showArchived, onStatusChang
             onDragOver={(e) => { e.preventDefault(); setDragOverKey(col.key) }}
             onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOverKey(null) }}
             onDrop={() => handleDrop(col.key)}
-            className={`flex flex-col flex-1 min-w-[230px] rounded-xl border transition-colors ${
-              isTarget ? 'border-indigo-400 bg-indigo-50/60' : 'border-gray-100 bg-gray-50/70'
+            className={`flex flex-col flex-1 min-w-[230px] rounded-xl border transition-all ${
+              isColDragging ? 'opacity-40' : ''
+            } ${
+              isColTarget ? 'border-indigo-400 ring-2 ring-indigo-200'
+                : isCardTarget ? 'border-indigo-400 bg-indigo-50/60'
+                : 'border-gray-100 bg-gray-50/70'
             }`}
           >
-            {/* Column header */}
-            <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-100">
+            {/* Column header — drag handle for reordering columns */}
+            <div
+              draggable
+              onDragStart={(e) => handleColumnDragStart(e, col.key)}
+              onDragEnd={handleColumnDragEnd}
+              title={t('kanban.dragColumn') || 'Drag to reorder'}
+              className="group/header flex items-center gap-2 px-3 py-2.5 border-b border-gray-100 cursor-grab active:cursor-grabbing select-none"
+            >
+              <span className="text-gray-300 group-hover/header:text-gray-400 text-xs leading-none -ml-0.5" aria-hidden="true">⋮⋮</span>
               <span className={`w-2.5 h-2.5 rounded-full ${col.dot}`} />
               <span className="text-sm font-semibold text-gray-700">{getStatusLabel(col.key, t)}</span>
               <span className="ml-auto text-xs font-medium text-gray-400 bg-white border border-gray-200 rounded-full px-2 py-0.5">
@@ -132,7 +187,7 @@ export default function KanbanBoard({ jobs, filters, showArchived, onStatusChang
             <div className="flex flex-col gap-2 p-2 min-h-[120px] flex-1">
               {colJobs.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center text-[11px] text-gray-300 py-6 select-none">
-                  {isTarget ? t('kanban.dropHere') || 'Drop here' : '—'}
+                  {isCardTarget ? t('kanban.dropHere') || 'Drop here' : '—'}
                 </div>
               ) : (
                 colJobs.map(job => (
