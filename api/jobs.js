@@ -1,3 +1,5 @@
+import { applyCors } from './_lib/http.js'
+
 // Simple INSEE code detection (without importing the ref file)
 function detectInseeCode(location) {
   if (!location || location === 'france') return null
@@ -101,7 +103,7 @@ async function getFranceTravailToken() {
 }
 
 export default async function handler(req, res) {
-  if (setupCORS(req, res, 'GET, OPTIONS')) return
+  if (applyCors(req, res, 'GET, OPTIONS')) return
 
   const { provider = 'francetravail', query = '', location = '', page = 1, per_page = 20 } = req.query
 

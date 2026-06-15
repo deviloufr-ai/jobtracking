@@ -1,16 +1,26 @@
 // Vercel Serverless Function — proxy pour l'API Anthropic (évite CORS)
+import { applyCors, getClientIp, rateLimit } from './_lib/http.js'
+
 export default async function handler(req, res) {
-  // CORS headers for browser requests
-  res.setHeader('Access-Control-Allow-Origin', process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5173')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-  if (req.method === 'OPTIONS') { res.status(200).end(); return }
+  if (applyCors(req, res, 'POST, OPTIONS')) return
 
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return }
 
   // Accept user's API key from request, fall back to server's if not provided
-  let apiKey = req.body?.apiKey?.trim() || process.env.ANTHROPIC_API_KEY
+  const userKey = req.body?.apiKey?.trim()
+  const apiKey = userKey || process.env.ANTHROPIC_API_KEY
   if (!apiKey) { res.status(401).json({ error: 'No API key provided. Please configure your Claude API key in Settings.' }); return }
+
+  // Rate-limit requests that bill the server's shared key to prevent abuse.
+  // Requests using a user-supplied key are not throttled here.
+  if (!userKey) {
+    const { ok, retryAfter } = rateLimit({ key: `claude:${getClientIp(req)}`, limit: 30, windowMs: 60_000 })
+    if (!ok) {
+      res.setHeader('Retry-After', String(retryAfter))
+      res.status(429).json({ error: 'Too many requests. Please slow down or add your own Claude API key in Settings.' })
+      return
+    }
+  }
 
   try {
     const { model, max_tokens, system, messages, tools, tool_choice } = req.body
