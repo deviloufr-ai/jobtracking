@@ -1,7 +1,8 @@
-// Client-side company-logo resolution. Calls the /api/logo proxy (name → logo URL)
-// and caches results in memory + localStorage, including negative results, so we
-// never re-hit the network for the same company. No job mutation / sync needed —
-// logos are derived from the company name on render.
+// Client-side company-logo resolution. Calls Clearbit's keyless, CORS-enabled
+// autocomplete endpoint directly (no serverless function — Hobby plan caps at 12),
+// resolving a company NAME to a logo URL. Results (including negatives) are cached
+// in memory + localStorage, so each company hits the network at most once. No job
+// mutation / sync needed — logos are derived from the company name on render.
 
 const MEM = new Map() // normName -> string(url) | null(no logo) | Promise
 const LS_KEY = 'jobtrackr_logo_cache'
@@ -14,6 +15,19 @@ function loadLS() {
 }
 function saveLS(map) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(map)) } catch {}
+}
+
+// Pick the best logo from Clearbit suggestions, guarding against wildly wrong
+// matches: keep a suggestion only when its name or domain loosely matches the
+// query (autocomplete is fuzzy and returns unrelated brands for short names).
+function pickLogo(name, list) {
+  if (!Array.isArray(list)) return null
+  const q = norm(name)
+  const match = list.find(c => {
+    const n = norm(c?.name), d = norm(c?.domain)
+    return c?.logo && (n === q || n.includes(q) || q.includes(n) || d.includes(q))
+  })
+  return match?.logo || null
 }
 
 // undefined = not resolved yet · null = resolved, no logo · string = logo URL
@@ -42,17 +56,19 @@ export async function resolveCompanyLogo(name) {
   if (inflight instanceof Promise) return inflight
 
   const p = (async () => {
+    let logo = null
     try {
-      const r = await fetch(`/api/logo?name=${encodeURIComponent(name)}`)
-      const data = await r.json().catch(() => ({}))
-      const logo = data?.logo || null
-      MEM.set(k, logo)
-      const ls = loadLS(); ls[k] = { logo, ts: Date.now() }; saveLS(ls)
-      return logo
+      const r = await fetch(
+        `https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(name)}`,
+        { headers: { Accept: 'application/json' } }
+      )
+      if (r.ok) logo = pickLogo(name, await r.json())
     } catch {
-      MEM.set(k, null)
-      return null
+      // network/CORS failure → treat as no logo (graceful fallback to initials)
     }
+    MEM.set(k, logo)
+    const ls = loadLS(); ls[k] = { logo, ts: Date.now() }; saveLS(ls)
+    return logo
   })()
   MEM.set(k, p)
   return p
