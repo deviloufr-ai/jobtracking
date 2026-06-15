@@ -178,6 +178,7 @@ export const en = {
     appearance: 'Appearance',
     data: 'Data',
     extension: 'Extension',
+    debug: 'Debug',
   },
 
   // Settings Descriptions
@@ -191,6 +192,7 @@ export const en = {
     appearance: 'Choose the application theme',
     data: 'Export, import or reset your data',
     extension: 'Manage the Firefox extension',
+    debug: 'Enable or disable console logs',
   },
 
   // JobModal
@@ -659,6 +661,13 @@ export const en = {
     install: '📥 Install',
     enabled: '✓ Enabled',
     checking: '⏳ Checking...',
+  },
+
+  // Settings - Debug Tab
+  settingsDebug: {
+    consoleLogs: 'Console Logs',
+    enableLogs: 'Enable Console Logs',
+    enableLogsHint: 'Show detailed logs in the browser console for debugging',
   },
 
   // Common

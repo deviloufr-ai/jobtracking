@@ -178,6 +178,7 @@ export const fr = {
     appearance: 'Apparence',
     data: 'Données',
     extension: 'Extension',
+    debug: 'Debug',
   },
 
   // Settings Descriptions
@@ -191,6 +192,7 @@ export const fr = {
     appearance: 'Choisissez le thème de l\'application',
     data: 'Exportez, importez ou réinitialisez vos données',
     extension: 'Gérez l\'extension Firefox',
+    debug: 'Activez ou désactivez les journaux de la console',
   },
 
   // JobModal
@@ -488,6 +490,13 @@ export const fr = {
     responseRate: 'Taux de réponse',
     interviewsPerMonth: 'Entretiens / mois',
     thisWeek: 'cette semaine',
+  },
+
+  // Settings - Debug Tab
+  settingsDebug: {
+    consoleLogs: 'Journaux de la console',
+    enableLogs: 'Activer les journaux de la console',
+    enableLogsHint: 'Afficher les journaux détaillés dans la console du navigateur pour le débogage',
   },
 
   // Common

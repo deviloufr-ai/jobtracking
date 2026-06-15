@@ -96,6 +96,7 @@ const getCATEGORIES = (t) => [
   { id: 'appearance', label: t('settingsSidebar.appearance'), icon: '🎨' },
   { id: 'data', label: t('settingsSidebar.data'), icon: '💾' },
   { id: 'extension', label: t('settingsSidebar.extension'), icon: '🦊' },
+  { id: 'debug', label: t('settingsSidebar.debug'), icon: '🐛' },
 ]
 
 export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
@@ -421,6 +422,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                 {activeTab === 'appearance' && t('settingsDesc.appearance')}
                 {activeTab === 'data' && t('settingsDesc.data')}
                 {activeTab === 'extension' && t('settingsDesc.extension')}
+                {activeTab === 'debug' && t('settingsDesc.debug')}
               </p>
             </div>
             <button
@@ -935,6 +937,24 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                       {t('settingsExtension.checking')}
                     </span>
                   )}
+                </Row>
+              </Card>
+            )}
+
+            {/* Debug Tab */}
+            {activeTab === 'debug' && (
+              <Card title={t('settingsDebug.consoleLogs')}>
+                <Row label={t('settingsDebug.enableLogs')} hint={t('settingsDebug.enableLogsHint')}>
+                  <button
+                    onClick={() => updateSetting('debugLogsEnabled', !settings.debugLogsEnabled)}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      settings.debugLogsEnabled
+                        ? 'bg-green-500 text-white hover:bg-green-600'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    {settings.debugLogsEnabled ? '✓ Enabled' : 'Disabled'}
+                  </button>
                 </Row>
               </Card>
             )}

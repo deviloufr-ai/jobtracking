@@ -18,6 +18,7 @@ export const SETTINGS_DEFAULTS = {
   checkPositionAfterDays: 14,
   checkPositionEnabled: true,
   theme: 'light',
+  debugLogsEnabled: false,
 }
 
 // Load from localStorage as fallback (for migration period)
