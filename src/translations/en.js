@@ -163,6 +163,8 @@ export const en = {
     status: 'Status',
     date: 'Date',
     notes: 'Notes',
+    viaAts: 'ATS',
+    viaAtsHint: 'Company not provided by this ATS — showing the source platform name',
   },
 
   // Settings Sidebar

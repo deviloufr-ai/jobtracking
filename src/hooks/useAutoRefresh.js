@@ -161,10 +161,17 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
   const enriched = validated
     .filter(p => {
       const isBoard = isJobBoard(p.company)
-      if (isBoard) {
+      // Keep ATS-fallback candidatures: the ATS/board name IS the company on purpose
+      // (e.g. JobGet) because the real employer was never exposed. Only drop a job-board
+      // company when it leaked in by mistake (companyFromAts not set).
+      if (isBoard && !p.companyFromAts) {
         log(`🗑️  Filtered job board: ${p.company}/${p.position}`)
+        return false
       }
-      return p.company && !isBoard
+      if (isBoard && p.companyFromAts) {
+        log(`🅰️  Kept ATS-fallback candidature: ${p.company}/${p.position}`)
+      }
+      return !!p.company
     })
     .map(p => ({
       ...p,

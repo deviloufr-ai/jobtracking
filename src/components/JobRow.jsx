@@ -328,6 +328,9 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
             <div className="min-w-0">
               <div className="font-semibold text-gray-800 text-sm truncate leading-tight flex items-center gap-1.5">
                 {job.company}
+                {job.companyFromAts && (
+                  <span title={t?.table?.viaAtsHint || 'Company not provided by this ATS — showing the source platform name'} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-600 flex-shrink-0">{t?.table?.viaAts || 'ATS'}</span>
+                )}
                 {job.cvSaved && (
                   <span title={`CV généré le ${new Date(job.cvSaved.savedAt).toLocaleDateString('fr-FR')}`} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-600 flex-shrink-0">CV</span>
                 )}

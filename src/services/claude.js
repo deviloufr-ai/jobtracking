@@ -9,7 +9,10 @@ let claudeRequestQueue = Promise.resolve()
 let claudeRequestCount = 0
 const MAX_CONCURRENT_REQUESTS = 1
 
-const isCachedJobBoard = result => isJobBoard(result?.company)
+// A cached result is "stale" only if it lazily put a job board as the company
+// WITHOUT marking it as an intentional ATS fallback. When companyFromAts is set,
+// the ATS name IS the company on purpose (ATS that hides the real employer) — keep it.
+const isCachedJobBoard = result => isJobBoard(result?.company) && !result?.companyFromAts
 
 // ─── Email parse cache ────────────────────────────────────────────────────────
 const EMAIL_CACHE_KEY = 'jobtrackr_email_cache'
@@ -296,11 +299,23 @@ PATTERNS À CHERCHER (dans cet ordre) :
 7️⃣ De: [firstname]@[company].com ou recruiter.company.fr
 8️⃣ Si job board (Indeed/LinkedIn/WTTJ) : TOUJOURS extraire la vraie compagnie, pas le job board
 
+🆘 FALLBACK ATS (RÈGLE IMPORTANTE) :
+Certains ATS / agrégateurs (ex: JobGet, et tout job board qui masque l'employeur)
+NE FOURNISSENT PAS le nom de la vraie entreprise — seulement le poste.
+DANS CE CAS UNIQUEMENT, si c'est une VRAIE candidature (tu as postulé / réponse reçue
+sur un poste précis) ET qu'aucune entreprise réelle n'est trouvable après les patterns 1️⃣→8️⃣ :
+  → company = le nom de l'ATS / job board (ex: "JobGet", "Indeed", "LinkedIn")
+  → companyFromAts = true
+  → garder la confidence normale (NE PAS mettre 0 juste parce que l'entreprise manque)
+⚠️ Ce fallback NE s'applique PAS aux newsletters / alertes / offres suggérées : celles-ci restent confidence: 0.
+⚠️ Si tu trouves la vraie entreprise → utilise-la et companyFromAts = false.
+
 EXEMPLES :
-✅ "Vous avez reçu une réponse à l'offre : \"Responsable Projects IT H/F\" dans l'entreprise OpenSourcing" → company: "OpenSourcing"
-✅ "GojiberryAI · France" → company: "GojiberryAI"
-✅ "You applied to Senior Dev at Acme Corp" → company: "Acme Corp"
-❌ Ne JAMAIS : company: "Indeed" ou "LinkedIn" ou "WTTJ"
+✅ "Vous avez reçu une réponse à l'offre : \"Responsable Projects IT H/F\" dans l'entreprise OpenSourcing" → company: "OpenSourcing", companyFromAts: false
+✅ "GojiberryAI · France" → company: "GojiberryAI", companyFromAts: false
+✅ "You applied to Senior Dev at Acme Corp" → company: "Acme Corp", companyFromAts: false
+✅ "Your application for Product Manager was sent" (via JobGet, aucune entreprise) → company: "JobGet", position: "Product Manager", companyFromAts: true
+❌ Ne JAMAIS mettre un job board en company SI la vraie entreprise est trouvable (companyFromAts doit rester false)
 
 ═══════════════════════════════════════════════════════════════════════════
 EXTRACTION POSITION (TRÈS PRÉCIS)
@@ -416,9 +431,9 @@ SCORING CONFIDENCE
 0-39   : Ignorer (job board alert, newsletter, signature profile, invitation suggérée, trop ambigu)
 
 JAMAIS confidence > 0 si :
-- Company non identifiable OU
 - Position non identifiable OU
 - Email = newsletter/alert/suggestion sans action réelle
+- (Company non identifiable est TOLÉRÉ pour une vraie candidature via ATS → voir FALLBACK ATS : utiliser le nom de l'ATS + companyFromAts: true)
 
 ═══════════════════════════════════════════════════════════════════════════
 NOTES (120-150 CHARS MAX - MERGE-FRIENDLY)
@@ -489,6 +504,7 @@ OUTPUT JSON FORMAT
   {
     "emailId": 1,
     "company": "...",
+    "companyFromAts": false,
     "position": "...",
     "status": "...",
     "date": "YYYY-MM-DD",
@@ -509,6 +525,9 @@ ${emailsText}`
         j.gmailId = originalEmail.id
         j.fromEmail = originalEmail.from
         j.fromMe = originalEmail.fromMe
+
+        // Normalize the ATS-fallback flag to a real boolean (Claude may emit "true"/1/etc.)
+        j.companyFromAts = j.companyFromAts === true || j.companyFromAts === 'true'
 
         // Tag low-confidence results — they can only update existing jobs, not create new ones
         if ((j.confidence || 0) < 55) j._updateOnly = true
@@ -578,7 +597,7 @@ export async function validateAndCleanJobs(parsedJobs) {
 
   // Format jobs for Claude review
   const jobsText = parsedJobs.map((j, i) => {
-    return `[JOB-${i}] ${j.company} / ${j.position} (${j.date})
+    return `[JOB-${i}] ${j.company}${j.companyFromAts ? ' (ATS fallback — pas l\'employeur réel)' : ''} / ${j.position} (${j.date})
     Status: ${j.status}, Confidence: ${j.confidence}
     Notes: ${j.notes}
     EmailId: ${j.gmailId || 'unknown'}`
@@ -625,6 +644,10 @@ TÂCHES À EFFECTUER :
    "nous avons bien reçu votre candidature", "your application has been received".
    Ces emails = statut "reviewing" VALIDE (la candidature progresse) → CONSERVER.
    Ils ne sont PAS des newsletters ni des emails transactionnels purs.
+
+   ⚠️ NE JAMAIS SUPPRIMER ni "corriger" une candidature dont company = nom d'un ATS / job
+   board (ex: "JobGet", "Indeed") quand companyFromAts = true : c'est un fallback VOULU
+   (l'ATS ne fournit pas l'employeur réel). Conserver tel quel et garder companyFromAts: true.
 
 ═════════════════════════════════════════════════════════════════
 

@@ -6,6 +6,7 @@ export const JOB_BOARD_NAMES = new Set([
   'jobboard', 'smartrecruiters', 'workday', 'greenhouse', 'lever', 'ashby', 'jobvite',
   'bamboohr', 'icims', 'taleo', 'successfactors', 'teamtailor', 'breezy', 'pinpoint',
   'dover', 'comeet', 'jazz', 'rippling', 'notion.so', 'recruitee', 'ziprecruiter',
+  'jobget',
 ])
 
 export function normalize(s) {
