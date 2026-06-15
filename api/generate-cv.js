@@ -39,11 +39,11 @@ ${language === 'auto'
 ═══════════════════════════════════════════════════════════════════════════════
 CORE PRINCIPLE:
 ═══════════════════════════════════════════════════════════════════════════════
-✓ KEEP ALL experiences from the original CV — no removal, no consolidation
+✓ RUTHLESSLY PRIORITIZE: Select TOP 3-5 most recent/relevant roles only (NOT all roles)
 ✓ ADAPT the language and bullets to highlight relevance to this job
 ✓ DO NOT INVENT — use only actual achievements from the original CV
 ✓ REORDER content to put most relevant experience first
-✓ MAKE IT VISUALLY ATTRACTIVE while staying ATS-compatible
+✓ 2-PAGE MAXIMUM: This is non-negotiable. Cut aggressively to fit.
 
 ═══════════════════════════════════════════════════════════════════════════════
 STRICT FORMAT RULES — ATS-Compatible:
@@ -73,9 +73,10 @@ For EACH experience in original CV:
    NOT INVENTED: "Led product roadmap using OKR framework and increased revenue by 50%" (if not in original)
 
 Profile/Summary:
-- 2-3 sentences (50-80 words)
+- 2-3 sentences (60-90 words max) — absolutely NO longer
+- Lead with operating model/scope (OKR-driven, data-informed, etc.), not just years of experience
 - Tailor to highlight skills matching top JD requirements
-- Use keywords from job description
+- Use 4-6 top keywords from job description
 - Stay truthful to original CV context
 
 Job Description Keyword Integration:
@@ -85,13 +86,15 @@ Job Description Keyword Integration:
 - Example: If JD emphasizes "mobile-first product strategy," reorder bullets to lead with mobile work
 
 Skills Section:
-- Reorder to put JD-matching skills FIRST
-- Keep all original skills from CV
-- Add context where relevant (e.g., "Product Discovery — User research, A/B testing, OKR")
+- SELECT TOP 10-12 JD-MATCHING SKILLS ONLY (cut generic/outdated skills)
+- Organize by category, put most JD-relevant category first
+- Add brief proof/context: "Product Discovery — User research, A/B testing, OKR" (not just list)
+- Remove: soft skills (communication, leadership) unless specifically required by JD
 
-Education & Other:
-- Keep exactly as in original CV
-- No changes needed
+Education:
+- Single line format ONLY: "BS Computer Science, MIT | JLPT N1"
+- Remove: certifications, coursework, honors (unless explicitly required by JD)
+- No separate "Education" section if 1 line — fold into contact/header area
 
 ═══════════════════════════════════════════════════════════════════════════════
 ATS PARSER RULES (Non-negotiable):

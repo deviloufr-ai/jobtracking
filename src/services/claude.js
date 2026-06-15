@@ -548,6 +548,99 @@ ${emailsText}`
   return all
 }
 
+// ─── ATS employer/position recovery ────────────────────────────────────────────
+// Used by the ATS-candidature repair. Given a batch of emails that all collapsed
+// onto a single ATS job (e.g. "Jobgether"), re-derive the EXACT position title and
+// the REAL employer per email so distinct applications can be split apart again.
+// Returns a map { [gmailId]: { company, companyFromAts, position, confidence } }.
+const recoverSystem = `Tu analyses des emails de candidature passés par un ATS / job board (Jobgether, LinkedIn, Indeed…) qui masque souvent l'employeur réel. Tu réponds UNIQUEMENT avec un tableau JSON valide.`
+
+export async function recoverAtsEmployers(emails) {
+  if (!emails.length) return {}
+
+  if (IS_DEV) {
+    const map = {}
+    emails.forEach((e, i) => {
+      map[e.gmailId || e.id] = {
+        company: (e.from || '').split('@')[1]?.split('.')[0] || 'Jobgether',
+        companyFromAts: true,
+        position: `Poste démo ${i + 1}`,
+        confidence: 70,
+      }
+    })
+    return map
+  }
+
+  const map = {}
+  const BATCH = 20
+  for (let i = 0; i < emails.length; i += BATCH) {
+    const batch = emails.slice(i, i + BATCH)
+    if (i > 0) await new Promise(r => setTimeout(r, 1500))
+
+    const emailsText = batch.map((e, j) => {
+      const body = (e.body?.trim() || e.snippet || '').slice(0, 900)
+      return `[${j + 1}] De: ${e.from}\nSujet: ${e.subject}\nDate: ${e.date}\nContenu: ${body}`
+    }).join('\n\n---\n\n')
+
+    const prompt = `Pour CHAQUE email [N], extrais avec HAUTE PRÉCISION :
+- position : le titre EXACT du poste concerné (garder qualificatifs : "Senior", "Lead", "H/F"…). JAMAIS inventer ni normaliser. Si aucun titre clair → position: "" et confidence: 0.
+- company : la VRAIE entreprise qui recrute, si elle est trouvable dans l'email.
+  * Cherche après "chez", "at", "for", "dans l'entreprise", "·", dans le sujet ("Re: Candidature POSTE - ENTREPRISE"), ou dans le domaine de l'expéditeur.
+  * Si l'employeur réel N'EST PAS trouvable (l'ATS le masque) → company = le nom de l'ATS/job board (ex: "Jobgether", "LinkedIn") ET companyFromAts: true.
+  * Si tu trouves la vraie entreprise → company = cette entreprise ET companyFromAts: false.
+- companyFromAts : true seulement quand l'employeur réel est inconnu, false sinon.
+- confidence : 0-100 selon la clarté du poste.
+
+RÈGLE CLÉ : deux emails pour des POSTES DIFFÉRENTS sont des candidatures DIFFÉRENTES, même via le même ATS. Ne fusionne jamais des postes distincts.
+
+RÉPONDS UNIQUEMENT avec ce tableau JSON :
+[
+  { "emailId": 1, "company": "...", "companyFromAts": true, "position": "...", "confidence": 0-100 }
+]
+
+EMAILS :
+${emailsText}`
+
+    let raw
+    try {
+      raw = await callClaude(recoverSystem, prompt)
+    } catch (e) {
+      console.warn('recoverAtsEmployers batch failed:', e.message)
+      continue
+    }
+
+    // Local array parse (parseJSON above filters on .status which we don't emit)
+    let parsed = []
+    try {
+      let clean = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```[\s\S]*$/, '').trim()
+      const start = clean.indexOf('[')
+      let depth = 0, end = -1
+      for (let k = start; k >= 0 && k < clean.length; k++) {
+        if (clean[k] === '[') depth++
+        else if (clean[k] === ']') { depth--; if (depth === 0) { end = k; break } }
+      }
+      if (start !== -1 && end !== -1) parsed = JSON.parse(clean.slice(start, end + 1))
+    } catch (e) {
+      console.warn('recoverAtsEmployers parse failed:', e.message)
+    }
+
+    for (const item of parsed) {
+      if (!item || !item.position) continue
+      const idx = parseInt(String(item.emailId).replace(/\D/g, ''), 10) - 1
+      const src = batch[idx]
+      if (!src) continue
+      map[src.gmailId || src.id] = {
+        company: item.company || '',
+        companyFromAts: item.companyFromAts === true || item.companyFromAts === 'true',
+        position: item.position,
+        confidence: item.confidence ?? 0,
+      }
+    }
+  }
+
+  return map
+}
+
 export async function analyzeJobOffer(offerText, companyName, position) {
   if (IS_DEV) return MOCK_ANALYSIS
 

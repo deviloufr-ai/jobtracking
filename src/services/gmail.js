@@ -709,6 +709,32 @@ function extractBody(payload) {
   return ''
 }
 
+// ── Raw single-email fetch (no job-signal filtering) ──────────────────────────
+// fetchEmailDetail() drops anything that doesn't look like a job email and can
+// return null. The ATS-candidature repair already KNOWS these gmailIds belong to
+// real applications (they're stored on a job's history) — it just needs the raw
+// subject/from/body to re-derive the true employer + position. So this fetches
+// the message content unconditionally. accountEmail = the account that received
+// it (history.receivedBy); falls back to the first connected account.
+export async function fetchEmailRawById(gmailId, accountEmail = '') {
+  const token = await ensureValidToken(accountEmail)
+  if (!token) throw new Error(`Non connecté à Gmail${accountEmail ? ` : ${accountEmail}` : ''}`)
+  const data = await gmailFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${gmailId}?format=full`, token)
+  const headers = data.payload?.headers || []
+  const get = (name) => headers.find(h => h.name === name)?.value || ''
+  const isSent = (data.labelIds || []).includes('SENT')
+  return {
+    id: data.id,
+    gmailId: data.id,
+    subject: get('Subject'),
+    from: isSent ? get('To') : get('From'),
+    fromMe: isSent,
+    date: get('Date'),
+    snippet: data.snippet || '',
+    body: extractBody(data.payload).slice(0, 2000),
+  }
+}
+
 async function fetchEmailDetail(id, token) {
   try {
     const data = await gmailFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=full`, token)

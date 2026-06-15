@@ -8,6 +8,7 @@ import { supabase, isSupabaseConfigured } from '../services/supabase'
 import { getSyncUserIdForSupabase, resolveSyncUserId } from '../services/gmail'
 import { deduplicateJobsViaEdgeFunction, formatDeduplicateResult } from '../services/deduplicateService'
 import { GENERIC_POSITIONS_SET, isGenericPosition } from '../constants/positions'
+import { runAtsCandidatureFix } from '../services/fixAtsCandidatures'
 
 const ENRICH_TTL_DAYS = 30
 
@@ -973,6 +974,7 @@ export function useJobs() {
   const [settingsKey, setSettingsKey] = useState(0)
   const [loading, setLoading] = useState(true)
   const saveTimeoutRef = useRef(null)
+  const jobsRef = useRef([])
 
   // Load from IndexedDB on mount + when synced from other devices
   useEffect(() => {
@@ -1546,5 +1548,91 @@ export function useJobs() {
     }
   }
 
-  return { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched, reprocessJobs, checkPosition, checkAllPositions, clearDeletedJobs, cleanupHistoryDuplicates, deduplicateViaServer, loading, findDuplicateInList: (co, pos) => findDuplicateJob(jobs, co, pos) }
+  // Durable apply for the ATS-candidature repair (window.fixAtsCandidatures).
+  // Splits one merged ATS job (e.g. "Jobgether") into several distinct candidatures
+  // by position. The primary group keeps the original row id (preserving CV / favorite
+  // / links); the rest become new jobs. Any underlying duplicate rows the display job
+  // absorbed (_mergedIds) are deleted + tombstoned so the next poll can't resurrect
+  // the merge, and entries that leave the primary are history-tombstoned.
+  const applyAtsSplit = (originalJob, groups) => {
+    if (!originalJob || !Array.isArray(groups) || groups.length < 2) return
+    const coordinator = getSyncCoordinator()
+    const primaryId = originalJob.id
+    const extraIds = (originalJob._mergedIds || []).filter(id => id && id !== primaryId)
+
+    const [primaryGroup, ...rest] = groups
+
+    const primaryJob = sortJobHistory({
+      ...originalJob,
+      company: primaryGroup.company,
+      position: primaryGroup.position,
+      status: primaryGroup.status,
+      date: primaryGroup.date,
+      notes: mergeNotes(primaryGroup.notes),
+      history: primaryGroup.history,
+      updated_at: new Date().toISOString(),
+    })
+    delete primaryJob._merged
+    delete primaryJob._mergedIds
+
+    // Tombstone entries that moved off the primary so they can't be re-merged.
+    const primaryKeys = new Set(primaryGroup.history.map(historyEntryKey))
+    for (const e of (originalJob.history || [])) {
+      if (!primaryKeys.has(historyEntryKey(e))) markHistoryEntryAsDeleted(primaryId, e)
+    }
+
+    const newJobs = rest.map(g => sortJobHistory({
+      id: crypto.randomUUID(),
+      company: g.company,
+      position: g.position,
+      status: g.status,
+      date: g.date,
+      url: '',
+      notes: mergeNotes(g.notes),
+      favorite: false,
+      positionLinks: [],
+      positionChecks: {},
+      sentAt: ['sent', 'reviewing', 'waiting'].includes(g.status) ? g.date : undefined,
+      updated_at: new Date().toISOString(),
+      history: g.history,
+    }))
+
+    setJobs(prev => {
+      const kept = prev.filter(j => j.id === primaryId || !extraIds.includes(j.id))
+      const replaced = kept.map(j => (j.id === primaryId ? primaryJob : j))
+      return [...newJobs, ...replaced]
+    })
+
+    extraIds.forEach(id => {
+      markJobIdAsDeleted(id)
+      if (coordinator) coordinator.mutate('jobs', 'delete', { id }).catch(err => console.error('split: delete extra row failed', err))
+      else indexeddb.deleteJob(id).catch(() => {})
+    })
+    if (coordinator) {
+      coordinator.mutate('jobs', 'update', primaryJob, { syncHistory: true }).catch(err => console.error('split: update primary failed', err))
+      newJobs.forEach(j => coordinator.mutate('jobs', 'insert', j).catch(err => console.error('split: insert new job failed', err)))
+    } else {
+      indexeddb.saveJob(primaryJob).catch(() => {})
+      newJobs.forEach(j => indexeddb.saveJob(j).catch(() => {}))
+    }
+
+    console.log(`✂️ Split "${originalJob.company}" → ${groups.length} candidatures (${newJobs.length} new)`)
+  }
+
+  // Keep a live ref of the processed jobs so the console helper always sees the
+  // current list, and expose window.fixAtsCandidatures(). Dry run by default;
+  // call with { dryRun: false } to apply.
+  useEffect(() => { jobsRef.current = jobs }, [jobs])
+  useEffect(() => {
+    window.fixAtsCandidatures = (opts = {}) =>
+      runAtsCandidatureFix(jobsRef.current, {
+        dryRun: opts.dryRun !== false,
+        applySplit: applyAtsSplit,
+        onProgress: opts.onProgress,
+      })
+    return () => { delete window.fixAtsCandidatures }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched, reprocessJobs, checkPosition, checkAllPositions, clearDeletedJobs, cleanupHistoryDuplicates, deduplicateViaServer, applyAtsSplit, loading, findDuplicateInList: (co, pos) => findDuplicateJob(jobs, co, pos) }
 }
