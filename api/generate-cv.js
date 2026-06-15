@@ -59,18 +59,23 @@ STRICT FORMAT RULES — ATS-Compatible:
 9. NO icons, boxes, colors (except **bold** for emphasis), images, or special Unicode characters
 
 ═══════════════════════════════════════════════════════════════════════════════
-CONTENT ADAPTATION (NOT INVENTION):
+ROLE SELECTION ALGORITHM (CRITICAL — this determines page count):
 ═══════════════════════════════════════════════════════════════════════════════
 
-For EACH experience in original CV:
-1. Keep the role title, company, dates, location as-is (factual)
+STEP 1: EXCLUDE roles to fit 2 pages
+- Remove ALL roles older than 8 years (unless directly required by JD)
+- If still too long, remove roles 5-8 years old with low JD relevance
+- RESULT: Keep ONLY 3-5 most recent + most relevant roles
+
+STEP 2: For SELECTED roles only (not all):
+1. Keep role title, company, dates, location as-is (factual)
 2. Adapt bullet descriptions to highlight JD relevance
-3. Reorder bullets: put most relevant to this job FIRST
+3. Reorder bullets: put most relevant to job FIRST
 4. Keep original achievements — do NOT add new ones
 5. Example adaptation (not invention):
    ORIGINAL: "Led product roadmap using OKR framework"
-   ADAPTED for job seeking "OKR + strategy" role: "Led product roadmap using OKR framework, driving quarterly planning and cross-functional alignment"
-   NOT INVENTED: "Led product roadmap using OKR framework and increased revenue by 50%" (if not in original)
+   ADAPTED: "Led product roadmap via OKR methodology, delivering 8+ features quarterly with 92% on-time delivery"
+   NOT INVENTED: "Led product roadmap and increased revenue by 50%" (if not in original)
 
 Profile/Summary:
 - 2-3 sentences (60-90 words max) — absolutely NO longer
@@ -150,19 +155,20 @@ ${jobDescription}
 
 OUTPUT REQUIREMENTS:
 1. Return ONLY the Markdown CV (no preamble, no comments, no "Here's your CV:")
-2. **MAXIMUM 2 PAGES** — this is hard limit
-3. Select top 3-5 most relevant roles (EXCLUDE older/less relevant roles)
-4. 3 bullets per recent role, 2 bullets for older roles
+2. **MAXIMUM 2 PAGES** — this is hard limit, non-negotiable
+3. Include ONLY 3-4 roles (select top 3-4 by recency + JD relevance; EXCLUDE all others)
+4. Bullets per role: 3 max for recent roles (last 5 years), 2 max for older roles
 5. Every bullet has measurable result/outcome (no process-only language)
-6. Profile leads with operating model, not just experience breadth
-7. Skills: top 10 JD keywords only, organized with proof
-8. Education: single line only
+6. Profile: 2-3 sentences, leads with operating model, 60-90 words max
+7. Skills: top 10 JD keywords only, organized by category with proof
+8. Education: 1 line only (degree | certifications), or omit if not relevant
+9. CRITICAL: If output exceeds 2 pages during generation, DELETE the oldest/least relevant role and regenerate
 
-Priority order:
-- Fit on 2 pages (critical)
-- Show JD relevance (critical)
-- Include measurable outcomes (critical)
-- Maintain ATS compatibility (important)`
+Priority order (in order):
+1. Fit on 2 pages (CRITICAL — cut roles if needed)
+2. Show JD relevance (CRITICAL — front-load matching keywords)
+3. Include measurable outcomes (CRITICAL — every bullet has metrics)
+4. Maintain ATS compatibility (important)`
         }]
       })
     })
