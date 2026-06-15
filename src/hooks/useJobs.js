@@ -461,12 +461,77 @@ function collapseByCanonicalKey(history) {
   return [...byKey.values()]
 }
 
+// Calendar/meeting entries describing the SAME event can survive canonical-key
+// dedup when their `date` differs only in time granularity — e.g. an all-day
+// "Interview with Yubo" copy at 2026-06-15 vs the timed instance at
+// 2026-06-15T10:30:00 — or when the same event is synced from two Google
+// accounts (different event ids). Because historyEntryKey embeds the full date
+// string, those collapse to DIFFERENT keys and both survive, producing the
+// visible doublon in the timeline. This pass collapses meetings that share the
+// same calendar DAY + normalized title regardless of time component, keeping
+// the richest copy (timed date + meetingLink), and merging gmailIds. Idempotent.
+function meetingDayTitleKey(note = '') {
+  return (note || '')
+    .toLowerCase()
+    .replace(/📅|🗓️?/g, '')
+    .replace(/\(à venir\)|upcoming|today|aujourd'hui|demain|tomorrow/gi, '')
+    .replace(/—.*$/, '')            // drop trailing location/time suffix
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function collapseMeetingsByDayTitle(history) {
+  const isMeeting = h => h.meetingLink || h.source === 'calendar' || (h.note || '').includes('📅')
+  const groups = new Map()    // dayTitleKey -> index into result
+  const result = []
+  // Prefer the copy with a time component in its date, then a meetingLink, then
+  // the most advanced status (done > interview > upcoming), then a longer note.
+  const score = e =>
+    ((e.date || '').toString().includes('T') ? 8 : 0) +
+    (e.meetingLink ? 4 : 0) +
+    (e.status === 'done' ? 2 : 0) +
+    (e.note || '').length / 1000
+
+  for (const entry of history) {
+    if (!isMeeting(entry)) { result.push(entry); continue }
+    const day = (entry.date || '').toString().split('T')[0]
+    const titleKey = meetingDayTitleKey(entry.note)
+    if (!titleKey) { result.push(entry); continue }
+    const key = `${day}|||${titleKey}`
+    const idx = groups.get(key)
+    if (idx === undefined) {
+      groups.set(key, result.length)
+      result.push(entry)
+      continue
+    }
+    const existing = result[idx]
+    const winner = score(entry) >= score(existing) ? entry : existing
+    const loser = winner === entry ? existing : entry
+    const merged = { ...winner }
+    if (!merged.meetingLink && loser.meetingLink) {
+      merged.meetingLink = loser.meetingLink
+      merged.meetingPlatform = loser.meetingPlatform
+      merged.meetingEmoji = loser.meetingEmoji
+    }
+    const ids = new Set([
+      ...(merged.gmailIds || (merged.gmailId ? [merged.gmailId] : [])),
+      ...(loser.gmailIds || (loser.gmailId ? [loser.gmailId] : [])),
+    ])
+    if (ids.size > 1) merged.gmailIds = [...ids]
+    result[idx] = merged
+  }
+  return result
+}
+
 export function deduplicateHistory(jobs) {
   return jobs.map(j => {
     if (!j.history || j.history.length <= 1) return j
 
     // Pass 0: global collapse by canonical key (gmailId-first). Idempotent.
-    const collapsed = collapseByCanonicalKey(j.history)
+    // Pass 0b: collapse calendar/meeting duplicates that differ only in date
+    // time-granularity or originate from a second Google account.
+    const collapsed = collapseMeetingsByDayTitle(collapseByCanonicalKey(j.history))
 
     // Group by date
     const byDate = new Map()
