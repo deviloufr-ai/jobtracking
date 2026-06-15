@@ -7,6 +7,10 @@ function loadProfile() {
   try { const r = localStorage.getItem('jobtrackr_profile'); return r ? JSON.parse(r) : null } catch { return null }
 }
 
+// Cap any field so a bloated profile/job (e.g. email bodies dumped into notes)
+// can't blow past the model's context window. ~4 chars per token.
+const clip = (v, max) => { const s = String(v || ''); return s.length > max ? s.slice(0, max) + '…' : s }
+
 const MOCK_STARS = [
   {
     question: "Décris une situation où tu as dû piloter une roadmap avec des ressources limitées.",
@@ -57,16 +61,18 @@ export default function STARGenerator({ job, onClose }) {
       ? [
           profile.name && `Nom : ${profile.name}`,
           profile.title && `Titre : ${profile.title}`,
-          profile.experience && `Parcours : ${profile.experience}`,
-          profile.skills && `Compétences : ${profile.skills}`,
+          profile.experience && `Parcours : ${clip(profile.experience, 1500)}`,
+          profile.skills && `Compétences : ${clip(profile.skills, 600)}`,
           profile.companies?.length && `Entreprises : ${profile.companies.slice(0,5).join(', ')}`,
-          profile.key_achievements?.length && `Réalisations clés : ${profile.key_achievements.join(' | ')}`,
-          profile.languages && `Langues : ${profile.languages}`,
+          profile.key_achievements?.length && `Réalisations clés : ${clip(profile.key_achievements.join(' | '), 1500)}`,
+          profile.languages && `Langues : ${clip(profile.languages, 200)}`,
         ].filter(Boolean).join('\n')
       : 'Candidat senior en product management'
 
     const historyText = (job.history || []).slice(-6)
-      .map(h => `${h.date} : ${h.note || h.status}`).join('\n')
+      .map(h => `${h.date} : ${clip(h.note || h.status, 300)}`).join('\n')
+
+    const notesText = clip(job.notes, 1500)
 
     const isEn = lang === 'en'
     const prompt = isEn
@@ -76,7 +82,7 @@ Candidate profile:
 ${profileText}
 
 Application context:
-${job.notes || ''}
+${notesText}
 ${historyText}
 
 For each answer:
@@ -93,7 +99,7 @@ Profil candidat :
 ${profileText}
 
 Contexte candidature :
-${job.notes || ''}
+${notesText}
 ${historyText}
 
 Pour chaque réponse :

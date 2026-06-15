@@ -10,6 +10,7 @@ import Stats from './components/Stats'
 import Filters from './components/Filters'
 import JobRow from './components/JobRow'
 import JobCard from './components/JobCard'
+import KanbanBoard from './components/KanbanBoard'
 import JobModal from './components/JobModal'
 import ConfirmDelete from './components/ConfirmDelete'
 import GmailImport from './components/GmailImport'
@@ -137,6 +138,7 @@ export default function App() {
   const [toDelete, setToDelete] = useState(null)
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
   const [sort, setSort] = useState(DEFAULT_SORT)
+  const [trackerView, setTrackerView] = useState(() => localStorage.getItem('jobtrackr_view') || 'table')
   const [toast, setToast] = useState(null)
   const [showGmail, setShowGmail] = useState(false)
   const [gmailUser, setGmailUser] = useState(() => getCachedUser())
@@ -307,6 +309,11 @@ export default function App() {
       reprocessJobs()
     }
   }, [settings.archiveSentDays, settings.archiveRejectedDays, reprocessJobs])
+
+  const handleViewChange = (v) => {
+    setTrackerView(v)
+    localStorage.setItem('jobtrackr_view', v)
+  }
 
   const handleSort = (col) => {
     setSort(prev => ({
@@ -832,9 +839,21 @@ export default function App() {
           total={jobs.length} filtered={filtered.length}
           showFavOnly={showFavOnly} onToggleFav={() => setShowFavOnly(v => !v)} favCount={favCount}
           showArchived={showArchived} onToggleArchived={() => setShowArchived(v => !v)} archivedCount={archivedCount}
+          view={trackerView} onViewChange={handleViewChange}
           t={t}
         />
 
+        {trackerView === 'kanban' && filtered.length > 0 ? (
+          <KanbanBoard
+            jobs={filtered}
+            filters={filters}
+            showArchived={showArchived}
+            onStatusChange={handleStatusChange}
+            onEdit={setModal}
+            onToggleFavorite={toggleFavorite}
+            t={t}
+          />
+        ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           {filtered.length === 0 ? (
             <div className="text-center py-16">
@@ -947,6 +966,7 @@ export default function App() {
             </div>
           )}
         </div>
+        )}
 
         <div className="flex items-center justify-between mt-6">
           <p className="text-xs text-gray-300">JobTrackerAI v0.4 <span title={`commit ${__COMMIT_HASH__}`}>· #{__COMMIT_COUNT__}</span></p>

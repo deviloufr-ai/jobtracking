@@ -1,6 +1,6 @@
 import { STATUSES, getStatusLabel } from '../hooks/useJobs'
 
-export default function Filters({ filters, onChange, onReset, total, filtered, showFavOnly, onToggleFav, favCount, showArchived, onToggleArchived, archivedCount, t = (key) => key }) {
+export default function Filters({ filters, onChange, onReset, total, filtered, showFavOnly, onToggleFav, favCount, showArchived, onToggleArchived, archivedCount, view, onViewChange, t = (key) => key }) {
   const statusEntries = Object.entries(filters.statuses || {})
   const hasActive = filters.search || statusEntries.length > 0 || filters.period !== 'all'
 
@@ -58,6 +58,32 @@ export default function Filters({ filters, onChange, onReset, total, filtered, s
             <span>📦</span>
             {archivedCount > 0 && <span className="text-xs">{archivedCount}</span>}
           </button>
+        )}
+
+        {/* View toggle — Table / Kanban */}
+        {onViewChange && (
+          <div className="flex items-center bg-gray-100 rounded-lg p-0.5 gap-0.5">
+            <button
+              onClick={() => onViewChange('table')}
+              title={t('view.table') || 'Table'}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                view === 'table' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <span>☰</span>
+              <span className="hidden sm:inline">{t('view.table') || 'Table'}</span>
+            </button>
+            <button
+              onClick={() => onViewChange('kanban')}
+              title={t('view.kanban') || 'Kanban'}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                view === 'kanban' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <span>▦</span>
+              <span className="hidden sm:inline">{t('view.kanban') || 'Kanban'}</span>
+            </button>
+          </div>
         )}
 
         <select
