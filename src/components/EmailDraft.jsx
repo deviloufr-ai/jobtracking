@@ -219,7 +219,7 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
         })
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Erreur API')
+      if (!res.ok) throw new Error(data.error?.message || data.error || 'Erreur API')
       const text = (data.content?.[0]?.text || '').trim()
         .replace(/\s*—\s*/g, ', ')
         .replace(/…/g, '.')

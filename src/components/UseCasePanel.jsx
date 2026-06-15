@@ -203,7 +203,7 @@ export default function UseCasePanel({ job, onUpdate }) {
         }),
       })
       const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      if (data.error) throw new Error(data.error?.message || data.error)
       save({ analysis: data })
     } catch (e) {
       setAnalysisError(e.message)

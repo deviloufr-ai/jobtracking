@@ -116,7 +116,7 @@ Réponds UNIQUEMENT en JSON valide (sans backticks) :
         })
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Erreur API')
+      if (!res.ok) throw new Error(data.error?.message || data.error || 'Erreur API')
       const raw = (data.content?.[0]?.text || '[]').replace(/```json|```/g, '').trim()
       const start = raw.indexOf('['), end = raw.lastIndexOf(']')
       const parsed = JSON.parse(start !== -1 ? raw.slice(start, end + 1) : '[]')

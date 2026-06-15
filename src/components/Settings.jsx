@@ -194,7 +194,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
       const data = await res.json()
 
       if (!res.ok) {
-        setApiKeyTestError(data.error || `Erreur API: ${res.status}`)
+        setApiKeyTestError(data.error?.message || data.error || `Erreur API: ${res.status}`)
       } else {
         setApiKeyTested(true)
         setTimeout(() => setApiKeyTested(false), 3000)
@@ -242,7 +242,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
         body: JSON.stringify({ cvText: cv.text })
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Erreur extraction')
+      if (!res.ok) throw new Error(data.error?.message || data.error || 'Erreur extraction')
       const extracted = { ...data.profile, extractedFrom: cv.name }
       saveProfile(extracted)
       setProfile(extracted)
