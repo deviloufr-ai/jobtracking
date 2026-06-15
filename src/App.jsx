@@ -21,6 +21,7 @@ import EmailDraft from './components/EmailDraft'
 import MergeModal from './components/MergeModal'
 import { useAutoRefresh } from './hooks/useAutoRefresh'
 import { useAutoScore } from './hooks/useAutoScore'
+import { useAutoCheckPositions } from './hooks/useAutoCheckPositions'
 import { usePolling } from './hooks/usePolling'
 import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, autoReuseStoredTokens, getSyncUserIdForSupabase, resolveSyncUserId } from './services/gmail'
 import { initializeSyncCoordinator } from './services/syncCoordinator'
@@ -127,6 +128,9 @@ export default function App() {
 
   // Auto-compute CV↔job match scores in the background (no user action needed)
   useAutoScore(jobs, updateJob)
+
+  // Auto-check whether postings are still open, on the "check after X days" setting
+  useAutoCheckPositions(jobs, checkAllPositions, settings)
 
   // Load demo data if ?demo=true
   useEffect(() => {

@@ -546,7 +546,7 @@ export const en = {
     gmailPeriod: 'Gmail search period',
     gmailPeriodHint: 'How many days back to fetch emails',
     checkPositionAvailability: 'Check position availability',
-    checkPositionAvailabilityHint: 'Auto-detect if position is still open',
+    checkPositionAvailabilityHint: 'Auto-check if the posting is still open, this many days after applying (0 = off)',
   },
 
   // Settings - API Tab
