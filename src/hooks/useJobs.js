@@ -758,17 +758,29 @@ export function mergeHistoryBySameDayTopic(history) {
 
 function revalidateArchives(jobs) {
   const settings = loadSettings()
+  const daysSince = (date) => (Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24)
+
+  // The archive countdown runs from the last activity (most recent history entry),
+  // not the application date. "X days without response" = since last contact, and
+  // "X days after rejection" = since the rejection arrived — both are the latest
+  // history entry. Falls back to j.date when there's no history.
+  const lastActivityDate = (j) => {
+    const dates = (j.history || []).map(h => h.date).filter(Boolean)
+    if (dates.length === 0) return j.date
+    return dates.reduce((latest, d) => (new Date(d) > new Date(latest) ? d : latest), dates[0])
+  }
+
   return jobs.map(j => {
     if (j.status === 'archived') return j
 
-    const daysSince = (date) => (Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24)
     const isSent = ['sent', 'reviewing', 'waiting'].includes(j.status)
     const isRejected = ['rejected', 'rejected_ats', 'cancelled'].includes(j.status)
+    const ref = lastActivityDate(j)
 
-    if (isSent && daysSince(j.date) > settings.archiveSentDays) {
+    if (isSent && daysSince(ref) > settings.archiveSentDays) {
       return { ...j, status: 'archived' }
     }
-    if (isRejected && daysSince(j.date) > settings.archiveRejectedDays) {
+    if (isRejected && daysSince(ref) > settings.archiveRejectedDays) {
       return { ...j, status: 'archived' }
     }
 
