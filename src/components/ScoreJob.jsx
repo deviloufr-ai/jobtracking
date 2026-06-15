@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useCVs } from '../hooks/useCVs'
+import { scoreJobMatch } from '../services/scoreJob'
 
 // Color band for a 0-100 score — shared by the table badge and the modal.
 export function scoreColorClasses(s) {
@@ -75,19 +76,12 @@ export default function ScoreJob({ job, onUpdateScore, t = (key) => key }) {
     setError(null)
 
     try {
-      const res = await fetch('/api/score-job', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cvText: cv.text,
-          jobDescription: job.jobDescription || job.description || job.notes || '',
-          company: job.company,
-          position: job.position
-        })
+      const data = await scoreJobMatch({
+        cvText: cv.text,
+        jobDescription: job.jobDescription || job.description || job.notes || '',
+        company: job.company,
+        position: job.position
       })
-
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error?.message || data.error || 'Scoring failed')
 
       onUpdateScore({
         score: data.score,

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useCVs } from './useCVs'
+import { scoreJobMatch } from '../services/scoreJob'
 
 // Statuses where a CV-match score is no longer useful — skip to save API calls.
 const SKIP_STATUSES = new Set(['archived', 'rejected', 'rejected_ats', 'cancelled'])
@@ -87,12 +88,7 @@ export function useAutoScore(jobs, updateJob) {
           if (!jd) continue
 
           try {
-            const res = await fetch('/api/score-job', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ cvText: cv.text, jobDescription: jd, company: job.company, position: job.position })
-            })
-            if (!res.ok) continue
-            const data = await res.json()
+            const data = await scoreJobMatch({ cvText: cv.text, jobDescription: jd, company: job.company, position: job.position })
             updateRef.current(job.id, {
               score: data.score,
               scoreSignature: signature,

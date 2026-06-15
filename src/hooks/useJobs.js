@@ -1432,16 +1432,19 @@ export function useJobs() {
 
     const result = await checkPositionUrl(url)
 
+    let historyChanged = false
     let updatedJob = {
       ...job,
       positionChecks: {
         ...(job.positionChecks || {}),
         [url]: result
-      }
+      },
+      updated_at: new Date().toISOString()
     }
 
     if (result.available === false && !['rejected', 'rejected_ats', 'cancelled', 'archived'].includes(job.status)) {
-      updatedJob = {
+      historyChanged = true
+      updatedJob = sortJobHistory({
         ...updatedJob,
         status: 'rejected',
         history: [
@@ -1452,14 +1455,20 @@ export function useJobs() {
             note: `🔍 Poste fermé — détecté: ${result.reason || 'Position not available'}`,
           }
         ]
-      }
+      })
     }
 
     setJobs(prev => prev.map(j => j.id !== jobId ? j : updatedJob))
 
+    // Save to IndexedDB immediately (fallback if coordinator not ready / mutate fails)
+    indexeddb.saveJob(updatedJob).catch(err => console.warn('Failed to save position check:', err))
+
+    // Sync to Supabase. Only rewrite remote history when this check actually
+    // added a history entry (the auto-reject path).
     const coordinator = getSyncCoordinator()
     if (coordinator) {
-      coordinator.mutate('jobs', 'update', updatedJob).catch(err => console.error('Failed to sync position check:', err))
+      coordinator.mutate('jobs', 'update', updatedJob, { syncHistory: historyChanged })
+        .catch(err => console.error('Failed to sync position check:', err))
     }
 
     return result
