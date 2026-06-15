@@ -23,7 +23,7 @@ function timeAgo(job, t = (k) => k) {
 
 // Closed/terminal statuses are hidden by default in the kanban to keep the active
 // pipeline focused. Archived is handled separately via the showArchived toggle.
-const KANBAN_DEFAULT_HIDDEN = ['rejected', 'rejected_ats', 'done']
+const KANBAN_DEFAULT_HIDDEN = ['rejected', 'rejected_ats', 'done', 'cancelled']
 
 // Columns shown in the kanban, honoring the status include/exclude filters + archived toggle.
 // By default rejected / rejected (ATS) / archived columns are hidden; the user can bring any
@@ -102,7 +102,7 @@ export default function KanbanBoard({ jobs, filters, showArchived, onStatusChang
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1">
+    <div className="flex gap-3 overflow-x-auto pb-3">
       {columns.map(col => {
         const colJobs = jobs.filter(j => j.status === col.key)
         const isTarget = dragOverKey === col.key && dragJob && dragJob.status !== col.key
@@ -115,7 +115,7 @@ export default function KanbanBoard({ jobs, filters, showArchived, onStatusChang
             onDragOver={(e) => { e.preventDefault(); setDragOverKey(col.key) }}
             onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOverKey(null) }}
             onDrop={() => handleDrop(col.key)}
-            className={`flex flex-col w-[270px] shrink-0 rounded-xl border transition-colors ${
+            className={`flex flex-col flex-1 min-w-[230px] rounded-xl border transition-colors ${
               isTarget ? 'border-indigo-400 bg-indigo-50/60' : 'border-gray-100 bg-gray-50/70'
             }`}
           >
