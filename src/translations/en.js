@@ -159,6 +159,7 @@ export const en = {
   // Column Headers
   table: {
     company: 'Company / Position',
+    score: 'Score',
     status: 'Status',
     date: 'Date',
     notes: 'Notes',

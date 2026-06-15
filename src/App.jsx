@@ -69,6 +69,21 @@ function SortIcon({ col, sort }) {
   return <span className="ml-1 text-indigo-500 text-xs">{sort.dir === 'asc' ? '↑' : '↓'}</span>
 }
 
+// Shared column widths so the Favorites and Other applications tables line up
+// (table-fixed). Company is the only flexible column; the rest are fixed.
+function JobTableColgroup() {
+  return (
+    <colgroup>
+      <col />{/* Company / Position — flexible */}
+      <col className="w-20" />{/* Score */}
+      <col className="w-40" />{/* Status */}
+      <col className="w-32" />{/* Date */}
+      <col className="hidden md:table-column w-1/3" />{/* Notes */}
+      <col className="w-20" />{/* Actions */}
+    </colgroup>
+  )
+}
+
 
 // Detect if JobTrackerAI Firefox extension is installed
 // The extension injects a custom attribute on <html> or responds to a postMessage
@@ -927,14 +942,16 @@ export default function App() {
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-sm font-semibold text-yellow-600">⭐ {t('stats.favorites')} ({filtered.filter(j => j.favorite).length})</span>
                     </div>
-                    <table className="w-full">
+                    <table className="w-full table-fixed">
+                      <JobTableColgroup />
                       <thead>
                         <tr className="border-b border-yellow-100 bg-yellow-50/60">
                           <th onClick={() => handleSort('company')} className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-indigo-600 select-none">{t('table.company')}<SortIcon col="company" sort={sort} /></th>
+                          <ThHeader col="score" label={t('table.score')} />
                           <ThHeader col="status" label={t('table.status')} />
                           <ThHeader col="date" label={t('table.date')} />
                           <th className="hidden md:table-cell py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('table.notes')}</th>
-                          <th className="py-3 px-4 w-20"></th>
+                          <th className="py-3 px-4"></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -953,14 +970,16 @@ export default function App() {
                       <span className="text-sm font-semibold text-gray-600">{t('stats.otherApplications')} ({filtered.filter(j => !j.favorite).length})</span>
                     </div>
                   )}
-                  <table className="w-full">
+                  <table className="w-full table-fixed">
+                    <JobTableColgroup />
                     <thead>
                       <tr className="border-b border-gray-100 bg-gray-50/60">
                         <th onClick={() => handleSort('company')} className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-indigo-600 select-none">{t('table.company')}<SortIcon col="company" sort={sort} /></th>
+                        <ThHeader col="score" label={t('table.score')} />
                         <ThHeader col="status" label={t('table.status')} />
                         <ThHeader col="date" label={t('table.date')} />
                         <th className="hidden md:table-cell py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('table.notes')}</th>
-                        <th className="py-3 px-4 w-20"></th>
+                        <th className="py-3 px-4"></th>
                       </tr>
                     </thead>
                     <tbody>

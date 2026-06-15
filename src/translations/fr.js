@@ -159,6 +159,7 @@ export const fr = {
   // Column Headers
   table: {
     company: 'Entreprise / Poste',
+    score: 'Score',
     status: 'Statut',
     date: 'Date',
     notes: 'Notes',

@@ -328,7 +328,6 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
             <div className="min-w-0">
               <div className="font-semibold text-gray-800 text-sm truncate leading-tight flex items-center gap-1.5">
                 {job.company}
-                <ScoreBadge job={job} t={t} />
                 {job.cvSaved && (
                   <span title={`CV généré le ${new Date(job.cvSaved.savedAt).toLocaleDateString('fr-FR')}`} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-600 flex-shrink-0">CV</span>
                 )}
@@ -336,6 +335,11 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
               <div className="text-xs text-gray-400 truncate mt-0.5">{job.position}</div>
             </div>
           </div>
+        </td>
+
+        {/* Score */}
+        <td className="py-3.5 px-4">
+          <ScoreBadge job={job} t={t} />
         </td>
 
         {/* Status */}
