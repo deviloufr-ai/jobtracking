@@ -300,11 +300,11 @@ PATTERNS À CHERCHER (dans cet ordre) :
 8️⃣ Si job board (Indeed/LinkedIn/WTTJ) : TOUJOURS extraire la vraie compagnie, pas le job board
 
 🆘 FALLBACK ATS (RÈGLE IMPORTANTE) :
-Certains ATS / agrégateurs (ex: JobGet, et tout job board qui masque l'employeur)
+Certains ATS / agrégateurs (ex: Jobgether, et tout job board qui masque l'employeur)
 NE FOURNISSENT PAS le nom de la vraie entreprise — seulement le poste.
 DANS CE CAS UNIQUEMENT, si c'est une VRAIE candidature (tu as postulé / réponse reçue
 sur un poste précis) ET qu'aucune entreprise réelle n'est trouvable après les patterns 1️⃣→8️⃣ :
-  → company = le nom de l'ATS / job board (ex: "JobGet", "Indeed", "LinkedIn")
+  → company = le nom de l'ATS / job board (ex: "Jobgether", "Indeed", "LinkedIn")
   → companyFromAts = true
   → garder la confidence normale (NE PAS mettre 0 juste parce que l'entreprise manque)
 ⚠️ Ce fallback NE s'applique PAS aux newsletters / alertes / offres suggérées : celles-ci restent confidence: 0.
@@ -314,7 +314,7 @@ EXEMPLES :
 ✅ "Vous avez reçu une réponse à l'offre : \"Responsable Projects IT H/F\" dans l'entreprise OpenSourcing" → company: "OpenSourcing", companyFromAts: false
 ✅ "GojiberryAI · France" → company: "GojiberryAI", companyFromAts: false
 ✅ "You applied to Senior Dev at Acme Corp" → company: "Acme Corp", companyFromAts: false
-✅ "Your application for Product Manager was sent" (via JobGet, aucune entreprise) → company: "JobGet", position: "Product Manager", companyFromAts: true
+✅ "Your application for Product Manager was sent" (via Jobgether, aucune entreprise) → company: "Jobgether", position: "Product Manager", companyFromAts: true
 ❌ Ne JAMAIS mettre un job board en company SI la vraie entreprise est trouvable (companyFromAts doit rester false)
 
 ═══════════════════════════════════════════════════════════════════════════
@@ -646,7 +646,7 @@ TÂCHES À EFFECTUER :
    Ils ne sont PAS des newsletters ni des emails transactionnels purs.
 
    ⚠️ NE JAMAIS SUPPRIMER ni "corriger" une candidature dont company = nom d'un ATS / job
-   board (ex: "JobGet", "Indeed") quand companyFromAts = true : c'est un fallback VOULU
+   board (ex: "Jobgether", "Indeed") quand companyFromAts = true : c'est un fallback VOULU
    (l'ATS ne fournit pas l'employeur réel). Conserver tel quel et garder companyFromAts: true.
 
 ═════════════════════════════════════════════════════════════════
