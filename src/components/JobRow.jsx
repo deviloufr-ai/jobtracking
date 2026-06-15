@@ -405,9 +405,9 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
           })()}
         </td>
 
-        {/* Actions */}
-        <td className="py-3.5 px-4 w-20" onClick={e => e.stopPropagation()}>
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Actions — floats over the row on hover so icons are never clipped by the fixed column width */}
+        <td className="py-3.5 px-4 relative" onClick={e => e.stopPropagation()}>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap rounded-lg bg-white/95 shadow-sm ring-1 ring-gray-100 px-1 py-0.5">
             <RowActions
               expanded={expanded}
               onAddStep={() => setShowAddStep(v => !v)}
