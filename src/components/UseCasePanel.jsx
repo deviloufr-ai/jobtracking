@@ -196,7 +196,8 @@ export default function UseCasePanel({ job, onUpdate }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          briefText: form.briefText || uc.briefText,
+          // Cap so an oversized PDF brief can't blow past the model's context window
+          briefText: (form.briefText || uc.briefText || '').slice(0, 40000),
           company: job.company,
           position: job.position,
           deadline: form.deadline || uc.deadline,

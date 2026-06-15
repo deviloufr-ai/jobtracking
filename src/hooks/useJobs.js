@@ -195,7 +195,7 @@ export function deduplicateJobs(jobs) {
       return true
     })
 
-    const allNotes = [...new Set(group.map(j => j.notes).filter(Boolean))].join(' | ')
+    const allNotes = mergeNotes(...group.map(j => j.notes))
 
     const latestEnrichedAt = group
       .map(j => j.enrichedAt)
@@ -776,6 +776,31 @@ function revalidateArchives(jobs) {
   })
 }
 
+// Notes accumulate ` | `-joined segments across repeated auto-refresh merges.
+// Split, trim, dedupe (case-insensitive) and cap total length so a job's notes
+// field can't grow unbounded across syncs (was reaching 200k+ tokens).
+const MAX_NOTES_LEN = 2000
+export function mergeNotes(...noteStrings) {
+  const seen = new Set()
+  const segments = []
+  for (const ns of noteStrings) {
+    if (!ns) continue
+    for (const seg of String(ns).split(' | ')) {
+      const s = seg.trim()
+      if (!s) continue
+      const k = s.toLowerCase()
+      if (seen.has(k)) continue
+      seen.add(k)
+      segments.push(s)
+    }
+  }
+  let out = segments.join(' | ')
+  if (out.length > MAX_NOTES_LEN) {
+    out = out.slice(0, MAX_NOTES_LEN).replace(/\s*\|[^|]*$/, '').trim() + ' …'
+  }
+  return out
+}
+
 function deduplicateExactMatches(jobs) {
   const seen = new Map()
   const result = []
@@ -791,8 +816,8 @@ function deduplicateExactMatches(jobs) {
     if (seen.has(key)) {
       // Merge with existing: combine notes and history
       const existing = seen.get(key)
-      if (job.notes && !existing.notes.includes(job.notes)) {
-        existing.notes = existing.notes ? `${existing.notes} | ${job.notes}` : job.notes
+      if (job.notes) {
+        existing.notes = mergeNotes(existing.notes, job.notes)
       }
       if (job.history && job.history.length > 0) {
         const existingHistoryKeys = new Set(
@@ -805,8 +830,11 @@ function deduplicateExactMatches(jobs) {
         existing.history = [...(existing.history || []), ...newEntries].sort((a, b) => new Date(a.date) - new Date(b.date))
       }
     } else {
-      seen.set(key, job)
-      result.push(job)
+      // Normalize notes on first insert so existing bloated data gets cleaned,
+      // not just jobs that happen to merge this pass.
+      const normalized = job.notes ? { ...job, notes: mergeNotes(job.notes) } : job
+      seen.set(key, normalized)
+      result.push(normalized)
     }
   }
 
