@@ -153,90 +153,83 @@ export default function UpcomingMeetings({ jobs, t = (key) => key }) {
   if (!isCalendarConnected() || meetings.length === 0) return null
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-2 bg-gray-50">
-        <span className="text-base">📅</span>
-        <h3 className="text-sm font-semibold text-gray-800">{t('upcomingMeetings.title')}</h3>
-        <span className="ml-auto text-xs bg-indigo-100 text-indigo-600 font-medium px-2 py-0.5 rounded-full">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Header — gradient banner */}
+      <div className="px-4 py-3 flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
+        <span className="text-base">🎯</span>
+        <h3 className="text-sm font-semibold tracking-tight">{t('upcomingMeetings.title')}</h3>
+        <span className="ml-auto text-xs bg-white/25 text-white font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm">
           {meetings.length}
         </span>
       </div>
 
-      <div className="divide-y divide-gray-100">
+      <div className="p-3 space-y-3">
         {meetings.map((m, i) => {
           const { label, urgent } = formatDate(m.date)
           const platform = m.meetingLink ? getMeetingPlatform(m.meetingLink) : null
           const note = m.note.replace(/^📅\s*/, '')
           const state = getMeetingState(m)
           const time = formatTime(m.rawStart)
+          const dateLabel = label === 'today' ? t('upcomingMeetings.today')
+                          : label === 'tomorrow' ? t('upcomingMeetings.tomorrow') : label
 
-          const rowBg = state === 'done'     ? 'opacity-50 bg-gray-50'
-                      : state === 'imminent' ? 'bg-green-50'
-                      : urgent               ? 'bg-orange-50/40'
-                      : 'hover:bg-gray-50'
-
-          const dateCls = state === 'done'     ? 'text-gray-400 line-through'
-                        : state === 'imminent' ? 'text-green-600 font-bold'
-                        : urgent               ? 'text-orange-600 font-bold'
-                        : 'text-indigo-600 font-semibold'
-
-          const joinCls = state === 'imminent'
-            ? 'bg-green-500 border-green-500 text-white hover:bg-green-600 shadow-sm'
-            : 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100'
+          // Per-state accent system drives the rail, chip, and button colors.
+          const accent = state === 'done'     ? { rail: 'bg-gray-300',   chip: 'bg-gray-100 text-gray-400',     btn: 'bg-gray-100 text-gray-400 cursor-default' }
+                       : state === 'imminent' ? { rail: 'bg-green-500',  chip: 'bg-green-100 text-green-700',   btn: 'bg-green-500 text-white hover:bg-green-600 shadow-sm shadow-green-200' }
+                       : urgent               ? { rail: 'bg-amber-400',   chip: 'bg-amber-100 text-amber-700',   btn: 'bg-indigo-600 text-white hover:bg-indigo-700' }
+                       :                         { rail: 'bg-indigo-400', chip: 'bg-indigo-50 text-indigo-700',  btn: 'bg-indigo-600 text-white hover:bg-indigo-700' }
 
           return (
-            <div key={i} className={`px-4 py-4 transition-all ${rowBg}`}>
-              {/* Top row: Date/Time + Platform indicator */}
-              <div className="flex items-center justify-between mb-3">
-                <div className={`flex items-center gap-2.5`}>
-                  {state === 'imminent' && <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
-                  {state !== 'imminent' && state !== 'done' && urgent && <span className="text-lg">⚡</span>}
-                  {state === 'done' && <span className="text-lg">✓</span>}
-                  <div>
-                    <div className={`text-xs font-semibold ${dateCls}`}>
-                      {label === 'today' ? t('upcomingMeetings.today') : label === 'tomorrow' ? t('upcomingMeetings.tomorrow') : label}
-                    </div>
-                    {time && (
-                      <div className={`text-sm font-semibold ${state === 'done' ? 'text-gray-400' : 'text-gray-900'}`}>
-                        🕐 {time}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {platform && <span className="text-lg" title={platform.name}>{platform.emoji}</span>}
-              </div>
+            <div key={i}
+              className={`relative flex rounded-xl border border-gray-100 bg-white overflow-hidden transition-all hover:shadow-md ${state === 'done' ? 'opacity-60' : ''}`}>
+              {/* Colored accent rail */}
+              <div className={`w-1.5 flex-shrink-0 ${accent.rail}`} />
 
-              {/* Company + Position row */}
-              <div className="mb-2">
-                <p className={`text-sm font-semibold ${state === 'done' ? 'text-gray-400' : 'text-gray-900'}`}>
+              <div className="flex-1 min-w-0 p-3">
+                {/* Date·time chip + platform badge */}
+                <div className="flex items-center justify-between gap-2 mb-2.5">
+                  <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${accent.chip}`}>
+                    {state === 'imminent' && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />}
+                    {state === 'done' && <span>✓</span>}
+                    <span className="capitalize">{dateLabel}</span>
+                    {time && <><span className="opacity-40">·</span><span>{time}</span></>}
+                  </span>
+                  {platform && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500 bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded-md flex-shrink-0">
+                      <span>{platform.emoji}</span>{platform.name}
+                    </span>
+                  )}
+                </div>
+
+                {/* Company + position */}
+                <p className={`text-sm font-bold leading-snug ${state === 'done' ? 'text-gray-400' : 'text-gray-900'}`}>
                   {m.company}
                 </p>
                 {m.position && (
-                  <p className={`text-xs ${state === 'done' ? 'text-gray-350' : 'text-gray-600'}`}>
+                  <p className={`text-xs mt-0.5 ${state === 'done' ? 'text-gray-400' : 'text-gray-500'}`}>
                     {m.position}
                   </p>
                 )}
-              </div>
 
-              {/* Meeting subject (who is joining) */}
-              {note && (
-                <div className={`text-sm mb-3 p-2.5 rounded-lg border ${state === 'done' ? 'bg-gray-100 border-gray-200 text-gray-400' : 'bg-blue-50 border-blue-100 text-gray-700'}`}>
-                  <span className="font-medium">👤 </span>{note}
-                </div>
-              )}
+                {/* Interview detail (who / what) */}
+                {note && (
+                  <p className="flex items-start gap-1.5 text-xs text-gray-600 mt-2 leading-relaxed">
+                    <span className="flex-shrink-0">👤</span>
+                    <span>{note}</span>
+                  </p>
+                )}
 
-              {/* Join button */}
-              {m.meetingLink && state !== 'done' && (
-                <div className="flex justify-end">
+                {/* Join button — full width, modern */}
+                {m.meetingLink && state !== 'done' && (
                   <a href={m.meetingLink} target="_blank" rel="noopener noreferrer"
                     title={platform ? t('upcomingMeetings.joinVia').replace('{platform}', platform.name) : t('upcomingMeetings.join')}
-                    className={`flex items-center gap-1.5 text-sm font-semibold border px-3 py-2 rounded-lg transition-all ${joinCls}`}
+                    className={`mt-3 flex items-center justify-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg transition-all ${accent.btn}`}
                   >
-                    <span>{platform?.emoji}</span>
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M6.3 2.84A1 1 0 0 0 5 3.83v12.34a1 1 0 0 0 1.55.83l9.22-6.17a1 1 0 0 0 0-1.66z" /></svg>
                     <span>{t('upcomingMeetings.join')}</span>
                   </a>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )
         })}

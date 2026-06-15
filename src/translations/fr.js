@@ -476,7 +476,7 @@ export const fr = {
 
   // UpcomingMeetings
   upcomingMeetings: {
-    title: 'Meetings à venir',
+    title: 'Entretiens à venir',
     today: "Aujourd'hui",
     tomorrow: 'Demain',
     join: 'Rejoindre',
