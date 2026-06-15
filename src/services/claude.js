@@ -578,7 +578,7 @@ export async function recoverAtsEmployers(emails) {
     if (i > 0) await new Promise(r => setTimeout(r, 1500))
 
     const emailsText = batch.map((e, j) => {
-      const body = (e.body?.trim() || e.snippet || '').slice(0, 1500)
+      const body = (e.body?.trim() || e.snippet || '').slice(0, 4000)
       return `[${j + 1}] De: ${e.from}\nSujet: ${e.subject}\nDate: ${e.date}\nContenu: ${body}`
     }).join('\n\n---\n\n')
 

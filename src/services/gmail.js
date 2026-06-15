@@ -731,7 +731,10 @@ export async function fetchEmailRawById(gmailId, accountEmail = '') {
     fromMe: isSent,
     date: get('Date'),
     snippet: data.snippet || '',
-    body: extractBody(data.payload).slice(0, 2000),
+    // Keep far more body than the import path (2000) — ATS confirmation emails
+    // (Indeed/LinkedIn) bury the real employer ("envoyés à UNIPILE") well past the
+    // bloated HTML preheader, so the recovery prompt needs the fuller text.
+    body: extractBody(data.payload).slice(0, 8000),
   }
 }
 

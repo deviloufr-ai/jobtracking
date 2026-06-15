@@ -201,10 +201,12 @@ export async function runAtsCandidatureFix(jobs, { dryRun = true, applySplit, on
     }
   }
 
+  const splits = report.plans.filter(p => p.type === 'split').length
+  const relabels = report.plans.filter(p => p.type === 'relabel').length
   console.log(
     dryRun
-      ? `🔍 Dry run complete. ${report.plans.length} job(s) would be split. Run window.fixAtsCandidatures({ dryRun: false }) to apply.`
-      : `✅ Repair complete. ${report.applied} job(s) split, ${report.skipped} skipped.`
+      ? `🔍 Dry run complete. ${report.plans.length} job(s) would change (${splits} split, ${relabels} relabel). Run window.fixAtsCandidatures({ dryRun: false }) to apply.`
+      : `✅ Repair complete. ${report.applied} job(s) changed, ${report.skipped} skipped.`
   )
   return report
 }
