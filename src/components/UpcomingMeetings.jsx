@@ -110,7 +110,7 @@ export default function UpcomingMeetings({ jobs, t = (key) => key }) {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-2">
+      <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-2 bg-gray-50">
         <span className="text-base">📅</span>
         <h3 className="text-sm font-semibold text-gray-800">{t('upcomingMeetings.title')}</h3>
         <span className="ml-auto text-xs bg-indigo-100 text-indigo-600 font-medium px-2 py-0.5 rounded-full">
@@ -118,7 +118,7 @@ export default function UpcomingMeetings({ jobs, t = (key) => key }) {
         </span>
       </div>
 
-      <div className="divide-y divide-gray-50">
+      <div className="divide-y divide-gray-100">
         {meetings.map((m, i) => {
           const { label, urgent } = formatDate(m.date)
           const platform = m.meetingLink ? getMeetingPlatform(m.meetingLink) : null
@@ -126,49 +126,71 @@ export default function UpcomingMeetings({ jobs, t = (key) => key }) {
           const state = getMeetingState(m)
           const time = formatTime(m.rawStart)
 
-          const rowBg = state === 'done'     ? 'opacity-40'
-                      : state === 'imminent' ? 'bg-green-50/60'
-                      : urgent               ? 'bg-orange-50/30'
-                      : ''
+          const rowBg = state === 'done'     ? 'opacity-50 bg-gray-50'
+                      : state === 'imminent' ? 'bg-green-50'
+                      : urgent               ? 'bg-orange-50/40'
+                      : 'hover:bg-gray-50'
 
           const dateCls = state === 'done'     ? 'text-gray-400 line-through'
-                        : state === 'imminent' ? 'text-green-600'
-                        : urgent               ? 'text-orange-600'
-                        : 'text-indigo-500'
+                        : state === 'imminent' ? 'text-green-600 font-bold'
+                        : urgent               ? 'text-orange-600 font-bold'
+                        : 'text-indigo-600 font-semibold'
 
           const joinCls = state === 'imminent'
-            ? 'bg-green-500 border-green-500 text-white hover:bg-green-600'
-            : 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
+            ? 'bg-green-500 border-green-500 text-white hover:bg-green-600 shadow-sm'
+            : 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100'
 
           return (
-            <div key={i} className={`px-4 py-3 transition-colors ${rowBg}`}>
-              {/* Date + time label */}
-              <div className={`text-xs font-semibold mb-1 flex items-center gap-1.5 ${dateCls}`}>
-                {state === 'imminent' && <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />}
-                {state !== 'imminent' && state !== 'done' && urgent && <span>⚡</span>}
-                {state === 'done' && <span>✓</span>}
-                <span>{label === 'today' ? t('upcomingMeetings.today') : label === 'tomorrow' ? t('upcomingMeetings.tomorrow') : label}</span>
-                {time && <span className="font-normal opacity-80">{time}</span>}
+            <div key={i} className={`px-4 py-4 transition-all ${rowBg}`}>
+              {/* Top row: Date/Time + Platform indicator */}
+              <div className="flex items-center justify-between mb-2.5">
+                <div className={`text-xs font-semibold flex items-center gap-2 ${dateCls}`}>
+                  {state === 'imminent' && <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
+                  {state !== 'imminent' && state !== 'done' && urgent && <span className="text-lg">⚡</span>}
+                  {state === 'done' && <span className="text-lg">✓</span>}
+                  <span>{label === 'today' ? t('upcomingMeetings.today') : label === 'tomorrow' ? t('upcomingMeetings.tomorrow') : label}</span>
+                </div>
+                {platform && <span className="text-lg" title={platform.name}>{platform.emoji}</span>}
               </div>
 
-              {/* Company + note */}
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className={`text-sm font-medium truncate ${state === 'done' ? 'text-gray-400' : 'text-gray-800'}`}>{m.company}</p>
-                  {note && <p className="text-xs text-gray-400 mt-0.5 truncate">{note}</p>}
-                  <p className="text-xs text-gray-300 truncate">{m.position}</p>
+              {/* Time (prominent) */}
+              {time && (
+                <div className={`text-sm font-semibold mb-2 ${state === 'done' ? 'text-gray-400' : 'text-gray-900'}`}>
+                  🕐 {time}
                 </div>
+              )}
 
-                {m.meetingLink && state !== 'done' && (
+              {/* Company + Position row */}
+              <div className="mb-2">
+                <p className={`text-sm font-semibold ${state === 'done' ? 'text-gray-400' : 'text-gray-900'}`}>
+                  {m.company}
+                </p>
+                {m.position && (
+                  <p className={`text-xs ${state === 'done' ? 'text-gray-350' : 'text-gray-600'}`}>
+                    {m.position}
+                  </p>
+                )}
+              </div>
+
+              {/* Meeting subject (who is joining) */}
+              {note && (
+                <div className={`text-sm mb-3 p-2.5 rounded-lg border ${state === 'done' ? 'bg-gray-100 border-gray-200 text-gray-400' : 'bg-blue-50 border-blue-100 text-gray-700'}`}>
+                  <span className="font-medium">👤 </span>{note}
+                </div>
+              )}
+
+              {/* Join button */}
+              {m.meetingLink && state !== 'done' && (
+                <div className="flex justify-end">
                   <a href={m.meetingLink} target="_blank" rel="noopener noreferrer"
                     title={platform ? t('upcomingMeetings.joinVia').replace('{platform}', platform.name) : t('upcomingMeetings.join')}
-                    className={`flex-shrink-0 flex items-center gap-1 text-xs font-medium border px-2 py-1 rounded-lg transition-colors whitespace-nowrap ${joinCls}`}
+                    className={`flex items-center gap-1.5 text-sm font-semibold border px-3 py-2 rounded-lg transition-all ${joinCls}`}
                   >
                     <span>{platform?.emoji}</span>
                     <span>{t('upcomingMeetings.join')}</span>
                   </a>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )
         })}
