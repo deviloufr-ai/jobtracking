@@ -21,15 +21,25 @@ function timeAgo(job, t = (k) => k) {
   return `${Math.floor(days / 365)}y`
 }
 
-// Columns shown in the kanban, honoring the status include/exclude filters + archived toggle
+// Rejections are hidden by default in the kanban to keep the active pipeline focused.
+// Archived is handled separately via the showArchived toggle.
+const KANBAN_DEFAULT_HIDDEN = ['rejected', 'rejected_ats']
+
+// Columns shown in the kanban, honoring the status include/exclude filters + archived toggle.
+// By default rejected / rejected (ATS) / archived columns are hidden; the user can bring any
+// of them back by clicking its status chip in the filter bar (sets it to "include").
 function visibleColumns(filters, showArchived) {
   const statusFilters = filters?.statuses || {}
   const includes = Object.entries(statusFilters).filter(([, v]) => v === 'include').map(([k]) => k)
   const excludes = Object.entries(statusFilters).filter(([, v]) => v === 'exclude').map(([k]) => k)
   return STATUSES.filter(s => {
-    if (s.key === 'archived' && !showArchived) return false
+    // Explicit exclude always hides the column
     if (excludes.includes(s.key)) return false
-    if (includes.length > 0 && !includes.includes(s.key)) return false
+    // Explicit include is an opt-in that overrides the defaults — show only included columns
+    if (includes.length > 0) return includes.includes(s.key)
+    // No explicit include filter: apply kanban defaults
+    if (s.key === 'archived') return showArchived
+    if (KANBAN_DEFAULT_HIDDEN.includes(s.key)) return false
     return true
   })
 }
