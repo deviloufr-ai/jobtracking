@@ -83,7 +83,10 @@ export default function UpcomingMeetings({ jobs, t = (key) => key }) {
 
         events.push({
           date: entry.date,
-          rawStart: entry.rawStart || null, // ISO datetime if available (calendar events)
+          // ISO datetime if available. Calendar/email enrichment merges the time
+          // into `date` (e.g. 2026-06-15T10:00:00) but doesn't always set rawStart,
+          // so fall back to `date` when it carries a time component.
+          rawStart: entry.rawStart || (entry.date?.includes('T') ? entry.date : null),
           note: entry.note || '',
           company: job.company,
           position: job.position,

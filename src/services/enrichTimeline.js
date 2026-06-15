@@ -234,6 +234,7 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
         }
         return {
           date: mergeDateAndTime(e.date, time),
+          rawStart: e.rawStart || undefined, // preserve full datetime so UI can show the time
           status: e.type === 'interview' ? 'interview' : e.type === 'offer' ? 'offer' : 'waiting',
           note: `📅 ${e.title}${e.location && !meetLink ? ` — ${e.location}` : ''}${e.isUpcoming ? ' (à venir)' : ''}`,
           source: 'calendar',
