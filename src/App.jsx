@@ -20,6 +20,7 @@ import STARGenerator from './components/STARGenerator'
 import EmailDraft from './components/EmailDraft'
 import MergeModal from './components/MergeModal'
 import { useAutoRefresh } from './hooks/useAutoRefresh'
+import { useAutoScore } from './hooks/useAutoScore'
 import { usePolling } from './hooks/usePolling'
 import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, autoReuseStoredTokens, getSyncUserIdForSupabase, resolveSyncUserId } from './services/gmail'
 import { initializeSyncCoordinator } from './services/syncCoordinator'
@@ -108,6 +109,9 @@ export default function App() {
   const extensionInstalled = useExtensionDetect()
   const { permission: notificationPermission } = useNotificationPermission()
   useNotificationScenarios(jobs, notificationPermission)
+
+  // Auto-compute CV↔job match scores in the background (no user action needed)
+  useAutoScore(jobs, updateJob)
 
   // Load demo data if ?demo=true
   useEffect(() => {

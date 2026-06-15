@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, memo } from 'react'
 import { enrichJobTimeline } from '../services/enrichTimeline'
 import { STATUSES, getStatus } from '../hooks/useJobs'
 import RowActions from './RowActions'
+import { ScoreBadge } from './ScoreJob'
 
 function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, forceExpand, onForceExpandDone, checkAllPositions, t = (key) => key }) {
   const [expanded, setExpanded] = useState(false)
@@ -108,6 +109,7 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-gray-800 text-sm truncate flex items-center gap-1.5">
                 {job.company}
+                <ScoreBadge job={job} t={t} />
                 {job.cvSaved && (
                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-600 flex-shrink-0">CV</span>
                 )}

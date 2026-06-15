@@ -1,6 +1,32 @@
 import { useState } from 'react'
 import { useCVs } from '../hooks/useCVs'
 
+// Color band for a 0-100 score — shared by the table badge and the modal.
+export function scoreColorClasses(s) {
+  if (s >= 80) return 'bg-green-100 text-green-700 border-green-300'
+  if (s >= 60) return 'bg-blue-100 text-blue-700 border-blue-300'
+  if (s >= 40) return 'bg-amber-100 text-amber-700 border-amber-300'
+  return 'bg-red-100 text-red-700 border-red-300'
+}
+
+// Compact score pill shown in the job table. Renders nothing if not yet scored.
+export function ScoreBadge({ job, t = (key) => key }) {
+  const score = job?.score
+  if (score === null || score === undefined) return null
+  const details = job.scoreDetails
+  const title = details?.summary
+    ? `${details.verdict?.replace(/_/g, ' ') || ''} — ${details.summary}\n${t('scoreJob.scoredWith') || 'Scored with'}: ${details.cvName || ''}`
+    : `${t('scoreJob.title') || 'Match score'}: ${Math.round(score)}/100`
+  return (
+    <span
+      title={title}
+      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border flex-shrink-0 ${scoreColorClasses(score)}`}
+    >
+      {Math.round(score)}
+    </span>
+  )
+}
+
 export default function ScoreJob({ job, onUpdateScore, t = (key) => key }) {
   const { cvs } = useCVs()
   const [loading, setLoading] = useState(false)
@@ -54,7 +80,7 @@ export default function ScoreJob({ job, onUpdateScore, t = (key) => key }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cvText: cv.text,
-          jobDescription: job.description || '',
+          jobDescription: job.jobDescription || job.description || job.notes || '',
           company: job.company,
           position: job.position
         })
