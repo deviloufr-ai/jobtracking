@@ -108,29 +108,61 @@ ATS PARSER RULES (Non-negotiable):
 - Single column layout only
 
 ═══════════════════════════════════════════════════════════════════════════════
-VISUAL OPTIMIZATION (while staying ATS-safe):
+LENGTH OPTIMIZATION (STRICT 2-PAGE MAXIMUM):
 ═══════════════════════════════════════════════════════════════════════════════
-- Clear section hierarchy with consistent formatting
-- Company names and dates on same line (easier to scan)
-- 3-4 bullets per role (2-3 for shorter roles, more for extensive ones)
-- Bullets use strong action verbs at start: Led, Drove, Built, Scaled, Improved, Launched, etc.
-- No unnecessary bullet points — only impactful achievements
-- Skills section organized for easy scanning
+**NON-NEGOTIABLE: Output must fit on 2 pages max. Cut aggressively.**
+
+Role selection:
+- Include ONLY top 3-5 most recent/relevant roles (cut anything 8+ years old)
+- If original CV has 8+ roles: SELECT the 3-4 most relevant to JD + most recent role
+- Do NOT include all roles "for completeness"
+
+Bullet count per role:
+- Recent role (last 3 years): 3 bullets MAX
+- Older role (3-8 years): 2 bullets only
+- Oldest role (8+ years): 1 bullet or EXCLUDE
+
+Skills section:
+- Top 10 JD keywords only (organized by category)
+- Total skills section: max 4 lines
+
+Education:
+- 1 line only: "Degree, School | Certifications" (if competitive)
+
+Example 2-page budget:
+- Header/Profile: 4 lines
+- Experience (3-4 roles, 3+3+3+2 bullets): 14 lines
+- Skills (top 10, 1 category): 3 lines
+- Education: 1 line
+TOTAL: ~22 lines = 1.8 pages
+
+**If current CV exceeds this, REMOVE older roles first, then condense bullets to 2 per role.**
 
 ═══════════════════════════════════════════════════════════════════════════════
 FINAL INSTRUCTIONS:
 ═══════════════════════════════════════════════════════════════════════════════
 
-ORIGINAL CV (full, keep ALL experiences):
+ORIGINAL CV (reference for role selection and bullet content):
 ${cvText}
 
 JOB DESCRIPTION (${company} - ${position}):
 ${jobDescription}
 
-OUTPUT:
-Return ONLY the Markdown CV (no preamble, no comments, no "Here's your CV:").
-Multi-page is fine — use as much space as needed to show all experience.
-Focus on: honest adaptation, visual clarity, ATS compatibility.`
+OUTPUT REQUIREMENTS:
+1. Return ONLY the Markdown CV (no preamble, no comments, no "Here's your CV:")
+2. **MAXIMUM 2 PAGES** — this is hard limit
+3. Select top 3-5 most relevant roles (EXCLUDE older/less relevant roles)
+4. 3 bullets per recent role, 2 bullets for older roles
+5. Every bullet has measurable result/outcome (no process-only language)
+6. Profile leads with operating model, not just experience breadth
+7. Skills: top 10 JD keywords only, organized with proof
+8. Education: single line only
+
+Priority order:
+- Fit on 2 pages (critical)
+- Show JD relevance (critical)
+- Include measurable outcomes (critical)
+- Maintain ATS compatibility (important)`
         }]
       })
     })
