@@ -699,10 +699,18 @@ function decodeBase64(str) {
 // text/plain part omits entirely.
 function htmlToText(data) {
   return decodeBase64(data)
+    // Drop <style>/<script> blocks entirely — their CSS/JS lives as TEXT between
+    // the tags (not inside them), so tag-stripping alone leaves kilobytes of
+    // @import/media-query junk that buries the real content (and the employer name).
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
     .replace(/<(?:img|area)\b[^>]*\b(?:alt|title)=["']([^"']+)["'][^>]*>/gi, ' $1 ')
     .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/gi, ' ')
+    .replace(/&nbsp;|&zwnj;|&#8203;|&#847;/gi, ' ')
     .replace(/&amp;/gi, '&')
+    .replace(/&[a-z]+;/gi, ' ')
+    .replace(/&#\d+;/g, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim()
 }
