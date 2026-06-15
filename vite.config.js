@@ -15,4 +15,8 @@ export default defineConfig({
     __COMMIT_COUNT__: JSON.stringify(commitCount),
     __COMMIT_HASH__: JSON.stringify(commitHash),
   },
+  test: {
+    environment: 'jsdom',
+    include: ['src/**/*.{test,spec}.{js,jsx}'],
+  },
 })
