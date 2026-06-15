@@ -3,6 +3,7 @@ import { enrichJobTimeline } from '../services/enrichTimeline'
 import { STATUSES, getStatus } from '../hooks/useJobs'
 import RowActions from './RowActions'
 import { ScoreBadge } from './ScoreJob'
+import CompanyAvatar from './CompanyAvatar'
 
 function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, forceExpand, onForceExpandDone, checkAllPositions, t = (key) => key }) {
   const [expanded, setExpanded] = useState(false)
@@ -14,13 +15,6 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
   const [enrichResult, setEnrichResult] = useState(null)
 
   const status = getStatus(job.status)
-  const avatarColors = [
-    'bg-violet-100 text-violet-700','bg-blue-100 text-blue-700','bg-teal-100 text-teal-700',
-    'bg-orange-100 text-orange-700','bg-pink-100 text-pink-700','bg-cyan-100 text-cyan-700',
-    'bg-lime-100 text-lime-700','bg-amber-100 text-amber-700','bg-indigo-100 text-indigo-700',
-  ]
-  const avatarColor = avatarColors[job.company.charCodeAt(0) % avatarColors.length]
-  const initials = job.company.split(/\s+/).slice(0,2).map(w => w[0]?.toUpperCase()).join('')
 
   const formatDate = (d) => {
     if (!d) return '—'
@@ -98,9 +92,7 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
             onClick={e => { e.stopPropagation(); onToggleFavorite && onToggleFavorite(job.id) }}
             className={`text-lg leading-none transition-all ${job.favorite ? 'text-yellow-400' : 'text-gray-200 hover:text-yellow-300'}`}
           >★</button>
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold ${avatarColor}`}>
-            {initials}
-          </div>
+          <CompanyAvatar company={job.company} sizeClass="w-10 h-10" />
         </div>
 
         {/* Company, Position, Status */}

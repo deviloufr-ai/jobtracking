@@ -8,6 +8,7 @@ import UseCasePanel from './UseCasePanel'
 import RowActions from './RowActions'
 import MotivationLetterGenerator from './MotivationLetterGenerator'
 import { ScoreBadge } from './ScoreJob'
+import CompanyAvatar from './CompanyAvatar'
 
 // Fix #7 — NOTE_TIPS moved above getTipsFromNote (was referenced before definition)
 const NOTE_TIPS = {
@@ -292,14 +293,6 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
     return latest.available
   }
 
-  // Deterministic avatar color from company name
-  const avatarColors = [
-    'bg-violet-100 text-violet-700','bg-blue-100 text-blue-700','bg-teal-100 text-teal-700',
-    'bg-orange-100 text-orange-700','bg-pink-100 text-pink-700','bg-cyan-100 text-cyan-700',
-    'bg-lime-100 text-lime-700','bg-amber-100 text-amber-700','bg-indigo-100 text-indigo-700',
-  ]
-  const avatarColor = avatarColors[job.company.charCodeAt(0) % avatarColors.length]
-  const initials = job.company.split(/\s+/).slice(0,2).map(w => w[0]?.toUpperCase()).join('')
 
   return (
     <>
@@ -321,9 +314,7 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
               className={`flex-shrink-0 text-sm leading-none transition-all hover:scale-110 -ml-1 ${job.favorite ? 'text-yellow-400' : 'text-gray-200 hover:text-yellow-300'}`}
             >★</button>
             {/* Avatar */}
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${avatarColor}`}>
-              {initials}
-            </div>
+            <CompanyAvatar company={job.company} sizeClass="w-8 h-8" />
             {/* Company + Position */}
             <div className="min-w-0">
               <div className="font-semibold text-gray-800 text-sm truncate leading-tight flex items-center gap-1.5">
