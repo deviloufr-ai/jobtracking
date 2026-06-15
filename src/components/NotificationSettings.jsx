@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNotificationPermission } from '../hooks/useNotificationPermission'
+import { useLanguage } from '../hooks/useLanguage'
 import {
   loadNotificationSettings,
   saveNotificationSettings,
@@ -28,6 +29,7 @@ function Toggle({ checked, onChange }) {
 
 export default function NotificationSettings() {
   const { permission } = useNotificationPermission()
+  const { t } = useLanguage()
   const [settings, setSettings] = useState(() => loadNotificationSettings())
   const [toast, setToast] = useState(null)
 
@@ -44,21 +46,21 @@ export default function NotificationSettings() {
 
   const handleTestNotification = () => {
     if (permission !== 'granted') {
-      setToast('❌ Les notifications ne sont pas activées')
+      setToast('❌ Notifications are not enabled')
       setTimeout(() => setToast(null), 2000)
       return
     }
 
     sendBrowserNotification('Test — JobTrackerAI', {
-      body: 'Ceci est une notification de test',
+      body: 'This is a test notification',
       tag: 'test-notification',
     })
-    setToast('✅ Notification de test envoyée')
+    setToast('✅ Test notification sent')
     setTimeout(() => setToast(null), 2000)
   }
 
   const handleDisableAll = () => {
-    if (!window.confirm('Désactiver toutes les notifications ? Vous pouvez les réactiver depuis les paramètres.')) {
+    if (!window.confirm('Disable all notifications? You can re-enable them from settings.')) {
       return
     }
     const allOff = Object.keys(settings).reduce((acc, key) => {
@@ -67,7 +69,7 @@ export default function NotificationSettings() {
     }, {})
     setSettings(allOff)
     saveNotificationSettings(allOff)
-    setToast('🔕 Toutes les notifications ont été désactivées')
+    setToast('🔕 All notifications have been disabled')
     setTimeout(() => setToast(null), 2000)
   }
 
@@ -78,19 +80,19 @@ export default function NotificationSettings() {
   }
 
   const scenariosList = [
-    { key: 'n01_no_response_14d', label: 'Relance sans réponse (J+14)' },
-    { key: 'n02_interview_24h', label: 'Entretien dans 24h' },
-    { key: 'n03_offer_received', label: 'Offre reçue' },
-    { key: 'n04_rejection', label: 'Refus reçu' },
-    { key: 'n05_reviewing_7d', label: 'Profil en examen > 7 jours' },
-    { key: 'n07_auto_archived', label: 'Candidature auto-archivée' },
-    { key: 'n08_deadline_reminder', label: 'Rappel deadline (J-2)' },
+    { key: 'n01_no_response_14d', label: 'Follow-up without response (Day 14)' },
+    { key: 'n02_interview_24h', label: 'Interview in 24 hours' },
+    { key: 'n03_offer_received', label: 'Offer received' },
+    { key: 'n04_rejection', label: 'Rejection received' },
+    { key: 'n05_reviewing_7d', label: 'Application under review for 7+ days' },
+    { key: 'n07_auto_archived', label: 'Application auto-archived' },
+    { key: 'n08_deadline_reminder', label: 'Deadline reminder (Day -2)' },
   ]
 
   const permissionStatus =
-    permission === 'granted' ? '✅ Activées' :
-    permission === 'denied' ? '❌ Refusées' :
-    '⏳ En attente'
+    permission === 'granted' ? '✅ Enabled' :
+    permission === 'denied' ? '❌ Denied' :
+    '⏳ Pending'
 
   const isAutoDisabledCount = scenariosList.filter(s => isScenarioAutoDisabled(s.key)).length
 
@@ -100,13 +102,13 @@ export default function NotificationSettings() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="font-semibold text-gray-900 mb-1">Notifications browser</h3>
+            <h3 className="font-semibold text-gray-900 mb-1">Browser Notifications</h3>
             <p className="text-sm text-gray-600">
-              Statut : <span className={permission === 'granted' ? 'text-green-600' : permission === 'denied' ? 'text-red-600' : 'text-gray-600'}>{permissionStatus}</span>
+              Status: <span className={permission === 'granted' ? 'text-green-600' : permission === 'denied' ? 'text-red-600' : 'text-gray-600'}>{permissionStatus}</span>
             </p>
             {permission === 'denied' && (
               <p className="text-xs text-red-600 mt-2">
-                Tu peux activer les notifications dans les paramètres du navigateur
+                You can enable notifications in your browser settings
               </p>
             )}
           </div>
@@ -120,7 +122,7 @@ export default function NotificationSettings() {
             onClick={handleTestNotification}
             className="w-full px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
           >
-            🔔 Tester une notification
+            🔔 Test notification
           </button>
         </div>
       )}
@@ -128,10 +130,10 @@ export default function NotificationSettings() {
       {/* Scenarios */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-50">
-          <h3 className="font-semibold text-gray-900">Scénarios de notification</h3>
+          <h3 className="font-semibold text-gray-900">Notification scenarios</h3>
           {isAutoDisabledCount > 0 && (
             <p className="text-xs text-red-600 mt-1">
-              ⚠️ {isAutoDisabledCount} scénario{isAutoDisabledCount > 1 ? 's' : ''} désactivé{isAutoDisabledCount > 1 ? 's' : ''} (3 ignores consécutifs)
+              ⚠️ {isAutoDisabledCount} scenario{isAutoDisabledCount > 1 ? 's' : ''} disabled (3 consecutive ignores)
             </p>
           )}
         </div>
@@ -146,12 +148,12 @@ export default function NotificationSettings() {
                   </label>
                   {isDisabled && (
                     <div className="flex items-center gap-1">
-                      <span className="text-xs text-red-600">Désactivé après 3 ignores</span>
+                      <span className="text-xs text-red-600">Disabled after 3 ignores</span>
                       <button
                         onClick={() => handleReEnable(scenario.key)}
                         className="text-xs text-indigo-600 hover:underline ml-1"
                       >
-                        Réactiver
+                        Re-enable
                       </button>
                     </div>
                   )}
@@ -172,7 +174,7 @@ export default function NotificationSettings() {
           onClick={handleDisableAll}
           className="w-full px-4 py-2.5 border border-red-200 hover:bg-red-50 text-red-600 text-sm font-medium rounded-lg transition-colors"
         >
-          🔕 Désactiver toutes les notifications
+          🔕 Disable all notifications
         </button>
       </div>
 

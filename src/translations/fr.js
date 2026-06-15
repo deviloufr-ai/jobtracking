@@ -1,8 +1,31 @@
 export const fr = {
+  analytics: {
+    empty: "Aucune candidature pour l'instant. Dès que vous postulez et suivez les réponses, vos statistiques apparaîtront ici.",
+    metrics: {
+      totalApps: 'Candidatures',
+      responseRate: 'Taux de réponse',
+      avgTimeToInterview: 'Délai moyen avant entretien',
+      interviewRate: "Taux d'entretien",
+      days: 'jours',
+      noData: 'données insuffisantes',
+    },
+    funnel: {
+      title: 'Tunnel de conversion',
+      sent: 'Postulé',
+      reviewing: 'Répondu',
+      interview: 'Entretien',
+      offer: 'Offre',
+    },
+    trend: {
+      title: 'Candidatures par semaine',
+      subtitle: '12 dernières semaines',
+    },
+  },
   // Navigation & Tabs
   nav: {
     tabs: {
       tracker: 'Candidatures',
+      analytics: 'Analyse',
       search: 'Recherche',
       cv: 'Mon CV',
       settings: 'Réglages',

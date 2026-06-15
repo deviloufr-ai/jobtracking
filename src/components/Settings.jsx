@@ -159,7 +159,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
 
   const handleSaveApiKey = () => {
     if (!apiKey.trim()) {
-      setApiKeyTestError('La clé API ne peut pas être vide')
+      setApiKeyTestError(t('settingsAPI.errorEmpty'))
       return
     }
     localStorage.setItem('jobtrackr_claude_api_key', apiKey)
@@ -170,7 +170,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
 
   const handleTestApiKey = async () => {
     if (!apiKey.trim()) {
-      setApiKeyTestError('Entrez une clé API avant de tester')
+      setApiKeyTestError(t('settingsAPI.errorEnterBeforeTest'))
       return
     }
 
@@ -186,21 +186,21 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
           apiKey: apiKey.trim(),
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 100,
-          system: 'Tu es un assistant utile.',
-          messages: [{ role: 'user', content: 'Dis simplement "OK" pour confirmer que ton API fonctionne.' }],
+          system: 'You are a helpful assistant.',
+          messages: [{ role: 'user', content: 'Simply say "OK" to confirm your API is working.' }],
         }),
       })
 
       const data = await res.json()
 
       if (!res.ok) {
-        setApiKeyTestError(data.error?.message || data.error || `Erreur API: ${res.status}`)
+        setApiKeyTestError(data.error?.message || data.error || `API Error: ${res.status}`)
       } else {
         setApiKeyTested(true)
         setTimeout(() => setApiKeyTested(false), 3000)
       }
     } catch (e) {
-      setApiKeyTestError(e.message || 'Erreur de connexion')
+      setApiKeyTestError(e.message || t('settingsAPI.errorConnection'))
     } finally {
       setApiKeyTestLoading(false)
     }
@@ -232,7 +232,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
 
   async function handleExtractFromCV() {
     try {
-      if (!cvs.length) { setExtractError('Aucun CV uploadé — va dans Mon CV pour en ajouter un.'); return }
+      if (!cvs.length) { setExtractError('No CV uploaded — go to My CV to add one.'); return }
       const cv = cvs.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))[0]
       setExtracting(true)
       setExtractError(null)
@@ -242,7 +242,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
         body: JSON.stringify({ cvText: cv.text })
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error?.message || data.error || 'Erreur extraction')
+      if (!res.ok) throw new Error(data.error?.message || data.error || 'Extraction error')
       const extracted = { ...data.profile, extractedFrom: cv.name }
       saveProfile(extracted)
       setProfile(extracted)
@@ -275,14 +275,14 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
       try {
         const data = JSON.parse(ev.target.result)
         const incoming = data.jobs || (Array.isArray(data) ? data : null)
-        if (!incoming) throw new Error('Format invalide')
+        if (!incoming) throw new Error('Invalid format')
         const existing = JSON.parse(localStorage.getItem('jobtrackr_applications') || '[]')
         const existingIds = new Set(existing.map(j => j.id))
         const merged = [...existing, ...incoming.filter(j => !existingIds.has(j.id))]
         localStorage.setItem('jobtrackr_applications', JSON.stringify(merged))
         window.location.reload()
       } catch (err) {
-        setImportError(err.message || 'Erreur de lecture du fichier')
+        setImportError(err.message || 'Error reading file')
       }
     }
     reader.readAsText(file)
@@ -435,13 +435,13 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
             {/* Profile Tab */}
             {activeTab === 'profile' && (
               <>
-                <Card subtitle="Remplissez automatiquement votre profil depuis votre CV">
+                <Card subtitle={t('settingsProfile.autoFillSubtitle')}>
                   <div className="flex items-center gap-3 bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 rounded-lg px-4 py-3 -mx-2">
                     <span className="text-xl shrink-0">✨</span>
                     <div className="flex-1 min-w-0">
                       {profile?.extractedFrom
-                        ? <p className="text-xs text-indigo-700">Profil extrait depuis <strong>{profile.extractedFrom}</strong>{profile.extractedAt ? ` · ${new Date(profile.extractedAt).toLocaleDateString('fr-FR')}` : ''}</p>
-                        : <p className="text-xs text-indigo-700 font-medium">Zéro saisie manuelle — extraction depuis ton CV.</p>
+                        ? <p className="text-xs text-indigo-700">{`${t('settingsProfile.profileExtractedFrom')} `}<strong>{profile.extractedFrom}</strong>{profile.extractedAt ? ` · ${new Date(profile.extractedAt).toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US')}` : ''}</p>
+                        : <p className="text-xs text-indigo-700 font-medium">{t('settingsProfile.zeroManualEntry')}</p>
                       }
                     </div>
                     <button
@@ -450,43 +450,43 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                       className="shrink-0 text-xs font-semibold bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
                     >
                       {extracting
-                        ? <><span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin inline-block" /> Extraction…</>
-                        : profile?.extractedFrom ? '🔄 Ré-extraire' : '✦ Extraire'
+                        ? <><span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin inline-block" /> {t('settingsProfile.extractingFromCV')}…</>
+                        : profile?.extractedFrom ? `🔄 ${t('settingsProfile.reExtract')}` : `✦ ${t('settingsProfile.extract')}`
                       }
                     </button>
                   </div>
                   {extractError && <p className="text-xs text-red-500">{extractError}</p>}
                 </Card>
 
-                <Card title="Informations de base">
-                  <Row label="Nom complet" hint="Tel qu'il apparaîtra sur les formulaires">
+                <Card title={t('settingsProfile.basicInfo')}>
+                  <Row label={t('settingsProfile.fullName')} hint={t('settingsProfile.fullNameHint')}>
                     <TextInput value={profile.name} onChange={v => updateProfile('name', v)} placeholder="Alexandre Leblanc" />
                   </Row>
-                  <Row label="Titre / Poste visé">
+                  <Row label={t('settingsProfile.jobTitle')}>
                     <TextInput value={profile.title} onChange={v => updateProfile('title', v)} placeholder="Senior Product Manager" />
                   </Row>
-                  <Row label="Email" hint="Adresse de contact">
+                  <Row label={t('settingsProfile.email')} hint={t('settingsProfile.emailHint')}>
                     <TextInput value={profile.email} onChange={v => updateProfile('email', v)} placeholder="devilalex@example.com" />
                   </Row>
-                  <Row label="Téléphone" hint="Utilisé par l'autofill de l'extension">
+                  <Row label={t('settingsProfile.phone')} hint={t('settingsProfile.phoneHint')}>
                     <TextInput value={profile.phone} onChange={v => updateProfile('phone', v)} placeholder="+33 6 12 34 56 78" />
                   </Row>
-                  <Row label="LinkedIn" hint="Profil LinkedIn">
+                  <Row label={t('settingsProfile.linkedin')} hint={t('settingsProfile.linkedinHint')}>
                     <TextInput value={profile.linkedin} onChange={v => updateProfile('linkedin', v)} placeholder="https://linkedin.com/in/devilalex" />
                   </Row>
-                  <Row label="Site web / Portfolio" hint="Affiché dans le CV et les emails">
+                  <Row label={t('settingsProfile.website')} hint={t('settingsProfile.websiteHint')}>
                     <TextInput value={profile.website} onChange={v => updateProfile('website', v)} placeholder="https://devilalex.com" />
                   </Row>
-                  <Row label="Langues">
+                  <Row label={t('settingsProfile.languages')}>
                     <TextInput value={profile.languages} onChange={v => updateProfile('languages', v)} placeholder="Français (natif), Anglais (courant)" />
                   </Row>
-                  <Row label="Formation">
+                  <Row label={t('settingsProfile.education')}>
                     <TextInput value={profile.education} onChange={v => updateProfile('education', v)} placeholder="Ingénieur Arts & Métiers" />
                   </Row>
                 </Card>
 
-                <Card title="Expérience et compétences">
-                  <Row label="Entreprises" wide hint="Une par ligne, ex: Acme Inc (2020-2023)">
+                <Card title={t('settingsProfile.experienceAndSkills')}>
+                  <Row label={t('settingsProfile.companies')} wide hint={t('settingsProfile.companiesHint')}>
                     <TextInput
                       multiline
                       rows={3}
@@ -495,22 +495,22 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                       placeholder="Acme Inc (2020-2023)&#10;Google (2018-2020)&#10;Startup XYZ (2015-2018)"
                     />
                   </Row>
-                  <Row label="Résumé d'expérience" wide hint="Vos 18 ans d'expérience en résumé">
-                    <TextInput multiline rows={3} value={profile.experience} onChange={v => updateProfile('experience', v)} placeholder="18 ans d'expérience en product management..." />
+                  <Row label={t('settingsProfile.experienceSummary')} wide hint={t('settingsProfile.experienceSummaryHint')}>
+                    <TextInput multiline rows={3} value={profile.experience} onChange={v => updateProfile('experience', v)} placeholder="18 years of experience in product management..." />
                   </Row>
-                  <Row label="Compétences clés" wide hint="Séparées par des virgules">
+                  <Row label={t('settingsProfile.keySkills')} wide hint={t('settingsProfile.keySkillsHint')}>
                     <TextInput multiline rows={2} value={profile.skills} onChange={v => updateProfile('skills', v)} placeholder="Product strategy, OKR, Agile, Data analytics..." />
                   </Row>
-                  <Row label="Expérience IA / Projets récents" wide>
+                  <Row label={t('settingsProfile.aiExperience')} wide>
                     <TextInput multiline rows={2} value={profile.ai_experience} onChange={v => updateProfile('ai_experience', v)} placeholder="Claude API, ComfyUI, JobTrackerAI..." />
                   </Row>
-                  <Row label="Motivation / Pitch par défaut" wide>
-                    <TextInput multiline rows={2} value={profile.motivation} onChange={v => updateProfile('motivation', v)} placeholder="Passionné par les produits qui résolvent de vrais problèmes..." />
+                  <Row label={t('settingsProfile.motivation')} wide>
+                    <TextInput multiline rows={2} value={profile.motivation} onChange={v => updateProfile('motivation', v)} placeholder="Passionate about products that solve real problems..." />
                   </Row>
                 </Card>
 
                 {profile?.key_achievements?.length > 0 && (
-                  <Card title="Réalisations clés">
+                  <Card title={t('settingsProfile.keyAchievements')}>
                     <ul className="space-y-1">
                       {profile.key_achievements.map((a, i) => (
                         <li key={i} className="text-xs text-gray-600 flex gap-2"><span className="text-indigo-400">·</span>{a}</li>
@@ -526,7 +526,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                       profileSaved ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-indigo-600 text-white hover:bg-indigo-700'
                     }`}
                   >
-                    {profileSaved ? '✓ Sauvegardé' : 'Sauvegarder'}
+                    {profileSaved ? `✓ ${t('settingsProfile.saved')}` : t('common.save')}
                   </button>
                 </div>
               </>
@@ -534,14 +534,14 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
 
             {/* Goals Tab */}
             {activeTab === 'goals' && (
-              <Card title="Vos objectifs">
-                <Row label="Candidatures / semaine" hint="Nombre d'envois visé">
+              <Card title={t('settingsGoals.title')}>
+                <Row label={t('settingsGoals.applicationsPerWeek')} hint={t('settingsGoals.applicationsPerWeekHint')}>
                   <NumInput value={settings.weeklyApps} onChange={v => updateSetting('weeklyApps', v)} min={1} max={50} />
                 </Row>
-                <Row label="Taux de réponse cible" hint="% de retours employeur">
+                <Row label={t('settingsGoals.responseRateTarget')} hint={t('settingsGoals.responseRateTargetHint')}>
                   <NumInput value={settings.responseRate} onChange={v => updateSetting('responseRate', v)} min={1} max={100} suffix="%" />
                 </Row>
-                <Row label="Entretiens / mois" hint="Objectif mensuel">
+                <Row label={t('settingsGoals.interviewsPerMonth')} hint={t('settingsGoals.interviewsPerMonthHint')}>
                   <NumInput value={settings.monthlyInterviews} onChange={v => updateSetting('monthlyInterviews', v)} min={1} max={30} />
                 </Row>
               </Card>
@@ -549,20 +549,20 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
 
             {/* Automation Tab */}
             {activeTab === 'automation' && (
-              <Card title="Paramètres d'automatisation">
-                <Row label="Auto-archiver après X jours sans réponse" hint="Pour : Envoyée, En examen, En attente">
+              <Card title={t('settingsAutomation.title')}>
+                <Row label={t('settingsAutomation.autoArchiveNoResponse')} hint={t('settingsAutomation.autoArchiveNoResponseHint')}>
                   <NumInput value={settings.archiveSentDays} onChange={v => updateSetting('archiveSentDays', v)} min={0} max={365} suffix="j" />
                 </Row>
-                <Row label="Auto-archiver les refus après X jours" hint="Pour : Refusée, Refus ATS, Annulée">
+                <Row label={t('settingsAutomation.autoArchiveRejected')} hint={t('settingsAutomation.autoArchiveRejectedHint')}>
                   <NumInput value={settings.archiveRejectedDays} onChange={v => updateSetting('archiveRejectedDays', v)} min={0} max={365} suffix="j" />
                 </Row>
-                <Row label="Sync Gmail automatique" hint="Intervalle entre deux synchronisations">
+                <Row label={t('settingsAutomation.gmailSync')} hint={t('settingsAutomation.gmailSyncHint')}>
                   <NumInput value={settings.autoRefreshHours} onChange={v => updateSetting('autoRefreshHours', v)} min={1} max={72} suffix="h" />
                 </Row>
-                <Row label="Période de recherche Gmail" hint="Combien de jours à remonter pour importer les emails">
+                <Row label={t('settingsAutomation.gmailPeriod')} hint={t('settingsAutomation.gmailPeriodHint')}>
                   <NumInput value={settings.gmailPeriodDays} onChange={v => updateSetting('gmailPeriodDays', v)} min={1} max={365} suffix="j" />
                 </Row>
-                <Row label="Vérifier disponibilité du poste" hint="Auto-détecte si le poste est toujours ouvert">
+                <Row label={t('settingsAutomation.checkPositionAvailability')} hint={t('settingsAutomation.checkPositionAvailabilityHint')}>
                   <NumInput value={settings.checkPositionAfterDays} onChange={v => updateSetting('checkPositionAfterDays', v)} min={0} max={365} suffix="j" />
                 </Row>
               </Card>
@@ -571,18 +571,18 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
             {/* API Tab */}
             {activeTab === 'api' && (
               <>
-                <Card subtitle="Utilisez votre propre clé API Claude pour éviter les limites de fréquence">
+                <Card subtitle={t('settingsAPI.subtitle')}>
                   <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 -mx-2">
                     <span className="text-xl shrink-0">🔐</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-blue-700 font-medium">Votre clé API reste privée et stockée localement</p>
-                      <p className="text-xs text-blue-600 mt-0.5">Elle n'est jamais envoyée au serveur de JobTrackerAI</p>
+                      <p className="text-xs text-blue-700 font-medium">{t('settingsAPI.privateKeyInfo')}</p>
+                      <p className="text-xs text-blue-600 mt-0.5">{t('settingsAPI.neverSentToServer')}</p>
                     </div>
                   </div>
                 </Card>
 
-                <Card title="Clé API Claude">
-                  <Row label="Votre clé API" hint="Créez une clé sur https://console.anthropic.com/api/keys" wide>
+                <Card title={t('settingsAPI.claudeAPIKey')}>
+                  <Row label={t('settingsAPI.yourAPIKey')} hint={t('settingsAPI.yourAPIKeyHint')} wide>
                     <div className="flex gap-2">
                       <input
                         type={apiKeyVisible ? 'text' : 'password'}
@@ -594,7 +594,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                       <button
                         onClick={() => setApiKeyVisible(!apiKeyVisible)}
                         className="px-3 py-2 text-gray-500 hover:text-gray-700 text-sm font-medium"
-                        title={apiKeyVisible ? 'Masquer' : 'Afficher'}
+                        title={apiKeyVisible ? t('settingsAPI.hide') : t('settingsAPI.show')}
                       >
                         {apiKeyVisible ? '👁️‍🗨️' : '👁️'}
                       </button>
@@ -613,7 +613,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                           : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                       }`}
                     >
-                      {apiKeySaved ? '✓ Sauvegardée' : apiKey.trim() ? 'Sauvegarder' : 'Entrez une clé'}
+                      {apiKeySaved ? `✓ ${t('settingsAPI.keySaved')}` : apiKey.trim() ? t('settingsAPI.saveKey') : t('settingsAPI.enterKey')}
                     </button>
                     {apiKey.trim() && (
                       <button
@@ -628,50 +628,50 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                         }`}
                       >
                         {apiKeyTestLoading
-                          ? '⏳ Test...'
+                          ? `⏳ ${t('settingsAPI.testing')}`
                           : apiKeyTested
-                          ? '✓ OK'
-                          : '🧪 Tester'}
+                          ? `✓ ${t('settingsAPI.testSuccess')}`
+                          : t('settingsAPI.testKey')}
                       </button>
                     )}
                   </div>
 
                   {apiKeyTestError && (
                     <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                      <p className="text-xs text-red-700"><strong>Erreur :</strong> {apiKeyTestError}</p>
+                      <p className="text-xs text-red-700"><strong>Error:</strong> {apiKeyTestError}</p>
                     </div>
                   )}
 
                   {apiKey.trim() && !apiKeyTestError && (
                     <div className="mt-3 pt-3 border-t border-gray-200">
-                      <p className="text-xs text-gray-600 mb-2">Options :</p>
+                      <p className="text-xs text-gray-600 mb-2">{t('settingsAPI.options')}</p>
                       <button
                         onClick={handleClearApiKey}
                         className="text-xs font-medium px-3 py-1.5 rounded-lg border border-red-200 bg-white text-red-700 hover:bg-red-50 transition-all"
                       >
-                        🗑️ Supprimer la clé
+                        {t('settingsAPI.deleteKey')}
                       </button>
                     </div>
                   )}
                 </Card>
 
-                <Card title="À propos" subtitle="Comprendre la configuration">
+                <Card title={t('settingsAPI.about')} subtitle={t('settingsAPI.aboutSubtitle')}>
                   <div className="space-y-3 text-sm text-gray-600">
                     <div>
-                      <p className="font-semibold text-gray-900 mb-1">📍 Où est stockée ma clé ?</p>
-                      <p>Votre clé API est sauvegardée localement dans le stockage du navigateur (localStorage). Elle n'est jamais envoyée aux serveurs de JobTrackerAI.</p>
+                      <p className="font-semibold text-gray-900 mb-1">{t('settingsAPI.whereStored')}</p>
+                      <p>{t('settingsAPI.whereStoredAnswer')}</p>
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900 mb-1">🔄 Comment fonctionne la communication ?</p>
-                      <p>Vos requêtes sont envoyées directement à l'API Claude avec votre clé personnelle. Chaque appel utilise votre quota d'API.</p>
+                      <p className="font-semibold text-gray-900 mb-1">{t('settingsAPI.howCommunication')}</p>
+                      <p>{t('settingsAPI.howCommunicationAnswer')}</p>
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900 mb-1">💰 Coûts</p>
-                      <p>Les frais d'utilisation sont débités de votre compte Anthropic. Claude Haiku est le modèle le plus économique (5x moins cher que Sonnet).</p>
+                      <p className="font-semibold text-gray-900 mb-1">{t('settingsAPI.costs')}</p>
+                      <p>{t('settingsAPI.costsAnswer')}</p>
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900 mb-1">🔐 Sécurité</p>
-                      <p>Gardez votre clé secrète. Si vous la compromettez, régénérez-la immédiatement depuis la console Anthropic.</p>
+                      <p className="font-semibold text-gray-900 mb-1">{t('settingsAPI.security')}</p>
+                      <p>{t('settingsAPI.securityAnswer')}</p>
                     </div>
                   </div>
                 </Card>
@@ -686,17 +686,17 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
             {/* Follow-ups Tab */}
             {activeTab === 'followups' && (
               <>
-                <Card title="Délais avant action urgente" subtitle="Configurez les rappels pour chaque statut">
-                  <Row label="Relance candidature envoyée" hint="Statut : Envoyée">
+                <Card title={t('settingsFollowups.title')} subtitle={t('settingsFollowups.subtitle')}>
+                  <Row label={t('settingsFollowups.followUpSent')} hint={t('settingsFollowups.followUpSentHint')}>
                     <NumInput value={settings.followUpSentDays} onChange={v => updateSetting('followUpSentDays', v)} min={1} max={60} suffix="j" />
                   </Row>
-                  <Row label="Relance profil en examen" hint="Statut : En cours d'examen">
+                  <Row label={t('settingsFollowups.followUpReviewing')} hint={t('settingsFollowups.followUpReviewingHint')}>
                     <NumInput value={settings.followUpReviewingDays} onChange={v => updateSetting('followUpReviewingDays', v)} min={1} max={60} suffix="j" />
                   </Row>
-                  <Row label="Suivi en attente de réponse" hint="Statut : En attente">
+                  <Row label={t('settingsFollowups.followUpWaiting')} hint={t('settingsFollowups.followUpWaitingHint')}>
                     <NumInput value={settings.followUpWaitingDays} onChange={v => updateSetting('followUpWaitingDays', v)} min={1} max={60} suffix="j" />
                   </Row>
-                  <Row label="Répondre à une offre reçue" hint="Statut : Offre reçue">
+                  <Row label={t('settingsFollowups.respondToOffer')} hint={t('settingsFollowups.respondToOfferHint')}>
                     <NumInput value={settings.followUpOfferDays} onChange={v => updateSetting('followUpOfferDays', v)} min={1} max={30} suffix="j" />
                   </Row>
                   <div className="flex justify-end pt-2">
@@ -709,7 +709,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                       }}
                       className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
                     >
-                      ↻ Remettre par défaut
+                      {t('settingsFollowups.resetDefaults')}
                     </button>
                   </div>
                 </Card>
@@ -719,8 +719,8 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
             {/* Appearance Tab */}
             {activeTab === 'appearance' && (
               <>
-                <Card title="Langue" subtitle="Sélectionnez votre langue préférée">
-                  <Row label="Langue" hint="La langue s'appliquera immédiatement">
+                <Card title={t('settingsAppearance.language')} subtitle={t('settingsAppearance.languageSubtitle')}>
+                  <Row label={t('settingsAppearance.language')} hint={t('settingsAppearance.languageHint')}>
                     <select
                       value={language}
                       onChange={e => { setLanguage(e.target.value); setTimeout(() => window.location.reload(), 300) }}
@@ -735,8 +735,8 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                   </Row>
                 </Card>
 
-                <Card title="Thème de l'application" subtitle="Choisissez le style visuel qui vous convient le mieux">
-                  <Row label="Thème" hint="Sélectionnez le thème de l'interface">
+                <Card title={t('settingsAppearance.applicationTheme')} subtitle={t('settingsAppearance.applicationThemeSubtitle')}>
+                  <Row label={t('settingsAppearance.applicationTheme')} hint={t('settingsAppearance.themeHint')}>
                     <div className="space-y-3">
                       {Object.values(THEMES).map(theme => (
                         <button
@@ -782,8 +782,8 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
             {/* Data Tab */}
             {activeTab === 'data' && (
               <>
-                <Card title="Exporter & Importer">
-                  <Row label="Exporter les candidatures" hint={`${jobs.length} candidatures en JSON`}>
+                <Card title={t('settingsData.exportImport')}>
+                  <Row label={t('settingsData.exportApplications')} hint={`${jobs.length} applications in JSON`}>
                     <button
                       onClick={handleExport}
                       className={`text-sm font-medium px-4 py-2 rounded-lg border transition-all ${
@@ -792,28 +792,28 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                           : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                       }`}
                     >
-                      {exportDone ? '✓ Exporté' : 'Exporter'}
+                      {exportDone ? `✓ ${t('settingsData.exported')}` : t('settingsData.exportApplications')}
                     </button>
                   </Row>
-                  <Row label="Importer des candidatures" hint="Fusionne sans créer de doublons">
+                  <Row label={t('settingsData.importApplications')} hint={t('settingsData.importApplicationsHint')}>
                     <label className="cursor-pointer text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-all">
-                      Importer
+                      {t('settingsData.import')}
                       <input type="file" accept=".json" className="hidden" onChange={handleImport} />
                     </label>
                   </Row>
                   {importError && <p className="text-xs text-red-500">{importError}</p>}
                 </Card>
 
-                <Card title="Maintenance des données">
-                  <Row label="Fusionner les doublons (client)" hint="Détecte et fusionne localement">
+                <Card title={t('settingsData.dataMaintenance')}>
+                  <Row label={t('settingsData.mergeDuplicatesLocal')} hint={t('settingsData.mergeDuplicatesLocalHint')}>
                     <button
                       onClick={onMergeDuplicates}
                       className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all"
                     >
-                      Fusionner
+                      {t('settingsData.merge')}
                     </button>
                   </Row>
-                  <Row label="Nettoyer doublons (serveur)" hint="Déduplication Supabase">
+                  <Row label={t('settingsData.mergeDuplicatesServer')} hint={t('settingsData.mergeDuplicatesServerHint')}>
                     <div className="flex flex-col gap-2">
                       <button
                         onClick={handleServerDedup}
@@ -824,44 +824,44 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                             : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-300'
                         }`}
                       >
-                        {serverDedupLoading ? '⏳ En cours...' : '🧹 Nettoyer'}
+                        {serverDedupLoading ? `⏳ ${t('settingsData.clearing')}` : t('settingsData.clean')}
                       </button>
                       {serverDedupResult && (
                         <p className="text-xs text-green-600">
-                          ✓ {serverDedupResult.stats.deletedJobs} doublons supprimés
+                          ✓ {serverDedupResult.stats.deletedJobs} duplicates removed
                         </p>
                       )}
                       {serverDedupError && (
                         <p className="text-xs text-red-600">
-                          ✗ Erreur: {serverDedupError}
+                          ✗ Error: {serverDedupError}
                         </p>
                       )}
                     </div>
                   </Row>
-                  <Row label="Vider le cache emails" hint="Force un re-parsing au prochain scan">
+                  <Row label={t('settingsData.clearEmailCache')} hint={t('settingsData.clearEmailCacheHint')}>
                     {confirmClear ? (
                       <div className="flex gap-2">
-                        <button onClick={clearEmailCache} className="text-xs font-semibold px-3 py-1.5 bg-orange-500 text-white rounded-lg hover:bg-orange-600">Confirmer</button>
-                        <button onClick={() => setConfirmClear(false)} className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">Annuler</button>
+                        <button onClick={clearEmailCache} className="text-xs font-semibold px-3 py-1.5 bg-orange-500 text-white rounded-lg hover:bg-orange-600">{t('settingsData.confirm')}</button>
+                        <button onClick={() => setConfirmClear(false)} className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">{t('settingsData.cancel')}</button>
                       </div>
                     ) : (
                       <button onClick={() => setConfirmClear(true)} className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-orange-50 hover:border-orange-200 hover:text-orange-700">
-                        Vider
+                        {t('settingsData.clear')}
                       </button>
                     )}
                   </Row>
-                  <Row label="Supprimer tout l'historique" hint="Efface tous les entrées d'historique">
+                  <Row label={t('settingsData.deleteAllHistory')} hint={t('settingsData.deleteAllHistoryHint')}>
                     {confirmDeleteHistory ? (
                       <div className="flex flex-col gap-2">
                         {deleteHistoryDetails && (
                           <div className="text-xs bg-red-50 border border-red-200 rounded p-3 text-red-700">
-                            <p className="font-semibold mb-1">Vous allez supprimer :</p>
+                            <p className="font-semibold mb-1">{t('settingsData.youWillDelete')}</p>
                             <ul className="space-y-1">
-                              <li>• <strong>{deleteHistoryDetails.totalHistoryEntries}</strong> entrées d'historique</li>
-                              <li>• Concernant <strong>{deleteHistoryDetails.jobsWithHistory}</strong> candidature(s)</li>
-                              <li>• Suppression dans IndexedDB ET Supabase</li>
+                              <li>• <strong>{deleteHistoryDetails.totalHistoryEntries}</strong> {t('settingsData.historyEntries')}</li>
+                              <li>• Affecting <strong>{deleteHistoryDetails.jobsWithHistory}</strong> application(s)</li>
+                              <li>• {t('settingsData.deletionIndexedDBAndSupabase')}</li>
                             </ul>
-                            <p className="text-xs mt-2 font-semibold">Cette action est irréversible.</p>
+                            <p className="text-xs mt-2 font-semibold">{t('settingsData.actionIrreversible')}</p>
                           </div>
                         )}
                         <div className="flex gap-2">
@@ -870,10 +870,10 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                             disabled={deleteHistoryLoading}
                             className="text-xs font-semibold px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
                           >
-                            {deleteHistoryLoading ? '⏳ Suppression...' : 'Oui, tout supprimer'}
+                            {deleteHistoryLoading ? `⏳ ${t('settingsData.deleting')}` : t('settingsData.deleteHistoryButton')}
                           </button>
                           <button onClick={() => { setConfirmDeleteHistory(false); setDeleteHistoryDetails(null) }} className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">
-                            Annuler
+                            {t('settingsData.cancel')}
                           </button>
                         </div>
                         {deleteHistoryError && <p className="text-xs text-red-600">{deleteHistoryError}</p>}
@@ -886,28 +886,28 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
                         }}
                         className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-red-50 hover:border-red-200 hover:text-red-700"
                       >
-                        Supprimer
+                        {t('settingsData.deleteAllHistory')}
                       </button>
                     )}
                   </Row>
                   {deleteHistoryResult && (
                     <p className="text-xs text-red-600">
-                      ✓ {deleteHistoryResult.deletedCount} entrées d'historique supprimées de {deleteHistoryResult.jobsAffected} candidature(s)
+                      ✓ {deleteHistoryResult.deletedCount} history entries deleted from {deleteHistoryResult.jobsAffected} application(s)
                     </p>
                   )}
                 </Card>
 
-                <Card title="Zone de danger" subtitle="Attention : cette action est irréversible">
+                <Card title={t('settingsData.dangerZone')} subtitle={t('settingsData.dangerZoneSubtitle')}>
                   <div className="border border-red-200 bg-red-50/50 rounded-lg p-4">
-                    <Row label="Réinitialiser complètement" hint="Supprime tout : candidatures, paramètres, données">
+                    <Row label={t('settingsData.resetCompletely')} hint={t('settingsData.resetCompletelyHint')}>
                       {confirmReset ? (
                         <div className="flex gap-2">
-                          <button onClick={handleFullReset} className="text-xs font-semibold px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700">Oui, tout effacer</button>
-                          <button onClick={() => setConfirmReset(false)} className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">Annuler</button>
+                          <button onClick={handleFullReset} className="text-xs font-semibold px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700">{t('settingsData.yesDeleteEverything')}</button>
+                          <button onClick={() => setConfirmReset(false)} className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">{t('settingsData.cancel')}</button>
                         </div>
                       ) : (
                         <button onClick={() => setConfirmReset(true)} className="text-sm font-medium px-4 py-2 rounded-lg border border-red-200 bg-white text-red-600 hover:bg-red-50">
-                          Réinitialiser
+                          {t('settingsData.resetCompletely')}
                         </button>
                       )}
                     </Row>
@@ -918,21 +918,21 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
 
             {/* Extension Tab */}
             {activeTab === 'extension' && (
-              <Card title="Extension Firefox">
-                <Row label="Status" hint="Installez l'extension pour importer les offres directement">
+              <Card title={t('settingsExtension.firefoxExtension')}>
+                <Row label={t('settingsExtension.status')} hint={t('settingsExtension.statusHint')}>
                   {extensionInstalled === false && (
                     <a href="/jobtracker-addon-1.5.1.xpi" className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600">
-                      📥 Installer
+                      {t('settingsExtension.install')}
                     </a>
                   )}
                   {extensionInstalled === true && (
                     <span className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-green-100 text-green-700">
-                      ✓ Activée
+                      {t('settingsExtension.enabled')}
                     </span>
                   )}
                   {extensionInstalled === null && (
                     <span className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-gray-100 text-gray-700">
-                      ⏳ Vérification...
+                      {t('settingsExtension.checking')}
                     </span>
                   )}
                 </Row>

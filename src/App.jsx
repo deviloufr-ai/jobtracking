@@ -7,6 +7,7 @@ import { useLanguage } from './hooks/useLanguage'
 import './styles/themes.css'
 import ErrorBoundary from './components/ErrorBoundary'
 import Stats from './components/Stats'
+import Analytics from './components/Analytics'
 import Filters from './components/Filters'
 import JobRow from './components/JobRow'
 import JobCard from './components/JobCard'
@@ -495,6 +496,7 @@ export default function App() {
   // ── nav tabs config ─────────────────────────────────────────────────────────
   const NAV_TABS = [
     { id: 'tracker',  label: t('nav.tabs.tracker'), icon: '📋', badge: jobs.length || null },
+    { id: 'analytics', label: t('nav.tabs.analytics'), icon: '📊', badge: null },
     { id: 'search',   label: t('nav.tabs.search'),    icon: '🔎', badge: null },
     { id: 'cv',       label: t('nav.tabs.cv'),       icon: '📄', badge: null },
     { id: 'settings', label: t('nav.tabs.settings'),     icon: '⚙️',  badge: null },
@@ -812,6 +814,8 @@ export default function App() {
       <main className="max-w-screen-2xl mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-24 md:pb-6">
         {activeTab === 'settings' ? (
           <Settings jobs={jobs} syncUserId={syncUserId} onMergeDuplicates={mergeDuplicates} />
+        ) : activeTab === 'analytics' ? (
+          <Analytics jobs={jobs} t={t} />
         ) : activeTab === 'cv' ? (
           <CVManager jobs={jobs} preselectedJob={selectedJobForCV} onUpdateJob={updateJob} t={t} />
         ) : activeTab === 'search' ? (
