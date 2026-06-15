@@ -222,7 +222,7 @@ export default function Analytics({ jobs, t = (k) => k }) {
             <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t('analytics.trend.title')}</span>
             <span className="text-[11px] text-gray-400">{t('analytics.trend.subtitle')}</span>
           </div>
-          <div className="flex items-end gap-1.5 h-40 mt-2">
+          <div className="flex items-end gap-1.5 h-40 mt-4 mb-4 mx-2">
             {a.weekly.map((w, i) => {
               const pct = (w.count / maxWeekly) * 100
               const showLabel = i % 2 === 0 || i === a.weekly.length - 1
