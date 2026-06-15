@@ -991,13 +991,15 @@ export default function App() {
         </div>
         </div>{/* end flex-1 */}
 
-        {/* Right sidebar — meetings à venir (top-aligned with stats) */}
-        <div className="w-80 flex-shrink-0 hidden xl:block">
-          <div className="sticky top-24">
-            <UpcomingMeetings jobs={jobs} t={t} />
-            <Goals jobs={jobs} t={t} />
+        {/* Right sidebar — meetings à venir (top-aligned with stats). Hidden in kanban view so the board spans full width. */}
+        {trackerView !== 'kanban' && (
+          <div className="w-80 flex-shrink-0 hidden xl:block">
+            <div className="sticky top-24">
+              <UpcomingMeetings jobs={jobs} t={t} />
+              <Goals jobs={jobs} t={t} />
+            </div>
           </div>
-        </div>
+        )}
         </div>{/* end flex row */}
           </>
         )}
