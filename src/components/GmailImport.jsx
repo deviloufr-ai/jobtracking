@@ -452,7 +452,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
                   icon: '📬',
                   label: dateMode === 'range' && startDate && endDate
                     ? `Lecture des emails (${startDate} → ${endDate})`
-                    : `Lecture des emails (${months} mois)`,
+                    : `Lecture des emails (${MONTH_OPTIONS.find(o => o.value === months)?.label || `${months} mois`})`,
                   detail: connectedAccounts.length > 1
                     ? `Scan de ${connectedAccounts.length} comptes en parallèle — 7 requêtes par compte…`
                     : 'Scan multi-sources : recruteurs, ATS, LinkedIn, WTTJ…',
