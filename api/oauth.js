@@ -1,7 +1,9 @@
 // Consolidated OAuth handler for Google token management
 // Handles both authorization code exchange and token refresh
+import { applyCors } from './_lib/http.js'
 
 export default async function handler(req, res) {
+  if (applyCors(req, res, 'POST, OPTIONS')) return
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }

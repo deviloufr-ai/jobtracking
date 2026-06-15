@@ -1,15 +1,23 @@
+import { applyCors, assertSafeUrl } from './_lib/http.js'
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5173')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-  if (req.method === 'OPTIONS') { res.status(200).end(); return }
+  if (applyCors(req, res, 'POST, OPTIONS')) return
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return }
 
   const { url } = req.body
   if (!url) { res.status(400).json({ error: 'URL required' }); return }
 
+  // SSRF guard: only allow public http(s) URLs (blocks internal/metadata hosts).
+  let safeUrl
   try {
-    const response = await fetch(url, {
+    safeUrl = await assertSafeUrl(url)
+  } catch (e) {
+    res.status(400).json({ error: e.message })
+    return
+  }
+
+  try {
+    const response = await fetch(safeUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': 'text/html,application/xhtml+xml',

@@ -1,3 +1,5 @@
+import { assertSafeUrl } from './_lib/http.js'
+
 const CLOSED_INDICATORS = [
   'position closed', 'job closed', 'this position is closed',
   'application closed', 'applications closed',
@@ -88,15 +90,22 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing URL' })
   }
 
+  // SSRF guard: only allow public http(s) URLs (blocks internal/metadata hosts).
+  let safeUrl
   try {
-    // Validate URL
-    const urlObj = new URL(url)
+    safeUrl = await assertSafeUrl(url)
+  } catch (e) {
+    return res.status(400).json({ error: e.message })
+  }
+
+  try {
+    const urlObj = new URL(safeUrl)
 
     // Timeout after 10 seconds
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 10000)
 
-    const response = await fetch(url, {
+    const response = await fetch(safeUrl, {
       signal: controller.signal,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',

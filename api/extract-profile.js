@@ -1,12 +1,14 @@
+import { applyCors, getClientIp, rateLimit } from './_lib/http.js'
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5173')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-  if (req.method === 'OPTIONS') { res.status(200).end(); return }
+  if (applyCors(req, res, 'POST, OPTIONS')) return
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return }
 
   const { cvText } = req.body
   if (!cvText) { res.status(400).json({ error: 'No CV text provided' }); return }
+
+  const { ok, retryAfter } = rateLimit({ key: `extract-profile:${getClientIp(req)}`, limit: 20, windowMs: 60_000 })
+  if (!ok) { res.setHeader('Retry-After', String(retryAfter)); res.status(429).json({ error: 'Too many requests. Please slow down.' }); return }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) { res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' }); return }
