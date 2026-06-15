@@ -258,7 +258,7 @@ export async function parseEmailsForJobs(emails) {
     console.log(`Batch ${Math.floor(i/BATCH) + 1}: ${uncached.length} new emails → Claude (${cachedResults.length} from cache)`)
 
     const emailsText = uncached.map((e, j) => {
-      const bodySection = e.body?.trim() ? `Contenu: ${e.body.slice(0, 500)}` : `Aperçu: ${e.snippet?.slice(0, 250) || ''}`
+      const bodySection = e.body?.trim() ? `Contenu: ${e.body.slice(0, 1500)}` : `Aperçu: ${e.snippet?.slice(0, 250) || ''}`
       // Default to today's date if parsing fails
       let dateStr = new Date().toISOString().split('T')[0]
       try {
@@ -295,6 +295,11 @@ PATTERNS À CHERCHER (dans cet ordre) :
 3️⃣ "Your application was viewed by [X]"
 4️⃣ "You applied to [POSITION] at [X]"
 5️⃣ "[POSITION] · [X] · [Country]" (LinkedI/Indeed pattern)
+5️⃣b CONFIRMATIONS ATS (l'employeur réel est DANS le corps, après le titre du poste) :
+   • "Les éléments suivants ont été envoyés à [X]" → company = [X]  (confirmation Indeed)
+   • "Votre candidature a été envoyée à [X]" / "Your application was sent to [X]"
+   • "[X] - Remote" / "[X] · Paris" / "[X] — France" (ligne sous le titre)
+   ⚠️ Indeed/LinkedIn/Jobgether = job board, JAMAIS l'employeur : cherche [X] plus bas.
 6️⃣ Sujet : "Re: Candidature [POSITION] - [COMPANY]"
 7️⃣ De: [firstname]@[company].com ou recruiter.company.fr
 8️⃣ Si job board (Indeed/LinkedIn/WTTJ) : TOUJOURS extraire la vraie compagnie, pas le job board

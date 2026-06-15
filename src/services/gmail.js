@@ -755,7 +755,7 @@ async function fetchEmailDetail(id, token) {
       return null
     }
 
-    const body = extractBody(data.payload).slice(0, 2000)
+    const body = extractBody(data.payload).slice(0, 4000)
 
     // Drop job-alert / digest emails based on sender + subject patterns
     const fromRaw = get('From').toLowerCase()

@@ -8,6 +8,7 @@ import { supabase, isSupabaseConfigured } from '../services/supabase'
 import { getSyncUserIdForSupabase, resolveSyncUserId } from '../services/gmail'
 import { deduplicateJobsViaEdgeFunction, formatDeduplicateResult } from '../services/deduplicateService'
 import { GENERIC_POSITIONS_SET, isGenericPosition } from '../constants/positions'
+import { isJobBoard } from '../constants/jobBoards'
 import { runAtsCandidatureFix } from '../services/fixAtsCandidatures'
 
 const ENRICH_TTL_DAYS = 30
@@ -101,7 +102,11 @@ export function deduplicateJobs(jobs) {
   for (const job of jobs) {
     const co = normalizeCompany(job.company)
     const pos = normPos(job.position)
-    const key = isGenericPos(job.position) ? co : `${co}|||${pos}`
+    // For job-board-named companies (Jobgether, Indeed, LinkedIn… = employer hidden),
+    // NEVER collapse by company alone: distinct positions are distinct applications.
+    // Only same-company + same-position entries may merge. Real employers keep the
+    // normal generic-position-collapses-into-company behavior.
+    const key = (isGenericPos(job.position) && !isJobBoard(job.company)) ? co : `${co}|||${pos}`
     if (!groups.has(key)) {
       groups.set(key, [job])
     } else {
