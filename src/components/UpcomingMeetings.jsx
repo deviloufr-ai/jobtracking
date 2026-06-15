@@ -143,22 +143,24 @@ export default function UpcomingMeetings({ jobs, t = (key) => key }) {
           return (
             <div key={i} className={`px-4 py-4 transition-all ${rowBg}`}>
               {/* Top row: Date/Time + Platform indicator */}
-              <div className="flex items-center justify-between mb-2.5">
-                <div className={`text-xs font-semibold flex items-center gap-2 ${dateCls}`}>
+              <div className="flex items-center justify-between mb-3">
+                <div className={`flex items-center gap-2.5`}>
                   {state === 'imminent' && <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
                   {state !== 'imminent' && state !== 'done' && urgent && <span className="text-lg">⚡</span>}
                   {state === 'done' && <span className="text-lg">✓</span>}
-                  <span>{label === 'today' ? t('upcomingMeetings.today') : label === 'tomorrow' ? t('upcomingMeetings.tomorrow') : label}</span>
+                  <div>
+                    <div className={`text-xs font-semibold ${dateCls}`}>
+                      {label === 'today' ? t('upcomingMeetings.today') : label === 'tomorrow' ? t('upcomingMeetings.tomorrow') : label}
+                    </div>
+                    {time && (
+                      <div className={`text-sm font-semibold ${state === 'done' ? 'text-gray-400' : 'text-gray-900'}`}>
+                        🕐 {time}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 {platform && <span className="text-lg" title={platform.name}>{platform.emoji}</span>}
               </div>
-
-              {/* Time (prominent) */}
-              {time && (
-                <div className={`text-sm font-semibold mb-2 ${state === 'done' ? 'text-gray-400' : 'text-gray-900'}`}>
-                  🕐 {time}
-                </div>
-              )}
 
               {/* Company + Position row */}
               <div className="mb-2">
