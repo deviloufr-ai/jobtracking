@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { STATUSES, getStatusLabel } from '../hooks/useJobs'
-import { searchCompanyAddress } from '../services/googlePlaces'
 import ScoreJob from './ScoreJob'
 
 const EMPTY = { company: '', position: '', url: '', companyAddress: '', status: 'sent', date: new Date().toISOString().split('T')[0], notes: '', description: '' }
@@ -10,9 +9,6 @@ export default function JobModal({ job, onSave, onClose, findDuplicate, t = (key
   const [urlWarning, setUrlWarning] = useState(false)
   const [duplicate, setDuplicate] = useState(null)
   const [activeTab, setActiveTab] = useState('details')
-  const [fetchingAddress, setFetchingAddress] = useState(false)
-  const [addressError, setAddressError] = useState(null)
-  const [fetchedAddress, setFetchedAddress] = useState(null)
   const isEdit = !!job
 
   useEffect(() => {
@@ -36,33 +32,6 @@ export default function JobModal({ job, onSave, onClose, findDuplicate, t = (key
     set('url', v)
     if (v && !v.startsWith('http')) setUrlWarning(true)
     else setUrlWarning(false)
-  }
-
-  const handleFetchAddress = async () => {
-    if (!form.company.trim()) {
-      setAddressError('Please enter a company name first')
-      return
-    }
-
-    setFetchingAddress(true)
-    setAddressError(null)
-    setFetchedAddress(null)
-
-    try {
-      const result = await searchCompanyAddress(form.company)
-      setFetchedAddress(result)
-    } catch (e) {
-      setAddressError(e.message || 'Failed to fetch address')
-    } finally {
-      setFetchingAddress(false)
-    }
-  }
-
-  const handleAcceptAddress = () => {
-    if (fetchedAddress?.address) {
-      set('companyAddress', fetchedAddress.address)
-      setFetchedAddress(null)
-    }
   }
 
   const handleSubmit = () => {
@@ -162,46 +131,13 @@ export default function JobModal({ job, onSave, onClose, findDuplicate, t = (key
               {/* Company Address */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">📍 {t('jobModal.companyAddressLabel') || 'Company Address'}</label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                    placeholder="123 Rue de la Paix, Paris, France"
-                    value={form.companyAddress || ''}
-                    onChange={e => set('companyAddress', e.target.value)}
-                  />
-                  <button
-                    onClick={handleFetchAddress}
-                    disabled={fetchingAddress || !form.company.trim()}
-                    className="px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-                    title="Search for company address on Google"
-                  >
-                    {fetchingAddress ? '🔍...' : '🔍 Fetch'}
-                  </button>
-                </div>
-                {addressError && (
-                  <p className="text-xs text-red-500 mb-2">{addressError}</p>
-                )}
-                {fetchedAddress && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-2">
-                    <p className="text-xs font-medium text-blue-700 mb-1">Found:</p>
-                    <p className="text-xs text-blue-600 mb-2">{fetchedAddress.address}</p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleAcceptAddress}
-                        className="text-xs font-medium bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
-                      >
-                        ✓ Use this
-                      </button>
-                      <button
-                        onClick={() => setFetchedAddress(null)}
-                        className="text-xs font-medium bg-white text-blue-600 border border-blue-200 px-2 py-1 rounded hover:bg-blue-50"
-                      >
-                        ✕ Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-                <p className="text-xs text-gray-500">{t('jobModal.companyAddressHint') || 'Used to calculate commute time from your home'}</p>
+                <input
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  placeholder="123 Rue de la Paix, Paris, France"
+                  value={form.companyAddress || ''}
+                  onChange={e => set('companyAddress', e.target.value)}
+                />
+                <p className="text-xs text-gray-500 mt-1">{t('jobModal.companyAddressHint') || 'Used to calculate commute time from your home. Bulk-fill in Settings → Data'}</p>
               </div>
 
               {/* Status */}

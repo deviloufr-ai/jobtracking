@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { extractCompanyAddress } from '../services/extractAddress'
 
-export default function BulkAddressFiller({ jobs, onUpdateJobs, apiKey, t = (key) => key }) {
+export default function BulkAddressFiller({ jobs, onUpdateJobs, t = (key) => key }) {
   const [isRunning, setIsRunning] = useState(false)
   const [progress, setProgress] = useState(0)
   const [results, setResults] = useState([])
@@ -19,11 +18,6 @@ export default function BulkAddressFiller({ jobs, onUpdateJobs, apiKey, t = (key
   }
 
   const handleFillAddresses = async () => {
-    if (!apiKey) {
-      alert('Please add your Claude API key in Settings first.')
-      return
-    }
-
     setIsRunning(true)
     setProgress(0)
     setResults([])
@@ -34,15 +28,19 @@ export default function BulkAddressFiller({ jobs, onUpdateJobs, apiKey, t = (key
       setProgress(Math.round((i / jobsNeedingAddress.length) * 100))
 
       try {
-        const address = await extractCompanyAddress(
-          job.company,
-          job.description,
-          job.url,
-          apiKey
-        )
-        if (address) {
-          extracted.push({ jobId: job.id, company: job.company, address, position: job.position })
-          setSelectedAddresses(prev => ({ ...prev, [job.id]: true }))
+        // Fetch company address from Google Places
+        const res = await fetch('/api/jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ companyName: job.company })
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          if (data.address) {
+            extracted.push({ jobId: job.id, company: job.company, address: data.address, position: job.position })
+            setSelectedAddresses(prev => ({ ...prev, [job.id]: true }))
+          }
         }
       } catch (e) {
         console.error(`Failed for ${job.company}:`, e.message)
@@ -77,19 +75,19 @@ export default function BulkAddressFiller({ jobs, onUpdateJobs, apiKey, t = (key
       {!showResults ? (
         <>
           <p className="text-sm text-gray-600">
-            Found <strong>{jobsNeedingAddress.length}</strong> jobs with descriptions but no company address.
+            Found <strong>{jobsNeedingAddress.length}</strong> jobs without company addresses.
           </p>
           <p className="text-xs text-gray-500">
-            This will use Claude to extract addresses from job postings. Works best when job descriptions mention office locations.
+            Will search Google for each company and fetch their official addresses.
           </p>
           <button
             onClick={handleFillAddresses}
             disabled={isRunning}
             className="w-full text-sm font-medium bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
           >
-            {isRunning ? `Extracting... ${progress}%` : '🔍 Auto-fill from Job Descriptions'}
+            {isRunning ? `Fetching... ${progress}%` : '🔍 Fetch All Addresses'}
           </button>
-        </>
+</>
       ) : (
         <>
           <div className={`rounded-lg p-3 ${
@@ -108,7 +106,7 @@ export default function BulkAddressFiller({ jobs, onUpdateJobs, apiKey, t = (key
             </p>
             {results.length === 0 && (
               <p className="text-xs text-amber-700 mt-1">
-                Most job postings don't include office addresses. Try adding them manually or extracting from company websites.
+                No addresses found. Try adding them manually or check company websites.
               </p>
             )}
           </div>

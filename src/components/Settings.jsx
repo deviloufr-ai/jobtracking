@@ -907,7 +907,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
                   )}
                 </Card>
 
-                <Card title="🔍 Auto-fill Company Addresses" subtitle="Extract company addresses from job postings">
+                <Card title="🔍 Fetch Company Addresses" subtitle="Search Google for company addresses">
                   <BulkAddressFiller
                     jobs={jobs}
                     onUpdateJobs={(updatedJobs) => {
@@ -920,7 +920,6 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
                       localStorage.setItem('jobtrackr_applications', JSON.stringify(updatedJobs))
                       window.location.reload()
                     }}
-                    apiKey={apiKey}
                     t={t}
                   />
                 </Card>
