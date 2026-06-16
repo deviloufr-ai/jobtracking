@@ -124,7 +124,7 @@ async function handlePlaceSearch(req, res) {
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
-        'X-Goog-FieldMask': 'places.formattedAddress,places.displayName',
+        'X-Goog-FieldMask': 'places.formattedAddress,places.displayName,places.location',
       },
       body: JSON.stringify({
         textQuery: companyName,
@@ -148,10 +148,20 @@ async function handlePlaceSearch(req, res) {
       return res.status(200).json({ address: null, reason: `Google Places: ${reason}` })
     }
 
-    const place = data.places?.[0]
-    if (!place?.formattedAddress) {
+    const candidates = (data.places || []).filter(p => p.formattedAddress)
+    if (!candidates.length) {
       return res.status(200).json({ address: null, reason: 'Google Places: ZERO_RESULTS' })
     }
+
+    // When several offices match, prefer the one closest to Paris.
+    const PARIS = { lat: 48.8566, lng: 2.3522 }
+    const distToParis = (p) => {
+      if (!p.location) return Number.POSITIVE_INFINITY
+      const dLat = p.location.latitude - PARIS.lat
+      const dLng = p.location.longitude - PARIS.lng
+      return dLat * dLat + dLng * dLng // squared euclidean is enough for ranking
+    }
+    const place = candidates.sort((a, b) => distToParis(a) - distToParis(b))[0]
 
     res.json({
       address: place.formattedAddress,
