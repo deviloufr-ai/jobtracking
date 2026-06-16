@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useCVs } from '../hooks/useCVs'
+import { aiFetch } from '../services/apiKey'
 import CVGenerator from './CVGenerator'
 
 const PROFILE_KEY = 'jobtrackr_profile'
@@ -27,11 +28,7 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob, t = (key)
   async function handleExtractProfile(cv) {
     setExtractingId(cv.id)
     try {
-      const res = await fetch('/api/extract-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cvText: cv.text })
-      })
+      const res = await aiFetch('/api/extract-profile', { cvText: cv.text })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error?.message || data.error || t('cvManagerUI.errorExtraction'))
       saveProfile({ ...data.profile, extractedFrom: cv.name })
@@ -78,11 +75,7 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob, t = (key)
         reader.readAsDataURL(file)
       })
 
-      const res = await fetch('/api/parse-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ base64, filename: file.name })
-      })
+      const res = await aiFetch('/api/parse-pdf', { base64, filename: file.name })
 
       if (!res.ok) throw new Error(t('cvManagerUI.errorReading'))
       const data = await res.json()

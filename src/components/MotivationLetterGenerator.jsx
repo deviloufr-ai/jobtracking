@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo } from 'react'
 import { useCVs } from '../hooks/useCVs'
+import { aiFetch } from '../services/apiKey'
 
 export default function MotivationLetterGenerator({ job, onClose, cvText, initialContent, onSaveLetter }) {
   const { cvs } = useCVs()
@@ -59,16 +60,12 @@ export default function MotivationLetterGenerator({ job, onClose, cvText, initia
         return
       }
 
-      const response = await fetch('/api/generate-motivation-letter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cvText: finalCVText,
-          jobDescription: jobDesc,
-          company: job.company,
-          position: job.position,
-          language
-        })
+      const response = await aiFetch('/api/generate-motivation-letter', {
+        cvText: finalCVText,
+        jobDescription: jobDesc,
+        company: job.company,
+        position: job.position,
+        language
       })
 
       if (!response.ok) {

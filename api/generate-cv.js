@@ -1,4 +1,4 @@
-import { applyCors, getClientIp, rateLimit } from './_lib/http.js'
+import { applyCors, getClientIp, rateLimit, enforceSharedKeyQuota } from './_lib/http.js'
 
 export default async function handler(req, res) {
   if (applyCors(req, res, 'POST, OPTIONS')) return
@@ -7,8 +7,13 @@ export default async function handler(req, res) {
   const { ok, retryAfter } = rateLimit({ key: `generate-cv:${getClientIp(req)}`, limit: 20, windowMs: 60_000 })
   if (!ok) { res.setHeader('Retry-After', String(retryAfter)); res.status(429).json({ error: 'Too many requests. Please slow down.' }); return }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
+  const userKey = req.body?.apiKey?.trim()
+  const apiKey = userKey || process.env.ANTHROPIC_API_KEY
   if (!apiKey) { res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' }); return }
+  if (!userKey) {
+    const quota = await enforceSharedKeyQuota(req)
+    if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
+  }
 
   const { cvText, jobDescription, company, position, language } = req.body
   if (!cvText || !jobDescription) {

@@ -19,6 +19,7 @@ Job application tracker with AI features. Built as a technical test for Publidat
 - `VITE_GOOGLE_CLIENT_ID` — Gmail OAuth client ID
 - `GOOGLE_CLIENT_SECRET` — Gmail OAuth client secret (for refresh token flow)
 - `VITE_ADZUNA_APP_ID` + `VITE_ADZUNA_APP_KEY` — Job search
+- `SHARED_KEY_TRIAL_LIMIT` (default 15) + `SHARED_KEY_WINDOW_DAYS` (default 30) — per-IP free-trial cap on the shared `ANTHROPIC_API_KEY`. Once spent, AI endpoints return `402 {code:'TRIAL_EXHAUSTED'}` and the app prompts the user to add their own key. Tracked in Supabase `shared_key_usage` (migration `003`).
 
 ## Project Structure
 ```

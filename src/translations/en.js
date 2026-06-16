@@ -605,6 +605,7 @@ export const en = {
     addKey: 'Add my API key',
     later: 'Maybe later',
     skipNote: 'You can add it anytime from Settings → API Claude.',
+    trialToast: '🔑 Free trial used up — add your Claude API key to keep using the AI features.',
   },
 
   // Settings - Followups Tab

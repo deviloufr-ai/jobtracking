@@ -132,6 +132,7 @@ export const fr = {
     addKey: 'Ajouter ma clé API',
     later: 'Plus tard',
     skipNote: "Vous pourrez l'ajouter à tout moment depuis Réglages → API Claude.",
+    trialToast: "🔑 Essai gratuit épuisé — ajoutez votre clé API Claude pour continuer à utiliser les fonctions IA.",
   },
 
   // Footer Actions

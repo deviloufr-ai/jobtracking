@@ -215,6 +215,19 @@ export default function App() {
     setActiveTab('settings')
   }
 
+  // When the shared-key free trial runs out, AI endpoints reply 402; the client
+  // signals it here. Nudge the user to add their own key (Settings → API Claude).
+  useEffect(() => {
+    const onTrialExhausted = () => {
+      setToast(t('onboarding.trialToast'))
+      setTimeout(() => setToast(null), 6000)
+      setSettingsInitialTab('api')
+      setActiveTab('settings')
+    }
+    window.addEventListener('jobtrackr:trial-exhausted', onTrialExhausted)
+    return () => window.removeEventListener('jobtrackr:trial-exhausted', onTrialExhausted)
+  }, [t])
+
   // On load: check for cached Gmail user
   useEffect(() => {
     autoReuseStoredTokens()

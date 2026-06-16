@@ -1,4 +1,4 @@
-import { applyCors, getClientIp, rateLimit } from './_lib/http.js'
+import { applyCors, getClientIp, rateLimit, enforceSharedKeyQuota } from './_lib/http.js'
 
 export default async function handler(req, res) {
   if (applyCors(req, res, 'POST, OPTIONS')) return
@@ -11,8 +11,13 @@ export default async function handler(req, res) {
     const { briefText, company, position, deadline } = req.body
     if (!briefText?.trim()) { res.status(400).json({ error: 'No brief content' }); return }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY
+    const userKey = req.body?.apiKey?.trim()
+    const apiKey = userKey || process.env.ANTHROPIC_API_KEY
     if (!apiKey) { res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' }); return }
+    if (!userKey) {
+      const quota = await enforceSharedKeyQuota(req)
+      if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
+    }
 
     const deadlineStr = deadline ? `Deadline : ${deadline}` : ''
     const prompt = `Tu es un expert en recrutement et en préparation de cas pratiques.

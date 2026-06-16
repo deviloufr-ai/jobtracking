@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { aiFetch } from '../services/apiKey'
 
 const DELIVERABLE_TYPES = [
   { key: 'github',  label: 'GitHub',   icon: '🐙' },
@@ -174,11 +175,7 @@ export default function UseCasePanel({ job, onUpdate }) {
         reader.onerror = reject
         reader.readAsDataURL(file)
       })
-      const res = await fetch('/api/parse-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ base64, filename: file.name }),
-      })
+      const res = await aiFetch('/api/parse-pdf', { base64, filename: file.name })
       const data = await res.json()
       if (data.text) setForm(f => ({ ...f, briefText: data.text }))
     } catch (e) {
@@ -192,16 +189,12 @@ export default function UseCasePanel({ job, onUpdate }) {
     setAnalyzing(true)
     setAnalysisError(null)
     try {
-      const res = await fetch('/api/analyze-usecase', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          // Cap so an oversized PDF brief can't blow past the model's context window
-          briefText: (form.briefText || uc.briefText || '').slice(0, 40000),
-          company: job.company,
-          position: job.position,
-          deadline: form.deadline || uc.deadline,
-        }),
+      const res = await aiFetch('/api/analyze-usecase', {
+        // Cap so an oversized PDF brief can't blow past the model's context window
+        briefText: (form.briefText || uc.briefText || '').slice(0, 40000),
+        company: job.company,
+        position: job.position,
+        deadline: form.deadline || uc.deadline,
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error?.message || data.error)

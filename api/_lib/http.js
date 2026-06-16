@@ -80,6 +80,91 @@ export function rateLimit({ key, limit = 30, windowMs = 60_000 }) {
   return { ok: true }
 }
 
+// ── Shared-key trial quota ──────────────────────────────────────────────────
+// When a request uses the project owner's shared ANTHROPIC_API_KEY (i.e. the
+// user did NOT supply their own key), we cap usage per IP so a keyless user gets
+// roughly one Gmail scan before being asked to add their own key.
+//
+// Tunable via env:
+//   SHARED_KEY_TRIAL_LIMIT  — max shared-key calls per IP per window (default 15)
+//   SHARED_KEY_WINDOW_DAYS  — rolling window length in days (default 30)
+//
+// Backed by the `shared_key_usage` Supabase table via the service role. If
+// Supabase isn't configured, it degrades gracefully to the in-memory limiter so
+// the trial is still bounded on a warm instance (never crashes the request).
+
+function supabaseRestConfig() {
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) return null
+  return { url: url.replace(/\/$/, ''), key }
+}
+
+/**
+ * Enforce the shared-key trial quota for this request's IP. Call this only when
+ * the request is using the shared key (no user-supplied apiKey).
+ *
+ * Returns { ok: true, used, limit } when allowed (and records the call), or
+ * { ok: false, used, limit } when the trial is exhausted — caller should
+ * respond 402 with code 'TRIAL_EXHAUSTED'.
+ */
+export async function enforceSharedKeyQuota(req, weight = 1) {
+  const limit = Number(process.env.SHARED_KEY_TRIAL_LIMIT || 15)
+  const windowMs = Number(process.env.SHARED_KEY_WINDOW_DAYS || 30) * 24 * 60 * 60 * 1000
+  const ip = getClientIp(req)
+  const cfg = supabaseRestConfig()
+
+  // Fallback: no durable store configured → best-effort in-memory cap.
+  if (!cfg) {
+    const { ok } = rateLimit({ key: `sharedtrial:${ip}`, limit, windowMs })
+    return { ok, used: ok ? 1 : limit, limit }
+  }
+
+  const headers = {
+    apikey: cfg.key,
+    Authorization: `Bearer ${cfg.key}`,
+    'Content-Type': 'application/json',
+  }
+  const rowUrl = `${cfg.url}/rest/v1/shared_key_usage?ip=eq.${encodeURIComponent(ip)}`
+
+  try {
+    // Read current usage for this IP.
+    const getRes = await fetch(`${rowUrl}&select=count,window_start`, { headers })
+    const rows = getRes.ok ? await getRes.json() : []
+    const now = Date.now()
+    const existing = rows[0]
+    const windowExpired = existing && (now - new Date(existing.window_start).getTime() > windowMs)
+
+    // New IP, or its window rolled over → start a fresh window at `weight`.
+    if (!existing || windowExpired) {
+      const body = JSON.stringify({ ip, count: weight, window_start: new Date(now).toISOString(), updated_at: new Date(now).toISOString() })
+      await fetch(`${cfg.url}/rest/v1/shared_key_usage`, {
+        method: 'POST',
+        headers: { ...headers, Prefer: 'resolution=merge-duplicates' },
+        body,
+      })
+      return { ok: weight <= limit, used: weight, limit }
+    }
+
+    const next = existing.count + weight
+    if (next > limit) {
+      return { ok: false, used: existing.count, limit }
+    }
+
+    // Within budget → increment.
+    await fetch(rowUrl, {
+      method: 'PATCH',
+      headers: { ...headers, Prefer: 'return=minimal' },
+      body: JSON.stringify({ count: next, updated_at: new Date(now).toISOString() }),
+    })
+    return { ok: true, used: next, limit }
+  } catch (err) {
+    // On any storage error, fail OPEN (don't block legitimate users) but log it.
+    console.error('shared-key quota check failed, allowing request:', err?.message)
+    return { ok: true, used: 0, limit }
+  }
+}
+
 function isPrivateIp(ip) {
   // Strip IPv6-mapped IPv4 prefix (::ffff:10.0.0.1)
   const v = ip.replace(/^::ffff:/i, '')

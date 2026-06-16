@@ -1,4 +1,5 @@
 import { JOB_BOARD_NAMES, normalize, isJobBoard } from '../constants/jobBoards'
+import { signalTrialExhausted } from './apiKey'
 
 const IS_DEV = import.meta.env.DEV
 const CLAUDE_ENDPOINT = IS_DEV ? null : '/api/claude'
@@ -123,6 +124,12 @@ async function callClaude(systemPrompt, userContent, retries = 3) {
               continue
             }
             throw lastError
+          }
+
+          // Shared-key free trial exhausted — surface a prompt, never retry.
+          if (res.status === 402) {
+            signalTrialExhausted()
+            throw new Error(data?.error || 'Free trial used up — add your Claude API key in Settings to continue.')
           }
 
           // Rate limit — wait and retry with exponential backoff

@@ -1,5 +1,5 @@
 // Vercel Serverless Function — proxy pour l'API Anthropic (évite CORS)
-import { applyCors, getClientIp, rateLimit } from './_lib/http.js'
+import { applyCors, getClientIp, rateLimit, enforceSharedKeyQuota } from './_lib/http.js'
 
 export default async function handler(req, res) {
   if (applyCors(req, res, 'POST, OPTIONS')) return
@@ -11,13 +11,19 @@ export default async function handler(req, res) {
   const apiKey = userKey || process.env.ANTHROPIC_API_KEY
   if (!apiKey) { res.status(401).json({ error: 'No API key provided. Please configure your Claude API key in Settings.' }); return }
 
-  // Rate-limit requests that bill the server's shared key to prevent abuse.
-  // Requests using a user-supplied key are not throttled here.
+  // Requests using a user-supplied key are never throttled or quota-limited.
+  // Shared-key requests get two guards: a per-minute burst limit AND a durable
+  // per-IP trial quota (≈ one Gmail scan) before the user must add their own key.
   if (!userKey) {
     const { ok, retryAfter } = rateLimit({ key: `claude:${getClientIp(req)}`, limit: 30, windowMs: 60_000 })
     if (!ok) {
       res.setHeader('Retry-After', String(retryAfter))
       res.status(429).json({ error: 'Too many requests. Please slow down or add your own Claude API key in Settings.' })
+      return
+    }
+    const quota = await enforceSharedKeyQuota(req)
+    if (!quota.ok) {
+      res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' })
       return
     }
   }
