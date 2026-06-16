@@ -322,6 +322,7 @@ export const fr = {
     you: 'Vous',
     past: 'Passé',
     upcoming: 'À venir',
+    done: 'Terminé',
   },
 
   // GmailImport

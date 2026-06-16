@@ -31,19 +31,19 @@ function formatTime(rawStart) {
 }
 
 // Returns visual state based on proximity to meeting start time
-// 'imminent' : from -5min to +3h (solid green — meeting happening now)
+// 'imminent' : from -5min to +1h (solid green — meeting happening now)
 // 'upcoming' : more than 5min away (washed-out green — soon)
-// 'done'     : past start + 3h (greyed out)
+// 'done'     : past start + 1h (greyed out)
 function getMeetingState(event) {
   if (!event.rawStart) {
     // No precise time — use date-only heuristic
     const d = new Date(event.date); d.setHours(23, 59, 59)
-    return d.getTime() + 2 * 3600 * 1000 < Date.now() ? 'done' : 'upcoming'
+    return d.getTime() < Date.now() ? 'done' : 'upcoming'
   }
   const start = new Date(event.rawStart).getTime()
   const now = Date.now()
   const diff = start - now  // ms until start (negative = started)
-  if (now > start + 3 * 3600 * 1000) return 'done'
+  if (now > start + 60 * 60 * 1000) return 'done'
   if (diff <= 5 * 60 * 1000) return 'imminent'   // within 5 min or already started
   return 'upcoming'
 }

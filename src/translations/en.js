@@ -302,6 +302,7 @@ export const en = {
     you: 'You',
     past: 'Past',
     upcoming: 'Upcoming',
+    done: 'Done',
   },
 
   // GmailImport

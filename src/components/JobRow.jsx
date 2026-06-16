@@ -477,10 +477,13 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
                       <div key={entryKey} className="flex gap-0 relative group/step mb-3">
                         {(() => {
                           const isMeeting = entry.source === 'calendar' || !!entry.meetingLink
-                          // Fix: use rawStart if available (precise time), otherwise check if date is in the past
+                          // A meeting is "done" 1h after its start (covers a typical
+                          // interview slot), at which point it greys out.
                           const isPastMeeting = isMeeting && (() => {
-                            if (entry.rawStart) {
-                              return new Date(entry.rawStart) < new Date()
+                            // Precise start: rawStart, or a date carrying a time component
+                            const start = entry.rawStart || (String(entry.date).includes('T') ? entry.date : null)
+                            if (start) {
+                              return new Date(start).getTime() + 60 * 60 * 1000 < Date.now()
                             }
                             // For date-only: meeting is past only if the date is before today
                             const today = new Date()
@@ -549,7 +552,7 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
                               <div className="flex items-center justify-between gap-2 mb-1.5">
                                 <div className="flex items-center gap-1.5">
                                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isPastMeeting ? 'bg-gray-100 text-gray-400' : isUpcomingMeeting ? 'bg-amber-100 text-amber-700' : st.color}`}>
-                                    {isPastMeeting ? '✓ ' + t('jobActions.past') : isUpcomingMeeting ? '📅 ' + t('jobActions.upcoming') : getStatusLabel(entry.status, t)}
+                                    {isPastMeeting ? '✓ ' + t('jobActions.done') : isUpcomingMeeting ? '📅 ' + t('jobActions.upcoming') : getStatusLabel(entry.status, t)}
                                   </span>
                                   <StepTips note={entry.note} t={t} />
                                 </div>
