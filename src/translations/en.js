@@ -590,7 +590,7 @@ export const en = {
   // First-time user onboarding
   onboarding: {
     welcome: 'Welcome to JobTrackerAI 👋',
-    intro: 'JobTrackerAI is powered by Claude AI. To unlock its smart features, you just need to add your own Claude API key — it stays in your browser and is never sent to our servers.',
+    intro: 'JobTrackerAI is powered by Claude AI. You can try the smart features right away with a small free trial — then add your own Claude API key to keep going. Your key stays in your browser and is never sent to our servers.',
     featuresTitle: 'What the AI does for you',
     featureGmailTitle: '📧 Automatic Gmail import',
     featureGmailDesc: 'Claude reads your inbox and turns recruiter emails into tracked applications.',
@@ -600,7 +600,7 @@ export const en = {
     featureScoreDesc: 'See how well your profile fits each posting.',
     featureCoachTitle: '✨ Interview prep & email drafts',
     featureCoachDesc: 'STAR stories, follow-up and thank-you emails written for you.',
-    keyNeeded: 'You need a Claude API key for these features to work.',
+    keyNeeded: 'After the free trial, add your own Claude API key to keep using these features.',
     getKeyHint: 'Create one for free at console.anthropic.com',
     addKey: 'Add my API key',
     later: 'Maybe later',
