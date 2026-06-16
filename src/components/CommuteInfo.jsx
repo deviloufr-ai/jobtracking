@@ -73,11 +73,11 @@ export default function CommuteInfo({ homeAddress, companyAddress, companyName }
       target="_blank"
       rel="noopener noreferrer"
       className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:underline transition-colors group"
-      title={`${commute.distanceText} · ${commute.durationText}`}
+      title={`Drive: ${commute.durationText} · ${commute.distanceText} — open in Google Maps`}
     >
       <span className="text-lg">🚗</span>
-      <span>{commute.durationMinutes}m</span>
-      <span className="text-xs text-gray-400 group-hover:text-gray-600">({commute.distanceText})</span>
+      <span className="inline-flex items-center gap-1">⏱️ {commute.durationText}</span>
+      <span className="text-xs text-gray-400 group-hover:text-gray-600">· {commute.distanceText}</span>
       <span className="text-indigo-400 ml-1">↗</span>
     </a>
   )
