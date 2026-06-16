@@ -15,7 +15,7 @@ export default function CommuteInfo({ homeAddress, companyAddress, companyName }
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch('/api/commute', {
+        const res = await fetch('/api/jobs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ homeAddress, companyAddress }),
