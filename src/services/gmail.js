@@ -23,142 +23,169 @@ function saveAccounts(map) {
 
 let accounts = loadAccounts() // { email: { token, user } }
 
-// Get sync user ID - cached in localStorage, syncs with Supabase in background
-// All devices with the same Gmail email get the same UUID
-function getSyncUserId() {
-  // Return cached value synchronously
+// ── Sync user ID resolution ───────────────────────────────────────────────────
+// The Gmail email is the single source of truth: every device, browser, and
+// incognito session logged into the SAME Gmail must converge on ONE sync UUID.
+// That email→UUID mapping lives in the Supabase `gmail_user_sync_mapping` table.
+//
+// The previous implementation returned the locally-cached UUID without ever
+// consulting the mapping table when the cache was non-empty. A fresh context
+// (incognito, a second device) therefore minted its own UUID and never
+// discovered the existing one — producing two different user IDs for the same
+// Gmail and silently breaking sync. We now ALWAYS reconcile against the mapping
+// table whenever the Gmail email is known.
+
+function normalizeCachedSyncId() {
   let syncId = localStorage.getItem(SYNC_USER_KEY)
-
-  // Handle legacy format
+  // Migrate legacy 'sync-user-<uuid>' format to a bare UUID
   if (syncId?.startsWith('sync-user-')) {
-    const pureUuid = syncId.substring('sync-user-'.length)
-    try { localStorage.setItem(SYNC_USER_KEY, pureUuid) } catch {}
-    syncId = pureUuid
+    syncId = syncId.substring('sync-user-'.length)
+    try { localStorage.setItem(SYNC_USER_KEY, syncId) } catch {}
   }
+  return syncId
+}
 
-  if (syncId) {
-    return syncId
+// Resolve the logged-in Gmail email, falling back to localStorage in case the
+// in-memory module state is stale on a fresh page load.
+function currentGmailEmail() {
+  let email = Object.values(accounts)[0]?.user?.email
+  if (!email) email = Object.values(loadAccounts())[0]?.user?.email
+  return email
+}
+
+function cacheSyncUuid(uuid) {
+  try { localStorage.setItem(SYNC_USER_KEY, uuid) } catch {}
+}
+
+// Adopt a UUID that differs from the one we were using and tell the app to
+// re-point polling / the sync coordinator at it.
+function adoptSyncUuid(uuid) {
+  cacheSyncUuid(uuid)
+  window.dispatchEvent(new CustomEvent('jobtrackr:sync-id-updated', { detail: uuid }))
+}
+
+async function countSupabaseJobs(uuid) {
+  try {
+    const { count } = await supabase
+      .from('jobs')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', uuid)
+    return count || 0
+  } catch {
+    return 0
   }
+}
 
-  // Generate new UUID if not cached (will be confirmed/replaced by Supabase lookup below)
-  const newUuid = crypto.randomUUID()
-  try { localStorage.setItem(SYNC_USER_KEY, newUuid) } catch {}
+// Make Supabase the authoritative source for this Gmail's sync UUID and return
+// the canonical value.
+//   • No mapping yet → claim it for `localUuid` (first writer wins a race), then
+//     adopt whatever ended up stored.
+//   • Mapping matches → nothing to do.
+//   • Mapping differs → the UUID that actually OWNS the data (more rows in
+//     `jobs`) wins. This lets an empty incognito session converge onto the
+//     device that holds the data, and self-heals an already-diverged account
+//     without stranding the populated one.
+async function reconcileSyncMapping(gmailEmail, localUuid) {
+  const { data: existing } = await supabase
+    .from('gmail_user_sync_mapping')
+    .select('sync_uuid')
+    .eq('gmail_email', gmailEmail)
+    .maybeSingle()
 
-  // Background sync: query and cache from Supabase
-  // This corrects the UUID if a mapping already exists for this Gmail account
-  const firstAccount = Object.values(accounts)[0]
-  const gmailEmail = firstAccount?.user?.email
-
-  if (gmailEmail) {
-    supabase
+  // No mapping row yet — claim it. ignoreDuplicates makes the first concurrent
+  // writer win; we re-read to pick up the winner if we lost the race.
+  if (!existing?.sync_uuid) {
+    await supabase
+      .from('gmail_user_sync_mapping')
+      .upsert(
+        { gmail_email: gmailEmail, sync_uuid: localUuid },
+        { onConflict: 'gmail_email', ignoreDuplicates: true }
+      )
+    const { data: after } = await supabase
       .from('gmail_user_sync_mapping')
       .select('sync_uuid')
       .eq('gmail_email', gmailEmail)
       .maybeSingle()
-      .then(({ data: existing }) => {
-        if (existing?.sync_uuid) {
-          console.log('✓ Found existing sync UUID for:', gmailEmail, 'replacing', newUuid, 'with', existing.sync_uuid)
-          // Replace the temporary UUID with the real one from Supabase
-          try { localStorage.setItem(SYNC_USER_KEY, existing.sync_uuid) } catch {}
-          // Notify coordinator to reload with correct UUID
-          window.dispatchEvent(new CustomEvent('jobtrackr:sync-id-updated', { detail: existing.sync_uuid }))
-        } else {
-          // Create/update mapping with the UUID we generated (use upsert to be idempotent)
-          supabase
-            .from('gmail_user_sync_mapping')
-            .upsert({ gmail_email: gmailEmail, sync_uuid: newUuid }, { onConflict: 'gmail_email' })
-            .then(() => console.log('✓ Created/updated sync UUID for:', gmailEmail))
-            .catch(err => console.warn('Failed to upsert sync mapping:', err))
-        }
-      })
-      .catch(err => console.warn('Error syncing UUID:', err))
+    const canonical = after?.sync_uuid || localUuid
+    if (canonical !== localUuid) adoptSyncUuid(canonical)
+    else cacheSyncUuid(canonical)
+    return canonical
   }
 
-  return newUuid
+  const mappedUuid = existing.sync_uuid
+  if (mappedUuid === localUuid) {
+    cacheSyncUuid(mappedUuid)
+    return mappedUuid
+  }
+
+  // Conflict: our local UUID differs from the canonical mapping. Let the UUID
+  // that actually holds the data win so we never strand a populated account.
+  const [localCount, mappedCount] = await Promise.all([
+    countSupabaseJobs(localUuid),
+    countSupabaseJobs(mappedUuid)
+  ])
+
+  if (localCount > mappedCount) {
+    console.log('✓ Local UUID owns more data, claiming mapping for', gmailEmail, '→', localUuid)
+    await supabase
+      .from('gmail_user_sync_mapping')
+      .upsert({ gmail_email: gmailEmail, sync_uuid: localUuid }, { onConflict: 'gmail_email' })
+    cacheSyncUuid(localUuid)
+    return localUuid
+  }
+
+  console.log('✓ Adopting canonical sync UUID for', gmailEmail, '→', mappedUuid)
+  adoptSyncUuid(mappedUuid)
+  return mappedUuid
 }
 
-// Async version that waits for Supabase lookup (fixes incognito mode sync)
+// Synchronous accessor: returns a cached UUID immediately and reconciles with
+// Supabase in the background so other devices converge. Prefer resolveSyncUserId()
+// whenever you can await — it returns the canonical UUID directly.
+function getSyncUserId() {
+  let syncId = normalizeCachedSyncId()
+  if (!syncId) {
+    syncId = crypto.randomUUID()
+    cacheSyncUuid(syncId)
+  }
+
+  const gmailEmail = currentGmailEmail()
+  if (gmailEmail) {
+    reconcileSyncMapping(gmailEmail, syncId)
+      .catch(err => console.warn('Background sync UUID reconcile failed:', err))
+  }
+
+  return syncId
+}
+
+// Async version: waits for the Supabase mapping lookup so the returned UUID is
+// the canonical one shared across every device/incognito session for this Gmail.
 export async function resolveSyncUserId() {
-  // Return cached value if available
-  let syncId = localStorage.getItem(SYNC_USER_KEY)
+  const syncId = normalizeCachedSyncId()
+  const gmailEmail = currentGmailEmail()
+  log('📧 Resolving sync UUID — gmailEmail:', gmailEmail, 'cached:', syncId)
 
-  // Handle legacy format
-  if (syncId?.startsWith('sync-user-')) {
-    const pureUuid = syncId.substring('sync-user-'.length)
-    try { localStorage.setItem(SYNC_USER_KEY, pureUuid) } catch {}
-    syncId = pureUuid
-  }
-
-  if (syncId) {
-    return syncId
-  }
-
-  // Get or obtain Gmail email for Supabase lookup
-  let firstAccount = Object.values(accounts)[0]
-  let gmailEmail = firstAccount?.user?.email
-  log('📧 Accounts in memory:', Object.keys(accounts).length, 'gmailEmail:', gmailEmail)
-
-  // If no logged-in account in memory, try reloading from localStorage (in case module state is stale)
+  // No Gmail account known yet — we can't reconcile. Reuse the cached UUID, or
+  // mint a temporary one (don't auto-popup OAuth here; the user logs in manually
+  // and we reconcile once the email is known).
   if (!gmailEmail) {
-    const storedAccounts = loadAccounts()
-    const storedAccount = Object.values(storedAccounts)[0]
-    gmailEmail = storedAccount?.user?.email
-    if (gmailEmail && !firstAccount) firstAccount = storedAccount
-    log('📧 Reloaded from localStorage:', Object.keys(storedAccounts).length, 'gmailEmail:', gmailEmail)
-  }
-
-  // If still no email, just generate a temporary UUID (don't auto-popup OAuth)
-  // User will need to click login button to connect Gmail
-  if (!gmailEmail) {
+    if (syncId) return syncId
     console.log('ℹ️ No Gmail account found on page load - user will log in manually')
     const tempUuid = crypto.randomUUID()
-    try { localStorage.setItem(SYNC_USER_KEY, tempUuid) } catch {}
+    cacheSyncUuid(tempUuid)
     return tempUuid
   }
 
-  // Now lookup or create UUID mapping using Gmail email
-  if (gmailEmail) {
-    try {
-      console.log('🔍 Looking up sync UUID for email:', gmailEmail)
-      const { data: existing } = await supabase
-        .from('gmail_user_sync_mapping')
-        .select('sync_uuid')
-        .eq('gmail_email', gmailEmail)
-        .maybeSingle()
-
-      if (existing?.sync_uuid) {
-        // Found existing mapping - use it (multi-device sync!)
-        console.log('✓ Found existing sync UUID for:', gmailEmail, '→', existing.sync_uuid)
-        try { localStorage.setItem(SYNC_USER_KEY, existing.sync_uuid) } catch {}
-        return existing.sync_uuid
-      } else {
-        // No existing mapping - create new one
-        const newUuid = crypto.randomUUID()
-        console.log('📝 Creating new sync UUID mapping for:', gmailEmail, '→', newUuid)
-        try {
-          // Use upsert to handle case where email already has a mapping (idempotent)
-          await supabase
-            .from('gmail_user_sync_mapping')
-            .upsert({ gmail_email: gmailEmail, sync_uuid: newUuid }, { onConflict: 'gmail_email' })
-          console.log('✓ Created/updated sync UUID for:', gmailEmail)
-        } catch (err) {
-          console.warn('Failed to upsert sync mapping:', err)
-        }
-        try { localStorage.setItem(SYNC_USER_KEY, newUuid) } catch {}
-        return newUuid
-      }
-    } catch (err) {
-      console.warn('Error resolving sync UUID:', err)
-      const fallbackUuid = crypto.randomUUID()
-      try { localStorage.setItem(SYNC_USER_KEY, fallbackUuid) } catch {}
-      return fallbackUuid
-    }
+  // Gmail is known — the Supabase mapping is authoritative, even if we already
+  // have a locally-cached UUID (it may be a temp UUID minted before login).
+  const localUuid = syncId || crypto.randomUUID()
+  try {
+    return await reconcileSyncMapping(gmailEmail, localUuid)
+  } catch (err) {
+    console.warn('Error resolving sync UUID:', err)
+    cacheSyncUuid(localUuid)
+    return localUuid
   }
-
-  console.warn('⚠️ No gmailEmail available, using generated UUID')
-  const fallbackUuid = crypto.randomUUID()
-  try { localStorage.setItem(SYNC_USER_KEY, fallbackUuid) } catch {}
-  return fallbackUuid
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────

@@ -24,7 +24,7 @@ import { useAutoScore } from './hooks/useAutoScore'
 import { useAutoCheckPositions } from './hooks/useAutoCheckPositions'
 import { usePolling } from './hooks/usePolling'
 import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, autoReuseStoredTokens, getSyncUserIdForSupabase, resolveSyncUserId } from './services/gmail'
-import { initializeSyncCoordinator } from './services/syncCoordinator'
+import { initializeSyncCoordinator, reinitializeSyncCoordinator } from './services/syncCoordinator'
 import JobSearch from './components/JobSearch'
 import CVManager from './components/CVManager'
 import CVViewer from './components/CVViewer'
@@ -268,6 +268,26 @@ export default function App() {
       initializeSyncCoordinator(fallbackId)
     })
   }, [showLandingPage, gmailUser, syncUserId])
+
+  // When the sync UUID is corrected after init (e.g. a fresh incognito session
+  // reconciles onto the Gmail account's existing UUID via Supabase), re-point
+  // polling and the sync coordinator at the canonical ID instead of polling a
+  // stale one forever. Without this, gmail.js could fix localStorage but the app
+  // would keep syncing under the wrong user.
+  useEffect(() => {
+    const handleSyncIdUpdated = (e) => {
+      const newId = e.detail
+      if (!newId) return
+      setSyncUserId(prev => {
+        if (prev === newId) return prev
+        console.log('🔁 Sync UUID corrected, re-pointing app:', prev, '→', newId)
+        reinitializeSyncCoordinator(newId)
+        return newId
+      })
+    }
+    window.addEventListener('jobtrackr:sync-id-updated', handleSyncIdUpdated)
+    return () => window.removeEventListener('jobtrackr:sync-id-updated', handleSyncIdUpdated)
+  }, [])
 
   // Start polling once we have the correct sync ID
   usePolling(syncUserId)

@@ -190,6 +190,24 @@ export function initializeSyncCoordinator(userId) {
   return coordinator
 }
 
+// Re-point the coordinator at a different user ID. Used when the canonical sync
+// UUID is corrected after init (e.g. a fresh incognito session reconciles onto
+// the Gmail account's existing UUID). Tears down the old coordinator's timer and
+// listeners and starts a fresh full sync under the new ID.
+export function reinitializeSyncCoordinator(userId) {
+  if (coordinator && coordinator.userId === userId) {
+    return coordinator
+  }
+
+  if (coordinator) {
+    console.log('🔁 Re-pointing SyncCoordinator to user ID:', userId)
+    coordinator.shutdown()
+    coordinator = null
+  }
+
+  return initializeSyncCoordinator(userId)
+}
+
 export function getSyncCoordinator() {
   return coordinator
 }
