@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react'
 import { STATUSES, getStatusLabel } from '../hooks/useJobs'
+import { getCompanyAddress, setCompanyAddress } from '../services/commuteStore'
 import ScoreJob from './ScoreJob'
 
 const EMPTY = { company: '', position: '', url: '', companyAddress: '', status: 'sent', date: new Date().toISOString().split('T')[0], notes: '', description: '' }
 
 export default function JobModal({ job, onSave, onClose, findDuplicate, t = (key) => key }) {
-  const [form, setForm] = useState(job ? { ...job } : { ...EMPTY })
+  // Prefer the durable commute-store address (survives Supabase polls) over the
+  // possibly-stale one on the job object.
+  const [form, setForm] = useState(job
+    ? { ...job, companyAddress: getCompanyAddress(job.id) || job.companyAddress || '' }
+    : { ...EMPTY })
   const [urlWarning, setUrlWarning] = useState(false)
   const [duplicate, setDuplicate] = useState(null)
   const [activeTab, setActiveTab] = useState('details')
@@ -36,6 +41,9 @@ export default function JobModal({ job, onSave, onClose, findDuplicate, t = (key
 
   const handleSubmit = () => {
     if (!form.company.trim()) return
+    // Persist the address to the durable commute store for existing jobs (new
+    // jobs have no id yet — their address rides on the job object via onSave).
+    if (isEdit && job?.id) setCompanyAddress(job.id, form.companyAddress)
     onSave(form)
     onClose()
   }

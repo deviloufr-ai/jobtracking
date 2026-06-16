@@ -10,6 +10,7 @@ import MotivationLetterGenerator from './MotivationLetterGenerator'
 import { ScoreBadge } from './ScoreJob'
 import CompanyAvatar from './CompanyAvatar'
 import CommuteInfo from './CommuteInfo'
+import { getCompanyAddress } from '../services/commuteStore'
 
 // Fix #7 — NOTE_TIPS moved above getTipsFromNote (was referenced before definition)
 const NOTE_TIPS = {
@@ -743,15 +744,19 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
                       <span className="truncate">{(() => { try { return new URL(job.url).hostname.replace('www.', '') } catch { return job.url } })()}</span>
                     </a>
                   )}
-                  {(homeAddress || job.companyAddress) && (
-                    <div className="mt-2">
-                      <CommuteInfo
-                        homeAddress={homeAddress}
-                        companyAddress={job.companyAddress}
-                        companyName={job.company}
-                      />
-                    </div>
-                  )}
+                  {(() => {
+                    const companyAddress = getCompanyAddress(job.id) || job.companyAddress || ''
+                    if (!homeAddress || !companyAddress) return null
+                    return (
+                      <div className="mt-2">
+                        <CommuteInfo
+                          homeAddress={homeAddress}
+                          companyAddress={companyAddress}
+                          companyName={job.company}
+                        />
+                      </div>
+                    )
+                  })()}
                   {/* CV or Motivation Letter Sections */}
                   {(job.cvSaved || (job.cvSaved && job.letterSaved)) && (
                     <div className="mt-2 pt-2 space-y-2 border-t border-gray-100">

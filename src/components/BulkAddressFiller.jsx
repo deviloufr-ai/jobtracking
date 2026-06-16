@@ -1,9 +1,10 @@
 import { useState } from 'react'
+import { setCompanyAddress } from '../services/commuteStore'
 
 // Generic / placeholder "company" names that aren't real companies to look up
 const SKIP_COMPANIES = new Set(['unknown', 'remote', 'linkedin', 'greenhouse', 'jobgether', ''])
 
-export default function BulkAddressFiller({ jobs, onUpdateJobs, t = (key) => key }) {
+export default function BulkAddressFiller({ jobs, onUpdateJob, t = (key) => key }) {
   const [isRunning, setIsRunning] = useState(false)
   const [progress, setProgress] = useState(0)
   const [results, setResults] = useState([])
@@ -78,18 +79,15 @@ export default function BulkAddressFiller({ jobs, onUpdateJobs, t = (key) => key
   }
 
   const handleApply = () => {
-    const updates = results
+    // Persist to the dedicated commute store (survives Supabase polls) and also
+    // push onto the in-memory job so an already-open row updates immediately.
+    results
       .filter(r => selectedAddresses[r.jobId])
-      .reduce((acc, r) => {
-        acc[r.jobId] = r.address
-        return acc
-      }, {})
+      .forEach(r => {
+        setCompanyAddress(r.jobId, r.address)
+        onUpdateJob?.(r.jobId, { companyAddress: r.address })
+      })
 
-    const updatedJobs = jobs.map(j =>
-      updates[j.id] ? { ...j, companyAddress: updates[j.id] } : j
-    )
-
-    onUpdateJobs(updatedJobs)
     setShowResults(false)
     setResults([])
   }

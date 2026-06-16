@@ -101,7 +101,7 @@ const getCATEGORIES = (t) => [
   { id: 'debug', label: t('settingsSidebar.debug'), icon: '🐛' },
 ]
 
-export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialTab }) {
+export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdateJob, initialTab }) {
   const { settings, updateSetting, resetSettings } = useSettings()
   const { deduplicateViaServer } = useJobs()
   const { t, language, setLanguage, availableLanguages } = useLanguage()
@@ -910,16 +910,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
                 <Card title="🔍 Fetch Company Addresses" subtitle="Search Google for company addresses">
                   <BulkAddressFiller
                     jobs={jobs}
-                    onUpdateJobs={(updatedJobs) => {
-                      updatedJobs.forEach(job => {
-                        const existing = jobs.find(j => j.id === job.id)
-                        if (existing && job.companyAddress) {
-                          existing.companyAddress = job.companyAddress
-                        }
-                      })
-                      localStorage.setItem('jobtrackr_applications', JSON.stringify(updatedJobs))
-                      window.location.reload()
-                    }}
+                    onUpdateJob={onUpdateJob}
                     t={t}
                   />
                 </Card>
