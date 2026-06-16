@@ -40,16 +40,36 @@ export function isAtsRejection(notes = '', fromEmail = '') {
   return atsMatch || isRejection
 }
 
+// Calendar-day key (YYYY-MM-DD) — string slice avoids timezone parsing pitfalls
+const historyDayKey = (d) => String(d || '').slice(0, 10)
+
+// Canonical history comparator (ascending / chronological).
+// Same-day tiebreak: a manually-added entry (carries `addedAt`) sorts AFTER
+// same-day entries that lack it, so in the reversed display it appears on top.
+export function compareHistoryEntries(a, b) {
+  const ta = new Date(a.date).getTime()
+  const tb = new Date(b.date).getTime()
+  if (historyDayKey(a.date) === historyDayKey(b.date)) {
+    const aa = a.addedAt ? new Date(a.addedAt).getTime() : null
+    const ba = b.addedAt ? new Date(b.addedAt).getTime() : null
+    if (aa !== null || ba !== null) {
+      const ka = aa ?? 0, kb = ba ?? 0
+      if (ka !== kb) return ka - kb
+    }
+  }
+  return ta - tb
+}
+
 // Helper: ensure history is always sorted by date (chronological order)
 export function sortJobHistory(job) {
   if (!job?.history?.length) return job
   // Check if already sorted to avoid unnecessary copies
-  const isSorted = job.history.every((a, i, arr) => i === 0 || new Date(arr[i-1].date) <= new Date(a.date))
+  const isSorted = job.history.every((a, i, arr) => i === 0 || compareHistoryEntries(arr[i-1], a) <= 0)
   if (isSorted) return job
   // Create new sorted array only if needed
   return {
     ...job,
-    history: [...job.history].sort((a, b) => new Date(a.date) - new Date(b.date))
+    history: [...job.history].sort(compareHistoryEntries)
   }
 }
 
@@ -1317,7 +1337,9 @@ export function useJobs() {
     const newJob = sortJobHistory({
       ...job,
       updated_at: new Date().toISOString(),
-      history: [...(job.history || []), { ...entry, status: entryStatusResolved }]
+      // addedAt records when the entry was recorded (not the event date), so a
+      // freshly-added note sorts above older same-day items in the timeline.
+      history: [...(job.history || []), { ...entry, status: entryStatusResolved, addedAt: entry.addedAt || new Date().toISOString() }]
     })
 
     setJobs(prev => prev.map(j => j.id !== id ? j : newJob))
