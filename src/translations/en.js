@@ -586,6 +586,26 @@ export const en = {
     keySaved: '✓ Saved',
   },
 
+  // First-time user onboarding
+  onboarding: {
+    welcome: 'Welcome to JobTrackerAI 👋',
+    intro: 'JobTrackerAI is powered by Claude AI. To unlock its smart features, you just need to add your own Claude API key — it stays in your browser and is never sent to our servers.',
+    featuresTitle: 'What the AI does for you',
+    featureGmailTitle: '📧 Automatic Gmail import',
+    featureGmailDesc: 'Claude reads your inbox and turns recruiter emails into tracked applications.',
+    featureCVTitle: '📄 Tailored CV generation',
+    featureCVDesc: 'Generate a CV adapted to each job offer in one click.',
+    featureScoreTitle: '🎯 Match scoring',
+    featureScoreDesc: 'See how well your profile fits each posting.',
+    featureCoachTitle: '✨ Interview prep & email drafts',
+    featureCoachDesc: 'STAR stories, follow-up and thank-you emails written for you.',
+    keyNeeded: 'You need a Claude API key for these features to work.',
+    getKeyHint: 'Create one for free at console.anthropic.com',
+    addKey: 'Add my API key',
+    later: 'Maybe later',
+    skipNote: 'You can add it anytime from Settings → API Claude.',
+  },
+
   // Settings - Followups Tab
   settingsFollowups: {
     title: 'Action deadline',

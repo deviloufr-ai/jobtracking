@@ -42,6 +42,10 @@ import { useNotificationScenarios } from './hooks/useNotificationScenarios'
 import { useDebugLogs } from './hooks/useDebugLogs'
 import LandingPage from './components/LandingPage'
 import LandingPageEN from './components/LandingPageEN'
+import OnboardingModal from './components/OnboardingModal'
+
+const ONBOARDED_KEY = 'jobtrackr_onboarded'
+const API_KEY_STORAGE = 'jobtrackr_claude_api_key'
 
 const DEFAULT_FILTERS = { search: '', statuses: {}, period: 'all' }
 const DEFAULT_SORT = { col: 'date', dir: 'desc' }
@@ -184,6 +188,32 @@ export default function App() {
   const [currentTheme, setCurrentTheme] = useState(settings.theme || 'light')
   const [selectedJobIds, setSelectedJobIds] = useState(new Set())
   const [mergeModal, setMergeModal] = useState(null)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [settingsInitialTab, setSettingsInitialTab] = useState(null)
+
+  // First-time user onboarding: when a brand-new user logs in without a Claude
+  // API key configured (and hasn't dismissed onboarding before), show the
+  // explainer modal instead of dropping them into the Gmail scan.
+  useEffect(() => {
+    if (!gmailUser) return
+    const onboarded = localStorage.getItem(ONBOARDED_KEY)
+    const hasApiKey = !!localStorage.getItem(API_KEY_STORAGE)
+    if (!onboarded && !hasApiKey) {
+      setShowOnboarding(true)
+      setShowGmail(false) // don't show the Gmail scan first
+    }
+  }, [gmailUser])
+
+  const dismissOnboarding = () => {
+    localStorage.setItem(ONBOARDED_KEY, '1')
+    setShowOnboarding(false)
+  }
+
+  const handleOnboardingAddKey = () => {
+    dismissOnboarding()
+    setSettingsInitialTab('api')
+    setActiveTab('settings')
+  }
 
   // On load: check for cached Gmail user
   useEffect(() => {
@@ -534,7 +564,11 @@ export default function App() {
     { id: 'settings', label: t('nav.tabs.settings'),     icon: '⚙️',  badge: null },
   ]
 
-  const goTab = (id) => { setActiveTab(id); setMobileMenuOpen(false) }
+  const goTab = (id) => {
+    if (id !== 'settings') setSettingsInitialTab(null)
+    setActiveTab(id)
+    setMobileMenuOpen(false)
+  }
 
   // Show landing page if no user
   if (showLandingPage) {
@@ -845,7 +879,7 @@ export default function App() {
       {/* ── Main content ───────────────────────────────────────────────────────── */}
       <main className="max-w-screen-2xl mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-24 md:pb-6">
         {activeTab === 'settings' ? (
-          <Settings jobs={jobs} syncUserId={syncUserId} onMergeDuplicates={mergeDuplicates} />
+          <Settings jobs={jobs} syncUserId={syncUserId} onMergeDuplicates={mergeDuplicates} initialTab={settingsInitialTab} />
         ) : activeTab === 'analytics' ? (
           <Analytics jobs={jobs} t={t} />
         ) : activeTab === 'cv' ? (
@@ -1084,6 +1118,7 @@ export default function App() {
       {emailDraft && <EmailDraft job={emailDraft.job} type={emailDraft.type} onClose={() => setEmailDraft(null)} onEmailSent={handleEmailSent} />}
       {viewingCV && <CVViewer job={viewingCV} onClose={() => setViewingCV(null)} />}
       {mergeModal && <MergeModal jobs={mergeModal} onConfirm={handleMergeConfirm} onCancel={() => setMergeModal(null)} t={t} />}
+      {showOnboarding && <OnboardingModal onAddKey={handleOnboardingAddKey} onSkip={dismissOnboarding} t={t} />}
 
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-5 py-2.5 rounded-full shadow-lg z-50">

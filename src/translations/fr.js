@@ -114,6 +114,26 @@ export const fr = {
     otherApplications: 'Autres candidatures',
   },
 
+  // Onboarding nouvel utilisateur
+  onboarding: {
+    welcome: 'Bienvenue sur JobTrackerAI 👋',
+    intro: "JobTrackerAI est propulsé par Claude AI. Pour activer ses fonctions intelligentes, il suffit d'ajouter votre propre clé API Claude — elle reste dans votre navigateur et n'est jamais envoyée à nos serveurs.",
+    featuresTitle: "Ce que l'IA fait pour vous",
+    featureGmailTitle: '📧 Import Gmail automatique',
+    featureGmailDesc: 'Claude lit votre boîte mail et transforme les emails de recruteurs en candidatures suivies.',
+    featureCVTitle: '📄 Génération de CV sur mesure',
+    featureCVDesc: 'Générez un CV adapté à chaque offre en un clic.',
+    featureScoreTitle: '🎯 Score de compatibilité',
+    featureScoreDesc: 'Voyez à quel point votre profil correspond à chaque annonce.',
+    featureCoachTitle: '✨ Préparation entretien & emails',
+    featureCoachDesc: 'Récits STAR, emails de relance et de remerciement rédigés pour vous.',
+    keyNeeded: 'Une clé API Claude est nécessaire pour ces fonctionnalités.',
+    getKeyHint: 'Créez-en une gratuitement sur console.anthropic.com',
+    addKey: 'Ajouter ma clé API',
+    later: 'Plus tard',
+    skipNote: "Vous pourrez l'ajouter à tout moment depuis Réglages → API Claude.",
+  },
+
   // Footer Actions
   footer: {
     mergeDuplicates: '🔀 Fusionner les doublons',

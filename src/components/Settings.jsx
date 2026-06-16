@@ -99,14 +99,14 @@ const getCATEGORIES = (t) => [
   { id: 'debug', label: t('settingsSidebar.debug'), icon: '🐛' },
 ]
 
-export default function Settings({ jobs, syncUserId, onMergeDuplicates }) {
+export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialTab }) {
   const { settings, updateSetting, resetSettings } = useSettings()
   const { deduplicateViaServer } = useJobs()
   const { t, language, setLanguage, availableLanguages } = useLanguage()
   const { cvs } = useCVs()
   const extensionInstalled = useExtensionDetect()
   const CATEGORIES = getCATEGORIES(t)
-  const [activeTab, setActiveTab] = useState('profile')
+  const [activeTab, setActiveTab] = useState(initialTab || 'profile')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
