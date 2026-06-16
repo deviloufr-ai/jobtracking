@@ -5,6 +5,7 @@ import { useJobs } from '../hooks/useJobs'
 import { useLanguage } from '../hooks/useLanguage'
 import { useCVs } from '../hooks/useCVs'
 import NotificationSettings from './NotificationSettings'
+import BulkAddressFiller from './BulkAddressFiller'
 import { supabase } from '../services/supabase'
 import { indexeddb } from '../services/indexeddb'
 import { THEMES } from '../utils/themes'
@@ -904,6 +905,24 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
                       ✓ {deleteHistoryResult.deletedCount} history entries deleted from {deleteHistoryResult.jobsAffected} application(s)
                     </p>
                   )}
+                </Card>
+
+                <Card title="🔍 Auto-fill Company Addresses" subtitle="Extract company addresses from job postings">
+                  <BulkAddressFiller
+                    jobs={jobs}
+                    onUpdateJobs={(updatedJobs) => {
+                      updatedJobs.forEach(job => {
+                        const existing = jobs.find(j => j.id === job.id)
+                        if (existing && job.companyAddress) {
+                          existing.companyAddress = job.companyAddress
+                        }
+                      })
+                      localStorage.setItem('jobtrackr_applications', JSON.stringify(updatedJobs))
+                      window.location.reload()
+                    }}
+                    apiKey={apiKey}
+                    t={t}
+                  />
                 </Card>
 
                 <Card title={t('settingsData.dangerZone')} subtitle={t('settingsData.dangerZoneSubtitle')}>
