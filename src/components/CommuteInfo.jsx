@@ -41,7 +41,10 @@ export default function CommuteInfo({ homeAddress, companyAddress, companyName }
 
   if (!homeAddress || !companyAddress) return null
 
+  // `api=1` is REQUIRED — without it Maps ignores origin/destination and opens
+  // an empty directions panel.
   const googleMapsUrl = new URLSearchParams({
+    api: '1',
     origin: homeAddress,
     destination: companyAddress,
     travelmode: 'driving',
