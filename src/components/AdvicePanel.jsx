@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { withUserApiKey } from '../services/apiKey'
 
 const IS_DEV = import.meta.env.DEV
 
@@ -62,7 +63,7 @@ async function generateAIAdvice(company, position, status, notes, history) {
   const res = await fetch('/api/claude', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+    body: JSON.stringify(withUserApiKey({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 600,
       messages: [{
@@ -85,7 +86,7 @@ Règles :
 Réponds UNIQUEMENT avec un tableau JSON de 3 strings, sans texte avant ou après, sans backticks.
 Exemple: ["Conseil 1", "Conseil 2", "Conseil 3"]`
       }]
-    })
+    }))
   })
 
   if (!res.ok) throw new Error('Erreur API')

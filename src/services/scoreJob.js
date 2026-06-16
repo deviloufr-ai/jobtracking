@@ -1,6 +1,7 @@
 // CV ↔ job-description match scoring.
 // Routed through the generic /api/claude proxy (instead of a dedicated serverless
 // function) to stay under Vercel's Hobby-plan 12-function limit.
+import { withUserApiKey } from './apiKey'
 
 function buildPrompt({ cvText, jobDescription, company, position }) {
   return `You are an expert recruiter and CV screener. Analyze how well the candidate's CV matches the job description.
@@ -48,11 +49,11 @@ export async function scoreJobMatch({ cvText, jobDescription, company, position 
   const res = await fetch('/api/claude', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+    body: JSON.stringify(withUserApiKey({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1000,
       messages: [{ role: 'user', content: buildPrompt({ cvText, jobDescription, company, position }) }],
-    }),
+    })),
   })
 
   const data = await res.json()

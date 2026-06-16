@@ -1,6 +1,7 @@
 // Enriches a job's timeline using Gmail + Calendar data
 import { fetchJobEmails } from './gmail'
 import { fetchCalendarEvents, isCalendarConnected } from './calendar'
+import { withUserApiKey } from './apiKey'
 
 const IS_DEV = import.meta.env.DEV
 
@@ -140,7 +141,7 @@ async function analyzeEmailsForTimeline(emails, companyName) {
   const res = await fetch('/api/claude', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+    body: JSON.stringify(withUserApiKey({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1500,
       messages: [{
@@ -176,7 +177,7 @@ Réponds UNIQUEMENT avec un tableau JSON valide, sans texte avant ou après, san
 Emails:
 \${emailsText}\``
       }]
-    })
+    }))
   })
 
   if (!res.ok) return []

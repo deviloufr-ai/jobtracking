@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { getStatus } from '../hooks/useJobs'
+import { withUserApiKey } from '../services/apiKey'
 
 const IS_DEV = import.meta.env.DEV
 
@@ -17,7 +18,7 @@ async function analyzeJobImage(base64Image, mimeType) {
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+    body: JSON.stringify(withUserApiKey({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1500,
       messages: [{
@@ -52,7 +53,7 @@ Réponds UNIQUEMENT avec un tableau JSON valide, sans texte avant ou après, san
           }
         ]
       }]
-    })
+    }))
   })
 
   if (!res.ok) throw new Error('Erreur API Claude')

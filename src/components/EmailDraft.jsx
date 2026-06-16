@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { detectLanguage } from '../utils/detectLanguage'
 import { isConnected, sendEmail, connectGmail, getCachedUser } from '../services/gmail'
+import { withUserApiKey } from '../services/apiKey'
 
 const IS_DEV = import.meta.env.DEV
 
@@ -212,11 +213,11 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
       const res = await fetch('/api/claude', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: JSON.stringify(withUserApiKey({
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 400,
           messages: [{ role: 'user', content: promptFn(job, profile) }]
-        })
+        }))
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error?.message || data.error || 'Erreur API')

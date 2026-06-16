@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { detectLanguage } from '../utils/detectLanguage'
+import { withUserApiKey } from '../services/apiKey'
 
 const IS_DEV = import.meta.env.DEV
 
@@ -115,11 +116,11 @@ Réponds UNIQUEMENT en JSON valide (sans backticks) :
       const res = await fetch('/api/claude', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: JSON.stringify(withUserApiKey({
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 1800,
           messages: [{ role: 'user', content: prompt }]
-        })
+        }))
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error?.message || data.error || 'Erreur API')
