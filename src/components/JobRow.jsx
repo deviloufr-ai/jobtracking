@@ -9,6 +9,7 @@ import RowActions from './RowActions'
 import MotivationLetterGenerator from './MotivationLetterGenerator'
 import { ScoreBadge } from './ScoreJob'
 import CompanyAvatar from './CompanyAvatar'
+import CommuteInfo from './CommuteInfo'
 
 // Fix #7 — NOTE_TIPS moved above getTipsFromNote (was referenced before definition)
 const NOTE_TIPS = {
@@ -102,6 +103,14 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
   const enrichTimerRef = useRef(null) // Fix #6
   const rowRef = useRef(null)
   const [checkingPosition, setCheckingPosition] = useState(false)
+  const [homeAddress, setHomeAddress] = useState(() => {
+    try {
+      const profile = JSON.parse(localStorage.getItem('jobtrackr_profile') || '{}')
+      return profile.homeAddress || ''
+    } catch {
+      return ''
+    }
+  })
 
   // Open + scroll when triggered from Prochaines étapes
   useEffect(() => {
@@ -733,6 +742,15 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
                       <span>🔗</span>
                       <span className="truncate">{(() => { try { return new URL(job.url).hostname.replace('www.', '') } catch { return job.url } })()}</span>
                     </a>
+                  )}
+                  {(homeAddress || job.companyAddress) && (
+                    <div className="mt-2">
+                      <CommuteInfo
+                        homeAddress={homeAddress}
+                        companyAddress={job.companyAddress}
+                        companyName={job.company}
+                      />
+                    </div>
                   )}
                   {/* CV or Motivation Letter Sections */}
                   {(job.cvSaved || (job.cvSaved && job.letterSaved)) && (

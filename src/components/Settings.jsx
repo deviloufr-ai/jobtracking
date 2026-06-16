@@ -24,6 +24,7 @@ const PROFILE_DEFAULTS = {
   motivation: '',
   ai_experience: '',
   recent_project: '',
+  homeAddress: '',
 }
 
 function loadProfile() {
@@ -484,6 +485,12 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
                   </Row>
                   <Row label={t('settingsProfile.education')}>
                     <TextInput value={profile.education} onChange={v => updateProfile('education', v)} placeholder="Ingénieur Arts & Métiers" />
+                  </Row>
+                </Card>
+
+                <Card title="📍 Commute Settings" subtitle="Set your home address to calculate commute times to job locations">
+                  <Row label="Home Address" hint="Used to calculate driving time to company offices">
+                    <TextInput value={profile.homeAddress} onChange={v => updateProfile('homeAddress', v)} placeholder="123 Rue de Paris, Paris, France" />
                   </Row>
                 </Card>
 

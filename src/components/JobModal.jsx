@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { STATUSES, getStatusLabel } from '../hooks/useJobs'
 import ScoreJob from './ScoreJob'
 
-const EMPTY = { company: '', position: '', url: '', status: 'sent', date: new Date().toISOString().split('T')[0], notes: '', description: '' }
+const EMPTY = { company: '', position: '', url: '', companyAddress: '', status: 'sent', date: new Date().toISOString().split('T')[0], notes: '', description: '' }
 
 export default function JobModal({ job, onSave, onClose, findDuplicate, t = (key) => key }) {
   const [form, setForm] = useState(job ? { ...job } : { ...EMPTY })
@@ -126,6 +126,18 @@ export default function JobModal({ job, onSave, onClose, findDuplicate, t = (key
                     onChange={e => set('date', e.target.value)}
                   />
                 </div>
+              </div>
+
+              {/* Company Address */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">📍 {t('jobModal.companyAddressLabel') || 'Company Address'}</label>
+                <input
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  placeholder="123 Rue de la Paix, Paris, France"
+                  value={form.companyAddress || ''}
+                  onChange={e => set('companyAddress', e.target.value)}
+                />
+                <p className="text-xs text-gray-500 mt-1">{t('jobModal.companyAddressHint') || 'Used to calculate commute time from your home'}</p>
               </div>
 
               {/* Status */}
