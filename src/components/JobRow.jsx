@@ -374,7 +374,8 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
         <td className="py-3.5 px-4 text-xs text-gray-500 whitespace-nowrap">
           {(() => {
             const lastEntry = job.history?.length
-              ? job.history[job.history.length - 1].date
+              ? job.history.reduce((latest, h) =>
+                  new Date(h.date) > new Date(latest) ? h.date : latest, job.history[0].date)
               : null
             const lastDate = lastEntry || job.updatedAt || job.date
             const showBoth = lastEntry && lastEntry !== job.date

@@ -52,8 +52,15 @@ function sortJobs(jobs, sort) {
   sorted.sort((a, b) => {
     let va, vb
     if (col === 'date') {
-      // Sort by last activity date (last history entry), same as what's displayed in the Date column
-      const lastDate = j => j.history?.length ? j.history[j.history.length - 1].date : j.date
+      // Sort by last activity, date AND time. History entries carry their time
+      // inside `date` as an ISO datetime (e.g. 2026-06-02T14:30:00), so we key
+      // off the chronologically latest entry (max timestamp) — not the last
+      // array slot — so same-day rows order by their time.
+      const lastDate = j => {
+        if (!j.history?.length) return j.date
+        return j.history.reduce((latest, h) =>
+          new Date(h.date) > new Date(latest) ? h.date : latest, j.history[0].date)
+      }
       va = new Date(lastDate(a)); vb = new Date(lastDate(b))
     }
     if (col === 'company') { va = a.company.toLowerCase(); vb = b.company.toLowerCase() }
