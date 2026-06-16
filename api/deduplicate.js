@@ -34,7 +34,8 @@ export default async function handler(req, res) {
       headers: {
         'apikey': serviceKey,
         'Authorization': `Bearer ${serviceKey}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       }
     })
 
@@ -99,7 +100,8 @@ export default async function handler(req, res) {
         headers: {
           'apikey': serviceKey,
           'Authorization': `Bearer ${serviceKey}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         }
       })
 
