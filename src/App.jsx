@@ -485,7 +485,9 @@ export default function App() {
     const job = jobs.find(j => j.id === id)
     // Sort history by date (chronological order)
     const sorted = [...history].sort((a, b) => new Date(a.date) - new Date(b.date))
-    updateJob(id, { history: sorted })
+    // Extract status from most recent history entry, fallback to current job.status
+    const latestStatus = sorted.length > 0 && sorted[sorted.length - 1].status ? sorted[sorted.length - 1].status : job?.status
+    updateJob(id, { history: sorted, status: latestStatus })
 
     // Show notification for both additions and deletions
     if (job) {
