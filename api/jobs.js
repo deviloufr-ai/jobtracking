@@ -102,9 +102,65 @@ async function getFranceTravailToken() {
   }
 }
 
-export default async function handler(req, res) {
-  if (applyCors(req, res, 'GET, OPTIONS')) return
+async function handleCommute(req, res) {
+  const { homeAddress, companyAddress } = req.body
 
+  if (!homeAddress || !companyAddress) {
+    return res.status(400).json({ error: 'Both homeAddress and companyAddress are required' })
+  }
+
+  if (!process.env.GOOGLE_MAPS_API_KEY) {
+    return res.status(500).json({ error: 'Google Maps API key not configured' })
+  }
+
+  try {
+    const params = new URLSearchParams({
+      origins: homeAddress,
+      destinations: companyAddress,
+      mode: 'driving',
+      key: process.env.GOOGLE_MAPS_API_KEY,
+    })
+
+    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?${params}`
+    const response = await fetch(url)
+    const data = await response.json()
+
+    if (data.status !== 'OK') {
+      return res.status(400).json({
+        error: `Google Maps API error: ${data.status}`,
+        message: data.error_message || 'Failed to calculate commute',
+      })
+    }
+
+    const result = data.rows[0]?.elements[0]
+    if (!result || result.status !== 'OK') {
+      return res.status(400).json({
+        error: 'Could not find route between addresses',
+        message: result?.status || 'Unknown error',
+      })
+    }
+
+    res.json({
+      durationMinutes: Math.round(result.duration.value / 60),
+      distanceKm: parseFloat((result.distance.value / 1000).toFixed(1)),
+      durationText: result.duration.text,
+      distanceText: result.distance.text,
+    })
+  } catch (error) {
+    console.error('Commute API error:', error)
+    res.status(500).json({ error: error.message || 'Failed to calculate commute' })
+  }
+}
+
+export default async function handler(req, res) {
+  if (applyCors(req, res, 'GET, POST, OPTIONS')) return
+
+  // Handle commute calculation (POST)
+  if (req.method === 'POST') {
+    return handleCommute(req, res)
+  }
+
+  // Handle job search (GET)
   const { provider = 'francetravail', query = '', location = '', page = 1, per_page = 20 } = req.query
 
   try {
