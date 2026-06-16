@@ -1,13 +1,20 @@
 import { useState } from 'react'
 
+// Generic / placeholder "company" names that aren't real companies to look up
+const SKIP_COMPANIES = new Set(['unknown', 'remote', 'linkedin', 'greenhouse', 'jobgether', ''])
+
 export default function BulkAddressFiller({ jobs, onUpdateJobs, t = (key) => key }) {
   const [isRunning, setIsRunning] = useState(false)
   const [progress, setProgress] = useState(0)
   const [results, setResults] = useState([])
   const [showResults, setShowResults] = useState(false)
   const [selectedAddresses, setSelectedAddresses] = useState({})
+  const [errorReason, setErrorReason] = useState(null)
 
-  const jobsNeedingAddress = jobs.filter(j => j.description && !j.companyAddress)
+  // Google Places only needs the company name — not a job description.
+  const jobsNeedingAddress = jobs.filter(j =>
+    j.company && !j.companyAddress && !SKIP_COMPANIES.has(j.company.trim().toLowerCase())
+  )
 
   if (!jobsNeedingAddress.length) {
     return (
@@ -21,34 +28,51 @@ export default function BulkAddressFiller({ jobs, onUpdateJobs, t = (key) => key
     setIsRunning(true)
     setProgress(0)
     setResults([])
+    setErrorReason(null)
     const extracted = []
+    const addressByCompany = new Map() // cache: same company looked up once
+    let firstReason = null
 
     for (let i = 0; i < jobsNeedingAddress.length; i++) {
       const job = jobsNeedingAddress[i]
       setProgress(Math.round((i / jobsNeedingAddress.length) * 100))
 
+      const key = job.company.trim().toLowerCase()
       try {
-        // Fetch company address from Google Places
-        const res = await fetch('/api/jobs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ companyName: job.company })
-        })
+        let address = addressByCompany.get(key)
+        if (address === undefined) {
+          const res = await fetch('/api/jobs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ companyName: job.company })
+          })
+          const data = await res.json().catch(() => ({}))
 
-        if (res.ok) {
-          const data = await res.json()
-          if (data.address) {
-            extracted.push({ jobId: job.id, company: job.company, address: data.address, position: job.position })
-            setSelectedAddresses(prev => ({ ...prev, [job.id]: true }))
+          if (!res.ok) {
+            // 4xx/5xx → capture the server error (e.g. key not configured)
+            if (!firstReason) firstReason = data.error || `HTTP ${res.status}`
+            address = null
+          } else {
+            // 200 but address may be null when Google denied/zero-results
+            if (!data.address && data.reason && !firstReason) firstReason = data.reason
+            address = data.address || null
           }
+          addressByCompany.set(key, address)
+        }
+
+        if (address) {
+          extracted.push({ jobId: job.id, company: job.company, address, position: job.position })
+          setSelectedAddresses(prev => ({ ...prev, [job.id]: true }))
         }
       } catch (e) {
         console.error(`Failed for ${job.company}:`, e.message)
+        if (!firstReason) firstReason = e.message
       }
     }
 
     setProgress(100)
     setResults(extracted)
+    setErrorReason(extracted.length === 0 ? firstReason : null)
     setShowResults(true)
     setIsRunning(false)
   }
@@ -102,11 +126,15 @@ export default function BulkAddressFiller({ jobs, onUpdateJobs, t = (key) => key
             }`}>
               {results.length > 0
                 ? `✓ Found ${results.length} address${results.length !== 1 ? 'es' : ''}`
-                : '⚠️ No addresses found in job descriptions'}
+                : '⚠️ No addresses found'}
             </p>
             {results.length === 0 && (
               <p className="text-xs text-amber-700 mt-1">
-                No addresses found. Try adding them manually or check company websites.
+                {errorReason
+                  ? <>Google returned: <code className="font-mono">{errorReason}</code>. {errorReason.includes('REQUEST_DENIED') || errorReason.includes('not configured')
+                      ? 'Check that the Places API is enabled and the API key has no HTTP-referrer restriction (server-side calls need an IP/none or API-only restriction).'
+                      : 'Try again or add addresses manually.'}</>
+                  : 'No addresses found. Try adding them manually or check company websites.'}
               </p>
             )}
           </div>
