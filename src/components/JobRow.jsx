@@ -10,7 +10,8 @@ import MotivationLetterGenerator from './MotivationLetterGenerator'
 import { ScoreBadge } from './ScoreJob'
 import CompanyAvatar from './CompanyAvatar'
 import CommuteInfo from './CommuteInfo'
-import { getCompanyAddress } from '../services/commuteStore'
+import { getCompanyAddress, setCompanyAddress } from '../services/commuteStore'
+import { searchCompanyAddress } from '../services/googlePlaces'
 
 // Fix #7 — NOTE_TIPS moved above getTipsFromNote (was referenced before definition)
 const NOTE_TIPS = {
@@ -112,6 +113,29 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
       return ''
     }
   })
+  // Commute company address (durable store, falls back to the job object)
+  const [companyAddr, setCompanyAddr] = useState(() => getCompanyAddress(job.id) || job.companyAddress || '')
+  const [fetchingAddr, setFetchingAddr] = useState(false)
+  const [addrError, setAddrError] = useState(null)
+
+  const handleFetchAddress = async () => {
+    setFetchingAddr(true)
+    setAddrError(null)
+    try {
+      const { address } = await searchCompanyAddress(job.company)
+      if (address) {
+        setCompanyAddress(job.id, address)
+        setCompanyAddr(address)
+        onUpdateJob?.(job.id, { companyAddress: address })
+      } else {
+        setAddrError('Adresse introuvable')
+      }
+    } catch (e) {
+      setAddrError(e.message || 'Échec de la recherche')
+    } finally {
+      setFetchingAddr(false)
+    }
+  }
 
   // Open + scroll when triggered from Prochaines étapes
   useEffect(() => {
@@ -744,19 +768,32 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
                       <span className="truncate">{(() => { try { return new URL(job.url).hostname.replace('www.', '') } catch { return job.url } })()}</span>
                     </a>
                   )}
-                  {(() => {
-                    const companyAddress = getCompanyAddress(job.id) || job.companyAddress || ''
-                    if (!homeAddress || !companyAddress) return null
-                    return (
-                      <div className="mt-2">
-                        <CommuteInfo
-                          homeAddress={homeAddress}
-                          companyAddress={companyAddress}
-                          companyName={job.company}
-                        />
+                  <div className="mt-2">
+                    {companyAddr && homeAddress ? (
+                      <CommuteInfo
+                        homeAddress={homeAddress}
+                        companyAddress={companyAddr}
+                        companyName={job.company}
+                      />
+                    ) : companyAddr && !homeAddress ? (
+                      <p className="text-xs text-gray-400">
+                        🚗 Ajoute ton adresse personnelle dans Réglages → Profil pour voir le temps de trajet.
+                      </p>
+                    ) : (
+                      <div>
+                        <button
+                          onClick={e => { e.stopPropagation(); handleFetchAddress() }}
+                          disabled={fetchingAddr}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-lg hover:bg-indigo-100 disabled:opacity-50 transition-colors"
+                        >
+                          {fetchingAddr
+                            ? <><span className="w-3 h-3 border border-indigo-300 border-t-indigo-600 rounded-full animate-spin" /> Recherche…</>
+                            : <>🚗 Calculer le temps de trajet</>}
+                        </button>
+                        {addrError && <p className="text-xs text-red-500 mt-1">{addrError}</p>}
                       </div>
-                    )
-                  })()}
+                    )}
+                  </div>
                   {/* CV or Motivation Letter Sections */}
                   {(job.cvSaved || (job.cvSaved && job.letterSaved)) && (
                     <div className="mt-2 pt-2 space-y-2 border-t border-gray-100">

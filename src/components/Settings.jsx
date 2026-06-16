@@ -5,7 +5,6 @@ import { useJobs } from '../hooks/useJobs'
 import { useLanguage } from '../hooks/useLanguage'
 import { useCVs } from '../hooks/useCVs'
 import NotificationSettings from './NotificationSettings'
-import BulkAddressFiller from './BulkAddressFiller'
 import { supabase } from '../services/supabase'
 import { indexeddb } from '../services/indexeddb'
 import { THEMES } from '../utils/themes'
@@ -101,7 +100,7 @@ const getCATEGORIES = (t) => [
   { id: 'debug', label: t('settingsSidebar.debug'), icon: '🐛' },
 ]
 
-export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdateJob, initialTab }) {
+export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialTab }) {
   const { settings, updateSetting, resetSettings } = useSettings()
   const { deduplicateViaServer } = useJobs()
   const { t, language, setLanguage, availableLanguages } = useLanguage()
@@ -905,14 +904,6 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                       ✓ {deleteHistoryResult.deletedCount} history entries deleted from {deleteHistoryResult.jobsAffected} application(s)
                     </p>
                   )}
-                </Card>
-
-                <Card title="🔍 Fetch Company Addresses" subtitle="Search Google for company addresses">
-                  <BulkAddressFiller
-                    jobs={jobs}
-                    onUpdateJob={onUpdateJob}
-                    t={t}
-                  />
                 </Card>
 
                 <Card title={t('settingsData.dangerZone')} subtitle={t('settingsData.dangerZoneSubtitle')}>
