@@ -116,6 +116,8 @@ async function handlePlaceSearch(req, res) {
 
   try {
     // Places API (New) — Text Search. Uses POST + field mask + X-Goog-Api-Key.
+    // Restrict to metropolitan France: regionCode + a bounding-box
+    // locationRestriction so we don't get same-named companies worldwide.
     console.log('Searching for:', companyName)
     const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
       method: 'POST',
@@ -124,7 +126,17 @@ async function handlePlaceSearch(req, res) {
         'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
         'X-Goog-FieldMask': 'places.formattedAddress,places.displayName',
       },
-      body: JSON.stringify({ textQuery: companyName }),
+      body: JSON.stringify({
+        textQuery: companyName,
+        regionCode: 'FR',
+        languageCode: 'fr',
+        locationRestriction: {
+          rectangle: {
+            low: { latitude: 41.3, longitude: -5.2 },
+            high: { latitude: 51.1, longitude: 9.6 },
+          },
+        },
+      }),
     })
 
     const data = await response.json()
