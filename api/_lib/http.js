@@ -224,3 +224,23 @@ export async function assertSafeUrl(rawUrl) {
   }
   return url.toString()
 }
+
+/**
+ * SSRF-safe fetch for user-supplied URLs. Follows redirects MANUALLY, running
+ * assertSafeUrl on every hop, so a public URL can't 30x-redirect into a private
+ * / metadata host (the bypass left open by fetch's default redirect:'follow').
+ * Returns the final Response (with redirects already resolved).
+ */
+export async function safeFetch(rawUrl, init = {}, { maxRedirects = 5 } = {}) {
+  let current = await assertSafeUrl(rawUrl)
+  for (let i = 0; i <= maxRedirects; i++) {
+    const res = await fetch(current, { ...init, redirect: 'manual' })
+    // Not a redirect → this is the final response.
+    if (res.status < 300 || res.status >= 400) return res
+    const location = res.headers.get('location')
+    if (!location) return res
+    // Resolve relative redirects against the current URL, then re-validate.
+    current = await assertSafeUrl(new URL(location, current).toString())
+  }
+  throw new Error('Too many redirects')
+}

@@ -1,4 +1,4 @@
-import { applyCors, assertSafeUrl } from './_lib/http.js'
+import { applyCors, assertSafeUrl, safeFetch } from './_lib/http.js'
 
 export default async function handler(req, res) {
   if (applyCors(req, res, 'POST, OPTIONS')) return
@@ -7,17 +7,18 @@ export default async function handler(req, res) {
   const { url } = req.body
   if (!url) { res.status(400).json({ error: 'URL required' }); return }
 
-  // SSRF guard: only allow public http(s) URLs (blocks internal/metadata hosts).
-  let safeUrl
+  // SSRF guard: validate the URL up-front so a bad scheme/host fails with 400.
   try {
-    safeUrl = await assertSafeUrl(url)
+    await assertSafeUrl(url)
   } catch (e) {
     res.status(400).json({ error: e.message })
     return
   }
 
   try {
-    const response = await fetch(safeUrl, {
+    // safeFetch re-validates every redirect hop so the guard can't be bypassed
+    // by a public URL redirecting into a private/metadata host.
+    const response = await safeFetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': 'text/html,application/xhtml+xml',

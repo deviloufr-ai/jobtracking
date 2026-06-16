@@ -1524,6 +1524,9 @@ export function useJobs() {
   const cleanupHistoryDuplicates = () => {
     console.log('🧹 Starting history cleanup for all jobs...')
     let cleanedCount = 0
+    // Collect only the jobs that actually changed so we re-sync the CLEANED
+    // result (not the stale pre-cleanup closure value of `jobs`).
+    const changed = []
 
     setJobs(prev => {
       const cleaned = prev.map(job => {
@@ -1535,7 +1538,9 @@ export function useJobs() {
         if (deduped.length < originalLength) {
           cleanedCount++
           console.log(`  ✓ ${job.company}: ${originalLength} → ${deduped.length} entries`)
-          return { ...job, history: deduped, updated_at: new Date().toISOString() }
+          const updated = { ...job, history: deduped, updated_at: new Date().toISOString() }
+          changed.push(updated)
+          return updated
         }
         return job
       })
@@ -1544,13 +1549,13 @@ export function useJobs() {
       return cleaned
     })
 
-    // Re-sync all jobs to Supabase
+    // Re-sync only the cleaned jobs to Supabase.
     const coordinator = getSyncCoordinator()
-    if (coordinator) {
+    if (coordinator && changed.length > 0) {
       setTimeout(() => {
-        console.log('📤 Re-syncing cleaned jobs to Supabase...')
-        jobs.forEach(job => {
-          coordinator.mutate('jobs', 'update', job).catch(err => console.error('Failed to sync:', err))
+        console.log(`📤 Re-syncing ${changed.length} cleaned job(s) to Supabase...`)
+        changed.forEach(job => {
+          coordinator.mutate('jobs', 'update', job, { syncHistory: true }).catch(err => console.error('Failed to sync:', err))
         })
       }, 500)
     }

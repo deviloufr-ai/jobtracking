@@ -30,7 +30,21 @@ export default async function handler(req, res) {
 
   try {
     const { model, max_tokens, system, messages, tools, tool_choice } = req.body
-    const safeBody = { model, max_tokens, system, messages }
+
+    // When billing the shared key, restrict cost-per-call: force an allowlisted
+    // (cheap) model and clamp max_tokens. User-key requests are unrestricted.
+    const SHARED_KEY_MODELS = new Set([
+      'claude-haiku-4-5-20251001',
+      'claude-3-5-haiku-20241022',
+    ])
+    const safeModel = userKey
+      ? model
+      : (SHARED_KEY_MODELS.has(model) ? model : 'claude-haiku-4-5-20251001')
+    const safeMaxTokens = userKey
+      ? max_tokens
+      : Math.min(Number(max_tokens) || 2000, 4000)
+
+    const safeBody = { model: safeModel, max_tokens: safeMaxTokens, system, messages }
     if (tools) safeBody.tools = tools
     if (tool_choice) safeBody.tool_choice = tool_choice
 

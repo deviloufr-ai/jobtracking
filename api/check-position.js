@@ -1,4 +1,4 @@
-import { assertSafeUrl } from './_lib/http.js'
+import { assertSafeUrl, safeFetch } from './_lib/http.js'
 
 const CLOSED_INDICATORS = [
   'position closed', 'job closed', 'this position is closed',
@@ -105,12 +105,13 @@ export default async function handler(req, res) {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 10000)
 
-    const response = await fetch(safeUrl, {
+    // safeFetch follows redirects manually, re-validating each hop, so a public
+    // URL can't redirect into a private/metadata host (SSRF bypass).
+    const response = await safeFetch(safeUrl, {
       signal: controller.signal,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       },
-      redirect: 'follow',
     })
     clearTimeout(timeout)
 

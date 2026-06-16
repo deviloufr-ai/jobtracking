@@ -47,7 +47,6 @@ function detectInseeCode(location) {
     'boulogne-billancourt': '92012',
     'saint-denis': '93066',
     'versailles': '78646',
-    'le mans': '72181',
   }
 
   return inseeMap[query] || null

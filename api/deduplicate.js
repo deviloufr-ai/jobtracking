@@ -6,19 +6,27 @@ export default async function handler(req, res) {
   try {
     console.log('📨 Deduplicate request received')
 
-    const { userId, supabaseUrl } = req.body
+    const { userId } = req.body
     if (!userId) {
       return res.status(400).json({ error: 'Missing userId' })
     }
-    if (!supabaseUrl) {
-      return res.status(400).json({ error: 'Missing supabaseUrl' })
+    // Basic shape check so a malformed userId can't be smuggled into the REST filter.
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      return res.status(400).json({ error: 'Invalid userId' })
     }
 
     console.log(`🔄 Deduplicating for user: ${userId}`)
 
-    // Get service key from environment
+    // Resolve Supabase target from SERVER env only. NEVER trust a URL from the
+    // request body — doing so would let a caller redirect the service-role key
+    // (full DB admin) to an arbitrary host (credential exfiltration).
+    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
+    if (!supabaseUrl) {
+      console.error('❌ Missing SUPABASE_URL')
+      return res.status(500).json({ error: 'Supabase URL not configured' })
+    }
     if (!serviceKey) {
       console.error('❌ Missing SUPABASE_SERVICE_ROLE_KEY')
       return res.status(500).json({ error: 'Service key not configured' })
