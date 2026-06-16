@@ -110,7 +110,8 @@ async function handlePlaceSearch(req, res) {
   }
 
   if (!process.env.GOOGLE_MAPS_API_KEY) {
-    return res.status(500).json({ error: 'Google Maps API key not configured' })
+    console.error('GOOGLE_MAPS_API_KEY not configured in Vercel')
+    return res.status(500).json({ error: 'Google Maps API key not configured in Vercel environment' })
   }
 
   try {
@@ -122,14 +123,15 @@ async function handlePlaceSearch(req, res) {
     })
 
     const url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?${params}`
+    console.log('Searching for:', companyName)
     const response = await fetch(url)
     const data = await response.json()
 
+    console.log('Google Places response status:', data.status, 'candidates:', data.candidates?.length)
+
     if (data.status !== 'OK' || !data.candidates?.length) {
-      return res.status(404).json({
-        error: 'No results found',
-        details: data.status
-      })
+      // Return 200 with null address so UI knows it's not an error
+      return res.status(200).json({ address: null, reason: `Google Places: ${data.status}` })
     }
 
     const result = data.candidates[0]
