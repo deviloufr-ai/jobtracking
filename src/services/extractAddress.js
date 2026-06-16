@@ -28,13 +28,20 @@ export async function extractCompanyAddress(company, description, url, apiKey) {
       body: JSON.stringify({
         apiKey,
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 200,
-        system: `Extract the office/work location address from job postings.
-Return ONLY the address (e.g., "123 Main St, Paris, France").
-If no address found, return "NOT_FOUND".`,
+        max_tokens: 300,
+        system: `You extract office/work location addresses from job postings and company websites.
+Return ONLY the address in a standard format (e.g., "123 Main St, Paris, France").
+Look for any of these keywords: office, location, address, based, headquarters, HQ, workplace, site, center, place.
+If you can find a partial address (city, region) even without street address, return it.
+If no location info found, return "NOT_FOUND".
+Do NOT make up addresses.`,
         messages: [{
           role: 'user',
-          content: `Company: ${company}\n\nExtract the address from:\n${content}`
+          content: `Company: ${company}
+
+Find the work location/office address:
+
+${content.slice(0, 4000)}`
         }]
       })
     })

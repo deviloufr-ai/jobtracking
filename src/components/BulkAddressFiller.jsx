@@ -79,6 +79,9 @@ export default function BulkAddressFiller({ jobs, onUpdateJobs, apiKey, t = (key
           <p className="text-sm text-gray-600">
             Found <strong>{jobsNeedingAddress.length}</strong> jobs with descriptions but no company address.
           </p>
+          <p className="text-xs text-gray-500">
+            This will use Claude to extract addresses from job postings. Works best when job descriptions mention office locations.
+          </p>
           <button
             onClick={handleFillAddresses}
             disabled={isRunning}
@@ -89,42 +92,72 @@ export default function BulkAddressFiller({ jobs, onUpdateJobs, apiKey, t = (key
         </>
       ) : (
         <>
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-            <p className="text-sm font-medium text-green-800">✓ Found {results.length} addresses</p>
+          <div className={`rounded-lg p-3 ${
+            results.length > 0
+              ? 'bg-green-50 border border-green-200'
+              : 'bg-amber-50 border border-amber-200'
+          }`}>
+            <p className={`text-sm font-medium ${
+              results.length > 0
+                ? 'text-green-800'
+                : 'text-amber-800'
+            }`}>
+              {results.length > 0
+                ? `✓ Found ${results.length} address${results.length !== 1 ? 'es' : ''}`
+                : '⚠️ No addresses found in job descriptions'}
+            </p>
+            {results.length === 0 && (
+              <p className="text-xs text-amber-700 mt-1">
+                Most job postings don't include office addresses. Try adding them manually or extracting from company websites.
+              </p>
+            )}
           </div>
 
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {results.map(r => (
-              <label key={r.jobId} className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
-                <input
-                  type="checkbox"
-                  checked={selectedAddresses[r.jobId] || false}
-                  onChange={e => setSelectedAddresses(prev => ({ ...prev, [r.jobId]: e.target.checked }))}
-                  className="mt-1 accent-indigo-600"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800">{r.company}</p>
-                  <p className="text-xs text-gray-600">{r.address}</p>
-                </div>
-              </label>
-            ))}
-          </div>
+          {results.length > 0 ? (
+            <>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {results.map(r => (
+                  <label key={r.jobId} className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
+                    <input
+                      type="checkbox"
+                      checked={selectedAddresses[r.jobId] || false}
+                      onChange={e => setSelectedAddresses(prev => ({ ...prev, [r.jobId]: e.target.checked }))}
+                      className="mt-1 accent-indigo-600"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800">{r.company}</p>
+                      <p className="text-xs text-gray-600">{r.address}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
 
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowResults(false)}
-              className="flex-1 text-sm font-medium text-gray-600 bg-white border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleApply}
-              disabled={!Object.values(selectedAddresses).some(v => v)}
-              className="flex-1 text-sm font-medium bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
-            >
-              ✓ Apply Selected
-            </button>
-          </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowResults(false)}
+                  className="flex-1 text-sm font-medium text-gray-600 bg-white border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleApply}
+                  disabled={!Object.values(selectedAddresses).some(v => v)}
+                  className="flex-1 text-sm font-medium bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+                >
+                  ✓ Apply Selected
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowResults(false)}
+                className="flex-1 text-sm font-medium text-gray-600 bg-white border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                ✕ Close
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>
