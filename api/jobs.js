@@ -102,6 +102,47 @@ async function getFranceTravailToken() {
   }
 }
 
+async function handlePlaceSearch(req, res) {
+  const { companyName } = req.body
+
+  if (!companyName?.trim()) {
+    return res.status(400).json({ error: 'Company name is required' })
+  }
+
+  if (!process.env.GOOGLE_MAPS_API_KEY) {
+    return res.status(500).json({ error: 'Google Maps API key not configured' })
+  }
+
+  try {
+    const params = new URLSearchParams({
+      input: companyName,
+      inputtype: 'textquery',
+      fields: 'formatted_address,geometry,name',
+      key: process.env.GOOGLE_MAPS_API_KEY,
+    })
+
+    const url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?${params}`
+    const response = await fetch(url)
+    const data = await response.json()
+
+    if (data.status !== 'OK' || !data.candidates?.length) {
+      return res.status(404).json({
+        error: 'No results found',
+        details: data.status
+      })
+    }
+
+    const result = data.candidates[0]
+    res.json({
+      address: result.formatted_address,
+      name: result.name,
+    })
+  } catch (error) {
+    console.error('Place search error:', error)
+    res.status(500).json({ error: error.message || 'Failed to search for company' })
+  }
+}
+
 async function handleCommute(req, res) {
   const { homeAddress, companyAddress } = req.body
 
@@ -155,8 +196,13 @@ async function handleCommute(req, res) {
 export default async function handler(req, res) {
   if (applyCors(req, res, 'GET, POST, OPTIONS')) return
 
-  // Handle commute calculation (POST)
+  // Handle POST requests (commute or place search)
   if (req.method === 'POST') {
+    const { companyName } = req.body
+    // Route to place search if companyName is present, otherwise commute
+    if (companyName) {
+      return handlePlaceSearch(req, res)
+    }
     return handleCommute(req, res)
   }
 
