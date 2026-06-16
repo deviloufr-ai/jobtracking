@@ -115,29 +115,35 @@ async function handlePlaceSearch(req, res) {
   }
 
   try {
-    const params = new URLSearchParams({
-      input: companyName,
-      inputtype: 'textquery',
-      fields: 'formatted_address,geometry,name',
-      key: process.env.GOOGLE_MAPS_API_KEY,
+    // Places API (New) — Text Search. Uses POST + field mask + X-Goog-Api-Key.
+    console.log('Searching for:', companyName)
+    const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
+        'X-Goog-FieldMask': 'places.formattedAddress,places.displayName',
+      },
+      body: JSON.stringify({ textQuery: companyName }),
     })
 
-    const url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?${params}`
-    console.log('Searching for:', companyName)
-    const response = await fetch(url)
     const data = await response.json()
 
-    console.log('Google Places response status:', data.status, 'candidates:', data.candidates?.length)
-
-    if (data.status !== 'OK' || !data.candidates?.length) {
-      // Return 200 with null address so UI knows it's not an error
-      return res.status(200).json({ address: null, reason: `Google Places: ${data.status}` })
+    // New API returns an error object (not a `status` string) on failure.
+    if (!response.ok) {
+      const reason = data.error?.status || data.error?.message || `HTTP ${response.status}`
+      console.log('Places API (New) error:', reason)
+      return res.status(200).json({ address: null, reason: `Google Places: ${reason}` })
     }
 
-    const result = data.candidates[0]
+    const place = data.places?.[0]
+    if (!place?.formattedAddress) {
+      return res.status(200).json({ address: null, reason: 'Google Places: ZERO_RESULTS' })
+    }
+
     res.json({
-      address: result.formatted_address,
-      name: result.name,
+      address: place.formattedAddress,
+      name: place.displayName?.text || companyName,
     })
   } catch (error) {
     console.error('Place search error:', error)
