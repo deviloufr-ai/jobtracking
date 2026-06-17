@@ -238,6 +238,21 @@ class PollManager {
       const jobId = base.id || local.id || remoteConverted.id
       const cleaned = filterDeletedHistory(jobId, ordered)
       const history = deduplicateHistory([{ history: cleaned }])[0].history
+
+      // Check if remote has genuinely new history entries (with dates newer than local's latest)
+      // If not, preserve local status to avoid overwriting user edits with stale remote data
+      const localLatestDate = localHistory.length > 0
+        ? new Date(localHistory[localHistory.length - 1].date).getTime()
+        : 0
+      const remoteHasNewEntries = remoteHistory.some(
+        h => new Date(h.date).getTime() > localLatestDate
+      )
+
+      // If base came from remote but there are NO new entries, use local status instead
+      if (base === remoteConverted && !remoteHasNewEntries) {
+        return { ...base, history, status: local.status }
+      }
+
       return { ...base, history }
     }
 
