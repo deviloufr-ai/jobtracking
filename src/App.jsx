@@ -243,12 +243,15 @@ export default function App() {
       return
     }
     let active = true
-    supabase.auth.getSession().then(({ data }) => {
+    console.log('🔑 auth: checking URL =', window.location.href)
+    supabase.auth.getSession().then(({ data, error }) => {
       if (!active) return
+      console.log('🔑 auth: getSession →', data.session ? data.session.user?.email : 'NONE', error || '')
       setSession(data.session || false)
       setAuthLoading(false)
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+      console.log('🔑 auth: event', event, '→', newSession ? newSession.user?.email : 'NONE')
       setSession(newSession || false)
       setAuthLoading(false)
     })
