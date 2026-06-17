@@ -46,7 +46,7 @@ export default function MergeModal({ jobs, onConfirm, onCancel, t = (key) => key
             🔗 {t('merge.title') || 'Merge Candidatures'}
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            {t('merge.subtitle') || `Combine ${jobs.length} job applications`}
+            {t('merge.subtitle').replace('{{count}}', jobs.length)}
           </p>
         </div>
 

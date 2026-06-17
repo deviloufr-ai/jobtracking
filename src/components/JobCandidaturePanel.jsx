@@ -498,14 +498,58 @@ export default function JobCandidaturePanel({
         {/* Interview Tab */}
         {activeTab === 'interview' && (
           <div className="space-y-4">
-            <div className="text-center py-12">
-              <p className="text-sm text-gray-500 mb-6">🎤 Practice your interview responses</p>
+            {/* Past Sessions */}
+            {job.interviewSessions && job.interviewSessions.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="font-semibold text-sm text-gray-800">📊 Practice History</h4>
+                {job.interviewSessions.map((session, idx) => (
+                  <div key={idx} className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-3">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="font-semibold text-sm text-gray-800">
+                          {new Date(session.date).toLocaleDateString()}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(session.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-purple-600">{session.score}</div>
+                        <p className={`text-xs font-bold ${
+                          session.hire_decision === 'Yes' ? 'text-green-700' :
+                          session.hire_decision === 'No' ? 'text-red-700' :
+                          'text-orange-700'
+                        }`}>
+                          {session.hire_decision === 'Yes' ? '✅ Move Forward' :
+                           session.hire_decision === 'No' ? '❌ Not Ready' :
+                           '⏳ On The Fence'}
+                        </p>
+                      </div>
+                    </div>
+                    {session.feedback?.strengths && (
+                      <p className="text-xs text-gray-600 mb-1">
+                        <strong className="text-green-700">Strengths:</strong> {Array.isArray(session.feedback.strengths) ? session.feedback.strengths.join('; ') : session.feedback.strengths}
+                      </p>
+                    )}
+                    {session.feedback?.concerns && (
+                      <p className="text-xs text-gray-600">
+                        <strong className="text-red-700">Concerns:</strong> {Array.isArray(session.feedback.concerns) ? session.feedback.concerns.join('; ') : session.feedback.concerns}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Start New Interview */}
+            <div className={`text-center ${job.interviewSessions?.length > 0 ? 'py-6' : 'py-12'}`}>
+              <p className="text-sm text-gray-500 mb-4">🎤 Practice your interview responses</p>
               <p className="text-xs text-gray-400 mb-6">AI-powered mock interview training tailored to this position</p>
               <button
                 onClick={() => onStartMockInterview?.()}
                 className="text-sm font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 px-8 py-3 rounded-lg hover:from-cyan-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg"
               >
-                🎤 Start Interview Training
+                🎤 {job.interviewSessions?.length > 0 ? 'Practice Again' : 'Start Interview Training'}
               </button>
             </div>
           </div>

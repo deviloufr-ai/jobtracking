@@ -107,6 +107,7 @@ export const en = {
     thankYouEmailSent: 'Thank you email sent ✓',
     followUpEmailSent: 'Follow-up email sent ✓',
     allApplicationsCleared: 'All applications cleared (Supabase synced)',
+    jobsMerged: 'Jobs merged successfully!',
   },
 
   // Toast Messages
@@ -136,8 +137,31 @@ export const en = {
   // Footer Actions
   footer: {
     mergeDuplicates: '🔀 Merge duplicates',
+    mergeSelected: 'Merge {{count}} selected',
     clearAll: '🗑️ Clear all data',
     clearConfirm: 'Clear all {{count}} applications? This action is irreversible.',
+  },
+
+  // View Switcher
+  view: {
+    table: 'Table',
+    kanban: 'Kanban',
+  },
+
+  // Kanban Board
+  kanban: {
+    dragColumn: 'Drag to reorder',
+    dropHere: 'Drop here',
+  },
+
+  // Merge Modal
+  merge: {
+    title: 'Merge Candidatures',
+    subtitle: 'Combine {{count}} job applications',
+    keepAs: 'Keep as primary:',
+    preview: 'Merged Result:',
+    info: 'The other applications will be deleted. All history entries will be combined chronologically.',
+    confirm: 'Merge',
   },
 
   // Email Templates
@@ -236,6 +260,12 @@ export const en = {
     cancel: 'Cancel',
     save: 'Save',
     required: '*',
+    detailsTab: 'Details',
+    scoreTab: '📊 Score',
+    companyAddressLabel: 'Company Address',
+    companyAddressHint: 'Used to calculate commute time from your home. Bulk-fill in Settings → Data',
+    descriptionLabel: 'Job Description',
+    descriptionPlaceholder: 'Paste the job description here to enable CV matching...',
   },
 
   // ConfirmDelete

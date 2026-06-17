@@ -1147,7 +1147,7 @@ export default function App() {
               {selectedJobIds.size >= 2 && (
                 <button onClick={handleMergeSelected}
                   className="text-xs text-blue-400 hover:text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors border border-blue-200 hover:border-blue-400">
-                  🔗 {t('footer.mergeSelected') || `Merge ${selectedJobIds.size} selected`}
+                  🔗 {t('footer.mergeSelected').replace('{{count}}', selectedJobIds.size)}
                 </button>
               )}
               <button onClick={mergeDuplicates}

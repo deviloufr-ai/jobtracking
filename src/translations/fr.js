@@ -107,6 +107,7 @@ export const fr = {
     thankYouEmailSent: 'Email de remerciement envoyé ✓',
     followUpEmailSent: 'Email de relance envoyé ✓',
     allApplicationsCleared: 'Toutes les candidatures ont été effacées (Supabase synchronisé)',
+    jobsMerged: 'Candidatures fusionnées avec succès !',
   },
 
   // Toast Messages
@@ -157,8 +158,31 @@ export const fr = {
   // Footer Actions
   footer: {
     mergeDuplicates: '🔀 Fusionner les doublons',
+    mergeSelected: 'Fusionner {{count}} sélectionnées',
     clearAll: '🗑️ Effacer toutes les données',
     clearConfirm: 'Effacer toutes les {{count}} candidatures ? Cette action est irreversible.',
+  },
+
+  // View Switcher
+  view: {
+    table: 'Tableau',
+    kanban: 'Kanban',
+  },
+
+  // Kanban Board
+  kanban: {
+    dragColumn: 'Glisser pour réorganiser',
+    dropHere: 'Déposer ici',
+  },
+
+  // Merge Modal
+  merge: {
+    title: 'Fusionner les candidatures',
+    subtitle: 'Combiner {{count}} candidatures',
+    keepAs: 'Garder comme principale :',
+    preview: 'Résultat fusionné :',
+    info: 'Les autres candidatures seront supprimées. Tous les historiques seront combinés chronologiquement.',
+    confirm: 'Fusionner',
   },
 
   // Email Templates
@@ -428,6 +452,12 @@ export const fr = {
     cancel: 'Annuler',
     save: 'Enregistrer',
     required: '*',
+    detailsTab: 'Détails',
+    scoreTab: '📊 Score',
+    companyAddressLabel: 'Adresse de l\'entreprise',
+    companyAddressHint: 'Utilisée pour calculer le temps de trajet depuis votre domicile. Remplissage groupé dans Réglages → Données',
+    descriptionLabel: 'Description du poste',
+    descriptionPlaceholder: 'Collez la description du poste ici pour activer la comparaison avec le CV...',
   },
 
   // ConfirmDelete

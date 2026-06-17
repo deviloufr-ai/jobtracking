@@ -524,45 +524,6 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
             {(showUseCase || job.useCase?.title) && onUpdateJob && (
               <UseCasePanel job={job} onUpdate={onUpdateJob} />
             )}
-
-            {/* ── Interview Sessions ────────────────────────────────────────── */}
-            {job.interviewSessions && job.interviewSessions.length > 0 && (
-              <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                <h4 className="font-bold text-sm text-gray-800 mb-3">📊 Interview Practice Sessions</h4>
-                <div className="space-y-2">
-                  {job.interviewSessions.map((session, idx) => (
-                    <div key={idx} className="bg-white p-3 rounded border border-gray-200 text-xs">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-semibold text-gray-700">
-                            {new Date(session.date).toLocaleDateString()} • Score: {session.score}
-                          </p>
-                          <p className={`text-xs font-bold ${
-                            session.hire_decision === 'Yes' ? 'text-green-700' :
-                            session.hire_decision === 'No' ? 'text-red-700' :
-                            'text-orange-700'
-                          }`}>
-                            {session.hire_decision === 'Yes' ? '✅ Move Forward' :
-                             session.hire_decision === 'No' ? '❌ Not Ready' :
-                             '⏳ On The Fence'}
-                          </p>
-                        </div>
-                      </div>
-                      {session.feedback?.strengths && (
-                        <p className="text-gray-600 mt-1">
-                          <strong className="text-green-700">Strengths:</strong> {Array.isArray(session.feedback.strengths) ? session.feedback.strengths.join('; ') : session.feedback.strengths}
-                        </p>
-                      )}
-                      {session.feedback?.concerns && (
-                        <p className="text-gray-600">
-                          <strong className="text-red-700">Concerns:</strong> {Array.isArray(session.feedback.concerns) ? session.feedback.concerns.join('; ') : session.feedback.concerns}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </td>
         </tr>
       )}
