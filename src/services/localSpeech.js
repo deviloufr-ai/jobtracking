@@ -77,22 +77,46 @@ export async function transcribeBlob(blob, langHint, onProgress) {
     no_repeat_ngram_size: 3,
     repetition_penalty: 1.2
   })
-  return collapseRepeats((output?.text || '').trim())
+  return cleanTranscript((output?.text || '').trim())
 }
 
-// Final safety net: if the model still emits an immediate phrase loop, keep
-// the first occurrence and drop the consecutive duplicates.
-function collapseRepeats(text) {
+// Clean up the residual repetition Whisper emits on quiet/trailing audio:
+//   - collapse immediate duplicate words ("general general" -> "general")
+//   - drop consecutive duplicate sentences
+//   - keep only the first occurrence of short filler sentences ("It's good.")
+function cleanTranscript(text) {
   if (!text) return text
-  const sentences = text.split(/(?<=[.!?])\s+/)
+
+  // 1. Immediate duplicate words.
+  const dedupWords = text.replace(/\b(\w+)(\s+\1\b)+/gi, '$1')
+
+  // 2. Sentence-level de-duplication.
+  const sentences = dedupWords
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+
+  const shortSeen = new Map()
   const out = []
+  let prevNorm = null
   for (const s of sentences) {
-    const norm = s.trim().toLowerCase()
-    if (!norm) continue
-    if (out.length && out[out.length - 1].norm === norm) continue
-    out.push({ norm, raw: s.trim() })
+    const norm = s.toLowerCase()
+    if (norm === prevNorm) continue // consecutive duplicate
+
+    // Short filler ("It's good.") that Whisper repeats — keep first only.
+    if (norm.split(/\s+/).length <= 4) {
+      const seen = (shortSeen.get(norm) || 0) + 1
+      shortSeen.set(norm, seen)
+      if (seen > 1) {
+        prevNorm = norm
+        continue
+      }
+    }
+
+    out.push(s)
+    prevNorm = norm
   }
-  return out.map((s) => s.raw).join(' ')
+  return out.join(' ')
 }
 
 // Whether mic capture is even possible in this browser.
