@@ -12,6 +12,24 @@ function detectLanguage(text) {
   return matches.length > text.split(/\s+/).length * 0.15 ? 'fr-FR' : 'en-US'
 }
 
+// Strip markdown formatting for cleaner speech output
+function stripFormatting(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1') // Remove bold
+    .replace(/\*(.+?)\*/g, '$1')    // Remove italics
+    .replace(/___(.+?)___/g, '$1')  // Remove bold italics
+    .replace(/__(.+?)__/g, '$1')    // Remove bold
+    .replace(/_(.+?)_/g, '$1')      // Remove italics
+    .replace(/\[(.+?)\]\(.+?\)/g, '$1') // Remove links
+    .replace(/^[-*+] /gm, '')       // Remove bullet points
+    .replace(/^### /gm, '')         // Remove headers
+    .replace(/^## /gm, '')
+    .replace(/^# /gm, '')
+    .replace(/---/g, '')            // Remove horizontal rules
+    .replace(/`+(.+?)`+/g, '$1')    // Remove code blocks
+    .trim()
+}
+
 export default function MockInterviewChatbot({ job, cv, onClose }) {
   const [messages, setMessages] = useState([])
   const [isRecording, setIsRecording] = useState(false)
@@ -71,24 +89,21 @@ export default function MockInterviewChatbot({ job, cv, onClose }) {
     try {
       const response = await aiFetch('/api/claude', {
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300,
+        max_tokens: 200,
         messages: [
           {
             role: 'user',
-            content: `You are a friendly interview coach. Ask a strong opening question for a "${job.position}" role at "${job.company}".
+            content: `Ask ONE opening question for a ${job.position} interview at ${job.company}.
 
-CV: ${cv}
-
-Job: ${job.jobDescription || job.notes || 'No description provided'}
-
-Ask ONE natural, conversational question. Keep it short and easy to answer. Sound like you're having a real conversation, not reading from a script.`
+Output ONLY the question as plain text. No formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just a natural, conversational question you'd ask if talking to someone in person.`
           }
         ]
       })
 
       if (!response.ok) throw new Error(`API error: ${response.status}`)
       const data = await response.json()
-      const firstQuestion = data.content[0]?.text || 'Tell me about your experience.'
+      const rawQuestion = data.content[0]?.text || 'Tell me about your experience.'
+      const firstQuestion = stripFormatting(rawQuestion)
 
       const newMessages = [
         { role: 'interviewer', text: firstQuestion, timestamp: Date.now() }
@@ -157,7 +172,7 @@ Ask ONE natural, conversational question. Keep it short and easy to answer. Soun
         }))
         .concat([{ role: 'user', content: transcript }])
 
-      const systemPrompt = `You're conducting a friendly interview for a "${job.position}" role at "${job.company}". Keep responses natural and conversational. Ask one clear question per turn. After the candidate answers, ask a follow-up or move to the next topic naturally. After 4-5 exchanges, offer brief closing thoughts. Sound like a real person having a conversation.`
+      const systemPrompt = `You conduct interviews. Ask natural follow-up questions. Output ONLY plain text questions—no formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just conversational sentences you'd say in person.`
 
       const response = await aiFetch('/api/claude', {
         model: 'claude-haiku-4-5-20251001',
@@ -168,7 +183,8 @@ Ask ONE natural, conversational question. Keep it short and easy to answer. Soun
 
       if (!response.ok) throw new Error(`API error: ${response.status}`)
       const data = await response.json()
-      const nextQuestion = data.content[0]?.text || 'Great answer. Tell me more.'
+      const rawQuestion = data.content[0]?.text || 'Great answer. Tell me more.'
+      const nextQuestion = stripFormatting(rawQuestion)
 
       setMessages((prev) => [
         ...prev,
