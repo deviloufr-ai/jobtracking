@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import CommuteInfo from './CommuteInfo'
 
 export default function JobCandidaturePanel({
@@ -34,8 +34,17 @@ export default function JobCandidaturePanel({
   fetchingAddr = false,
   addrError = null,
   onStartMockInterview = null,
+  CVViewerComponent = null,
 }) {
   const [activeTab, setActiveTab] = useState('overview')
+  const [showCVViewer, setShowCVViewer] = useState(false)
+
+  // Auto-show PDF viewer when CV tab is active and CV exists
+  useEffect(() => {
+    if (activeTab === 'cv' && job.cvSaved) {
+      setShowCVViewer(true)
+    }
+  }, [activeTab, job.cvSaved])
   const [homeAddress] = useState(() => {
     try {
       const profile = JSON.parse(localStorage.getItem('jobtrackr_profile') || '{}')
@@ -286,7 +295,7 @@ export default function JobCandidaturePanel({
 
         {/* CV Tab */}
         {activeTab === 'cv' && (
-          <div className="space-y-4 h-full">
+          <div className="space-y-4 h-full flex flex-col">
             {job.cvSaved ? (
               <>
                 <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 flex items-center justify-between">
@@ -303,15 +312,19 @@ export default function JobCandidaturePanel({
                     </button>
                   )}
                 </div>
-                {/* PDF Viewer - Display formatted PDF */}
-                <div className="border border-gray-300 rounded-lg overflow-hidden bg-white flex-1" style={{ height: '650px' }}>
-                  {onViewSavedCV ? (
+                {/* PDF Viewer - Embedded directly in tab */}
+                {CVViewerComponent ? (
+                  <div className="border border-gray-300 rounded-lg overflow-hidden bg-white flex-1">
+                    {CVViewerComponent}
+                  </div>
+                ) : (
+                  <div className="border border-gray-300 rounded-lg overflow-hidden bg-white flex-1" style={{ height: '650px' }}>
                     <div className="w-full h-full flex items-center justify-center bg-gray-100">
                       <div className="text-center space-y-4">
                         <div className="text-5xl">📄</div>
                         <p className="text-gray-700 font-semibold">PDF CV Viewer</p>
                         <button
-                          onClick={() => onViewSavedCV(job)}
+                          onClick={() => onViewSavedCV?.(job)}
                           className="text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 px-8 py-3 rounded-lg hover:from-indigo-600 hover:to-indigo-700 transition-all duration-200 shadow-md"
                         >
                           Open PDF Reader
@@ -319,8 +332,8 @@ export default function JobCandidaturePanel({
                         <p className="text-xs text-gray-500">Full formatting and styling preserved</p>
                       </div>
                     </div>
-                  ) : null}
-                </div>
+                  </div>
+                )}
               </>
             ) : (
               <div className="text-center py-12">

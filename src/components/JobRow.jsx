@@ -9,6 +9,7 @@ import RowActions from './RowActions'
 import MotivationLetterGenerator from './MotivationLetterGenerator'
 import MockInterviewChatbot from './MockInterviewChatbot'
 import JobCandidaturePanel from './JobCandidaturePanel'
+import CVViewer from './CVViewer'
 import { ScoreBadge } from './ScoreJob'
 import CompanyAvatar from './CompanyAvatar'
 import CommuteInfo from './CommuteInfo'
@@ -514,6 +515,7 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
                 fetchingAddr={fetchingAddr}
                 addrError={addrError}
                 onStartMockInterview={() => setShowMockInterview(true)}
+                CVViewerComponent={job.cvSaved ? <CVViewer job={job} onClose={() => {}} inline={true} /> : null}
                 t={t}
               />
             </div>
