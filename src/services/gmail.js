@@ -918,12 +918,17 @@ async function fetchEmailDetail(id, token) {
     const gmailCategory = Object.entries(GMAIL_CAT_MAP).find(([k]) => labelIds.includes(k))?.[1] || null
 
     log(`   ✅ Email accepted and will be sent to Claude`)
+    // Use Gmail's internalDate (receipt timestamp, in milliseconds) instead of the
+    // Date header (which is set by sender and can be wrong/backdated). Convert to
+    // ISO date string YYYY-MM-DD for consistent sorting and grouping.
+    const internalDateMs = parseInt(data.internalDate, 10)
+    const receivedDate = new Date(internalDateMs).toISOString().split('T')[0]
     return {
       id: data.id,
       subject: get('Subject'),
       from: isSent ? get('To') : get('From'),
       fromMe: isSent,
-      date: get('Date'),
+      date: receivedDate,
       snippet: data.snippet || '',
       body,
       gmailCategory, // 'updates' | 'personal' | 'social' | null
