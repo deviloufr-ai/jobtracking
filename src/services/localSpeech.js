@@ -31,40 +31,51 @@ export async function getTranscriber(onProgress) {
   return transcriberPromise
 }
 
-// Decode a recorded audio Blob into the 16 kHz mono Float32 samples Whisper
-// expects. Setting the AudioContext sample rate makes decodeAudioData resample.
+// Decode a recorded audio Blob into 16 kHz mono Float32 samples — exactly what
+// Whisper expects. We decode at the browser's native rate, then resample with
+// an OfflineAudioContext (which always honors the target rate) rather than
+// trusting `new AudioContext({ sampleRate })`, which several browsers silently
+// ignore — leaving 48 kHz audio that Whisper reads ~3× too fast (= gibberish).
 async function blobToSamples(blob) {
   const arrayBuffer = await blob.arrayBuffer()
   const AudioCtx = window.AudioContext || window.webkitAudioContext
-  const ctx = new AudioCtx({ sampleRate: 16000 })
+  const ctx = new AudioCtx()
+  let decoded
   try {
-    const decoded = await ctx.decodeAudioData(arrayBuffer)
-    return decoded.getChannelData(0)
+    decoded = await ctx.decodeAudioData(arrayBuffer)
   } finally {
     ctx.close()
   }
+
+  if (decoded.sampleRate === 16000 && decoded.numberOfChannels === 1) {
+    return decoded.getChannelData(0)
+  }
+
+  // Resample (and downmix to mono) to 16 kHz.
+  const frames = Math.ceil(decoded.duration * 16000)
+  const offline = new OfflineAudioContext(1, frames, 16000)
+  const source = offline.createBufferSource()
+  source.buffer = decoded
+  source.connect(offline.destination)
+  source.start()
+  const rendered = await offline.startRendering()
+  return rendered.getChannelData(0)
 }
 
-// Transcribe a recorded audio Blob. `langHint` is a BCP-47 tag like 'fr-FR';
-// we map it to the Whisper language name so French answers aren't forced to
-// English. Returns the recognized text (trimmed).
+// Transcribe a recorded audio Blob. We let Whisper auto-detect the language
+// (the speaker may answer in FR or EN regardless of the question's language —
+// forcing the wrong one produces garbage). Returns the recognized text.
 export async function transcribeBlob(blob, langHint, onProgress) {
   const transcriber = await getTranscriber(onProgress)
   const samples = await blobToSamples(blob)
-  const language = langHint?.toLowerCase().startsWith('fr') ? 'french' : 'english'
   const output = await transcriber(samples, {
-    language,
     task: 'transcribe',
     // Long-form chunking so answers over 30s aren't truncated.
     chunk_length_s: 30,
     stride_length_s: 5,
     // Anti-loop guards: forbid repeating any 3-gram and penalize repetition.
-    // These break the "It was a little bit difficult…" runaway loops Whisper
-    // falls into on quiet or trailing audio.
     no_repeat_ngram_size: 3,
-    repetition_penalty: 1.2,
-    // Don't feed prior text back in — that's what seeds the loops.
-    condition_on_previous_text: false
+    repetition_penalty: 1.2
   })
   return collapseRepeats((output?.text || '').trim())
 }
