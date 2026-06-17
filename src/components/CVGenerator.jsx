@@ -504,31 +504,41 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
   const removePic = () => { setProfilePic(null); localStorage.removeItem('cv_profile_picture') }
 
   // ── JD fetch ──────────────────────────────────────────────────────────────
+  // Once a job description is obtained we generate straight away (no manual
+  // review step). If none is available, warn the user instead of generating.
+  const proceedWithJd = (jd) => {
+    const text = (jd || '').trim()
+    setJdText(jd || '')
+    if (!text) { setJdError(null); setStep('no_jd'); return }
+    generateCV(jd)
+  }
+
   const fetchJobDescription = async () => {
     setStep('fetching_jd'); setJdError(null)
-    if (job.jobDescription) { setJdText(job.jobDescription); setStep('ready_to_generate'); return }
-    if (!job.url) { setJdText(job.notes || ''); setStep('ready_to_generate'); return }
+    if (job.jobDescription) { return proceedWithJd(job.jobDescription) }
+    if (!job.url) { return proceedWithJd(job.notes || '') }
     if (IS_DEV) {
-      setJdText(`Product Manager chez ${job.company}\n\nNous recherchons un PM expérimenté pour piloter notre roadmap B2B SaaS. Compétences requises : OKR, A/B testing, SQL, Figma, Jira, métriques produit (DAU, NPS, rétention).`)
-      setStep('ready_to_generate'); return
+      return proceedWithJd(`Product Manager chez ${job.company}\n\nNous recherchons un PM expérimenté pour piloter notre roadmap B2B SaaS. Compétences requises : OKR, A/B testing, SQL, Figma, Jira, métriques produit (DAU, NPS, rétention).`)
     }
     try {
       const res  = await fetch('/api/fetch-jd', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({url:job.url}) })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      setJdText(data.text); setStep('ready_to_generate')
-    } catch(e) { setJdError(e.message); setStep('manual_jd') }
+      // Fetch may succeed but return nothing usable — fall back to notes.
+      proceedWithJd(data.text || job.notes || '')
+    } catch(e) { setJdError(e.message); proceedWithJd(job.notes || '') }
   }
 
   // ── Generate ──────────────────────────────────────────────────────────────
-  const generateCV = async () => {
+  const generateCV = async (jdOverride) => {
+    const jd = (jdOverride ?? jdText)
     setStep('generating')
     try {
       if (IS_DEV) {
         const mock = `# Alexandre Leblanc\nParis, France · alexandre@email.com · linkedin.com/in/devilalex\n\n## Profil\nProduct Manager Senior avec 18 ans d'expérience internationale en B2B SaaS, gaming et IoT. Expert en pilotage de roadmap produit orienté OKR, A/B testing et métriques de rétention. Trilingue FR/EN/JP.\n\n## Expérience\n\n### Senior Product Manager — Datachain\nMai 2023 – Juin 2025 | Remote (Tokyo)\n- Piloté l'implémentation d'un pont inter-chaînes Web3/DeFi — discovery, rollout et suivi d'adoption\n- Structuré les interviews clients, recherche concurrentielle et priorisation data-driven\n- Coordonné les équipes cross-fonctionnelles (Engineering, Product, Marketing)\n\n### Program Manager Ads — SmartNews\nJanvier 2021 – Mai 2023 | Remote (Tokyo)\n- Piloté les programmes produit globaux Ads (20M+ MAU)\n- Analyse data pour identifier pain points ; traduit les insights en requirements\n- Frameworks A/B testing et cohort analysis\n\n### Chef de Projet — Hakuhodo I-Studio\nJanvier 2017 – Janvier 2020 | Tokyo\n- Développement end-to-end de l'app IoT Pechat ; 0 à 120K unités vendues\n- Lancement US avec +15% revenue · Good Design Award 2019\n\n## Compétences\n- **Produit** : OKR, roadmap, A/B testing, NPS, DAU/MAU, funnel\n- **Tech** : SQL, Jira, Figma, Confluence, analytics\n- **Méthodo** : Agile/Scrum, RICE, user interviews\n\n## Formation\nArts & Métiers — Ingénieur généraliste (2012)\nJLPT N1 · Trilingue FR/EN/JP`
         setGeneratedCV(mock); setEditableCV(mock); setStep('preview'); return
       }
-      const res  = await aiFetch('/api/generate-cv', {cvText:cv.text,jobDescription:jdText,company:job.company,position:job.position,language:selectedLanguage})
+      const res  = await aiFetch('/api/generate-cv', {cvText:cv.text,jobDescription:jd,company:job.company,position:job.position,language:selectedLanguage})
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setGeneratedCV(data.cv); setEditableCV(data.cv); setStep('preview')
@@ -699,7 +709,7 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${isEditing ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
               {isEditing ? t('cvGeneratorUI.preview') : t('cvGeneratorUI.edit')}
             </button>
-            <button onClick={generateCV} className="text-xs font-medium border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50">{t('cvGeneratorUI.regenerate')}</button>
+            <button onClick={() => generateCV()} className="text-xs font-medium border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50">{t('cvGeneratorUI.regenerate')}</button>
             <button onClick={handleExportPDF}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${saved ? 'bg-indigo-600 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}`}>
               {saved ? t('cvGeneratorUI.saved') : t('cvGeneratorUI.exportPDF')}
@@ -722,8 +732,9 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
         </div>
       )}
 
-      {/* JD input */}
-      {['manual_jd','ready_to_generate'].includes(step) && (
+      {/* JD input — shown only when there's no job description to generate from.
+          When a description IS available we skip straight to generation. */}
+      {['manual_jd','ready_to_generate','no_jd'].includes(step) && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-semibold text-gray-800">📋 Description du poste</p>
@@ -731,6 +742,11 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
               <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">✓ Récupérée</span>
             )}
           </div>
+          {step === 'no_jd' && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5 mb-3">
+              ⚠️ Aucune description de poste trouvée pour cette candidature. Collez l'offre ci-dessous pour générer le CV adapté.
+            </p>
+          )}
           {jdError && <p className="text-xs text-red-500 bg-red-50 rounded-lg p-2 mb-3">{jdError}</p>}
           <textarea
             className="w-full h-40 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
@@ -750,7 +766,7 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
                 <option value="en">English</option>
               </select>
             </div>
-            <button onClick={generateCV} disabled={!jdText.trim()}
+            <button onClick={() => generateCV()} disabled={!jdText.trim()}
               className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-40">
               ✨ Générer le CV adapté
             </button>
