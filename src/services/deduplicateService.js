@@ -1,4 +1,4 @@
-import { getSyncUserIdForSupabase } from './gmail'
+import { resolveAuthUserId } from './supabase'
 
 /**
  * Deduplicate jobs server-side via Vercel Function
@@ -8,7 +8,7 @@ export async function deduplicateJobsViaEdgeFunction() {
   try {
     console.log('🔄 Calling deduplicate-jobs Vercel Function (server-side)...')
 
-    const userId = getSyncUserIdForSupabase()
+    const userId = await resolveAuthUserId()
     if (!userId) {
       throw new Error('No user ID found. Please log in.')
     }

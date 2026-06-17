@@ -4,8 +4,7 @@ import { extractUrlsFromEmail, rankUrlsByJobRelevance, checkPositionUrl } from '
 import { indexeddb } from '../services/indexeddb'
 import { syncManager } from '../services/syncManager'
 import { getSyncCoordinator } from '../services/syncCoordinator'
-import { supabase, isSupabaseConfigured } from '../services/supabase'
-import { getSyncUserIdForSupabase, resolveSyncUserId } from '../services/gmail'
+import { supabase, isSupabaseConfigured, resolveAuthUserId } from '../services/supabase'
 import { deduplicateJobsViaEdgeFunction, formatDeduplicateResult } from '../services/deduplicateService'
 import { GENERIC_POSITIONS_SET, isGenericPosition } from '../constants/positions'
 import { isJobBoard } from '../constants/jobBoards'
@@ -1054,8 +1053,8 @@ export function useJobs() {
           // Back up ALL cached jobs (including corrupted ones) to Supabase before
           // clearing, so corrupted records aren't lost permanently.
           try {
-            const syncUserId = await resolveSyncUserId().catch(() => getSyncUserIdForSupabase())
-            if (cachedJobs && cachedJobs.length > 0) {
+            const syncUserId = await resolveAuthUserId()
+            if (syncUserId && cachedJobs && cachedJobs.length > 0) {
               console.log('📤 Backing up', cachedJobs.length, 'jobs to Supabase before clearing...')
               await syncManager.pushAllJobs(syncUserId, cachedJobs)
             }
@@ -1416,7 +1415,7 @@ export function useJobs() {
 
     // Delete all jobs from Supabase for this user
     try {
-      const syncUserId = await resolveSyncUserId()
+      const syncUserId = await resolveAuthUserId()
       if (syncUserId && isSupabaseConfigured()) {
         console.log('Deleting all jobs from Supabase for user:', syncUserId)
         const { error, count } = await supabase

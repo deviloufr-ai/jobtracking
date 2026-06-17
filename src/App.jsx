@@ -23,9 +23,10 @@ import { useAutoRefresh } from './hooks/useAutoRefresh'
 import { useAutoScore } from './hooks/useAutoScore'
 import { useAutoCheckPositions } from './hooks/useAutoCheckPositions'
 import { usePolling } from './hooks/usePolling'
-import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, autoReuseStoredTokens, getSyncUserIdForSupabase, resolveSyncUserId } from './services/gmail'
+import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, autoReuseStoredTokens } from './services/gmail'
 import { supabase, signInWithGoogle, isSupabaseConfigured } from './services/supabase'
-import { initializeSyncCoordinator, reinitializeSyncCoordinator } from './services/syncCoordinator'
+import { migrateToAuthIdentity } from './services/authMigration'
+import { initializeSyncCoordinator } from './services/syncCoordinator'
 import JobSearch from './components/JobSearch'
 import CVManager from './components/CVManager'
 import CVViewer from './components/CVViewer'
@@ -304,44 +305,23 @@ export default function App() {
     return () => window.removeEventListener('theme-changed', handleThemeChange)
   }, [])
 
-  // Initialize sync only when user leaves landing page (actively logs in)
+  // Initialize sync once the user is authenticated. The Supabase auth.uid() is
+  // now the canonical sync identity (replaces the gmail-derived sync UUID). Before
+  // the first sync, migrate any legacy rows from the old UUID onto auth.uid().
   useEffect(() => {
-    if (showLandingPage || !gmailUser || syncUserId) return // Don't sync if on landing page
+    if (!session || syncUserId) return
+    const authUid = session.user?.id
+    if (!authUid) return
 
-    console.log('🔐 User logged in, initializing SyncCoordinator...')
+    console.log('🔐 Authenticated, migrating + initializing SyncCoordinator for', authUid)
 
-    // Resolve sync user ID asynchronously (waits for Supabase lookup)
-    // This ensures multi-device sync uses the same UUID for the same Gmail account
-    resolveSyncUserId().then(id => {
-      setSyncUserId(id)
-      initializeSyncCoordinator(id)
-    }).catch(err => {
-      console.error('Failed to resolve sync ID, using fallback:', err)
-      const fallbackId = getSyncUserIdForSupabase()
-      setSyncUserId(fallbackId)
-      initializeSyncCoordinator(fallbackId)
-    })
-  }, [showLandingPage, gmailUser, syncUserId])
-
-  // When the sync UUID is corrected after init (e.g. a fresh incognito session
-  // reconciles onto the Gmail account's existing UUID via Supabase), re-point
-  // polling and the sync coordinator at the canonical ID instead of polling a
-  // stale one forever. Without this, gmail.js could fix localStorage but the app
-  // would keep syncing under the wrong user.
-  useEffect(() => {
-    const handleSyncIdUpdated = (e) => {
-      const newId = e.detail
-      if (!newId) return
-      setSyncUserId(prev => {
-        if (prev === newId) return prev
-        console.log('🔁 Sync UUID corrected, re-pointing app:', prev, '→', newId)
-        reinitializeSyncCoordinator(newId)
-        return newId
+    migrateToAuthIdentity(session.user)
+      .catch(err => console.error('Auth migration failed (continuing):', err))
+      .finally(() => {
+        setSyncUserId(authUid)
+        initializeSyncCoordinator(authUid)
       })
-    }
-    window.addEventListener('jobtrackr:sync-id-updated', handleSyncIdUpdated)
-    return () => window.removeEventListener('jobtrackr:sync-id-updated', handleSyncIdUpdated)
-  }, [])
+  }, [session, syncUserId])
 
   // Start polling once we have the correct sync ID
   usePolling(syncUserId)

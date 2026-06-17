@@ -21,6 +21,27 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
   },
 })
 
+// ── Auth identity (auth.uid()) ────────────────────────────────────────────────
+// The Supabase user id is now the canonical sync identity (replaces the old
+// gmail-derived sync UUID). Cache it synchronously so non-React modules
+// (deduplicateService, useJobs) can read it without awaiting.
+let cachedAuthUserId = null
+supabase.auth.getSession().then(({ data }) => { cachedAuthUserId = data.session?.user?.id || null })
+supabase.auth.onAuthStateChange((_event, session) => { cachedAuthUserId = session?.user?.id || null })
+
+// Synchronous best-effort accessor (may be null before the session loads).
+export function getAuthUserId() {
+  return cachedAuthUserId
+}
+
+// Async accessor that waits for the session — use when you can await.
+export async function resolveAuthUserId() {
+  if (cachedAuthUserId) return cachedAuthUserId
+  const { data } = await supabase.auth.getSession()
+  cachedAuthUserId = data.session?.user?.id || null
+  return cachedAuthUserId
+}
+
 // Helper to get current user
 export async function getCurrentUser() {
   const {
