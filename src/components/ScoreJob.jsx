@@ -38,7 +38,7 @@ function ScoreTooltip({ job, show, t = (key) => key }) {
   const verdict = details.verdict?.replace(/_/g, ' ') || ''
 
   return (
-    <div className={`absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white border border-gray-300 rounded-lg shadow-lg p-3 max-w-md ${getVerdictColor(details.verdict)}`} style={{ minWidth: 'fit-content' }}>
+    <div className={`absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white border border-gray-300 rounded-lg shadow-lg p-4 max-w-2xl ${getVerdictColor(details.verdict)}`} style={{ minWidth: 'fit-content' }}>
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 text-2xl font-bold">{getVerdictIcon(details.verdict)}</div>
         <div className="flex-1 min-w-0">
