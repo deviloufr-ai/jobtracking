@@ -4,6 +4,14 @@ import { aiFetch } from '../services/apiKey'
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
 const speechSynthesis = window.speechSynthesis
 
+// Detect language from text
+function detectLanguage(text) {
+  if (!text) return 'en-US'
+  const frenchWords = /\b(bonjour|salut|merci|comment|pourquoi|quoi|je|tu|il|elle|nous|vous|ils|elles|être|avoir|aller|faire|pouvoir|vouloir|devoir|mettre|prendre|venir|dire|savoir|répondre|travailler|entreprise|poste|candidature|expérience|projet)\b/gi
+  const matches = text.match(frenchWords) || []
+  return matches.length > text.split(/\s+/).length * 0.15 ? 'fr-FR' : 'en-US'
+}
+
 export default function MockInterviewChatbot({ job, cv, onClose }) {
   const [messages, setMessages] = useState([])
   const [isRecording, setIsRecording] = useState(false)
@@ -12,6 +20,7 @@ export default function MockInterviewChatbot({ job, cv, onClose }) {
   const [error, setError] = useState(null)
   const [transcript, setTranscript] = useState('')
   const [speechRate, setSpeechRate] = useState(1)
+  const [detectedLanguage, setDetectedLanguage] = useState('en-US')
   const recognitionRef = useRef(null)
   const messagesEndRef = useRef(null)
   const interviewIdRef = useRef(Date.now())
@@ -25,7 +34,7 @@ export default function MockInterviewChatbot({ job, cv, onClose }) {
     recognitionRef.current = new SpeechRecognition()
     recognitionRef.current.continuous = false
     recognitionRef.current.interimResults = true
-    recognitionRef.current.lang = 'en-US'
+    recognitionRef.current.lang = detectedLanguage
 
     recognitionRef.current.onstart = () => setIsRecording(true)
     recognitionRef.current.onend = () => setIsRecording(false)
@@ -42,7 +51,7 @@ export default function MockInterviewChatbot({ job, cv, onClose }) {
       }
       if (interim) setTranscript(interim)
     }
-  }, [])
+  }, [detectedLanguage])
 
   // Auto-scroll to latest message
   useEffect(() => {
@@ -62,19 +71,17 @@ export default function MockInterviewChatbot({ job, cv, onClose }) {
     try {
       const response = await aiFetch('/api/claude', {
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 500,
+        max_tokens: 300,
         messages: [
           {
             role: 'user',
-            content: `You are an experienced technical interview coach. The candidate is interviewing for the position of "${job.position}" at "${job.company}".
+            content: `You are a friendly interview coach. Ask a strong opening question for a "${job.position}" role at "${job.company}".
 
-Here is their CV:
-${cv}
+CV: ${cv}
 
-Here is the job description:
-${job.jobDescription || job.notes || 'No specific description provided'}
+Job: ${job.jobDescription || job.notes || 'No description provided'}
 
-Ask your FIRST interview question to evaluate their fit for this role. Be direct, ask ONE clear question. Keep it conversational and friendly. The candidate will respond via speech.`
+Ask ONE natural, conversational question. Keep it short and easy to answer. Sound like you're having a real conversation, not reading from a script.`
           }
         ]
       })
@@ -103,7 +110,15 @@ Ask your FIRST interview question to evaluate their fit for this role. Be direct
     speechSynthesis.cancel()
     setIsSpeaking(true)
 
+    // Auto-detect language and update recognition language
+    const lang = detectLanguage(text)
+    setDetectedLanguage(lang)
+    if (recognitionRef.current) {
+      recognitionRef.current.lang = lang
+    }
+
     const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = lang
     utterance.rate = speechRate
     utterance.onend = () => setIsSpeaking(false)
     utterance.onerror = (e) => {
@@ -142,15 +157,7 @@ Ask your FIRST interview question to evaluate their fit for this role. Be direct
         }))
         .concat([{ role: 'user', content: transcript }])
 
-      const systemPrompt = `You are an experienced technical interview coach conducting an interview for the position of "${job.position}" at "${job.company}".
-
-Candidate's CV:
-${cv}
-
-Job description:
-${job.jobDescription || job.notes || 'No specific description provided'}
-
-You've asked them questions to evaluate their fit. Their last response was about a topic they brought up. Now ask a thoughtful follow-up question OR provide brief feedback and move to the next topic. Keep it conversational. Ask ONE clear question at a time. After 5-6 exchanges, offer brief closing feedback.`
+      const systemPrompt = `You're conducting a friendly interview for a "${job.position}" role at "${job.company}". Keep responses natural and conversational. Ask one clear question per turn. After the candidate answers, ask a follow-up or move to the next topic naturally. After 4-5 exchanges, offer brief closing thoughts. Sound like a real person having a conversation.`
 
       const response = await aiFetch('/api/claude', {
         model: 'claude-haiku-4-5-20251001',
