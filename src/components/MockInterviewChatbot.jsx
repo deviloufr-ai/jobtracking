@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { aiFetch } from '../services/apiKey'
+import { transcribeBlob, canRecordAudio } from '../services/localSpeech'
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
 const speechSynthesis = window.speechSynthesis
@@ -37,11 +38,23 @@ export default function MockInterviewChatbot({ job, cv, onClose }) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
   const [transcript, setTranscript] = useState('')
+  const [textAnswer, setTextAnswer] = useState('')
   const [speechRate, setSpeechRate] = useState(1)
   const [detectedLanguage, setDetectedLanguage] = useState('en-US')
+  const [transcribing, setTranscribing] = useState(false)
+  const [modelStatus, setModelStatus] = useState(null) // loader text while WASM model downloads
   const recognitionRef = useRef(null)
   const messagesEndRef = useRef(null)
   const interviewIdRef = useRef(Date.now())
+  // In-browser (WASM Whisper) fallback recording state
+  const mediaRecorderRef = useRef(null)
+  const audioChunksRef = useRef([])
+  const mediaStreamRef = useRef(null)
+
+  // Native Web Speech API (Chrome/Edge). When absent we fall back to recording
+  // the mic and transcribing with a local WASM Whisper model (Firefox/Safari).
+  const nativeSpeechSupported = Boolean(SpeechRecognition)
+  const voiceSupported = nativeSpeechSupported || canRecordAudio()
 
   // Build (or rebuild) the speech recognition instance.
   // Returns the instance, or null if the browser can't provide one.
@@ -88,9 +101,11 @@ export default function MockInterviewChatbot({ job, cv, onClose }) {
     }
   }
 
-  // Initialize speech recognition (re-runs when detected language changes)
+  // Initialize the native recognizer when available (re-runs on language
+  // change). When it's absent we silently rely on the WASM fallback instead
+  // of surfacing a "not supported" error on load.
   useEffect(() => {
-    initRecognition()
+    if (nativeSpeechSupported) initRecognition()
     return () => {
       try {
         recognitionRef.current?.abort()
@@ -99,6 +114,18 @@ export default function MockInterviewChatbot({ job, cv, onClose }) {
       }
     }
   }, [detectedLanguage])
+
+  // Release the mic if the modal closes mid-recording.
+  useEffect(() => {
+    return () => {
+      try {
+        mediaRecorderRef.current?.stop()
+      } catch {
+        /* noop */
+      }
+      mediaStreamRef.current?.getTracks().forEach((t) => t.stop())
+    }
+  }, [])
 
   // Auto-scroll to latest message
   useEffect(() => {
@@ -173,6 +200,12 @@ Output ONLY the question as plain text. No formatting, no bold, no italics, no a
   }
 
   const startListening = () => {
+    if (nativeSpeechSupported) return startNativeListening()
+    return startRecordingFallback()
+  }
+
+  // --- Native Web Speech path (Chrome/Edge) ---
+  const startNativeListening = () => {
     // Lazily (re)build the recognizer if it isn't ready yet.
     const recognition = recognitionRef.current || initRecognition()
     if (!recognition) return // initRecognition already surfaced an error
@@ -188,12 +221,76 @@ Output ONLY the question as plain text. No formatting, no bold, no italics, no a
     }
   }
 
-  const stopListening = async () => {
-    recognitionRef.current?.stop()
-    if (!transcript.trim()) {
-      setError('No speech detected. Please try again.')
+  // --- WASM Whisper fallback path (Firefox/Safari) ---
+  const startRecordingFallback = async () => {
+    if (!canRecordAudio()) {
+      setError('Voice input isn’t available in this browser. You can type your answer instead.')
       return
     }
+    setTranscript('')
+    setError(null)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      mediaStreamRef.current = stream
+      audioChunksRef.current = []
+
+      const recorder = new MediaRecorder(stream)
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data)
+      }
+      recorder.onstop = handleRecordingStopped
+      mediaRecorderRef.current = recorder
+      recorder.start()
+      setIsRecording(true)
+    } catch (err) {
+      setError('Microphone access was blocked. Allow the mic, or type your answer instead.')
+      setIsRecording(false)
+    }
+  }
+
+  const handleRecordingStopped = async () => {
+    setIsRecording(false)
+    // Release the mic.
+    mediaStreamRef.current?.getTracks().forEach((t) => t.stop())
+    mediaStreamRef.current = null
+
+    const chunks = audioChunksRef.current
+    audioChunksRef.current = []
+    if (!chunks.length) {
+      setError('No audio captured. Please try again.')
+      return
+    }
+
+    const blob = new Blob(chunks, { type: chunks[0].type || 'audio/webm' })
+    setTranscribing(true)
+    setError(null)
+    try {
+      const text = await transcribeBlob(blob, detectedLanguage, (p) => {
+        if (p?.status === 'progress' && typeof p.progress === 'number') {
+          setModelStatus(`Loading voice model… ${Math.round(p.progress)}%`)
+        } else if (p?.status === 'ready' || p?.status === 'done') {
+          setModelStatus(null)
+        }
+      })
+      setModelStatus(null)
+      if (!text) {
+        setError('Couldn’t make out any speech. Please try again or type your answer.')
+        return
+      }
+      setTranscript(text)
+      submitAnswer(text)
+    } catch (err) {
+      setModelStatus(null)
+      setError(`Transcription failed: ${err.message}. You can type your answer instead.`)
+    } finally {
+      setTranscribing(false)
+    }
+  }
+
+  // Shared answer pipeline used by both voice and typed input.
+  const submitAnswer = async (answerText) => {
+    const answer = answerText.trim()
+    if (!answer) return
 
     setIsLoading(true)
     setError(null)
@@ -205,7 +302,7 @@ Output ONLY the question as plain text. No formatting, no bold, no italics, no a
           role: m.role === 'interviewer' ? 'assistant' : 'user',
           content: m.text
         }))
-        .concat([{ role: 'user', content: transcript }])
+        .concat([{ role: 'user', content: answer }])
 
       const systemPrompt = `You conduct interviews. Ask natural follow-up questions. Output ONLY plain text questions—no formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just conversational sentences you'd say in person.`
 
@@ -223,7 +320,7 @@ Output ONLY the question as plain text. No formatting, no bold, no italics, no a
 
       setMessages((prev) => [
         ...prev,
-        { role: 'candidate', text: transcript, timestamp: Date.now() },
+        { role: 'candidate', text: answer, timestamp: Date.now() },
         {
           role: 'interviewer',
           text: nextQuestion,
@@ -232,12 +329,32 @@ Output ONLY the question as plain text. No formatting, no bold, no italics, no a
       ])
 
       setTranscript('')
+      setTextAnswer('')
       speakText(nextQuestion)
     } catch (err) {
       setError(err.message)
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const stopListening = () => {
+    if (!nativeSpeechSupported) {
+      // Fallback path: stop the recorder; transcription runs in onstop.
+      mediaRecorderRef.current?.stop()
+      return
+    }
+    recognitionRef.current?.stop()
+    if (!transcript.trim()) {
+      setError('No speech detected. Please try again.')
+      return
+    }
+    submitAnswer(transcript)
+  }
+
+  const submitTextAnswer = () => {
+    if (!textAnswer.trim()) return
+    submitAnswer(textAnswer)
   }
 
   const stopSpeaking = () => {
@@ -371,24 +488,28 @@ Output ONLY the question as plain text. No formatting, no bold, no italics, no a
           {/* Main action buttons */}
           <div className="flex gap-2 flex-wrap justify-between">
             <div className="flex gap-2">
-              {!isRecording && !isLoading && messages.length > 0 && (
-                <>
-                  <button
-                    onClick={startListening}
-                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
-                  >
-                    🎤 Record Answer
-                  </button>
-                  {isSpeaking && (
+              {voiceSupported &&
+                !isRecording &&
+                !isLoading &&
+                !transcribing &&
+                messages.length > 0 && (
+                  <>
                     <button
-                      onClick={stopSpeaking}
-                      className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
+                      onClick={startListening}
+                      className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
                     >
-                      ⏸ Stop
+                      🎤 Record Answer
                     </button>
-                  )}
-                </>
-              )}
+                    {isSpeaking && (
+                      <button
+                        onClick={stopSpeaking}
+                        className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
+                      >
+                        ⏸ Stop
+                      </button>
+                    )}
+                  </>
+                )}
 
               {isRecording && (
                 <button
@@ -397,6 +518,15 @@ Output ONLY the question as plain text. No formatting, no bold, no italics, no a
                   className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50"
                 >
                   ⏹ Submit Answer
+                </button>
+              )}
+
+              {transcribing && (
+                <button
+                  disabled
+                  className="flex items-center gap-2 bg-indigo-400 text-white text-sm font-medium px-4 py-2.5 rounded-lg"
+                >
+                  ✍️ {modelStatus || 'Transcribing…'}
                 </button>
               )}
 
@@ -430,8 +560,36 @@ Output ONLY the question as plain text. No formatting, no bold, no italics, no a
             </div>
           </div>
 
+          {/* Typed-answer safety net (works even if transcription fails) */}
+          {messages.length > 0 && !isRecording && !transcribing && !isLoading && (
+            <div className="flex gap-2 items-end">
+              <textarea
+                value={textAnswer}
+                onChange={(e) => setTextAnswer(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    submitTextAnswer()
+                  }
+                }}
+                rows={1}
+                placeholder="…or type your answer"
+                className="flex-1 resize-none text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              />
+              <button
+                onClick={submitTextAnswer}
+                disabled={!textAnswer.trim()}
+                className="text-sm font-medium px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 transition-colors"
+              >
+                Send
+              </button>
+            </div>
+          )}
+
           <p className="text-xs text-gray-400 text-center">
-            💡 Tip: Speak clearly after clicking "Record Answer". Click "Submit Answer" when done.
+            {nativeSpeechSupported
+              ? '💡 Tip: Speak after clicking "Record Answer", then "Submit Answer" when done.'
+              : '💡 Voice uses an in-browser model (first use downloads it once). You can also type.'}
           </p>
         </div>
       </div>
