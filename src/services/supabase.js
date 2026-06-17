@@ -65,9 +65,11 @@ export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      // Return to the app root; detectSessionInUrl consumes the callback params.
-      // (No router, so /auth/callback would just serve index.html anyway.)
-      redirectTo: window.location.origin,
+      // Must EXACTLY match an entry in the Supabase Redirect URLs allowlist or
+      // the auth code is dropped on the way back. /auth/callback is allowlisted;
+      // there's no router, so it just serves index.html and detectSessionInUrl
+      // consumes the ?code= param. App.jsx strips the path after sign-in.
+      redirectTo: `${window.location.origin}/auth/callback`,
     }
   })
 

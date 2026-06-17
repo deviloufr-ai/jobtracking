@@ -257,7 +257,13 @@ export default function App() {
 
   // Once signed in, skip the marketing landing page and go straight to the app.
   useEffect(() => {
-    if (session) setShowLandingPage(false)
+    if (session) {
+      setShowLandingPage(false)
+      // Clean the OAuth callback path out of the address bar.
+      if (window.location.pathname.startsWith('/auth/callback')) {
+        window.history.replaceState({}, '', '/')
+      }
+    }
   }, [session])
 
   // On load: check for cached Gmail user
