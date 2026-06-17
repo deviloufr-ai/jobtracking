@@ -46,6 +46,9 @@ export default function MockInterviewChatbot({ job, cv, onClose }) {
   const recognitionRef = useRef(null)
   const messagesEndRef = useRef(null)
   const interviewIdRef = useRef(Date.now())
+  // Track final vs. interim results separately so we accumulate all final
+  // transcript parts instead of overwriting.
+  const finalTranscriptRef = useRef('')
   // In-browser (WASM Whisper) fallback recording state
   const mediaRecorderRef = useRef(null)
   const audioChunksRef = useRef([])
@@ -79,15 +82,18 @@ export default function MockInterviewChatbot({ job, cv, onClose }) {
       }
       recognition.onresult = (e) => {
         let interim = ''
+        // Accumulate all final results; show interim as a live preview.
         for (let i = e.resultIndex; i < e.results.length; i++) {
           const t = e.results[i][0].transcript
           if (e.results[i].isFinal) {
-            setTranscript(t)
+            finalTranscriptRef.current += t + ' '
           } else {
             interim += t
           }
         }
-        if (interim) setTranscript(interim)
+        // Show the accumulated final transcript + any interim preview.
+        const display = (finalTranscriptRef.current + interim).trim()
+        setTranscript(display)
       }
 
       recognitionRef.current = recognition
@@ -210,6 +216,7 @@ Output ONLY the question as plain text. No formatting, no bold, no italics, no a
     const recognition = recognitionRef.current || initRecognition()
     if (!recognition) return // initRecognition already surfaced an error
 
+    finalTranscriptRef.current = ''
     setTranscript('')
     setError(null)
     try {
@@ -345,11 +352,13 @@ Output ONLY the question as plain text. No formatting, no bold, no italics, no a
       return
     }
     recognitionRef.current?.stop()
-    if (!transcript.trim()) {
+    // Use the accumulated final transcript, not the state (which includes interim).
+    const finalText = finalTranscriptRef.current.trim()
+    if (!finalText) {
       setError('No speech detected. Please try again.')
       return
     }
-    submitAnswer(transcript)
+    submitAnswer(finalText)
   }
 
   const submitTextAnswer = () => {
