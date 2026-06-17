@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import CommuteInfo from './CommuteInfo'
 import { getStatus } from '../hooks/useJobs'
 import { gmailMessageUrl } from '../services/gmail'
+import { ScoreBreakdown, scoreColorClasses } from './ScoreJob'
 
 export default function JobCandidaturePanel({
   job,
@@ -42,6 +43,7 @@ export default function JobCandidaturePanel({
   const [showCVViewer, setShowCVViewer] = useState(false)
   const [editingStep, setEditingStep] = useState(null)
   const [editForm, setEditForm] = useState({})
+  const [showScoreDetails, setShowScoreDetails] = useState(false)
 
   // Auto-show PDF viewer when CV tab is active and CV exists
   useEffect(() => {
@@ -77,6 +79,10 @@ export default function JobCandidaturePanel({
   ]
 
   const emailCount = history?.filter(h => h.source === 'email').length || 0
+
+  // The tailored-CV generator needs something to adapt to. Block generation when
+  // the job has no description, no source URL and no notes.
+  const hasJobDetails = !!(job.jobDescription || job.url || (job.notes && job.notes.trim()))
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
@@ -394,7 +400,9 @@ export default function JobCandidaturePanel({
                   {onGenerateCV && (
                     <button
                       onClick={() => onGenerateCV(job)}
-                      className="text-xs font-semibold text-indigo-600 bg-white border border-indigo-300 px-4 py-2 rounded-lg hover:bg-indigo-50 transition-all duration-200"
+                      disabled={!hasJobDetails}
+                      title={hasJobDetails ? '' : 'Add a job description, URL or notes to generate a tailored CV'}
+                      className="text-xs font-semibold text-indigo-600 bg-white border border-indigo-300 px-4 py-2 rounded-lg hover:bg-indigo-50 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       Regenerate
                     </button>
@@ -429,10 +437,15 @@ export default function JobCandidaturePanel({
                 {onGenerateCV && (
                   <button
                     onClick={() => onGenerateCV(job)}
-                    className="text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 px-8 py-3 rounded-lg hover:from-indigo-600 hover:to-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                    disabled={!hasJobDetails}
+                    title={hasJobDetails ? '' : 'Add a job description, URL or notes to generate a tailored CV'}
+                    className="text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 px-8 py-3 rounded-lg hover:from-indigo-600 hover:to-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:from-indigo-500 disabled:hover:to-indigo-600"
                   >
                     📄 Generate Tailored CV
                   </button>
+                )}
+                {!hasJobDetails && (
+                  <p className="text-xs text-gray-400 mt-3">Add a job description, URL or notes first to generate a tailored CV.</p>
                 )}
               </div>
             )}
@@ -556,6 +569,38 @@ export default function JobCandidaturePanel({
           {/* Candidature Details */}
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Candidature</h4>
+
+            {/* Match Score — expandable breakdown */}
+            {(job.score !== null && job.score !== undefined) && (
+              <div className="mb-3 pb-3 border-b border-gray-100">
+                <button
+                  onClick={() => setShowScoreDetails(v => !v)}
+                  disabled={!job.scoreDetails}
+                  className="w-full flex items-center justify-between gap-2 group disabled:cursor-default"
+                >
+                  <span className="text-xs text-gray-500">{t('scoreJob.title') || 'Match score'}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border ${scoreColorClasses(job.score)}`}>
+                      {Math.round(job.score)}
+                    </span>
+                    {job.scoreDetails && (
+                      <svg
+                        className={`w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 transition-transform ${showScoreDetails ? 'rotate-180' : ''}`}
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
+                  </span>
+                </button>
+                {showScoreDetails && job.scoreDetails && (
+                  <div className="mt-3">
+                    <ScoreBreakdown job={job} t={t} />
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="space-y-2 text-xs">
               <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
                 <span className="text-gray-500">Position</span>

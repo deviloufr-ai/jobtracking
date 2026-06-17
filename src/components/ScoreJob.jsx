@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useCVs } from '../hooks/useCVs'
 import { scoreJobMatch } from '../services/scoreJob'
 
@@ -10,7 +10,7 @@ export function scoreColorClasses(s) {
   return 'bg-red-100 text-red-700 border-red-300'
 }
 
-function getVerdictIcon(verdict) {
+export function getVerdictIcon(verdict) {
   switch (verdict) {
     case 'STRONG_MATCH': return '✓'
     case 'GOOD_MATCH': return '✓'
@@ -20,7 +20,7 @@ function getVerdictIcon(verdict) {
   }
 }
 
-function getVerdictColor(verdict) {
+export function getVerdictColor(verdict) {
   switch (verdict) {
     case 'STRONG_MATCH': return 'text-green-700 bg-green-50'
     case 'GOOD_MATCH': return 'text-blue-700 bg-blue-50'
@@ -30,101 +30,71 @@ function getVerdictColor(verdict) {
   }
 }
 
-// Rich score tooltip shown on hover in the job table
-function ScoreTooltip({ job, show, placement = 'top', maxHeight, t = (key) => key }) {
-  if (!show || !job?.scoreDetails) return null
-
-  const { scoreDetails: details } = job
+// Full score breakdown — verdict, summary, strengths and gaps.
+// Reused by the candidature panel; no fixed size so it flows in its container.
+export function ScoreBreakdown({ job, t = (key) => key }) {
+  const details = job?.scoreDetails
+  if (!details) return null
   const verdict = details.verdict?.replace(/_/g, ' ') || ''
-  const posClasses = placement === 'bottom'
-    ? 'top-full mt-2'
-    : 'bottom-full mb-2'
 
   return (
-    <div
-      className={`absolute z-50 left-1/2 -translate-x-1/2 ${posClasses} bg-white border border-gray-300 rounded-lg shadow-lg p-4 overflow-y-auto overscroll-contain ${getVerdictColor(details.verdict)}`}
-      style={{ width: '36rem', maxWidth: 'calc(100vw - 2rem)', maxHeight }}
-    >
-      <div className="flex items-start gap-3">
-        <div className="flex-shrink-0 text-2xl font-bold">{getVerdictIcon(details.verdict)}</div>
-        <div className="flex-1 min-w-0">
-          <div className="font-semibold text-sm uppercase tracking-wide mb-1">{verdict}</div>
-          <p className="text-sm text-gray-700 mb-2 break-words">{details.summary}</p>
-
-          {details.strengths?.length > 0 && (
-            <div className="mb-2">
-              <p className="text-xs font-semibold text-green-700 mb-1">✓ {t('scoreJob.strengths') || 'Strengths'}</p>
-              <ul className="space-y-0.5">
-                {details.strengths.map((s, i) => (
-                  <li key={i} className="text-xs text-gray-700 flex gap-1.5">
-                    <span className="text-green-600 flex-shrink-0">•</span>
-                    <span className="break-words">{s}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {details.gaps?.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-amber-700 mb-1">⚠ {t('scoreJob.gaps') || 'Gaps'}</p>
-              <ul className="space-y-0.5">
-                {details.gaps.map((g, i) => (
-                  <li key={i} className="text-xs text-gray-700 flex gap-1.5">
-                    <span className="text-amber-600 flex-shrink-0">•</span>
-                    <span className="break-words">{g}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <p className="text-[10px] text-gray-600 mt-2 break-words">
-            {t('scoreJob.scoredWith') || 'Scored with'}: <span className="font-medium">{details.cvName}</span>
-          </p>
-        </div>
+    <div className="space-y-2">
+      <div className={`flex items-center gap-2 rounded-md px-2 py-1.5 ${getVerdictColor(details.verdict)}`}>
+        <span className="text-lg font-bold leading-none">{getVerdictIcon(details.verdict)}</span>
+        <span className="text-xs font-semibold uppercase tracking-wide">{verdict}</span>
       </div>
+
+      {details.summary && (
+        <p className="text-xs text-gray-700 break-words">{details.summary}</p>
+      )}
+
+      {details.strengths?.length > 0 && (
+        <div>
+          <p className="text-[11px] font-semibold text-green-700 mb-1">✓ {t('scoreJob.strengths') || 'Strengths'}</p>
+          <ul className="space-y-0.5">
+            {details.strengths.map((s, i) => (
+              <li key={i} className="text-[11px] text-gray-700 flex gap-1.5">
+                <span className="text-green-600 flex-shrink-0">•</span>
+                <span className="break-words">{s}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {details.gaps?.length > 0 && (
+        <div>
+          <p className="text-[11px] font-semibold text-amber-700 mb-1">⚠ {t('scoreJob.gaps') || 'Gaps'}</p>
+          <ul className="space-y-0.5">
+            {details.gaps.map((g, i) => (
+              <li key={i} className="text-[11px] text-gray-700 flex gap-1.5">
+                <span className="text-amber-600 flex-shrink-0">•</span>
+                <span className="break-words">{g}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {details.cvName && (
+        <p className="text-[10px] text-gray-500 break-words">
+          {t('scoreJob.scoredWith') || 'Scored with'}: <span className="font-medium">{details.cvName}</span>
+        </p>
+      )}
     </div>
   )
 }
 
 // Compact score pill shown in the job table. Renders nothing if not yet scored.
 export function ScoreBadge({ job, t = (key) => key }) {
-  const [showTooltip, setShowTooltip] = useState(false)
-  const [placement, setPlacement] = useState('top')
-  const [maxHeight, setMaxHeight] = useState(undefined)
-  const wrapRef = useRef(null)
   const score = job?.score
   if (score === null || score === undefined) return null
-
-  // Place the tooltip on whichever side (above/below the badge) has more room,
-  // and cap its height to that space so all content stays on-screen.
-  const handleEnter = () => {
-    const rect = wrapRef.current?.getBoundingClientRect()
-    if (rect) {
-      const spaceAbove = rect.top
-      const spaceBelow = window.innerHeight - rect.bottom
-      const below = spaceBelow > spaceAbove
-      setPlacement(below ? 'bottom' : 'top')
-      setMaxHeight(`${Math.max(spaceAbove, spaceBelow) - 16}px`)
-    }
-    setShowTooltip(true)
-  }
-
   return (
-    <div
-      ref={wrapRef}
-      className="relative inline-block"
-      onMouseEnter={handleEnter}
-      onMouseLeave={() => setShowTooltip(false)}
+    <span
+      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border flex-shrink-0 ${scoreColorClasses(score)}`}
     >
-      <span
-        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border flex-shrink-0 cursor-help ${scoreColorClasses(score)}`}
-      >
-        {Math.round(score)}
-      </span>
-      <ScoreTooltip job={job} show={showTooltip} placement={placement} maxHeight={maxHeight} t={t} />
-    </div>
+      {Math.round(score)}
+    </span>
   )
 }
 
