@@ -54,31 +54,50 @@ export default function JobCandidaturePanel({
   const emailCount = history?.filter(h => h.source === 'email').length || 0
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-      {/* Header with job info */}
-      <div className="bg-gradient-to-r from-indigo-50 to-violet-50 px-6 py-4 border-b border-indigo-100">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">{job.company}</h2>
-            <p className="text-sm text-gray-600">{job.position}</p>
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+      {/* Modern Header with job info and actions */}
+      <div className="bg-gradient-to-br from-slate-50 via-indigo-50 to-violet-50 px-6 py-5 border-b border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex-1">
+            <h2 className="text-xl font-bold text-gray-900">{job.company}</h2>
+            <p className="text-sm text-gray-600 mt-0.5">{job.position}</p>
           </div>
-          <div className="text-right">
-            <div className="inline-block bg-indigo-600 text-white px-3 py-1.5 rounded-full text-sm font-semibold">
+          <div className="flex items-center gap-3 ml-4">
+            <div className="inline-block bg-gradient-to-br from-indigo-500 to-violet-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md">
               {job.score || '—'}
             </div>
+            {/* Edit and Delete buttons - Modern icon buttons */}
+            <button
+              onClick={() => onEdit()}
+              title="Edit application"
+              className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all duration-200"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => onDelete()}
+              title="Delete application"
+              className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-0 border-b border-indigo-200 overflow-x-auto">
+        {/* Modern Tabs */}
+        <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold whitespace-nowrap transition-all duration-200 rounded-t-lg ${
                 activeTab === tab.id
-                  ? 'border-indigo-600 text-indigo-700 bg-white/50'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+                  ? 'text-indigo-600 bg-white border-b-2 border-indigo-500'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/40'
               }`}
             >
               <span className="text-base">{tab.icon}</span>
@@ -184,7 +203,7 @@ export default function JobCandidaturePanel({
 
               <button
                 onClick={() => onToggleAddStep()}
-                className="w-full mt-3 text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-2 rounded-lg hover:bg-indigo-100 transition-colors"
+                className="w-full mt-3 text-xs font-semibold text-indigo-600 bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 px-3 py-2.5 rounded-lg hover:from-indigo-100 hover:to-violet-100 transition-all duration-200"
               >
                 + Add step
               </button>
@@ -197,29 +216,13 @@ export default function JobCandidaturePanel({
                   href={job.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1.5"
+                  className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1.5 group"
                 >
-                  <span>🔗</span>
+                  <span className="group-hover:scale-110 transition-transform">🔗</span>
                   <span>{(() => { try { return new URL(job.url).hostname.replace('www.', '') } catch { return job.url } })()}</span>
                 </a>
               </div>
             )}
-
-            {/* Action buttons */}
-            <div className="flex flex-col gap-2 pt-4 border-t border-gray-200">
-              <button
-                onClick={() => onEdit(job)}
-                className="w-full text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 px-3 py-2.5 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                ✏️ Edit application
-              </button>
-              <button
-                onClick={() => onDelete(job)}
-                className="w-full text-xs font-medium text-red-600 bg-red-50 border border-red-200 px-3 py-2.5 rounded-lg hover:bg-red-100 transition-colors"
-              >
-                🗑️ Delete
-              </button>
-            </div>
           </div>
         )}
 
@@ -239,14 +242,14 @@ export default function JobCandidaturePanel({
                   <div className="flex gap-2">
                     <button
                       onClick={() => onViewSavedCV && onViewSavedCV(job)}
-                      className="flex-1 text-xs font-medium text-indigo-600 bg-white border border-indigo-300 px-3 py-2.5 rounded-lg hover:bg-indigo-50 transition-colors"
+                      className="flex-1 text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 px-3 py-2.5 rounded-lg hover:from-indigo-600 hover:to-indigo-700 transition-all duration-200 shadow-sm"
                     >
                       View CV
                     </button>
                     {onGenerateCV && (
                       <button
                         onClick={() => onGenerateCV(job)}
-                        className="flex-1 text-xs font-medium text-violet-600 bg-white border border-violet-300 px-3 py-2.5 rounded-lg hover:bg-violet-50 transition-colors"
+                        className="flex-1 text-xs font-semibold text-indigo-600 bg-white border border-indigo-300 px-3 py-2.5 rounded-lg hover:bg-indigo-50 transition-all duration-200"
                       >
                         Regenerate
                       </button>
@@ -255,12 +258,12 @@ export default function JobCandidaturePanel({
                 </div>
               </>
             ) : (
-              <div className="text-center py-8">
-                <p className="text-sm text-gray-500 mb-4">No CV yet for this application</p>
+              <div className="text-center py-12">
+                <p className="text-sm text-gray-500 mb-6">No CV yet for this application</p>
                 {onGenerateCV && (
                   <button
                     onClick={() => onGenerateCV(job)}
-                    className="text-sm font-medium text-white bg-indigo-600 px-6 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors"
+                    className="text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 px-8 py-3 rounded-lg hover:from-indigo-600 hover:to-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg"
                   >
                     📄 Generate Tailored CV
                   </button>
@@ -286,13 +289,13 @@ export default function JobCandidaturePanel({
                   <div className="flex gap-2">
                     <button
                       onClick={() => {}}
-                      className="flex-1 text-xs font-medium text-orange-600 bg-white border border-orange-300 px-3 py-2.5 rounded-lg hover:bg-orange-50 transition-colors"
+                      className="flex-1 text-xs font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 px-3 py-2.5 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-sm"
                     >
                       View Letter
                     </button>
                     <button
                       onClick={() => {}}
-                      className="flex-1 text-xs font-medium text-orange-600 bg-white border border-orange-300 px-3 py-2.5 rounded-lg hover:bg-orange-50 transition-colors"
+                      className="flex-1 text-xs font-semibold text-orange-600 bg-white border border-orange-300 px-3 py-2.5 rounded-lg hover:bg-orange-50 transition-all duration-200"
                     >
                       Regenerate
                     </button>
@@ -300,11 +303,11 @@ export default function JobCandidaturePanel({
                 </div>
               </>
             ) : (
-              <div className="text-center py-8">
-                <p className="text-sm text-gray-500 mb-4">No cover letter yet for this application</p>
+              <div className="text-center py-12">
+                <p className="text-sm text-gray-500 mb-6">No cover letter yet for this application</p>
                 <button
                   onClick={() => {}}
-                  className="text-sm font-medium text-white bg-orange-600 px-6 py-2.5 rounded-lg hover:bg-orange-700 transition-colors"
+                  className="text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-3 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-md hover:shadow-lg"
                 >
                   ✍️ Generate Cover Letter
                 </button>
@@ -316,11 +319,11 @@ export default function JobCandidaturePanel({
         {/* Interview Tab */}
         {activeTab === 'interview' && (
           <div className="space-y-4">
-            <div className="text-center py-8">
-              <p className="text-sm text-gray-500 mb-4">Prepare for your interview</p>
+            <div className="text-center py-12">
+              <p className="text-sm text-gray-500 mb-6">Prepare for your interview</p>
               <button
                 onClick={() => {}}
-                className="text-sm font-medium text-white bg-cyan-600 px-6 py-2.5 rounded-lg hover:bg-cyan-700 transition-colors"
+                className="text-sm font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 px-8 py-3 rounded-lg hover:from-cyan-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg"
               >
                 🎤 Start Interview Training
               </button>
@@ -451,15 +454,15 @@ export default function JobCandidaturePanel({
 
           {/* CV/Letter Status */}
           {job.cvSaved && (
-            <div className="bg-indigo-50 rounded-lg border border-indigo-200 p-3">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg border border-indigo-200 p-3 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
                 <span className="text-sm">📄</span>
                 <span className="text-xs font-semibold text-indigo-700">CV adapté</span>
                 <span className="text-[9px] text-indigo-600 ml-auto">{new Date(job.cvSaved.savedAt).toLocaleDateString('fr-FR')}</span>
               </div>
               <button
                 onClick={() => onViewSavedCV?.(job)}
-                className="w-full text-xs font-medium text-indigo-600 bg-white border border-indigo-200 px-2.5 py-1.5 rounded hover:bg-indigo-50 transition-colors"
+                className="w-full text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 px-2.5 py-2 rounded hover:from-indigo-600 hover:to-indigo-700 transition-all duration-200"
               >
                 View CV
               </button>
@@ -467,15 +470,15 @@ export default function JobCandidaturePanel({
           )}
 
           {job.letterSaved && (
-            <div className="bg-orange-50 rounded-lg border border-orange-200 p-3">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border border-orange-200 p-3 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
                 <span className="text-sm">✍️</span>
                 <span className="text-xs font-semibold text-orange-700">Letter</span>
                 <span className="text-[9px] text-orange-600 ml-auto">{new Date(job.letterSaved.savedAt).toLocaleDateString('fr-FR')}</span>
               </div>
               <button
                 onClick={() => {}}
-                className="w-full text-xs font-medium text-orange-600 bg-white border border-orange-200 px-2.5 py-1.5 rounded hover:bg-orange-50 transition-colors"
+                className="w-full text-xs font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 px-2.5 py-2 rounded hover:from-orange-600 hover:to-orange-700 transition-all duration-200"
               >
                 View Letter
               </button>
