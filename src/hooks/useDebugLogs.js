@@ -5,11 +5,6 @@ export function useDebugLogs() {
   const { settings } = useSettings()
 
   useEffect(() => {
-    // TEMPORARY: never suppress console while debugging the Supabase auth flow.
-    // Revert (remove this early return) once sign-in is verified.
-    return
-
-    /* eslint-disable no-unreachable */
     const originalLog = console.log
     const originalWarn = console.warn
     const originalDebug = console.debug
