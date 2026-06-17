@@ -30,6 +30,7 @@ import { initializeSyncCoordinator } from './services/syncCoordinator'
 import JobSearch from './components/JobSearch'
 import CVManager from './components/CVManager'
 import CVViewer from './components/CVViewer'
+import InterviewHistory from './components/InterviewHistory'
 import { renderCV, ONE_PAGE_SCALE_FN, BASE_PRINT_CSS } from './components/CVGenerator'
 import Settings from './components/Settings'
 import ImageImport from './components/ImageImport'
@@ -609,9 +610,11 @@ export default function App() {
   )
 
   // ── nav tabs config ─────────────────────────────────────────────────────────
+  const interviewCount = jobs.reduce((sum, j) => sum + ((j.interviewSessions || []).length), 0)
   const NAV_TABS = [
     { id: 'tracker',  label: t('nav.tabs.tracker'), icon: '📋', badge: jobs.length || null },
     { id: 'analytics', label: t('nav.tabs.analytics'), icon: '📊', badge: null },
+    { id: 'interview', label: t('nav.tabs.interview'), icon: '🎤', badge: interviewCount || null },
     { id: 'search',   label: t('nav.tabs.search'),    icon: '🔎', badge: null },
     { id: 'cv',       label: t('nav.tabs.cv'),       icon: '📄', badge: null },
     { id: 'settings', label: t('nav.tabs.settings'),     icon: '⚙️',  badge: null },
@@ -969,6 +972,8 @@ export default function App() {
           <Settings jobs={jobs} syncUserId={syncUserId} onMergeDuplicates={mergeDuplicates} initialTab={settingsInitialTab} />
         ) : activeTab === 'analytics' ? (
           <Analytics jobs={jobs} t={t} />
+        ) : activeTab === 'interview' ? (
+          <InterviewHistory jobs={jobs} />
         ) : activeTab === 'cv' ? (
           <CVManager jobs={jobs} preselectedJob={selectedJobForCV} onUpdateJob={updateJob} t={t} />
         ) : activeTab === 'search' ? (
