@@ -39,8 +39,8 @@ function ScoreTooltip({ job, show, t = (key) => key }) {
 
   return (
     <div
-      className={`absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white border border-gray-300 rounded-lg shadow-lg p-4 overflow-y-auto overscroll-contain ${getVerdictColor(details.verdict)}`}
-      style={{ width: '24rem', maxWidth: 'calc(100vw - 2rem)', maxHeight: 'min(70vh, 28rem)' }}
+      className={`absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white border border-gray-300 rounded-lg shadow-lg p-4 ${getVerdictColor(details.verdict)}`}
+      style={{ width: '24rem', maxWidth: 'calc(100vw - 2rem)' }}
     >
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 text-2xl font-bold">{getVerdictIcon(details.verdict)}</div>
