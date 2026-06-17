@@ -276,20 +276,23 @@ export default function JobCandidaturePanel({
                 </div>
                 {/* Embedded CV Viewer - Display PDF directly */}
                 <div className="border border-gray-300 rounded-lg overflow-hidden bg-white flex-1" style={{ height: '650px' }}>
-                  {onViewSavedCV ? (
-                    <div className="w-full h-full">
-                      {/* This will display the CVViewer modal inline - triggered via onViewSavedCV */}
-                      <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                        <div className="text-center">
-                          <p className="text-gray-600 mb-4">📄 CV Preview</p>
-                          <button
-                            onClick={() => onViewSavedCV(job)}
-                            className="text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 px-8 py-3 rounded-lg hover:from-indigo-600 hover:to-indigo-700 transition-all duration-200 shadow-md"
-                          >
-                            View Full PDF
-                          </button>
-                        </div>
+                  {job.cvSaved?.markdown ? (
+                    <div className="w-full h-full p-4 overflow-auto bg-white">
+                      {/* Display CV content directly */}
+                      <div className="prose prose-sm max-w-none">
+                        <pre className="bg-gray-50 p-4 rounded overflow-auto text-xs whitespace-pre-wrap break-words">
+                          {job.cvSaved.markdown.substring(0, 2000)}...
+                        </pre>
                       </div>
+                    </div>
+                  ) : onViewSavedCV ? (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                      <button
+                        onClick={() => onViewSavedCV(job)}
+                        className="text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 px-8 py-3 rounded-lg hover:from-indigo-600 hover:to-indigo-700 transition-all duration-200 shadow-md"
+                      >
+                        View CV
+                      </button>
                     </div>
                   ) : null}
                 </div>
