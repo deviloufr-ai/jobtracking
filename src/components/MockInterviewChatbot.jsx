@@ -31,7 +31,7 @@ function stripFormatting(text) {
     .trim()
 }
 
-export default function MockInterviewChatbot({ job, cv, onClose }) {
+export default function MockInterviewChatbot({ job, cv, onClose, onInterviewComplete }) {
   const [messages, setMessages] = useState([])
   const [isRecording, setIsRecording] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
@@ -160,9 +160,9 @@ export default function MockInterviewChatbot({ job, cv, onClose }) {
         messages: [
           {
             role: 'user',
-            content: `Ask ONE opening question for a ${job.position} interview at ${job.company}.${descContext}${cvContext}
+            content: `You are a senior recruiter at ${job.company} evaluating a candidate for a ${job.position} role. Ask ONE probing opening question that reveals their fit for the role and their thought process.${descContext}${cvContext}
 
-Connect the candidate's experience to the role. Output ONLY the question as plain text. No formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just a natural, conversational question you'd ask if talking to someone in person.`
+Connect the candidate's experience to the role. Be direct and realistic—ask what you'd actually ask in a real interview. Output ONLY the question as plain text. No formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just a natural, conversational question you'd ask if talking to someone in person.`
           }
         ]
       })
@@ -322,7 +322,7 @@ Connect the candidate's experience to the role. Output ONLY the question as plai
       const cvContext = cv
         ? `Candidate background: ${cv.slice(0, 600)}\n\n`
         : ''
-      const systemPrompt = `${descContext}${cvContext}You conduct interviews for this role at ${job.company}. Ask natural follow-up questions that connect the candidate's experience to the role's requirements. Probe specific skills, projects, or experiences from their CV that relate to this position. Output ONLY plain text questions—no formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just conversational sentences you'd say in person.`
+      const systemPrompt = `${descContext}${cvContext}You are a senior recruiter at ${job.company} evaluating a candidate for this role. Ask natural, probing follow-up questions that uncover whether they're truly fit for this position. Connect their experience to the role's requirements. Push for specific details—ask about challenges they faced, decisions they made, and lessons learned. Be realistic and direct, like you'd be in a real interview. Don't be overly nice; ask questions that matter. Output ONLY plain text questions—no formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just conversational sentences you'd say in person.`
 
       const response = await aiFetch('/api/claude', {
         model: 'claude-haiku-4-5-20251001',
@@ -424,18 +424,21 @@ Connect the candidate's experience to the role. Output ONLY the question as plai
         messages: [
           {
             role: 'user',
-            content: `You are an expert interviewer. Analyze this mock interview and provide feedback.${descContext}${cvContext}
+            content: `You are a senior recruiter evaluating this candidate's interview performance for a ${job.position} role at ${job.company}. Be honest and realistic—score like you would in real hiring (don't inflate scores).${descContext}${cvContext}
 
 Interview transcript:
 ${transcript}
 
 Provide:
-1. Score (0-100)
-2. Strengths (2-3 bullet points of what went well)
-3. Areas for improvement (2-3 bullet points with specific suggestions)
-4. One example of a weaker answer and how to improve it
+1. Hire Decision: Would you move this candidate forward? (Yes/No/Maybe with score 0-100)
+2. Strengths (2-3 bullet points: what demonstrated real competence)
+3. Red flags or concerns (2-3 bullet points: what worried you)
+4. One specific example: Quote their weak answer and explain exactly what was missing or wrong
+5. How to fix it: Concrete reframe of that answer
 
-Format as JSON with keys: score, strengths, improvements, example_improvement`
+Be direct. A 70 means "solid but has gaps". An 85+ means "seriously considering". Be critical.
+
+Format as JSON with keys: hire_decision, score, strengths, concerns, weak_example, better_answer`
           }
         ]
       })
@@ -444,12 +447,28 @@ Format as JSON with keys: score, strengths, improvements, example_improvement`
       const data = await response.json()
       const analysisText = data.content[0]?.text || ''
 
+      let analysis
       try {
-        const analysis = JSON.parse(analysisText)
+        analysis = JSON.parse(analysisText)
         setFeedback(analysis)
       } catch {
         // If JSON parsing fails, show raw text
-        setFeedback({ raw: analysisText })
+        analysis = { raw: analysisText }
+        setFeedback(analysis)
+      }
+
+      // Notify parent so they can save results and potentially close modal
+      if (onInterviewComplete) {
+        onInterviewComplete({
+          jobId: job.id,
+          company: job.company,
+          position: job.position,
+          date: new Date().toISOString(),
+          score: analysis.score,
+          hire_decision: analysis.hire_decision,
+          transcript: messages.map((m) => ({ role: m.role, text: m.text })),
+          feedback: analysis
+        })
       }
     } catch (err) {
       setError(`Analysis failed: ${err.message}`)
@@ -538,12 +557,23 @@ Format as JSON with keys: score, strengths, improvements, example_improvement`
             <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-lg p-4 mt-4">
               <div className="text-center mb-4">
                 <div className="text-5xl font-bold text-purple-600">{feedback.score || '—'}</div>
-                <p className="text-xs text-gray-600">Interview Score</p>
+                <p className="text-xs text-gray-600">Recruiter Score</p>
+                {feedback.hire_decision && (
+                  <p className={`text-xs font-bold mt-1 ${
+                    feedback.hire_decision === 'Yes' ? 'text-green-700' :
+                    feedback.hire_decision === 'No' ? 'text-red-700' :
+                    'text-orange-700'
+                  }`}>
+                    {feedback.hire_decision === 'Yes' ? '✅ Move Forward' :
+                     feedback.hire_decision === 'No' ? '❌ Not Ready' :
+                     '⏳ On The Fence'}
+                  </p>
+                )}
               </div>
 
               {feedback.strengths && (
                 <div className="mb-3">
-                  <p className="text-xs font-bold text-green-700 mb-1">✅ Strengths</p>
+                  <p className="text-xs font-bold text-green-700 mb-1">✅ What Impressed Me</p>
                   <ul className="text-xs text-gray-700 space-y-1">
                     {Array.isArray(feedback.strengths) ? (
                       feedback.strengths.map((s, i) => <li key={i}>• {s}</li>)
@@ -554,23 +584,30 @@ Format as JSON with keys: score, strengths, improvements, example_improvement`
                 </div>
               )}
 
-              {feedback.improvements && (
+              {feedback.concerns && (
                 <div className="mb-3">
-                  <p className="text-xs font-bold text-orange-700 mb-1">📈 Areas to Improve</p>
+                  <p className="text-xs font-bold text-red-700 mb-1">⚠️ Concerns</p>
                   <ul className="text-xs text-gray-700 space-y-1">
-                    {Array.isArray(feedback.improvements) ? (
-                      feedback.improvements.map((imp, i) => <li key={i}>• {imp}</li>)
+                    {Array.isArray(feedback.concerns) ? (
+                      feedback.concerns.map((c, i) => <li key={i}>• {c}</li>)
                     ) : (
-                      <li>• {feedback.improvements}</li>
+                      <li>• {feedback.concerns}</li>
                     )}
                   </ul>
                 </div>
               )}
 
-              {feedback.example_improvement && (
+              {feedback.weak_example && (
+                <div className="mb-3">
+                  <p className="text-xs font-bold text-orange-700 mb-1">📍 Weak Moment</p>
+                  <p className="text-xs text-gray-700 italic">"{feedback.weak_example}"</p>
+                </div>
+              )}
+
+              {feedback.better_answer && (
                 <div>
-                  <p className="text-xs font-bold text-blue-700 mb-1">💡 Example: Strengthen Your Answer</p>
-                  <p className="text-xs text-gray-700">{feedback.example_improvement}</p>
+                  <p className="text-xs font-bold text-blue-700 mb-1">💡 Better Way to Say It</p>
+                  <p className="text-xs text-gray-700">{feedback.better_answer}</p>
                 </div>
               )}
 
