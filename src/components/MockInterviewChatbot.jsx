@@ -61,6 +61,8 @@ export default function MockInterviewChatbot({ job, cv, onClose }) {
     setError(null)
     try {
       const response = await aiFetch('/api/claude', {
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 500,
         messages: [
           {
             role: 'user',
@@ -151,6 +153,8 @@ ${job.jobDescription || job.notes || 'No specific description provided'}
 You've asked them questions to evaluate their fit. Their last response was about a topic they brought up. Now ask a thoughtful follow-up question OR provide brief feedback and move to the next topic. Keep it conversational. Ask ONE clear question at a time. After 5-6 exchanges, offer brief closing feedback.`
 
       const response = await aiFetch('/api/claude', {
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 500,
         system: systemPrompt,
         messages: conversationHistory
       })
