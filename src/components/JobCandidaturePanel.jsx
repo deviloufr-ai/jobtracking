@@ -314,7 +314,7 @@ export default function JobCandidaturePanel({
                 </div>
                 {/* PDF Viewer - Embedded directly in tab */}
                 {CVViewerComponent ? (
-                  <div className="border border-gray-300 rounded-lg overflow-hidden bg-white flex-1">
+                  <div className="border border-gray-300 rounded-lg overflow-hidden bg-white" style={{ height: '750px' }}>
                     {CVViewerComponent}
                   </div>
                 ) : (

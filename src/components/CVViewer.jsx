@@ -1,6 +1,6 @@
 import { renderCV, BASE_PRINT_CSS } from './CVGenerator'
 
-export default function CVViewer({ job, onClose }) {
+export default function CVViewer({ job, onClose, inline = false }) {
   if (!job?.cvSaved) return null
 
   const { markdown, template, filename } = job.cvSaved
@@ -24,6 +24,32 @@ export default function CVViewer({ job, onClose }) {
     }
 
     html2pdf().set(opt).from(element).save()
+  }
+
+  // Inline mode — render the CV content directly inside its container (no modal overlay)
+  if (inline) {
+    return (
+      <div className="flex flex-col h-full">
+        {/* Toolbar */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 flex-shrink-0 bg-white">
+          <span className="text-sm font-semibold text-gray-700 truncate">📄 {filename}</span>
+          <button
+            onClick={handleDownloadPDF}
+            className="text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
+          >
+            📥 Télécharger PDF
+          </button>
+        </div>
+
+        {/* CV Content */}
+        <div className="flex-1 overflow-auto bg-gray-50 p-6">
+          <div
+            className="bg-white rounded-lg shadow-sm p-8 max-w-2xl mx-auto"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        </div>
+      </div>
+    )
   }
 
   return (
