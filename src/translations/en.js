@@ -35,6 +35,7 @@ export const en = {
     connectGmail: 'Connect Gmail',
     lastSync: 'Last sync',
     connected: 'Connected',
+    signOut: 'Sign out',
   },
 
   // Extension

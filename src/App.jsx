@@ -24,6 +24,7 @@ import { useAutoScore } from './hooks/useAutoScore'
 import { useAutoCheckPositions } from './hooks/useAutoCheckPositions'
 import { usePolling } from './hooks/usePolling'
 import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, autoReuseStoredTokens, getSyncUserIdForSupabase, resolveSyncUserId } from './services/gmail'
+import { supabase, signInWithGoogle, isSupabaseConfigured } from './services/supabase'
 import { initializeSyncCoordinator, reinitializeSyncCoordinator } from './services/syncCoordinator'
 import JobSearch from './components/JobSearch'
 import CVManager from './components/CVManager'
@@ -185,6 +186,10 @@ export default function App() {
   const [showLandingPage, setShowLandingPage] = useState(true)
   const [syncUserId, setSyncUserId] = useState(null)
   const [initialSyncDone, setInitialSyncDone] = useState(false)
+  // Supabase auth session — the real identity (auth.uid()) that RLS keys on.
+  // null = not loaded yet, false = loaded & signed out, object = signed in.
+  const [session, setSession] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
   const [currentTheme, setCurrentTheme] = useState(settings.theme || 'light')
   const [selectedJobIds, setSelectedJobIds] = useState(new Set())
   const [mergeModal, setMergeModal] = useState(null)
@@ -227,6 +232,33 @@ export default function App() {
     window.addEventListener('jobtrackr:trial-exhausted', onTrialExhausted)
     return () => window.removeEventListener('jobtrackr:trial-exhausted', onTrialExhausted)
   }, [t])
+
+  // Load the Supabase auth session and keep it in sync. This establishes
+  // auth.uid() for every session (the identity RLS will key on). Google sign-in
+  // for identity is separate from the GIS Gmail-reading flow.
+  useEffect(() => {
+    if (!isSupabaseConfigured()) {
+      // No Supabase configured (e.g. local dev without env) — don't block the app.
+      setAuthLoading(false)
+      return
+    }
+    let active = true
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return
+      setSession(data.session || false)
+      setAuthLoading(false)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession || false)
+      setAuthLoading(false)
+    })
+    return () => { active = false; subscription?.unsubscribe() }
+  }, [])
+
+  // Once signed in, skip the marketing landing page and go straight to the app.
+  useEffect(() => {
+    if (session) setShowLandingPage(false)
+  }, [session])
 
   // On load: check for cached Gmail user
   useEffect(() => {
@@ -605,7 +637,31 @@ export default function App() {
     setMobileMenuOpen(false)
   }
 
-  // Show landing page if no user
+  // While the auth session is still loading, render nothing (avoids a flash of
+  // the landing page for an already-signed-in user).
+  if (isSupabaseConfigured() && authLoading) {
+    return (
+      <ErrorBoundary>
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-full border-4 border-indigo-200 border-t-indigo-600 animate-spin" />
+        </div>
+      </ErrorBoundary>
+    )
+  }
+
+  // Require a Supabase sign-in before the app. The landing page's CTA triggers
+  // Google sign-in (identity); Gmail connection happens later, inside the app.
+  if (isSupabaseConfigured() && !session) {
+    const isEnglish = navigator.language.startsWith('en')
+    const LandingComponent = isEnglish ? LandingPageEN : LandingPage
+    return (
+      <ErrorBoundary>
+        <LandingComponent onLogin={() => signInWithGoogle().catch(err => console.error('Sign-in failed:', err))} />
+      </ErrorBoundary>
+    )
+  }
+
+  // Show landing page if no user (only reached when Supabase isn't configured).
   if (showLandingPage) {
     const isEnglish = navigator.language.startsWith('en')
     const LandingComponent = isEnglish ? LandingPageEN : LandingPage
@@ -895,6 +951,16 @@ export default function App() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                 </svg>
                 <span>{t('nav.connectGmail')}</span>
+              </button>
+            )}
+
+            {/* Sign out (Supabase identity) — desktop */}
+            {session && (
+              <button onClick={() => supabase.auth.signOut()} title={t('nav.signOut')}
+                className="hidden sm:flex items-center justify-center w-9 h-9 bg-gray-50 border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-100 hover:text-gray-700 transition-all">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
               </button>
             )}
 

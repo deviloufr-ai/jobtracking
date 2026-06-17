@@ -9,7 +9,17 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '')
+export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
+  auth: {
+    // Persist the session across reloads and refresh tokens automatically.
+    persistSession: true,
+    autoRefreshToken: true,
+    // Detect & consume the OAuth redirect (?code=… / #access_token=…) on load so
+    // the Google sign-in callback works without a dedicated router/route.
+    detectSessionInUrl: true,
+    flowType: 'pkce',
+  },
+})
 
 // Helper to get current user
 export async function getCurrentUser() {
@@ -55,7 +65,9 @@ export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/auth/callback`
+      // Return to the app root; detectSessionInUrl consumes the callback params.
+      // (No router, so /auth/callback would just serve index.html anyway.)
+      redirectTo: window.location.origin,
     }
   })
 
