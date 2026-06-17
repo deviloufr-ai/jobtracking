@@ -12,7 +12,7 @@ function loadProfile() {
   try { const r = localStorage.getItem(PROFILE_KEY); return r ? JSON.parse(r) : null } catch { return null }
 }
 
-export default function CVManager({ jobs, preselectedJob, onUpdateJob, t = (key) => key }) {
+export default function CVManager({ jobs, preselectedJob, onUpdateJob, manageOnly = false, t = (key) => key }) {
   const { cvs, addCV, deleteCV, renameCV, updateCV } = useCVs()
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
@@ -263,7 +263,7 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob, t = (key)
 
       {/* Generate CV for a job */}
       {/* Auto-open for preselected job */}
-      {preselectedJob && cvs.length > 0 && !generatorState && (
+      {!manageOnly && preselectedJob && cvs.length > 0 && !generatorState && (
         <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-indigo-800">✨ {t('cvManagerUI.generateForJob').replace('{company}', preselectedJob.company)}</p>
@@ -280,7 +280,7 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob, t = (key)
         </div>
       )}
 
-      {cvs.length > 0 && (
+      {!manageOnly && cvs.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
             <span className="text-base">✨</span>

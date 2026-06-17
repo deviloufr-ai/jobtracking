@@ -4,6 +4,7 @@ import { useExtensionDetect } from '../hooks/useExtensionDetect'
 import { useJobs } from '../hooks/useJobs'
 import { useLanguage } from '../hooks/useLanguage'
 import { useCVs } from '../hooks/useCVs'
+import CVManager from './CVManager'
 import NotificationSettings from './NotificationSettings'
 import { supabase } from '../services/supabase'
 import { indexeddb } from '../services/indexeddb'
@@ -89,6 +90,7 @@ function TextInput({ value, onChange, placeholder, multiline = false, rows = 2 }
 
 const getCATEGORIES = (t) => [
   { id: 'profile', label: t('settingsSidebar.profile'), icon: '👤' },
+  { id: 'cv', label: t('settingsSidebar.cv'), icon: '📄' },
   { id: 'goals', label: t('settingsSidebar.goals'), icon: '🎯' },
   { id: 'automation', label: t('settingsSidebar.automation'), icon: '⚙️' },
   { id: 'api', label: t('settingsSidebar.apiClaude'), icon: '🔑' },
@@ -415,6 +417,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
               <h1 className="text-3xl font-bold text-gray-900">{currentCategory?.icon} {currentCategory?.label}</h1>
               <p className="text-gray-500 text-sm mt-1">
                 {activeTab === 'profile' && t('settingsDesc.profile')}
+                {activeTab === 'cv' && t('settingsDesc.cv')}
                 {activeTab === 'goals' && t('settingsDesc.goals')}
                 {activeTab === 'automation' && t('settingsDesc.automation')}
                 {activeTab === 'api' && t('settingsDesc.apiClaude')}
@@ -539,6 +542,11 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
                   </button>
                 </div>
               </>
+            )}
+
+            {/* My CV Tab */}
+            {activeTab === 'cv' && (
+              <CVManager jobs={jobs} onUpdateJob={() => {}} manageOnly t={t} />
             )}
 
             {/* Goals Tab */}

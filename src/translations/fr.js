@@ -192,6 +192,7 @@ export const fr = {
   // Settings Sidebar
   settingsSidebar: {
     profile: 'Profil',
+    cv: 'Mon CV',
     goals: 'Objectifs',
     automation: 'Automatisation',
     apiClaude: 'API Claude',
@@ -206,6 +207,7 @@ export const fr = {
   // Settings Descriptions
   settingsDesc: {
     profile: 'Gérez vos informations professionnelles',
+    cv: 'Importez et gérez votre CV de base',
     goals: 'Définissez vos cibles de candidatures',
     automation: 'Configurez l\'automatisation de votre recherche',
     apiClaude: 'Configurez votre propre clé API Claude',

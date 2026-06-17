@@ -28,10 +28,10 @@ import { supabase, signInWithGoogle, isSupabaseConfigured } from './services/sup
 import { migrateToAuthIdentity } from './services/authMigration'
 import { initializeSyncCoordinator } from './services/syncCoordinator'
 import JobSearch from './components/JobSearch'
-import CVManager from './components/CVManager'
 import CVViewer from './components/CVViewer'
 import InterviewHistory from './components/InterviewHistory'
-import { renderCV, ONE_PAGE_SCALE_FN, BASE_PRINT_CSS } from './components/CVGenerator'
+import CVGenerator from './components/CVGenerator'
+import { useCVs } from './hooks/useCVs'
 import Settings from './components/Settings'
 import ImageImport from './components/ImageImport'
 import UpcomingMeetings from './components/UpcomingMeetings'
@@ -135,7 +135,14 @@ function ExtensionButton({ t }) {
 
 export default function App() {
   const { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, reprocessJobs, checkAllPositions, findDuplicateInList } = useJobs()
+  const { cvs } = useCVs()
   const { settings } = useSettings()
+
+  // Most recent uploaded CV — the source the tailored-CV generator adapts from.
+  const baseCV = useMemo(() => {
+    if (!cvs?.length) return null
+    return [...cvs].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
+  }, [cvs])
   useDebugLogs() // Control console.log visibility based on debugLogsEnabled setting
   const { t } = useLanguage()
   const extensionInstalled = useExtensionDetect()
@@ -368,7 +375,7 @@ export default function App() {
   }, [gmailUser])
   const [showFavOnly, setShowFavOnly] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
-  const [selectedJobForCV, setSelectedJobForCV] = useState(null) // 'tracker' | 'search' | 'cv'
+  const [cvGenJob, setCvGenJob] = useState(null) // job whose tailored CV is being generated
   const [showImageImport, setShowImageImport] = useState(false)
   const [viewingCV, setViewingCV] = useState(null) // job with cvSaved to view
 
@@ -491,8 +498,15 @@ export default function App() {
   }
 
   const handleGenerateCV = (job) => {
-    setSelectedJobForCV(job)
-    setActiveTab('cv')
+    // The generator adapts the user's base CV to this job. Without a base CV,
+    // send them to upload one (now lives in Settings → My CV).
+    if (!baseCV) {
+      showToast(t('cvManagerUI.uploadCVStart'), 4000)
+      setSettingsInitialTab('cv')
+      setActiveTab('settings')
+      return
+    }
+    setCvGenJob(job)
   }
 
   const handleViewSavedCV = (job) => {
@@ -616,7 +630,6 @@ export default function App() {
     { id: 'analytics', label: t('nav.tabs.analytics'), icon: '📊', badge: null },
     { id: 'interview', label: t('nav.tabs.interview'), icon: '🎤', badge: interviewCount || null },
     { id: 'search',   label: t('nav.tabs.search'),    icon: '🔎', badge: null },
-    { id: 'cv',       label: t('nav.tabs.cv'),       icon: '📄', badge: null },
     { id: 'settings', label: t('nav.tabs.settings'),     icon: '⚙️',  badge: null },
   ]
 
@@ -974,8 +987,6 @@ export default function App() {
           <Analytics jobs={jobs} t={t} />
         ) : activeTab === 'interview' ? (
           <InterviewHistory jobs={jobs} />
-        ) : activeTab === 'cv' ? (
-          <CVManager jobs={jobs} preselectedJob={selectedJobForCV} onUpdateJob={updateJob} t={t} />
         ) : activeTab === 'search' ? (
           <JobSearch onAddJob={(job) => { addJob(job); showToast(`${job.company} ajouté !`); setActiveTab('tracker') }} existingJobs={jobs} t={t} />
         ) : (
@@ -1209,6 +1220,13 @@ export default function App() {
       {starJob && <STARGenerator job={starJob} onClose={() => setStarJob(null)} />}
       {emailDraft && <EmailDraft job={emailDraft.job} type={emailDraft.type} onClose={() => setEmailDraft(null)} onEmailSent={handleEmailSent} />}
       {viewingCV && <CVViewer job={viewingCV} onClose={() => setViewingCV(null)} />}
+      {cvGenJob && baseCV && (
+        <div className="fixed inset-0 z-[60] bg-slate-100 overflow-y-auto">
+          <div className="max-w-screen-2xl mx-auto px-3 sm:px-6 py-4 min-h-screen">
+            <CVGenerator cv={baseCV} job={cvGenJob} onBack={() => setCvGenJob(null)} onSaveCV={updateJob} t={t} />
+          </div>
+        </div>
+      )}
       {mergeModal && <MergeModal jobs={mergeModal} onConfirm={handleMergeConfirm} onCancel={() => setMergeModal(null)} t={t} />}
       {showOnboarding && <OnboardingModal onAddKey={handleOnboardingAddKey} onSkip={dismissOnboarding} t={t} />}
 
