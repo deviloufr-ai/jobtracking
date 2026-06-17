@@ -44,6 +44,17 @@ export default function JobCandidaturePanel({
     }
   })
 
+  // Derive status from the most recent history entry, fallback to job.status
+  const getDisplayStatus = () => {
+    if (history && history.length > 0) {
+      // Find the most recent entry (history is in chronological order)
+      const mostRecent = history[history.length - 1]
+      return mostRecent.status || job.status
+    }
+    return job.status
+  }
+  const displayStatus = getDisplayStatus()
+
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📋' },
     { id: 'cv', label: 'CV', icon: '📄' },
@@ -117,7 +128,7 @@ export default function JobCandidaturePanel({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Status</p>
-                <p className="text-sm font-medium text-gray-900">{job.status}</p>
+                <p className="text-sm font-medium text-gray-900">{displayStatus}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Applied</p>

@@ -183,19 +183,38 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
   const [enrichResult, setEnrichResult] = useState(null)
   const [editingStep, setEditingStep] = useState(null) // index of step being edited
   const [editForm, setEditForm] = useState({})
+  // Start with a fresh default on each render, deriving status from current history
+  const getCurrentDisplayStatus = () => {
+    if ((job.history || []).length > 0) {
+      const mostRecent = job.history[job.history.length - 1]
+      return mostRecent.status || job.status
+    }
+    return job.status
+  }
+
   const [newStep, setNewStep] = useState(() => {
     const now = new Date()
     const hh = String(now.getHours()).padStart(2, '0')
     const mm = String(now.getMinutes()).padStart(2, '0')
     return {
-      status: job.status,
+      status: getCurrentDisplayStatus(),
       note: '',
       date: now.toISOString().split('T')[0],
       time: `${hh}:${mm}`
     }
   })
-  const status = getStatus(job.status)
   const history = job.history || []
+
+  // Derive status from the most recent history entry, fallback to job.status
+  const getDisplayStatus = () => {
+    if (history.length > 0) {
+      const mostRecent = history[history.length - 1]
+      return mostRecent.status || job.status
+    }
+    return job.status
+  }
+  const displayStatusKey = getDisplayStatus()
+  const status = getStatus(displayStatusKey)
 
   // Extract recruiter contact from history — first inbound email with a sender
   const recruiterContact = (() => {
