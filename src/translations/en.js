@@ -21,6 +21,24 @@ export const en = {
       subtitle: 'last 12 weeks',
     },
   },
+  scoreJob: {
+    title: 'Match score',
+    strengths: 'Strengths',
+    gaps: 'Experience gaps',
+    scoredWith: 'Scored with',
+    scoredDate: 'Scored',
+    showDetails: 'Details',
+    hideDetails: 'Hide',
+    description: 'Compare this job with your CV to get a match score.',
+    selectCV: 'Select CV',
+    chooseCV: 'Choose a CV...',
+    scoreJob: 'Score this job',
+    recalculate: 'Recalculate with CV',
+    calculating: 'Calculating...',
+    uploadCVFirst: 'Upload a CV to score this job.',
+    noCVSelected: 'No CV selected',
+    incompleteJob: 'Job details incomplete',
+  },
   // Navigation & Tabs
   nav: {
     tabs: {

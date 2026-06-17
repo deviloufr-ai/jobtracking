@@ -21,6 +21,24 @@ export const fr = {
       subtitle: '12 dernières semaines',
     },
   },
+  scoreJob: {
+    title: 'Score de correspondance',
+    strengths: 'Points forts',
+    gaps: 'Lacunes',
+    scoredWith: 'Évalué avec',
+    scoredDate: 'Évalué le',
+    showDetails: 'Détails',
+    hideDetails: 'Masquer',
+    description: 'Comparez cette offre à votre CV pour obtenir un score de correspondance.',
+    selectCV: 'Sélectionner un CV',
+    chooseCV: 'Choisir un CV...',
+    scoreJob: 'Évaluer cette offre',
+    recalculate: 'Recalculer avec un CV',
+    calculating: 'Calcul en cours...',
+    uploadCVFirst: 'Importez un CV pour évaluer cette offre.',
+    noCVSelected: 'Aucun CV sélectionné',
+    incompleteJob: 'Informations incomplètes',
+  },
   // Navigation & Tabs
   nav: {
     tabs: {
