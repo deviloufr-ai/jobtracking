@@ -7,6 +7,10 @@
 
 let transcriberPromise = null
 
+// `whisper-base` is markedly more robust against the repetition/hallucination
+// loops that plague `whisper-tiny`, for a modest extra download.
+const MODEL_ID = 'Xenova/whisper-base'
+
 // Load (once) and cache the Whisper pipeline. `onProgress` receives the
 // library's model-download progress events so the UI can show a loader.
 export async function getTranscriber(onProgress) {
@@ -15,7 +19,7 @@ export async function getTranscriber(onProgress) {
       const { pipeline, env } = await import('@xenova/transformers')
       // Pull models straight from the HF CDN; don't look for local files.
       env.allowLocalModels = false
-      return pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny', {
+      return pipeline('automatic-speech-recognition', MODEL_ID, {
         progress_callback: onProgress
       })
     })().catch((err) => {
@@ -48,8 +52,36 @@ export async function transcribeBlob(blob, langHint, onProgress) {
   const transcriber = await getTranscriber(onProgress)
   const samples = await blobToSamples(blob)
   const language = langHint?.toLowerCase().startsWith('fr') ? 'french' : 'english'
-  const output = await transcriber(samples, { language, task: 'transcribe' })
-  return (output?.text || '').trim()
+  const output = await transcriber(samples, {
+    language,
+    task: 'transcribe',
+    // Long-form chunking so answers over 30s aren't truncated.
+    chunk_length_s: 30,
+    stride_length_s: 5,
+    // Anti-loop guards: forbid repeating any 3-gram and penalize repetition.
+    // These break the "It was a little bit difficult…" runaway loops Whisper
+    // falls into on quiet or trailing audio.
+    no_repeat_ngram_size: 3,
+    repetition_penalty: 1.2,
+    // Don't feed prior text back in — that's what seeds the loops.
+    condition_on_previous_text: false
+  })
+  return collapseRepeats((output?.text || '').trim())
+}
+
+// Final safety net: if the model still emits an immediate phrase loop, keep
+// the first occurrence and drop the consecutive duplicates.
+function collapseRepeats(text) {
+  if (!text) return text
+  const sentences = text.split(/(?<=[.!?])\s+/)
+  const out = []
+  for (const s of sentences) {
+    const norm = s.trim().toLowerCase()
+    if (!norm) continue
+    if (out.length && out[out.length - 1].norm === norm) continue
+    out.push({ norm, raw: s.trim() })
+  }
+  return out.map((s) => s.raw).join(' ')
 }
 
 // Whether mic capture is even possible in this browser.
