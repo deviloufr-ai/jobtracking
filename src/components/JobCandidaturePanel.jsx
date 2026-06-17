@@ -213,6 +213,12 @@ export default function JobCandidaturePanel({
                   {[...history].reverse().map((entry, idx) => {
                     const st = getStatus(entry.status)
                     const entryKey = `${entry.date}-${entry.status}-${(entry.note || '').slice(0, 20)}-${idx}`
+                    const originalIdx = history.length - 1 - idx
+
+                    const handleDeleteEntry = () => {
+                      const updated = history.filter((_, i) => i !== originalIdx)
+                      onUpdateHistory(job.id, updated)
+                    }
 
                     const isMeeting = entry.source === 'calendar' || !!entry.meetingLink
                     // A meeting is "done" 1h after its start, at which point it greys out.
@@ -258,10 +264,7 @@ export default function JobCandidaturePanel({
                               <button
                                 title="Delete this entry"
                                 className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-all"
-                                onClick={() => {
-                                  // Delete functionality would go here
-                                  // For now, just a placeholder
-                                }}
+                                onClick={handleDeleteEntry}
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
