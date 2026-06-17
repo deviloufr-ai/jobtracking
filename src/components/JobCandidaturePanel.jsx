@@ -226,7 +226,7 @@ export default function JobCandidaturePanel({
 
         {/* CV Tab */}
         {activeTab === 'cv' && (
-          <div className="space-y-4">
+          <div className="space-y-4 h-full">
             {job.cvSaved ? (
               <>
                 <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 flex items-center justify-between">
@@ -243,16 +243,22 @@ export default function JobCandidaturePanel({
                     </button>
                   )}
                 </div>
-                {/* Embedded CV Viewer */}
-                <div className="border border-gray-300 rounded-lg overflow-hidden bg-white" style={{ height: '600px' }}>
+                {/* Embedded CV Viewer - Display PDF directly */}
+                <div className="border border-gray-300 rounded-lg overflow-hidden bg-white flex-1" style={{ height: '650px' }}>
                   {onViewSavedCV ? (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <button
-                        onClick={() => onViewSavedCV(job)}
-                        className="text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 px-8 py-3 rounded-lg hover:from-indigo-600 hover:to-indigo-700 transition-all duration-200 shadow-md"
-                      >
-                        Open CV Viewer
-                      </button>
+                    <div className="w-full h-full">
+                      {/* This will display the CVViewer modal inline - triggered via onViewSavedCV */}
+                      <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                        <div className="text-center">
+                          <p className="text-gray-600 mb-4">📄 CV Preview</p>
+                          <button
+                            onClick={() => onViewSavedCV(job)}
+                            className="text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 px-8 py-3 rounded-lg hover:from-indigo-600 hover:to-indigo-700 transition-all duration-200 shadow-md"
+                          >
+                            View Full PDF
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   ) : null}
                 </div>
@@ -453,38 +459,6 @@ export default function JobCandidaturePanel({
             )}
           </div>
 
-          {/* CV/Letter Status */}
-          {job.cvSaved && (
-            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg border border-indigo-200 p-3 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-sm">📄</span>
-                <span className="text-xs font-semibold text-indigo-700">CV adapté</span>
-                <span className="text-[9px] text-indigo-600 ml-auto">{new Date(job.cvSaved.savedAt).toLocaleDateString('fr-FR')}</span>
-              </div>
-              <button
-                onClick={() => onViewSavedCV?.(job)}
-                className="w-full text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 px-2.5 py-2 rounded hover:from-indigo-600 hover:to-indigo-700 transition-all duration-200"
-              >
-                View CV
-              </button>
-            </div>
-          )}
-
-          {job.letterSaved && (
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border border-orange-200 p-3 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-sm">✍️</span>
-                <span className="text-xs font-semibold text-orange-700">Letter</span>
-                <span className="text-[9px] text-orange-600 ml-auto">{new Date(job.letterSaved.savedAt).toLocaleDateString('fr-FR')}</span>
-              </div>
-              <button
-                onClick={() => {}}
-                className="w-full text-xs font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 px-2.5 py-2 rounded hover:from-orange-600 hover:to-orange-700 transition-all duration-200"
-              >
-                View Letter
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>
