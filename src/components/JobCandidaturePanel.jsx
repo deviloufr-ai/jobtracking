@@ -137,17 +137,6 @@ export default function JobCandidaturePanel({
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Status</p>
-                <p className="text-sm font-medium text-gray-900">{displayStatus}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Applied</p>
-                <p className="text-sm font-medium text-gray-900">{formatDate(job.date)}</p>
-              </div>
-            </div>
-
             {/* Timeline */}
             <div>
               <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-3">Timeline</h3>
