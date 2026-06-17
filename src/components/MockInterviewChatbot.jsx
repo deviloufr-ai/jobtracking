@@ -43,6 +43,7 @@ export default function MockInterviewChatbot({ job, cv, onClose }) {
   const [detectedLanguage, setDetectedLanguage] = useState('en-US')
   const [transcribing, setTranscribing] = useState(false)
   const [modelStatus, setModelStatus] = useState(null) // loader text while WASM model downloads
+  const [feedback, setFeedback] = useState(null) // interview analysis & score
   const recognitionRef = useRef(null)
   const messagesEndRef = useRef(null)
   const interviewIdRef = useRef(Date.now())
@@ -385,7 +386,9 @@ Connect the candidate's experience to the role. Output ONLY the question as plai
     speechSynthesis?.cancel()
     setMessages([])
     setTranscript('')
+    setTextAnswer('')
     setError(null)
+    setFeedback(null)
     interviewIdRef.current = Date.now()
     generateFirstQuestion()
   }
@@ -402,6 +405,57 @@ Connect the candidate's experience to the role. Output ONLY the question as plai
     element.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text)
     element.download = `interview-${job.company}-${new Date().toISOString().split('T')[0]}.txt`
     element.click()
+  }
+
+  const analyzeInterview = async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const transcript = messages
+        .map((m) => `${m.role === 'interviewer' ? 'Interviewer' : 'Candidate'}: ${m.text}`)
+        .join('\n')
+
+      const descContext = job.description ? `\nJob description: ${job.description.slice(0, 600)}` : ''
+      const cvContext = cv ? `\n\nCandidate CV: ${cv.slice(0, 600)}` : ''
+
+      const response = await aiFetch('/api/claude', {
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 800,
+        messages: [
+          {
+            role: 'user',
+            content: `You are an expert interviewer. Analyze this mock interview and provide feedback.${descContext}${cvContext}
+
+Interview transcript:
+${transcript}
+
+Provide:
+1. Score (0-100)
+2. Strengths (2-3 bullet points of what went well)
+3. Areas for improvement (2-3 bullet points with specific suggestions)
+4. One example of a weaker answer and how to improve it
+
+Format as JSON with keys: score, strengths, improvements, example_improvement`
+          }
+        ]
+      })
+
+      if (!response.ok) throw new Error(`API error: ${response.status}`)
+      const data = await response.json()
+      const analysisText = data.content[0]?.text || ''
+
+      try {
+        const analysis = JSON.parse(analysisText)
+        setFeedback(analysis)
+      } catch {
+        // If JSON parsing fails, show raw text
+        setFeedback({ raw: analysisText })
+      }
+    } catch (err) {
+      setError(`Analysis failed: ${err.message}`)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -477,6 +531,52 @@ Connect the candidate's experience to the role. Output ONLY the question as plai
               <div className="bg-red-100 text-red-700 px-4 py-2 rounded-lg text-sm">
                 ⚠️ {error}
               </div>
+            </div>
+          )}
+
+          {feedback && (
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-lg p-4 mt-4">
+              <div className="text-center mb-4">
+                <div className="text-5xl font-bold text-purple-600">{feedback.score || '—'}</div>
+                <p className="text-xs text-gray-600">Interview Score</p>
+              </div>
+
+              {feedback.strengths && (
+                <div className="mb-3">
+                  <p className="text-xs font-bold text-green-700 mb-1">✅ Strengths</p>
+                  <ul className="text-xs text-gray-700 space-y-1">
+                    {Array.isArray(feedback.strengths) ? (
+                      feedback.strengths.map((s, i) => <li key={i}>• {s}</li>)
+                    ) : (
+                      <li>• {feedback.strengths}</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
+              {feedback.improvements && (
+                <div className="mb-3">
+                  <p className="text-xs font-bold text-orange-700 mb-1">📈 Areas to Improve</p>
+                  <ul className="text-xs text-gray-700 space-y-1">
+                    {Array.isArray(feedback.improvements) ? (
+                      feedback.improvements.map((imp, i) => <li key={i}>• {imp}</li>)
+                    ) : (
+                      <li>• {feedback.improvements}</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
+              {feedback.example_improvement && (
+                <div>
+                  <p className="text-xs font-bold text-blue-700 mb-1">💡 Example: Strengthen Your Answer</p>
+                  <p className="text-xs text-gray-700">{feedback.example_improvement}</p>
+                </div>
+              )}
+
+              {feedback.raw && (
+                <p className="text-xs text-gray-600 whitespace-pre-wrap">{feedback.raw}</p>
+              )}
             </div>
           )}
 
@@ -560,8 +660,15 @@ Connect the candidate's experience to the role. Output ONLY the question as plai
             </div>
 
             <div className="flex gap-2">
-              {messages.length > 0 && (
+              {messages.length > 0 && !feedback && (
                 <>
+                  <button
+                    onClick={analyzeInterview}
+                    disabled={isLoading || isRecording || transcribing}
+                    className="text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-lg disabled:opacity-40 transition-colors"
+                  >
+                    📊 End & Analyze
+                  </button>
                   <button
                     onClick={exportTranscript}
                     className="text-xs text-gray-600 hover:text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-100"
@@ -575,6 +682,14 @@ Connect the candidate's experience to the role. Output ONLY the question as plai
                     🔄 Reset
                   </button>
                 </>
+              )}
+              {feedback && (
+                <button
+                  onClick={resetInterview}
+                  className="text-xs text-gray-600 hover:text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-100"
+                >
+                  🔄 New Interview
+                </button>
               )}
             </div>
           </div>
