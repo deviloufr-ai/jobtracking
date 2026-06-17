@@ -546,6 +546,7 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
           cv={job.cvSaved?.markdown || ''}
           onClose={() => setShowMockInterview(false)}
           onInterviewComplete={(result) => {
+            console.log('✅ onInterviewComplete fired with result:', result)
             // Save interview session to job's history
             const session = {
               type: 'interview',
@@ -560,7 +561,9 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
               interviewSessions: [...(job.interviewSessions || []), session],
               updated_at: new Date().toISOString()
             }
+            console.log('📝 Saving updated job with sessions:', updated.interviewSessions)
             onUpdateJob(updated)
+            console.log('✅ onUpdateJob called')
             setShowMockInterview(false)
           }}
         />
