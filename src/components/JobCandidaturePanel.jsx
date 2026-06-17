@@ -201,12 +201,41 @@ export default function JobCandidaturePanel({
                 <div className="space-y-2">
                   {[...history].reverse().map((entry, idx) => {
                     const reverseIdx = history.length - 1 - idx
+
+                    // Status-based background colors (pale colors)
+                    const getStatusBgColor = (status) => {
+                      const statusColorMap = {
+                        'interview': 'bg-blue-50 border-blue-200 hover:border-blue-300',
+                        'reviewing': 'bg-orange-50 border-orange-200 hover:border-orange-300',
+                        'sent': 'bg-green-50 border-green-200 hover:border-green-300',
+                        'todo': 'bg-gray-50 border-gray-200 hover:border-gray-300',
+                        'waiting': 'bg-yellow-50 border-yellow-200 hover:border-yellow-300',
+                        'offer': 'bg-emerald-50 border-emerald-200 hover:border-emerald-300',
+                        'rejected': 'bg-red-50 border-red-200 hover:border-red-300',
+                        'done': 'bg-teal-50 border-teal-200 hover:border-teal-300',
+                      }
+                      return statusColorMap[status] || 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                    }
+
                     return (
-                      <div key={idx} className="bg-gray-50 rounded-lg p-3 border border-gray-200 hover:border-gray-300 transition-colors">
+                      <div key={idx} className={`rounded-lg p-3 border transition-colors ${getStatusBgColor(entry.status)}`}>
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-2 flex-1">
                             <span className="text-xs font-semibold text-gray-700">{formatDate(entry.date)}</span>
-                            <span className="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">{entry.status}</span>
+                            {(() => {
+                              const statusBadgeMap = {
+                                'interview': 'bg-blue-100 text-blue-700',
+                                'reviewing': 'bg-orange-100 text-orange-700',
+                                'sent': 'bg-green-100 text-green-700',
+                                'todo': 'bg-gray-100 text-gray-700',
+                                'waiting': 'bg-yellow-100 text-yellow-700',
+                                'offer': 'bg-emerald-100 text-emerald-700',
+                                'rejected': 'bg-red-100 text-red-700',
+                                'done': 'bg-teal-100 text-teal-700',
+                              }
+                              const badgeClass = statusBadgeMap[entry.status] || 'bg-gray-100 text-gray-700'
+                              return <span className={`text-xs px-2 py-1 rounded-full font-medium ${badgeClass}`}>{entry.status}</span>
+                            })()}
                           </div>
                           <div className="flex gap-1.5 ml-2">
                             <button
