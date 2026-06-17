@@ -29,7 +29,6 @@ import { migrateToAuthIdentity } from './services/authMigration'
 import { initializeSyncCoordinator } from './services/syncCoordinator'
 import JobSearch from './components/JobSearch'
 import CVViewer from './components/CVViewer'
-import InterviewHistory from './components/InterviewHistory'
 import CVGenerator from './components/CVGenerator'
 import { useCVs } from './hooks/useCVs'
 import Settings from './components/Settings'
@@ -624,11 +623,9 @@ export default function App() {
   )
 
   // ── nav tabs config ─────────────────────────────────────────────────────────
-  const interviewCount = jobs.reduce((sum, j) => sum + ((j.interviewSessions || []).length), 0)
   const NAV_TABS = [
     { id: 'tracker',  label: t('nav.tabs.tracker'), icon: '📋', badge: jobs.length || null },
     { id: 'analytics', label: t('nav.tabs.analytics'), icon: '📊', badge: null },
-    { id: 'interview', label: t('nav.tabs.interview'), icon: '🎤', badge: interviewCount || null },
     { id: 'search',   label: t('nav.tabs.search'),    icon: '🔎', badge: null },
     { id: 'settings', label: t('nav.tabs.settings'),     icon: '⚙️',  badge: null },
   ]
@@ -985,8 +982,6 @@ export default function App() {
           <Settings jobs={jobs} syncUserId={syncUserId} onMergeDuplicates={mergeDuplicates} initialTab={settingsInitialTab} />
         ) : activeTab === 'analytics' ? (
           <Analytics jobs={jobs} t={t} />
-        ) : activeTab === 'interview' ? (
-          <InterviewHistory jobs={jobs} />
         ) : activeTab === 'search' ? (
           <JobSearch onAddJob={(job) => { addJob(job); showToast(`${job.company} ajouté !`); setActiveTab('tracker') }} existingJobs={jobs} t={t} />
         ) : (
