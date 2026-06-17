@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useCVs } from '../hooks/useCVs'
 import { scoreJobMatch } from '../services/scoreJob'
 
@@ -31,16 +31,19 @@ function getVerdictColor(verdict) {
 }
 
 // Rich score tooltip shown on hover in the job table
-function ScoreTooltip({ job, show, t = (key) => key }) {
+function ScoreTooltip({ job, show, placement = 'top', maxHeight, t = (key) => key }) {
   if (!show || !job?.scoreDetails) return null
 
   const { scoreDetails: details } = job
   const verdict = details.verdict?.replace(/_/g, ' ') || ''
+  const posClasses = placement === 'bottom'
+    ? 'top-full mt-2'
+    : 'bottom-full mb-2'
 
   return (
     <div
-      className={`absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white border border-gray-300 rounded-lg shadow-lg p-4 ${getVerdictColor(details.verdict)}`}
-      style={{ width: '24rem', maxWidth: 'calc(100vw - 2rem)' }}
+      className={`absolute z-50 left-1/2 -translate-x-1/2 ${posClasses} bg-white border border-gray-300 rounded-lg shadow-lg p-4 overflow-y-auto overscroll-contain ${getVerdictColor(details.verdict)}`}
+      style={{ width: '24rem', maxWidth: 'calc(100vw - 2rem)', maxHeight }}
     >
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 text-2xl font-bold">{getVerdictIcon(details.verdict)}</div>
@@ -88,19 +91,39 @@ function ScoreTooltip({ job, show, t = (key) => key }) {
 // Compact score pill shown in the job table. Renders nothing if not yet scored.
 export function ScoreBadge({ job, t = (key) => key }) {
   const [showTooltip, setShowTooltip] = useState(false)
+  const [placement, setPlacement] = useState('top')
+  const [maxHeight, setMaxHeight] = useState(undefined)
+  const wrapRef = useRef(null)
   const score = job?.score
   if (score === null || score === undefined) return null
 
+  // Place the tooltip on whichever side (above/below the badge) has more room,
+  // and cap its height to that space so all content stays on-screen.
+  const handleEnter = () => {
+    const rect = wrapRef.current?.getBoundingClientRect()
+    if (rect) {
+      const spaceAbove = rect.top
+      const spaceBelow = window.innerHeight - rect.bottom
+      const below = spaceBelow > spaceAbove
+      setPlacement(below ? 'bottom' : 'top')
+      setMaxHeight(`${Math.max(spaceAbove, spaceBelow) - 16}px`)
+    }
+    setShowTooltip(true)
+  }
+
   return (
-    <div className="relative inline-block">
+    <div
+      ref={wrapRef}
+      className="relative inline-block"
+      onMouseEnter={handleEnter}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
       <span
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
         className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border flex-shrink-0 cursor-help ${scoreColorClasses(score)}`}
       >
         {Math.round(score)}
       </span>
-      <ScoreTooltip job={job} show={showTooltip} t={t} />
+      <ScoreTooltip job={job} show={showTooltip} placement={placement} maxHeight={maxHeight} t={t} />
     </div>
   )
 }
