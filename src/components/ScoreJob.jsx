@@ -10,21 +10,96 @@ export function scoreColorClasses(s) {
   return 'bg-red-100 text-red-700 border-red-300'
 }
 
+function getVerdictIcon(verdict) {
+  switch (verdict) {
+    case 'STRONG_MATCH': return '✓'
+    case 'GOOD_MATCH': return '✓'
+    case 'PARTIAL_MATCH': return '◐'
+    case 'WEAK_MATCH': return '✗'
+    default: return '−'
+  }
+}
+
+function getVerdictColor(verdict) {
+  switch (verdict) {
+    case 'STRONG_MATCH': return 'text-green-700 bg-green-50'
+    case 'GOOD_MATCH': return 'text-blue-700 bg-blue-50'
+    case 'PARTIAL_MATCH': return 'text-amber-700 bg-amber-50'
+    case 'WEAK_MATCH': return 'text-red-700 bg-red-50'
+    default: return 'text-gray-700 bg-gray-50'
+  }
+}
+
+// Rich score tooltip shown on hover in the job table
+function ScoreTooltip({ job, show, t = (key) => key }) {
+  if (!show || !job?.scoreDetails) return null
+
+  const { scoreDetails: details } = job
+  const verdict = details.verdict?.replace(/_/g, ' ') || ''
+
+  return (
+    <div className={`absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white border border-gray-300 rounded-lg shadow-lg p-3 w-80 ${getVerdictColor(details.verdict)}`}>
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 text-2xl font-bold">{getVerdictIcon(details.verdict)}</div>
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-sm uppercase tracking-wide mb-1">{verdict}</div>
+          <p className="text-sm text-gray-700 mb-2">{details.summary}</p>
+
+          {details.strengths?.length > 0 && (
+            <div className="mb-2">
+              <p className="text-xs font-semibold text-green-700 mb-1">✓ {t('scoreJob.strengths') || 'Strengths'}</p>
+              <ul className="space-y-0.5">
+                {details.strengths.slice(0, 2).map((s, i) => (
+                  <li key={i} className="text-xs text-gray-700 flex gap-1.5">
+                    <span className="text-green-600 flex-shrink-0">•</span>
+                    <span>{s}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {details.gaps?.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-amber-700 mb-1">⚠ {t('scoreJob.gaps') || 'Gaps'}</p>
+              <ul className="space-y-0.5">
+                {details.gaps.slice(0, 2).map((g, i) => (
+                  <li key={i} className="text-xs text-gray-700 flex gap-1.5">
+                    <span className="text-amber-600 flex-shrink-0">•</span>
+                    <span>{g}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <p className="text-[10px] text-gray-600 mt-2">
+            {t('scoreJob.scoredWith') || 'Scored with'}: <span className="font-medium">{details.cvName}</span>
+          </p>
+        </div>
+      </div>
+      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-white"></div>
+    </div>
+  )
+}
+
 // Compact score pill shown in the job table. Renders nothing if not yet scored.
 export function ScoreBadge({ job, t = (key) => key }) {
+  const [showTooltip, setShowTooltip] = useState(false)
   const score = job?.score
   if (score === null || score === undefined) return null
-  const details = job.scoreDetails
-  const title = details?.summary
-    ? `${details.verdict?.replace(/_/g, ' ') || ''} — ${details.summary}\n${t('scoreJob.scoredWith') || 'Scored with'}: ${details.cvName || ''}`
-    : `${t('scoreJob.title') || 'Match score'}: ${Math.round(score)}/100`
+
   return (
-    <span
-      title={title}
-      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border flex-shrink-0 ${scoreColorClasses(score)}`}
-    >
-      {Math.round(score)}
-    </span>
+    <div className="relative inline-block">
+      <span
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border flex-shrink-0 cursor-help ${scoreColorClasses(score)}`}
+      >
+        {Math.round(score)}
+      </span>
+      <ScoreTooltip job={job} show={showTooltip} t={t} />
+    </div>
   )
 }
 
