@@ -152,15 +152,16 @@ export default function MockInterviewChatbot({ job, cv, onClose }) {
       const descContext = job.description
         ? `\n\nJob description:\n${job.description.slice(0, 800)}`
         : ''
+      const cvContext = cv ? `\n\nCandidate CV:\n${cv.slice(0, 800)}` : ''
       const response = await aiFetch('/api/claude', {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 200,
         messages: [
           {
             role: 'user',
-            content: `Ask ONE opening question for a ${job.position} interview at ${job.company}.${descContext}
+            content: `Ask ONE opening question for a ${job.position} interview at ${job.company}.${descContext}${cvContext}
 
-Output ONLY the question as plain text. No formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just a natural, conversational question you'd ask if talking to someone in person.`
+Connect the candidate's experience to the role. Output ONLY the question as plain text. No formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just a natural, conversational question you'd ask if talking to someone in person.`
           }
         ]
       })
@@ -315,9 +316,12 @@ Output ONLY the question as plain text. No formatting, no bold, no italics, no a
         .concat([{ role: 'user', content: answer }])
 
       const descContext = job.description
-        ? `Role context: ${job.description.slice(0, 600)}\n\n`
+        ? `Role: ${job.description.slice(0, 600)}\n\n`
         : ''
-      const systemPrompt = `${descContext}You conduct interviews for this role at ${job.company}. Ask natural follow-up questions that probe the candidate's fit for the specific responsibilities and requirements. Output ONLY plain text questions—no formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just conversational sentences you'd say in person.`
+      const cvContext = cv
+        ? `Candidate background: ${cv.slice(0, 600)}\n\n`
+        : ''
+      const systemPrompt = `${descContext}${cvContext}You conduct interviews for this role at ${job.company}. Ask natural follow-up questions that connect the candidate's experience to the role's requirements. Probe specific skills, projects, or experiences from their CV that relate to this position. Output ONLY plain text questions—no formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just conversational sentences you'd say in person.`
 
       const response = await aiFetch('/api/claude', {
         model: 'claude-haiku-4-5-20251001',
