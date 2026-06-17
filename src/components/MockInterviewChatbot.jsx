@@ -43,31 +43,60 @@ export default function MockInterviewChatbot({ job, cv, onClose }) {
   const messagesEndRef = useRef(null)
   const interviewIdRef = useRef(Date.now())
 
-  // Initialize speech recognition
-  useEffect(() => {
+  // Build (or rebuild) the speech recognition instance.
+  // Returns the instance, or null if the browser can't provide one.
+  const initRecognition = () => {
     if (!SpeechRecognition) {
-      setError('Speech Recognition not supported in this browser')
-      return
+      setError(
+        'Speech recognition isn’t supported in this browser. Try Chrome or Edge for voice answers.'
+      )
+      return null
     }
-    recognitionRef.current = new SpeechRecognition()
-    recognitionRef.current.continuous = false
-    recognitionRef.current.interimResults = true
-    recognitionRef.current.lang = detectedLanguage
+    try {
+      const recognition = new SpeechRecognition()
+      recognition.continuous = false
+      recognition.interimResults = true
+      recognition.lang = detectedLanguage
 
-    recognitionRef.current.onstart = () => setIsRecording(true)
-    recognitionRef.current.onend = () => setIsRecording(false)
-    recognitionRef.current.onerror = (e) => setError(`Speech error: ${e.error}`)
-    recognitionRef.current.onresult = (e) => {
-      let interim = ''
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript
-        if (e.results[i].isFinal) {
-          setTranscript(t)
-        } else {
-          interim += t
-        }
+      recognition.onstart = () => setIsRecording(true)
+      recognition.onend = () => setIsRecording(false)
+      recognition.onerror = (e) => {
+        setIsRecording(false)
+        setError(`Speech error: ${e.error}`)
       }
-      if (interim) setTranscript(interim)
+      recognition.onresult = (e) => {
+        let interim = ''
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const t = e.results[i][0].transcript
+          if (e.results[i].isFinal) {
+            setTranscript(t)
+          } else {
+            interim += t
+          }
+        }
+        if (interim) setTranscript(interim)
+      }
+
+      recognitionRef.current = recognition
+      return recognition
+    } catch (err) {
+      recognitionRef.current = null
+      setError(
+        'Voice input couldn’t start in this browser. Try Chrome or Edge for voice answers.'
+      )
+      return null
+    }
+  }
+
+  // Initialize speech recognition (re-runs when detected language changes)
+  useEffect(() => {
+    initRecognition()
+    return () => {
+      try {
+        recognitionRef.current?.abort()
+      } catch {
+        /* noop */
+      }
     }
   }, [detectedLanguage])
 
@@ -144,17 +173,23 @@ Output ONLY the question as plain text. No formatting, no bold, no italics, no a
   }
 
   const startListening = () => {
-    if (!recognitionRef.current) {
-      setError('Speech Recognition not initialized')
-      return
-    }
+    // Lazily (re)build the recognizer if it isn't ready yet.
+    const recognition = recognitionRef.current || initRecognition()
+    if (!recognition) return // initRecognition already surfaced an error
+
     setTranscript('')
     setError(null)
-    recognitionRef.current.start()
+    try {
+      recognition.start()
+    } catch (err) {
+      // start() throws if already running — reset state cleanly.
+      setError('Voice input is already active. Please wait a moment and retry.')
+      setIsRecording(false)
+    }
   }
 
   const stopListening = async () => {
-    recognitionRef.current.stop()
+    recognitionRef.current?.stop()
     if (!transcript.trim()) {
       setError('No speech detected. Please try again.')
       return
