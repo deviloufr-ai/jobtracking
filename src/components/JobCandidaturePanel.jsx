@@ -40,6 +40,8 @@ export default function JobCandidaturePanel({
 }) {
   const [activeTab, setActiveTab] = useState('overview')
   const [showCVViewer, setShowCVViewer] = useState(false)
+  const [editingStep, setEditingStep] = useState(null)
+  const [editForm, setEditForm] = useState({})
 
   // Auto-show PDF viewer when CV tab is active and CV exists
   useEffect(() => {
@@ -209,6 +211,15 @@ export default function JobCandidaturePanel({
                       onUpdateHistory(job.id, updated)
                     }
 
+                    const handleSaveEdit = () => {
+                      const merged = { ...entry, ...editForm }
+                      const updated = [...history]
+                      updated[originalIdx] = merged
+                      onUpdateHistory(job.id, updated)
+                      setEditingStep(null)
+                      setEditForm({})
+                    }
+
                     const isMeeting = entry.source === 'calendar' || !!entry.meetingLink
                     // A meeting is "done" 1h after its start, at which point it greys out.
                     const isPastMeeting = isMeeting && (() => {
@@ -232,80 +243,123 @@ export default function JobCandidaturePanel({
 
                         {/* RIGHT PANEL: Content */}
                         <div className={`flex-1 bg-white border border-indigo-100 rounded-r-xl px-3 py-2.5 ${isPastMeeting ? 'opacity-50' : ''}`}>
-                          {/* Status Badge + Edit/Delete Actions */}
-                          <div className="flex items-center justify-between gap-2 mb-1.5">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isPastMeeting ? 'bg-gray-100 text-gray-400' : isUpcomingMeeting ? 'bg-amber-100 text-amber-700' : st.color}`}>
-                              {isPastMeeting ? '✓ Done' : isUpcomingMeeting ? '📅 Upcoming' : entry.status}
-                            </span>
-                            <div className="flex gap-1 items-center flex-shrink-0">
-                              <button
-                                title="Edit this entry"
-                                className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-all"
-                                onClick={() => {
-                                  // Edit functionality would go here
-                                  // For now, just a placeholder
-                                }}
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                              </button>
-                              <button
-                                title="Delete this entry"
-                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-all"
-                                onClick={handleDeleteEntry}
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
+                          {editingStep === originalIdx ? (
+                            <div className="bg-gray-50 border border-indigo-200 rounded-lg p-3 space-y-2">
+                              <div className="grid grid-cols-3 gap-2">
+                                <select className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                                  value={(editForm.status || entry.status)}
+                                  onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
+                                  <option value="">Status</option>
+                                  {['todo', 'sent', 'reviewing', 'interview', 'waiting', 'offer', 'rejected', 'done'].map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                                <input type="date" className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                                  value={((editForm.date || entry.date)?.split('T')[0] || '')}
+                                  onChange={e => setEditForm(f => {
+                                    const currentDate = editForm.date || entry.date
+                                    const time = currentDate?.split('T')[1] || ''
+                                    return { ...f, date: time ? `${e.target.value}T${time}` : e.target.value }
+                                  })} />
+                                <input type="time" className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                                  value={((editForm.date || entry.date)?.split('T')[1] || '').slice(0, 5)}
+                                  onChange={e => setEditForm(f => {
+                                    const currentDate = editForm.date || entry.date
+                                    const datePart = currentDate?.split('T')[0] || ''
+                                    return { ...f, date: e.target.value ? `${datePart}T${e.target.value}:00` : datePart }
+                                  })} />
+                              </div>
+                              <input className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                                placeholder="Note"
+                                value={editForm.note !== undefined ? editForm.note : (entry.note || '')}
+                                onChange={e => setEditForm(f => ({ ...f, note: e.target.value }))} />
+                              <input className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                                placeholder="🔗 Meeting link (optional)"
+                                value={editForm.meetingLink !== undefined ? editForm.meetingLink : (entry.meetingLink || '')}
+                                onChange={e => setEditForm(f => ({ ...f, meetingLink: e.target.value }))} />
+                              <div className="flex justify-end gap-2">
+                                <button onClick={() => { setEditingStep(null); setEditForm({}) }}
+                                  className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100">Cancel</button>
+                                <button onClick={handleSaveEdit}
+                                  className="text-xs bg-indigo-600 text-white px-3 py-1 rounded-lg hover:bg-indigo-700">Save</button>
+                              </div>
                             </div>
-                          </div>
+                          ) : (
+                            <>
+                              {/* Status Badge + Edit/Delete Actions */}
+                              <div className="flex items-center justify-between gap-2 mb-1.5">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isPastMeeting ? 'bg-gray-100 text-gray-400' : isUpcomingMeeting ? 'bg-amber-100 text-amber-700' : st.color}`}>
+                                  {isPastMeeting ? '✓ Done' : isUpcomingMeeting ? '📅 Upcoming' : entry.status}
+                                </span>
+                                <div className="flex gap-1 items-center flex-shrink-0">
+                                  <button
+                                    title="Edit this entry"
+                                    className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-all"
+                                    onClick={() => {
+                                      setEditingStep(originalIdx)
+                                      setEditForm({ status: entry.status, date: entry.date, note: entry.note || '', meetingLink: entry.meetingLink || '' })
+                                    }}
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    title="Delete this entry"
+                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-all"
+                                    onClick={handleDeleteEntry}
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
 
-                          {/* Notes — split multi-part notes into bullets */}
-                          {entry.note && (entry.note.includes(' · ') || entry.note.includes(' — ')) ? (
-                            <ul className="mb-1.5 space-y-0.5">
-                              {entry.note.split(/ · | — /).filter(Boolean).map((line, li) => (
-                                <li key={li} className="flex gap-1.5 text-xs text-gray-600">
-                                  <span className="text-gray-300 flex-shrink-0 mt-0.5">•</span>
-                                  <span>{line.trim()}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : entry.note ? (
-                            <p className={`text-xs mb-1.5 ${entry.source === 'calendar' ? 'text-gray-400 italic' : 'text-gray-600'}`}>{entry.note}</p>
-                          ) : null}
+                              {/* Notes — split multi-part notes into bullets */}
+                              {entry.note && (entry.note.includes(' · ') || entry.note.includes(' — ')) ? (
+                                <ul className="mb-1.5 space-y-0.5">
+                                  {entry.note.split(/ · | — /).filter(Boolean).map((line, li) => (
+                                    <li key={li} className="flex gap-1.5 text-xs text-gray-600">
+                                      <span className="text-gray-300 flex-shrink-0 mt-0.5">•</span>
+                                      <span>{line.trim()}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : entry.note ? (
+                                <p className={`text-xs mb-1.5 ${entry.source === 'calendar' ? 'text-gray-400 italic' : 'text-gray-600'}`}>{entry.note}</p>
+                              ) : null}
 
-                          {/* Action Links */}
-                          {(entry.meetingLink || entry.gmailId || entry.gmailIds?.length || (entry.source === 'calendar' && !entry.meetingLink)) && (
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {entry.meetingLink && !isPastMeeting && (
-                                <a href={entry.meetingLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                                  className="inline-flex items-center gap-1.5 text-xs font-medium text-white bg-amber-500 hover:bg-amber-600 px-2.5 py-1 rounded-lg transition-colors">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                                  Join {entry.meetingPlatform || 'meeting'} ↗
-                                </a>
+                              {/* Action Links */}
+                              {(entry.meetingLink || entry.gmailId || entry.gmailIds?.length || (entry.source === 'calendar' && !entry.meetingLink)) && (
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {entry.meetingLink && !isPastMeeting && (
+                                    <a href={entry.meetingLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                                      className="inline-flex items-center gap-1.5 text-xs font-medium text-white bg-amber-500 hover:bg-amber-600 px-2.5 py-1 rounded-lg transition-colors">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                      Join {entry.meetingPlatform || 'meeting'} ↗
+                                    </a>
+                                  )}
+                                  {entry.source === 'calendar' && !entry.meetingLink && (
+                                    <span className="text-xs text-gray-400">📅 Google Calendar</span>
+                                  )}
+                                  {(() => {
+                                    const ids = entry.gmailIds || (entry.gmailId ? [entry.gmailId] : [])
+                                    if (ids.length === 0) return null
+                                    const { url, account, uncertain } = gmailMessageUrl(ids[0], entry.receivedBy)
+                                    return (
+                                      <a href={url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                                        className={`inline-flex items-center gap-1 text-xs transition-colors ${uncertain ? 'text-amber-400 hover:text-amber-600' : 'text-gray-400 hover:text-red-500'}`}
+                                        title={uncertain ? '⚠ Uncertain account' : `${ids.length > 1 ? `${ids.length} emails` : 'Email'} in ${account || 'Gmail'}`}>
+                                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.909 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>
+                                        Email
+                                        {ids.length > 1 && <span className="ml-0.5 px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded text-[10px] font-semibold">{ids.length}</span>}
+                                        {account && <span className="text-[9px] opacity-60">({account.split('@')[0]})</span>}
+                                        {uncertain && <span className="text-[9px]">⚠</span>}
+                                      </a>
+                                    )
+                                  })()}
+                                </div>
                               )}
-                              {entry.source === 'calendar' && !entry.meetingLink && (
-                                <span className="text-xs text-gray-400">📅 Google Calendar</span>
-                              )}
-                              {(() => {
-                                const ids = entry.gmailIds || (entry.gmailId ? [entry.gmailId] : [])
-                                if (ids.length === 0) return null
-                                const { url, account, uncertain } = gmailMessageUrl(ids[0], entry.receivedBy)
-                                return (
-                                  <a href={url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                                    className={`inline-flex items-center gap-1 text-xs transition-colors ${uncertain ? 'text-amber-400 hover:text-amber-600' : 'text-gray-400 hover:text-red-500'}`}
-                                    title={uncertain ? '⚠ Uncertain account' : `${ids.length > 1 ? `${ids.length} emails` : 'Email'} in ${account || 'Gmail'}`}>
-                                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.909 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>
-                                    Email
-                                    {ids.length > 1 && <span className="ml-0.5 px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded text-[10px] font-semibold">{ids.length}</span>}
-                                    {account && <span className="text-[9px] opacity-60">({account.split('@')[0]})</span>}
-                                    {uncertain && <span className="text-[9px]">⚠</span>}
-                                  </a>
-                                )
-                              })()}
-                            </div>
+                            </>
                           )}
                         </div>
                       </div>
