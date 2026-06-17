@@ -43,7 +43,7 @@ function ScoreTooltip({ job, show, placement = 'top', maxHeight, t = (key) => ke
   return (
     <div
       className={`absolute z-50 left-1/2 -translate-x-1/2 ${posClasses} bg-white border border-gray-300 rounded-lg shadow-lg p-4 overflow-y-auto overscroll-contain ${getVerdictColor(details.verdict)}`}
-      style={{ width: '24rem', maxWidth: 'calc(100vw - 2rem)', maxHeight }}
+      style={{ width: '36rem', maxWidth: 'calc(100vw - 2rem)', maxHeight }}
     >
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 text-2xl font-bold">{getVerdictIcon(details.verdict)}</div>
