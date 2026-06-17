@@ -7,6 +7,7 @@ import { isNoReply } from './EmailDraft'
 import UseCasePanel from './UseCasePanel'
 import RowActions from './RowActions'
 import MotivationLetterGenerator from './MotivationLetterGenerator'
+import MockInterviewChatbot from './MockInterviewChatbot'
 import { ScoreBadge } from './ScoreJob'
 import CompanyAvatar from './CompanyAvatar'
 import CommuteInfo from './CommuteInfo'
@@ -100,6 +101,7 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
   const [showUseCase, setShowUseCase] = useState(false)
   const [showMotivationLetter, setShowMotivationLetter] = useState(false)
+  const [showMockInterview, setShowMockInterview] = useState(false)
   const [confirmDeleteIdx, setConfirmDeleteIdx] = useState(null) // Fix #18
   const statusBtnRef = useRef(null)
   const enrichTimerRef = useRef(null) // Fix #6
@@ -879,6 +881,14 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
                       ✍️ Générer une lettre
                     </button>
                   )}
+
+                  {/* Mock Interview button */}
+                  {(job.status === 'reviewing' || job.status === 'interview' || job.status === 'waiting') && (
+                    <button onClick={() => setShowMockInterview(true)}
+                      className="w-full text-xs font-medium text-cyan-600 bg-white border border-cyan-100 px-3 py-2 rounded-lg hover:bg-cyan-50 transition-colors text-left">
+                      🎤 Entraînement d'entretien
+                    </button>
+                  )}
                 </div>
 
               </div>
@@ -900,6 +910,15 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
           initialContent={job.letterSaved?.content || ''}
           onClose={() => setShowMotivationLetter(false)}
           onSaveLetter={onUpdateJob}
+        />
+      )}
+
+      {/* Mock Interview Chatbot Modal */}
+      {showMockInterview && (
+        <MockInterviewChatbot
+          job={job}
+          cv={job.cvSaved?.markdown || ''}
+          onClose={() => setShowMockInterview(false)}
         />
       )}
     </>
