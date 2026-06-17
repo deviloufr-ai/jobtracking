@@ -952,10 +952,41 @@ export function filterDeletedHistory(jobId, history) {
 
 // Keep old functions for backwards compatibility with auto-refresh
 export function isDeletedJob(company, position) {
-  // Legacy: company/position-based deletion (for Gmail re-import)
+  // Company/position-based deletion guard for Gmail re-import.
+  //
+  // Tombstones are stored as `${normalizeCompany(company)}_${position}`.
+  // normalizeCompany strips every non-alphanumeric char, so its output never
+  // contains '_' — the FIRST '_' is therefore the company/position separator.
+  //
+  // Matching must be as fuzzy as findExisting() in useAutoRefresh, otherwise a
+  // deleted job re-parsed from Gmail with a slightly different position string
+  // (Claude is non-deterministic) slips past the exact-key check and gets
+  // re-added. We treat a tombstone as a match when the normalized company is
+  // the same AND the positions are compatible: either side generic/empty, an
+  // exact match, or one title being a substring of the other (same role family).
   const deleted = JSON.parse(localStorage.getItem('jobtrackr_deleted_jobs') || '[]')
-  const normalized = `${normalizeCompany(company)}_${(position || '').toLowerCase().trim()}`
-  return deleted.includes(normalized)
+  if (deleted.length === 0) return false
+
+  const targetCo = normalizeCompany(company)
+  const targetPos = (position || '').toLowerCase().trim()
+  const targetGeneric = isGenericPosition(targetPos)
+
+  for (const tomb of deleted) {
+    const sep = tomb.indexOf('_')
+    const tombCo = sep === -1 ? tomb : tomb.slice(0, sep)
+    const tombPos = sep === -1 ? '' : tomb.slice(sep + 1)
+    if (tombCo !== targetCo) continue
+
+    if (
+      tombPos === targetPos ||
+      targetGeneric ||
+      isGenericPosition(tombPos) ||
+      (targetPos && tombPos && (targetPos.includes(tombPos) || tombPos.includes(targetPos)))
+    ) {
+      return true
+    }
+  }
+  return false
 }
 
 function markJobAsDeleted(company, position) {
