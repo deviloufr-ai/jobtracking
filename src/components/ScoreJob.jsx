@@ -38,21 +38,24 @@ function ScoreTooltip({ job, show, t = (key) => key }) {
   const verdict = details.verdict?.replace(/_/g, ' ') || ''
 
   return (
-    <div className={`absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white border border-gray-300 rounded-lg shadow-lg p-4 max-w-2xl ${getVerdictColor(details.verdict)}`} style={{ minWidth: 'fit-content' }}>
+    <div
+      className={`absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white border border-gray-300 rounded-lg shadow-lg p-4 overflow-y-auto overscroll-contain ${getVerdictColor(details.verdict)}`}
+      style={{ width: '24rem', maxWidth: 'calc(100vw - 2rem)', maxHeight: 'min(70vh, 28rem)' }}
+    >
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 text-2xl font-bold">{getVerdictIcon(details.verdict)}</div>
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-sm uppercase tracking-wide mb-1">{verdict}</div>
-          <p className="text-sm text-gray-700 mb-2">{details.summary}</p>
+          <p className="text-sm text-gray-700 mb-2 break-words">{details.summary}</p>
 
           {details.strengths?.length > 0 && (
             <div className="mb-2">
               <p className="text-xs font-semibold text-green-700 mb-1">✓ {t('scoreJob.strengths') || 'Strengths'}</p>
               <ul className="space-y-0.5">
-                {details.strengths.slice(0, 2).map((s, i) => (
+                {details.strengths.map((s, i) => (
                   <li key={i} className="text-xs text-gray-700 flex gap-1.5">
                     <span className="text-green-600 flex-shrink-0">•</span>
-                    <span>{s}</span>
+                    <span className="break-words">{s}</span>
                   </li>
                 ))}
               </ul>
@@ -63,22 +66,21 @@ function ScoreTooltip({ job, show, t = (key) => key }) {
             <div>
               <p className="text-xs font-semibold text-amber-700 mb-1">⚠ {t('scoreJob.gaps') || 'Gaps'}</p>
               <ul className="space-y-0.5">
-                {details.gaps.slice(0, 2).map((g, i) => (
+                {details.gaps.map((g, i) => (
                   <li key={i} className="text-xs text-gray-700 flex gap-1.5">
                     <span className="text-amber-600 flex-shrink-0">•</span>
-                    <span>{g}</span>
+                    <span className="break-words">{g}</span>
                   </li>
                 ))}
               </ul>
             </div>
           )}
 
-          <p className="text-[10px] text-gray-600 mt-2">
+          <p className="text-[10px] text-gray-600 mt-2 break-words">
             {t('scoreJob.scoredWith') || 'Scored with'}: <span className="font-medium">{details.cvName}</span>
           </p>
         </div>
       </div>
-      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-white"></div>
     </div>
   )
 }
