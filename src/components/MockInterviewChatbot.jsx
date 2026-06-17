@@ -67,7 +67,7 @@ export default function MockInterviewChatbot({ job, cv, onClose }) {
     }
     try {
       const recognition = new SpeechRecognition()
-      recognition.continuous = false
+      recognition.continuous = true
       recognition.interimResults = true
       recognition.lang = detectedLanguage
 
