@@ -513,6 +513,7 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
                 onFetchAddress={handleFetchAddress}
                 fetchingAddr={fetchingAddr}
                 addrError={addrError}
+                onStartMockInterview={() => setShowMockInterview(true)}
                 t={t}
               />
             </div>

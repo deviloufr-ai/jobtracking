@@ -33,6 +33,7 @@ export default function JobCandidaturePanel({
   onFetchAddress = null,
   fetchingAddr = false,
   addrError = null,
+  onStartMockInterview = null,
 }) {
   const [activeTab, setActiveTab] = useState('overview')
   const [homeAddress] = useState(() => {
@@ -220,20 +221,6 @@ export default function JobCandidaturePanel({
               </button>
             </div>
 
-            {/* Job link */}
-            {job.url && (
-              <div className="pt-4 border-t border-gray-200">
-                <a
-                  href={job.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1.5 group"
-                >
-                  <span className="group-hover:scale-110 transition-transform">🔗</span>
-                  <span>{(() => { try { return new URL(job.url).hostname.replace('www.', '') } catch { return job.url } })()}</span>
-                </a>
-              </div>
-            )}
           </div>
         )}
 
@@ -242,30 +229,32 @@ export default function JobCandidaturePanel({
           <div className="space-y-4">
             {job.cvSaved ? (
               <>
-                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <h4 className="text-sm font-semibold text-indigo-900">Adapted CV</h4>
-                      <p className="text-xs text-indigo-600">{new Date(job.cvSaved.savedAt).toLocaleDateString('en-US')}</p>
-                    </div>
-                    <span className="text-2xl">📄</span>
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-semibold text-indigo-900">Adapted CV</h4>
+                    <p className="text-xs text-indigo-600">{new Date(job.cvSaved.savedAt).toLocaleDateString('en-US')}</p>
                   </div>
-                  <div className="flex gap-2">
+                  {onGenerateCV && (
                     <button
-                      onClick={() => onViewSavedCV && onViewSavedCV(job)}
-                      className="flex-1 text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 px-3 py-2.5 rounded-lg hover:from-indigo-600 hover:to-indigo-700 transition-all duration-200 shadow-sm"
+                      onClick={() => onGenerateCV(job)}
+                      className="text-xs font-semibold text-indigo-600 bg-white border border-indigo-300 px-4 py-2 rounded-lg hover:bg-indigo-50 transition-all duration-200"
                     >
-                      View CV
+                      Regenerate
                     </button>
-                    {onGenerateCV && (
+                  )}
+                </div>
+                {/* Embedded CV Viewer */}
+                <div className="border border-gray-300 rounded-lg overflow-hidden bg-white" style={{ height: '600px' }}>
+                  {onViewSavedCV ? (
+                    <div className="w-full h-full flex items-center justify-center">
                       <button
-                        onClick={() => onGenerateCV(job)}
-                        className="flex-1 text-xs font-semibold text-indigo-600 bg-white border border-indigo-300 px-3 py-2.5 rounded-lg hover:bg-indigo-50 transition-all duration-200"
+                        onClick={() => onViewSavedCV(job)}
+                        className="text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 px-8 py-3 rounded-lg hover:from-indigo-600 hover:to-indigo-700 transition-all duration-200 shadow-md"
                       >
-                        Regenerate
+                        Open CV Viewer
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  ) : null}
                 </div>
               </>
             ) : (
@@ -331,9 +320,10 @@ export default function JobCandidaturePanel({
         {activeTab === 'interview' && (
           <div className="space-y-4">
             <div className="text-center py-12">
-              <p className="text-sm text-gray-500 mb-6">Prepare for your interview</p>
+              <p className="text-sm text-gray-500 mb-6">🎤 Practice your interview responses</p>
+              <p className="text-xs text-gray-400 mb-6">AI-powered mock interview training tailored to this position</p>
               <button
-                onClick={() => {}}
+                onClick={() => onStartMockInterview?.()}
                 className="text-sm font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 px-8 py-3 rounded-lg hover:from-cyan-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg"
               >
                 🎤 Start Interview Training
