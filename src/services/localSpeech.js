@@ -7,9 +7,11 @@
 
 let transcriberPromise = null
 
-// `whisper-base` is markedly more robust against the repetition/hallucination
-// loops that plague `whisper-tiny`, for a modest extra download.
-const MODEL_ID = 'Xenova/whisper-base'
+// `whisper-small` gives a real accuracy jump over base/tiny while staying
+// fully in-browser. Cost: ~200 MB one-time download (cached) and slower CPU
+// inference per answer — acceptable for occasional interview practice, and
+// the typed-answer box remains the fast fallback.
+const MODEL_ID = 'Xenova/whisper-small'
 
 // Load (once) and cache the Whisper pipeline. `onProgress` receives the
 // library's model-download progress events so the UI can show a loader.

@@ -589,7 +589,7 @@ Output ONLY the question as plain text. No formatting, no bold, no italics, no a
           <p className="text-xs text-gray-400 text-center">
             {nativeSpeechSupported
               ? '💡 Tip: Speak after clicking "Record Answer", then "Submit Answer" when done.'
-              : '💡 Voice uses an in-browser model (first use downloads it once). You can also type.'}
+              : '💡 Voice runs a private in-browser model — first use downloads it (~200 MB, once), then each answer takes a few seconds. Prefer speed? Just type below.'}
           </p>
         </div>
       </div>
