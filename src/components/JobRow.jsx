@@ -562,8 +562,17 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
               updated_at: new Date().toISOString()
             }
             console.log('📝 Saving updated job with sessions:', updated.interviewSessions)
+            console.log('📝 Job ID:', updated.id)
             onUpdateJob(updated)
             console.log('✅ onUpdateJob called')
+
+            // Verify it was saved
+            setTimeout(() => {
+              const jobs = JSON.parse(localStorage.getItem('jobtrackr_jobs') || '[]')
+              const saved = jobs.find(j => j.id === updated.id)
+              console.log('🔍 Verification - job in localStorage after update:', saved?.interviewSessions)
+            }, 100)
+
             setShowMockInterview(false)
           }}
         />
