@@ -363,13 +363,13 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
       return
     }
     recognitionRef.current?.stop()
-    // Use the accumulated final transcript, not the state (which includes interim).
-    const finalText = finalTranscriptRef.current.trim()
-    if (!finalText) {
+    // Use whatever is currently displayed (final + interim combined).
+    const displayedText = transcript.trim()
+    if (!displayedText) {
       setError('No speech detected. Please try again.')
       return
     }
-    submitAnswer(finalText)
+    submitAnswer(displayedText)
   }
 
   const submitTextAnswer = () => {
