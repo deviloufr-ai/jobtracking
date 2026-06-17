@@ -487,6 +487,13 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
                 onUseCase={() => { setShowUseCase(v => !v); setShowAddStep(false) }}
                 showUseCase={showUseCase}
                 formatDate={formatDate}
+                upcomingEvents={upcomingEvents}
+                recruiterContact={recruiterContact}
+                allContacts={allContacts}
+                companyAddr={companyAddr}
+                onFetchAddress={handleFetchAddress}
+                fetchingAddr={fetchingAddr}
+                addrError={addrError}
                 t={t}
               />
             </div>

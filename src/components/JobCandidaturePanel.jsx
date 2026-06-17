@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import CommuteInfo from './CommuteInfo'
 
 export default function JobCandidaturePanel({
   job,
@@ -25,9 +26,16 @@ export default function JobCandidaturePanel({
   showUseCase,
   formatDate,
   t = (key) => key,
+  upcomingEvents = [],
+  recruiterContact = null,
+  allContacts = [],
+  companyAddr = '',
+  onFetchAddress = null,
+  fetchingAddr = false,
+  addrError = null,
 }) {
   const [activeTab, setActiveTab] = useState('overview')
-  const [homeAddress, setHomeAddress] = useState(() => {
+  const [homeAddress] = useState(() => {
     try {
       const profile = JSON.parse(localStorage.getItem('jobtrackr_profile') || '{}')
       return profile.homeAddress || ''
@@ -43,6 +51,8 @@ export default function JobCandidaturePanel({
     { id: 'interview', label: 'Interview', icon: '🎤' },
   ]
 
+  const emailCount = history?.filter(h => h.source === 'email').length || 0
+
   return (
     <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
       {/* Header with job info */}
@@ -53,19 +63,19 @@ export default function JobCandidaturePanel({
             <p className="text-sm text-gray-600">{job.position}</p>
           </div>
           <div className="text-right">
-            <div className="inline-block bg-indigo-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
+            <div className="inline-block bg-indigo-600 text-white px-3 py-1.5 rounded-full text-sm font-semibold">
               {job.score || '—'}
             </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-0 border-b border-indigo-200">
+        <div className="flex gap-0 border-b border-indigo-200 overflow-x-auto">
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
                 activeTab === tab.id
                   ? 'border-indigo-600 text-indigo-700 bg-white/50'
                   : 'border-transparent text-gray-600 hover:text-gray-900'
@@ -78,8 +88,10 @@ export default function JobCandidaturePanel({
         </div>
       </div>
 
-      {/* Tab Content */}
-      <div className="p-6">
+      {/* 2-Column Layout: Tabs + Sidebar */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 p-6">
+        {/* Main Content - Tabs */}
+        <div>
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
@@ -315,6 +327,161 @@ export default function JobCandidaturePanel({
             </div>
           </div>
         )}
+        </div>
+
+        {/* Right Sidebar */}
+        <div className="space-y-4">
+          {/* Upcoming Events */}
+          {upcomingEvents && upcomingEvents.length > 0 && (
+            <div className="bg-amber-50 rounded-lg border border-amber-200 p-4">
+              <h4 className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-3">À venir</h4>
+              {upcomingEvents.slice(0, 2).map((event, i) => (
+                <div key={i} className="flex items-start gap-2 mb-2 last:mb-0">
+                  <span className="text-sm mt-0.5">📅</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-amber-900">{event.note}</p>
+                    <p className="text-[11px] text-amber-600">{formatDate(event.date)}</p>
+                  </div>
+                  {event.meetingLink && (
+                    <a href={event.meetingLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                      className="shrink-0 text-[10px] font-semibold bg-amber-500 text-white px-2 py-1 rounded hover:bg-amber-600 transition-colors">
+                      Rejoindre
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Contacts */}
+          {allContacts && allContacts.length > 0 ? (
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Contact{allContacts.length > 1 ? 's' : ''}</h4>
+              <div className="space-y-2.5">
+                {allContacts.map((contact, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center flex-shrink-0">
+                      {contact.name?.[0]?.toUpperCase() || '?'}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-gray-800 truncate">{contact.name}</p>
+                      <p className="text-[10px] text-gray-500 truncate">{contact.email}</p>
+                      {contact.receivedBy && (
+                        <p className="text-[10px] text-indigo-500 truncate">📬 {contact.receivedBy}</p>
+                      )}
+                    </div>
+                    <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()}
+                      className="shrink-0 flex items-center justify-center w-5 h-5 text-gray-400 hover:text-indigo-600 rounded transition-colors"
+                      title={`Email ${contact.email}`}>
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {/* Candidature Details */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Candidature</h4>
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
+                <span className="text-gray-500">Position</span>
+                <span className="font-medium text-gray-700 text-right max-w-[140px] truncate">{job.position}</span>
+              </div>
+              <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
+                <span className="text-gray-500">Applied</span>
+                <span className="font-medium text-gray-700">{formatDate(job.date)}</span>
+              </div>
+              {emailCount > 0 && (
+                <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
+                  <span className="text-gray-500">Emails</span>
+                  <span className="font-medium text-gray-700">{emailCount}</span>
+                </div>
+              )}
+              {history && history.length > 0 && (
+                <div className="flex justify-between items-center py-1.5">
+                  <span className="text-gray-500">Steps</span>
+                  <span className="font-medium text-gray-700">{history.length}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Job URL */}
+            {job.url && (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <a href={job.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                  className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1.5 truncate">
+                  <span>🔗</span>
+                  <span className="truncate">{(() => { try { return new URL(job.url).hostname.replace('www.', '') } catch { return job.url } })()}</span>
+                </a>
+              </div>
+            )}
+
+            {/* Commute Time */}
+            {companyAddr && homeAddress ? (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <CommuteInfo
+                  homeAddress={homeAddress}
+                  companyAddress={companyAddr}
+                  companyName={job.company}
+                />
+              </div>
+            ) : companyAddr && !homeAddress ? (
+              <p className="text-[10px] text-gray-400 mt-3 pt-3 border-t border-gray-100">
+                🚗 Add your address in Settings → Profile to see commute time
+              </p>
+            ) : (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <button
+                  onClick={e => { e.stopPropagation(); onFetchAddress?.() }}
+                  disabled={fetchingAddr}
+                  className="inline-flex items-center gap-1.5 text-[10px] font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 px-2.5 py-1.5 rounded hover:bg-indigo-100 disabled:opacity-50 transition-colors"
+                >
+                  {fetchingAddr
+                    ? <><span className="w-2.5 h-2.5 border border-indigo-300 border-t-indigo-600 rounded-full animate-spin" /> Searching…</>
+                    : <>🚗 Calculate commute</>}
+                </button>
+                {addrError && <p className="text-[10px] text-red-500 mt-1">{addrError}</p>}
+              </div>
+            )}
+          </div>
+
+          {/* CV/Letter Status */}
+          {job.cvSaved && (
+            <div className="bg-indigo-50 rounded-lg border border-indigo-200 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm">📄</span>
+                <span className="text-xs font-semibold text-indigo-700">CV adapté</span>
+                <span className="text-[9px] text-indigo-600 ml-auto">{new Date(job.cvSaved.savedAt).toLocaleDateString('fr-FR')}</span>
+              </div>
+              <button
+                onClick={() => onViewSavedCV?.(job)}
+                className="w-full text-xs font-medium text-indigo-600 bg-white border border-indigo-200 px-2.5 py-1.5 rounded hover:bg-indigo-50 transition-colors"
+              >
+                View CV
+              </button>
+            </div>
+          )}
+
+          {job.letterSaved && (
+            <div className="bg-orange-50 rounded-lg border border-orange-200 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm">✍️</span>
+                <span className="text-xs font-semibold text-orange-700">Letter</span>
+                <span className="text-[9px] text-orange-600 ml-auto">{new Date(job.letterSaved.savedAt).toLocaleDateString('fr-FR')}</span>
+              </div>
+              <button
+                onClick={() => {}}
+                className="w-full text-xs font-medium text-orange-600 bg-white border border-orange-200 px-2.5 py-1.5 rounded hover:bg-orange-50 transition-colors"
+              >
+                View Letter
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
