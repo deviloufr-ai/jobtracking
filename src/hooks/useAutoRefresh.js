@@ -3,7 +3,7 @@ import { isConnected, fetchJobEmails, fetchJobEmailsForAccount, getConnectedAcco
 import { parseEmailsForJobs, validateAndCleanJobs } from '../services/claude'
 import { fetchCalendarEvents } from '../services/calendar'
 import { extractJobUrlsFromEmail, rankUrlsByJobRelevance } from '../services/positionChecker'
-import { isAtsRejection, isDeletedJob, mergeHistoryBySameDayTopic, ATS_DOMAINS } from './useJobs'
+import { isAtsRejection, isDeletedJob, mergeHistoryBySameDayTopic, splitMeetingDatesInHistory, ATS_DOMAINS } from './useJobs'
 import { normalize, isJobBoard, JOB_BOARD_NAMES } from '../constants/jobBoards'
 import { isGenericPosition as isGenericPos } from '../constants/positions'
 
@@ -385,10 +385,14 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
         }
       })
 
+    // Re-date multi-meeting emails so interviews on different days become separate
+    // events (parser keys them all on the email's received date).
+    const datedHistory = splitMeetingDatesInHistory(history)
+
     // Keep entries separate - consolidation causes data corruption (notes get joined with pipes)
-    const existingKeys = new Set(history.map(h => `${h.date}-${h.status}`))
+    const existingKeys = new Set(datedHistory.map(h => `${h.date}-${h.status}`))
     const newCalEntries = calEntries.filter(e => !existingKeys.has(`${e.date}-${e.status}`))
-    const merged = [...history, ...newCalEntries].sort((a, b) => new Date(a.date) - new Date(b.date))
+    const merged = [...datedHistory, ...newCalEntries].sort((a, b) => new Date(a.date) - new Date(b.date))
     const deduplicated = deduplicateHistoryBySemantics(merged)
     const mergedHistory = mergeHistoryBySameDayTopic(autoCompletePastMeetings(deduplicated))
 

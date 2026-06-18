@@ -311,6 +311,89 @@ function splitPipeNotes(jobs) {
   })
 }
 
+// A confirmed interview/meeting is keyed by the EMAIL's received date by the parser,
+// not by the date it actually takes place. So an email — or two same-day emails —
+// confirming interviews on different dates collapses onto one date, e.g.
+// "Entretien confirmé 18/06 à 16h00 | visio | Entretien confirmé 19/06 à 12h00 | visio".
+// This re-dates each meeting segment to the day it refers to so distinct meetings
+// render as separate timeline events. Handles both the still-merged note (perfect
+// attribution: dateless segments follow the preceding dated one) and the already
+// pipe-split single-note entry (re-dates it to the mentioned date).
+const MEETING_KW = /entretien|entrevue|rendez-?vous|\brdv\b|confirm|visio|interview|\bcall\b|meeting/i
+const MEETING_DATE_RE = /\b(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2,4}))?\b/
+const MEETING_TIME_RE = /\b\d{1,2}\s*[h:]\s*\d{0,2}\b/
+
+function meetingDateFromPart(part, baseDate, baseYear, baseTime) {
+  const m = part.match(MEETING_DATE_RE)
+  if (!m) return null
+  // Only trust a date that sits next to meeting context (keyword or a time) — avoids
+  // false hits like "1/2" in "test technique partie 1/2".
+  if (!MEETING_KW.test(part) && !MEETING_TIME_RE.test(part)) return null
+  const day = parseInt(m[1], 10)
+  const month = parseInt(m[2], 10)
+  if (day < 1 || day > 31 || month < 1 || month > 12) return null
+  let year = m[3] ? (m[3].length === 2 ? 2000 + parseInt(m[3], 10) : parseInt(m[3], 10)) : baseYear
+  const iso = (y) => `${y}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  // Year rollover: a bare day/month landing well before the email belongs to next year
+  // (e.g. email 28/12, meeting "03/01").
+  if (!m[3] && new Date(iso(year) + 'T00:00:00').getTime() < baseTime - 60 * 86400000) year += 1
+  return iso(year)
+}
+
+export function splitMeetingDatesInHistory(history) {
+  if (!Array.isArray(history) || history.length === 0) return history
+
+  const out = []
+  for (const entry of history) {
+    const note = entry?.note || ''
+    // Calendar entries are already correctly dated; only touch notes that name a meeting + date.
+    if (entry?.source === 'calendar' || !MEETING_KW.test(note) || !MEETING_DATE_RE.test(note)) {
+      out.push(entry)
+      continue
+    }
+
+    const baseDate = String(entry.date || '').split('T')[0]
+    const baseYear = parseInt(baseDate.slice(0, 4), 10) || new Date().getFullYear()
+    const baseTime = new Date(baseDate + 'T00:00:00').getTime()
+
+    const parts = note.split(' | ').map(p => p.trim()).filter(Boolean)
+    const groups = new Map() // dateKey → [parts]
+    const order = []
+    let currentDate = baseDate
+    for (const part of parts) {
+      const found = meetingDateFromPart(part, baseDate, baseYear, baseTime)
+      if (found) currentDate = found
+      if (!groups.has(currentDate)) { groups.set(currentDate, []); order.push(currentDate) }
+      groups.get(currentDate).push(part)
+    }
+
+    // Nothing to re-date if every segment stayed on the email's own date.
+    if (order.length === 1 && order[0] === baseDate) {
+      out.push(entry)
+      continue
+    }
+
+    for (const dateKey of order) {
+      const isBase = dateKey === baseDate
+      const next = { ...entry, date: isBase ? entry.date : dateKey, note: groups.get(dateKey).join(' | ') }
+      // Keep the meeting link only on the original-date segment so it isn't duplicated
+      // across split events; downstream link-dedup reconciles the rest.
+      if (!isBase && next.meetingLink) {
+        delete next.meetingLink
+        delete next.meetingPlatform
+        delete next.meetingEmoji
+      }
+      out.push(next)
+    }
+  }
+
+  return out
+}
+
+function splitMeetingDatesInJobs(jobs) {
+  return jobs.map(j => (j.history ? { ...j, history: splitMeetingDatesInHistory(j.history) } : j))
+}
+
 function deduplicateMeetings(meetings) {
   if (meetings.length <= 1) return meetings
 
@@ -1470,7 +1553,7 @@ export function useJobs() {
       const revalidated = revalidateArchives(prev)
       // Skip mergeSameDateEntries - it was causing pipe concatenation of history entries
       // Keep history entries separate per date/status combination
-      const processed = autoStale(deduplicateJobs(splitPipeNotes(deduplicateHistory(revalidated))))
+      const processed = autoStale(deduplicateJobs(splitPipeNotes(splitMeetingDatesInJobs(deduplicateHistory(revalidated)))))
 
       return processed.map(job => {
         const hasHelloWorkResponse = (job.notes || '').includes('Réponse reçue de l\'entreprise via HelloWork') ||
