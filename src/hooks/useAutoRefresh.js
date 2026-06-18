@@ -139,10 +139,9 @@ function extractMeetingLink(text = '') {
 
 // Shared logic: parse emails + calendar → grouped jobs with full history
 // ─── Intelligent pre-parse filter ────────────────────────────────────────────
-// Statuses we treat as "closed": a refused candidature never needs new emails.
-// Deliberately narrow (per product decision): only outright rejections. Active
-// states (reviewing/interview/waiting/offer) keep pulling updates.
-const CLOSED_STATUSES = new Set(['rejected', 'rejected_ats'])
+// Statuses we treat as "closed": a refused/archived candidature never needs new
+// emails. Active states (reviewing/interview/waiting/offer) keep pulling updates.
+const CLOSED_STATUSES = new Set(['rejected', 'rejected_ats', 'archived'])
 
 // A sender is "shared" when it belongs to a job board / ATS rather than one
 // specific employer (e.g. notifications@linkedin.com, no-reply@greenhouse.io).

@@ -46,10 +46,12 @@ describe('filterEmailsBeforeParse', () => {
     expect(reasons.closed).toBe(1)
   })
 
-  it('Layer 1: also applies to rejected_ats', () => {
-    const emails = [{ id: 'g-new', from: 'jane@acme.com', date: daysAgo(1) }]
-    const { reasons } = filterEmailsBeforeParse(emails, [acmeJob('rejected_ats')])
-    expect(reasons.closed).toBe(1)
+  it('Layer 1: also applies to rejected_ats and archived', () => {
+    for (const status of ['rejected_ats', 'archived']) {
+      const emails = [{ id: 'g-new', from: 'jane@acme.com', date: daysAgo(1) }]
+      const { reasons } = filterEmailsBeforeParse(emails, [acmeJob(status)])
+      expect(reasons.closed).toBe(1)
+    }
   })
 
   it('Layer 2: drops emails older than the job last inbound event, keeps newer ones', () => {
