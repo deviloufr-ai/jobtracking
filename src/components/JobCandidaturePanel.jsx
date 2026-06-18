@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import CommuteInfo from './CommuteInfo'
-import { getStatus } from '../hooks/useJobs'
+import { getStatus, getStatusLabel, STATUSES } from '../hooks/useJobs'
 import { gmailMessageUrl } from '../services/gmail'
 import { ScoreBreakdown, scoreColorClasses } from './ScoreJob'
 
@@ -157,6 +157,7 @@ export default function JobCandidaturePanel({
                       onChange={e => setNewStep(s => ({ ...s, status: e.target.value }))}
                     >
                       <option value="">Status</option>
+                      {STATUSES.map(s => <option key={s.key} value={s.key}>{getStatusLabel(s.key, t)}</option>)}
                     </select>
                     <input
                       type="date"
@@ -256,7 +257,7 @@ export default function JobCandidaturePanel({
                                   value={(editForm.status || entry.status)}
                                   onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
                                   <option value="">Status</option>
-                                  {['todo', 'sent', 'reviewing', 'interview', 'waiting', 'offer', 'rejected', 'done'].map(s => <option key={s} value={s}>{s}</option>)}
+                                  {STATUSES.map(s => <option key={s.key} value={s.key}>{getStatusLabel(s.key, t)}</option>)}
                                 </select>
                                 <input type="date" className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
                                   value={((editForm.date || entry.date)?.split('T')[0] || '')}
@@ -293,7 +294,7 @@ export default function JobCandidaturePanel({
                               {/* Status Badge + Edit/Delete Actions */}
                               <div className="flex items-center justify-between gap-2 mb-1.5">
                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isPastMeeting ? 'bg-gray-100 text-gray-400' : isUpcomingMeeting ? 'bg-amber-100 text-amber-700' : st.color}`}>
-                                  {isPastMeeting ? '✓ Done' : isUpcomingMeeting ? '📅 Upcoming' : entry.status}
+                                  {isPastMeeting ? '✓ Done' : isUpcomingMeeting ? '📅 Upcoming' : getStatusLabel(entry.status, t)}
                                 </span>
                                 <div className="flex gap-1 items-center flex-shrink-0">
                                   <button
