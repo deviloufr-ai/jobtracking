@@ -4,8 +4,9 @@ import { loadSettings } from '../hooks/useSettings'
 import { isNoReply } from './EmailDraft'
 
 const DISMISSED_KEY = 'jobtrackr_dismissed_actions'
-function loadDismissed() { try { return new Set(JSON.parse(sessionStorage.getItem(DISMISSED_KEY) || '[]')) } catch { return new Set() } }
-function saveDismissed(s) { try { sessionStorage.setItem(DISMISSED_KEY, JSON.stringify([...s])) } catch {} }
+// Persist dismissals across sessions (localStorage) so hiding an action sticks.
+function loadDismissed() { try { return new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY) || '[]')) } catch { return new Set() } }
+function saveDismissed(s) { try { localStorage.setItem(DISMISSED_KEY, JSON.stringify([...s])) } catch {} }
 
 // Helper to format translation strings with dynamic values
 function formatTrans(key, replacements = {}) {
@@ -49,6 +50,20 @@ function lastNote(job) {
 function hasRemerciementSent(job) {
   const hist = (job.history || [])
   return hist.some(h => h.note && h.note.toLowerCase().includes('email de remerciement envoyé'))
+}
+
+// Unambiguous phrases indicating the candidate already submitted/finished the test.
+// Kept deliberately tight to avoid matching "test envoyé"/"lancement test" (recruiter sending it).
+const TEST_DONE_KWS = [
+  'test soumis', 'test rendu', 'test terminé', 'test complété', 'test fini', 'test livré',
+  'rendu le test', 'soumis le test', 'livré le test',
+  'exercice rendu', 'exercice terminé', 'exercice soumis',
+  'test submitted', 'test completed', 'test done', 'test finished', 'submitted the test', 'completed the test',
+]
+// True when the test is done, either via a completion note or a submitted use case.
+function isTestDone(job) {
+  if (job.useCase?.status === 'submitted') return true
+  return hasKeyword(job, ...TEST_DONE_KWS)
 }
 
 function hasKeyword(job, ...kws) {
@@ -116,15 +131,15 @@ function getUrgentRules(t = (key) => key) {
     tip: () => t('nextActionRules.offerReceived'),
   },
   {
-    // Interview prep — only when NO test technique keyword (test takes priority)
-    match: j => j.status === 'interview' && !hasKeyword(j, ...TEST_KWS),
+    // Interview prep — when NO pending test (test takes priority until it's done)
+    match: j => j.status === 'interview' && (!hasKeyword(j, ...TEST_KWS) || isTestDone(j)),
     icon: '🎯', type: 'prep', urgency: 'medium',
     label: job => formatTrans(t('nextActionRules.prepareInterview'), { company: job.company }),
     tip: () => t('nextActionRules.prepareStar'),
   },
   {
-    // Test technique — urgent priority when keyword detected
-    match: j => j.status === 'interview' && hasKeyword(j, ...TEST_KWS),
+    // Test technique — urgent priority when keyword detected and not yet submitted
+    match: j => j.status === 'interview' && hasKeyword(j, ...TEST_KWS) && !isTestDone(j),
     icon: '💻', urgency: 'medium',
     label: job => formatTrans(t('nextActionRules.prepareTechTest'), { company: job.company }),
     tip: () => t('nextActionRules.prepareDocumentation'),
@@ -137,7 +152,7 @@ function getNextStepsRules(t = (key) => key) {
   return [
   // Upcoming calendar event (test/meeting) — highest priority
   {
-    match: j => !['archived','rejected','rejected_ats','cancelled'].includes(j.status) && hasUpcomingCalendar(j) && hasKeyword(j, ...TEST_KWS),
+    match: j => !['archived','rejected','rejected_ats','cancelled'].includes(j.status) && hasUpcomingCalendar(j) && hasKeyword(j, ...TEST_KWS) && !isTestDone(j),
     icon: '💻', type: 'prep',
     label: job => formatTrans(t('nextActionRules.prepareTechTest'), { company: job.company }),
     tip: () => t('nextActionRules.prepareDocumentation'),
@@ -146,7 +161,7 @@ function getNextStepsRules(t = (key) => key) {
   },
   // Tech test mentioned anywhere in history (even without calendar)
   {
-    match: j => !['archived','rejected','rejected_ats','cancelled'].includes(j.status) && hasKeyword(j, ...TEST_KWS) && !hasUpcomingCalendar(j),
+    match: j => !['archived','rejected','rejected_ats','cancelled'].includes(j.status) && hasKeyword(j, ...TEST_KWS) && !isTestDone(j) && !hasUpcomingCalendar(j),
     icon: '💻', type: 'prep',
     label: job => formatTrans(t('nextActionRules.prepareTechTest'), { company: job.company }),
     tip: () => t('nextActionRules.prepareDocumentation'),
@@ -155,7 +170,7 @@ function getNextStepsRules(t = (key) => key) {
   },
   // Upcoming calendar event (interview)
   {
-    match: j => !['archived','rejected','rejected_ats','cancelled'].includes(j.status) && hasUpcomingCalendar(j) && !hasKeyword(j, ...TEST_KWS),
+    match: j => !['archived','rejected','rejected_ats','cancelled'].includes(j.status) && hasUpcomingCalendar(j) && (!hasKeyword(j, ...TEST_KWS) || isTestDone(j)),
     icon: '🎯', type: 'prep',
     label: job => formatTrans(t('nextActionRules.prepareInterview'), { company: job.company }),
     tip: job => formatTrans(t('nextActionRules.prepareInterviewTip'), { company: job.company }),
@@ -171,9 +186,9 @@ function getNextStepsRules(t = (key) => key) {
     cta: t('nextActionRules.viewAdvice'),
     priority: 1,
   },
-  // Interview status without test
+  // Interview status without a pending test
   {
-    match: j => j.status === 'interview' && !hasKeyword(j, ...TEST_KWS),
+    match: j => j.status === 'interview' && (!hasKeyword(j, ...TEST_KWS) || isTestDone(j)),
     icon: '🎯', type: 'prep',
     label: job => formatTrans(t('nextActionRules.prepareInterview'), { company: job.company }),
     tip: job => formatTrans(t('nextActionRules.prepareInterviewTip'), { company: job.company }),
