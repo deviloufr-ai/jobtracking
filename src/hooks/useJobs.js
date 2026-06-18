@@ -22,7 +22,7 @@ export function needsEnrichment(job) {
   return !isEnriched(job)
 }
 
-const ATS_DOMAINS = [
+export const ATS_DOMAINS = [
   'ashbyhq.com', 'greenhouse.io', 'lever.co', 'workable.com',
   'recruitee.com', 'bamboohr.com', 'smartrecruiters.com', 'taleo.net',
   'successfactors.com', 'jobvite.com', 'icims.com', 'myworkdayjobs.com',

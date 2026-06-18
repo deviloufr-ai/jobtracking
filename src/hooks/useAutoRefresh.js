@@ -3,8 +3,8 @@ import { isConnected, fetchJobEmails, fetchJobEmailsForAccount, getConnectedAcco
 import { parseEmailsForJobs, validateAndCleanJobs } from '../services/claude'
 import { fetchCalendarEvents } from '../services/calendar'
 import { extractJobUrlsFromEmail, rankUrlsByJobRelevance } from '../services/positionChecker'
-import { isAtsRejection, isDeletedJob, mergeHistoryBySameDayTopic } from './useJobs'
-import { normalize, isJobBoard } from '../constants/jobBoards'
+import { isAtsRejection, isDeletedJob, mergeHistoryBySameDayTopic, ATS_DOMAINS } from './useJobs'
+import { normalize, isJobBoard, JOB_BOARD_NAMES } from '../constants/jobBoards'
 import { isGenericPosition as isGenericPos } from '../constants/positions'
 
 // Read the flag dynamically on every call so `localStorage.debug = '1'` takes
@@ -138,6 +138,99 @@ function extractMeetingLink(text = '') {
 }
 
 // Shared logic: parse emails + calendar → grouped jobs with full history
+// ─── Intelligent pre-parse filter ────────────────────────────────────────────
+// Statuses we treat as "closed": a refused candidature never needs new emails.
+// Deliberately narrow (per product decision): only outright rejections. Active
+// states (reviewing/interview/waiting/offer) keep pulling updates.
+const CLOSED_STATUSES = new Set(['rejected', 'rejected_ats'])
+
+// A sender is "shared" when it belongs to a job board / ATS rather than one
+// specific employer (e.g. notifications@linkedin.com, no-reply@greenhouse.io).
+// Skipping by shared sender is unsafe — one address serves many companies — so
+// these are excluded from sender-based rules entirely.
+// Pull the bare address out of a "Name <addr@dom>" / "addr@dom" From header.
+function bareAddr(from) {
+  const s = (from || '').toLowerCase().trim()
+  const m = s.match(/<([^>]+)>/)
+  return (m ? m[1] : s).trim()
+}
+
+function isSharedSenderDomain(addr) {
+  const domain = (addr || '').split('@')[1] || ''
+  if (!domain) return true
+  if (ATS_DOMAINS.some(d => domain.includes(d))) return true
+  // Match job-board name fragments against the domain's labels
+  // ("notifications.linkedin.com" → labels ["notifications","linkedin","com"]).
+  const labels = domain.split('.')
+  return labels.some(l => JOB_BOARD_NAMES.has(l))
+}
+
+// Decide which fetched emails are worth sending to Claude. Three layers, each
+// only ever drops an email we can prove is redundant:
+//   0. already-imported  — its gmailId is already in some job's history
+//   1. closed-candidature — sender maps to ONE refused job
+//   2. older-than-last    — sender maps to ONE job and the email predates that
+//                           job's latest inbound (email-sourced) event
+// Layers 1 & 2 require an UNAMBIGUOUS, non-shared sender; everything else (new
+// candidatures, unknown senders, shared platforms) passes through untouched.
+export function filterEmailsBeforeParse(emails, jobs) {
+  const reasons = { alreadyImported: 0, closed: 0, older: 0 }
+  if (!Array.isArray(jobs) || jobs.length === 0) return { kept: emails, reasons }
+
+  // Layer 0 index: every gmailId we've already imported.
+  const importedGmailIds = new Set()
+  // Layers 1 & 2 index: sender → { jobs:Set, status, lastEmailMs }.
+  // Ambiguous senders (mapped to >1 job) are flagged and never used to skip.
+  const senderMap = new Map()
+
+  for (const job of jobs) {
+    const sendersForJob = new Set()
+    let lastEmailMs = 0
+    for (const h of job.history || []) {
+      if (h.gmailId) importedGmailIds.add(h.gmailId)
+      // Anchor the date rule on real inbound emails only — an upcoming calendar
+      // interview can be future-dated and would wrongly suppress every email.
+      const isEmailEntry = !h.source || h.source === 'email'
+      if (isEmailEntry && !h.fromMe && h.date) {
+        const ms = new Date(h.date).getTime()
+        if (!isNaN(ms) && ms > lastEmailMs) lastEmailMs = ms
+      }
+      const from = bareAddr(h.from)
+      if (isEmailEntry && from && !h.fromMe && !isSharedSenderDomain(from)) {
+        sendersForJob.add(from)
+      }
+    }
+    for (const s of sendersForJob) {
+      const existing = senderMap.get(s)
+      if (existing) {
+        existing.ambiguous = true
+      } else {
+        senderMap.set(s, { ambiguous: false, status: job.status, lastEmailMs })
+      }
+    }
+  }
+
+  const kept = []
+  for (const e of emails) {
+    // Layer 0 — already imported.
+    if (e.id && importedGmailIds.has(e.id)) { reasons.alreadyImported++; continue }
+
+    const entry = senderMap.get(bareAddr(e.from))
+
+    if (entry && !entry.ambiguous) {
+      // Layer 1 — sender's only job is refused.
+      if (CLOSED_STATUSES.has(entry.status)) { reasons.closed++; continue }
+      // Layer 2 — email is older than that job's last inbound event.
+      const ms = e.date ? new Date(e.date).getTime() : NaN
+      if (!isNaN(ms) && entry.lastEmailMs && ms < entry.lastEmailMs) { reasons.older++; continue }
+    }
+
+    kept.push(e)
+  }
+
+  return { kept, reasons }
+}
+
 export async function buildJobsFromEmails(emails, calendarEvents = []) {
   const parsed = await parseEmailsForJobs(emails)
   if (!parsed.length) {
@@ -418,7 +511,23 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
       ])
       if (!emails.length) return
 
-      const grouped = await buildJobsFromEmails(emails, calendarEvents)
+      // Intelligent pre-parse filter: drop emails that would only produce
+      // redundant updates — already-imported, tied to a refused candidature, or
+      // older than that candidature's last event. Skipped emails never reach
+      // Claude, cutting token spend and no-op writes. Manual import bypasses this.
+      const { kept: filteredEmails, reasons } = filterEmailsBeforeParse(emails, jobs)
+      const totalSkipped = reasons.alreadyImported + reasons.closed + reasons.older
+      if (totalSkipped > 0) {
+        log(`🧠 Pre-parse filter: skipped ${totalSkipped}/${emails.length} emails (` +
+          `${reasons.alreadyImported} already-imported, ${reasons.closed} closed-candidature, ` +
+          `${reasons.older} older-than-last-event) → ${filteredEmails.length} sent to Claude`)
+      }
+      if (!filteredEmails.length) {
+        log('📭 All fetched emails filtered out before parsing (nothing new)')
+        return
+      }
+
+      const grouped = await buildJobsFromEmails(filteredEmails, calendarEvents)
       if (!grouped.length) {
         log('📭 No jobs extracted from emails (all filtered or no matches)')
         return
