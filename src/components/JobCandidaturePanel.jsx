@@ -37,6 +37,7 @@ export default function JobCandidaturePanel({
   fetchingAddr = false,
   addrError = null,
   onStartMockInterview = null,
+  onGenerateCoverLetter = null,
   CVViewerComponent = null,
 }) {
   const [activeTab, setActiveTab] = useState('overview')
@@ -468,13 +469,13 @@ export default function JobCandidaturePanel({
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => {}}
+                      onClick={() => onGenerateCoverLetter?.()}
                       className="flex-1 text-xs font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 px-3 py-2.5 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-sm"
                     >
                       View Letter
                     </button>
                     <button
-                      onClick={() => {}}
+                      onClick={() => onGenerateCoverLetter?.()}
                       className="flex-1 text-xs font-semibold text-orange-600 bg-white border border-orange-300 px-3 py-2.5 rounded-lg hover:bg-orange-50 transition-all duration-200"
                     >
                       Regenerate
@@ -486,7 +487,7 @@ export default function JobCandidaturePanel({
               <div className="text-center py-12">
                 <p className="text-sm text-gray-500 mb-6">No cover letter yet for this application</p>
                 <button
-                  onClick={() => {}}
+                  onClick={() => onGenerateCoverLetter?.()}
                   className="text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-3 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-md hover:shadow-lg"
                 >
                   ✍️ Generate Cover Letter
