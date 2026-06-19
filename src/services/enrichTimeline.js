@@ -223,7 +223,12 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
   try {
     if (isCalendarConnected()) {
       const calEvents = await fetchCalendarEvents(job.company, 12)
-      const calTimeline = calEvents.map(e => {
+      const calTimeline = calEvents
+        // Skip meetings already in the past — a passed meeting should not be freshly added.
+        .filter(e => (typeof e.isUpcoming === 'boolean'
+          ? e.isUpcoming
+          : !(new Date(e.rawStart || e.date || 0).getTime() < Date.now())))
+        .map(e => {
         // calendar.js already extracts meetingLink; fall back to re-extracting from description/location
         const meetLink = e.meetingLink || extractMeetingLink(e.description) || extractMeetingLink(e.location)
         const platform = meetLink ? detectMeetingPlatform(meetLink) : null

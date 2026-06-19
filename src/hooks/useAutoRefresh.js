@@ -125,6 +125,15 @@ function deduplicateHistoryBySemantics(history) {
   return result.sort((a, b) => new Date(a.date) - new Date(b.date))
 }
 
+// A calendar event has "passed" when its start time is before now. Prefer the
+// service-computed isUpcoming flag; fall back to parsing rawStart/date so all-day
+// events (date-only) are still judged correctly.
+function isPastMeeting(e) {
+  if (typeof e?.isUpcoming === 'boolean') return !e.isUpcoming
+  const startMs = new Date(e?.rawStart || e?.date || 0).getTime()
+  return !isNaN(startMs) && startMs < Date.now()
+}
+
 function extractMeetingLink(text = '') {
   const patterns = [
     /(https:\/\/meet\.google\.com\/[a-z0-9\-]+)/i,
@@ -370,10 +379,14 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
       }
     })
 
-    // Merge calendar events for this company
+    // Merge calendar events for this company.
+    // Skip meetings whose start is already in the past at import time — a meeting
+    // that has passed should never be freshly added to the timeline. (Meetings
+    // already recorded while they were upcoming stay; this only blocks new adds.)
     const co = (sorted[0].company || '').toLowerCase()
     const calEntries = calendarEvents
       .filter(e => e.title.toLowerCase().includes(co) || (e.description || '').toLowerCase().includes(co))
+      .filter(e => !isPastMeeting(e))
       .map(e => {
         const meetingLink = extractMeetingLink((e.description || '') + ' ' + (e.location || ''))
         // Use rawStart (full datetime with time) instead of date (date-only) for proper time tracking
