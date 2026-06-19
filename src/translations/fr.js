@@ -217,7 +217,7 @@ export const fr = {
     rejected_ats: 'Rejetée (ATS)',
     cancelled: 'Annulée',
     archived: 'Archivée',
-    done: 'Acceptée',
+    done: 'Terminée',
   },
 
   // Column Headers

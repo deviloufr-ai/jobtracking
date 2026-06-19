@@ -77,7 +77,7 @@ export const STATUSES = [
   { key: 'sent',         label: 'Sent',           color: 'bg-blue-100 text-blue-700',     dot: 'bg-blue-500' },
   { key: 'reviewing',    label: 'Reviewing',  color: 'bg-yellow-100 text-yellow-700', dot: 'bg-yellow-500' },
   { key: 'interview',    label: 'Interview',  color: 'bg-purple-100 text-purple-700', dot: 'bg-purple-500' },
-  { key: 'done',         label: 'Accepted',              color: 'bg-teal-100 text-teal-700',     dot: 'bg-teal-500' },
+  { key: 'done',         label: 'Done',              color: 'bg-teal-100 text-teal-700',     dot: 'bg-teal-500' },
   { key: 'waiting',      label: 'Waiting',          color: 'bg-orange-100 text-orange-700', dot: 'bg-orange-500' },
   { key: 'offer',        label: 'Offer received',         color: 'bg-green-100 text-green-700',   dot: 'bg-green-500' },
   { key: 'rejected',     label: 'Rejected',             color: 'bg-red-100 text-red-700',       dot: 'bg-red-400' },
