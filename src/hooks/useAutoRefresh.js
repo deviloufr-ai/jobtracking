@@ -3,7 +3,7 @@ import { isConnected, fetchJobEmails, fetchJobEmailsForAccount, getConnectedAcco
 import { parseEmailsForJobs, validateAndCleanJobs } from '../services/claude'
 import { fetchCalendarEvents } from '../services/calendar'
 import { extractJobUrlsFromEmail, rankUrlsByJobRelevance } from '../services/positionChecker'
-import { isAtsRejection, isDeletedJob, mergeHistoryBySameDayTopic, splitMeetingDatesInHistory, ATS_DOMAINS } from './useJobs'
+import { isAtsRejection, isDeletedJob, mergeHistoryBySameDayTopic, splitMeetingDatesInHistory, deriveStatusFromHistory, ATS_DOMAINS } from './useJobs'
 import { normalize, isJobBoard, JOB_BOARD_NAMES } from '../constants/jobBoards'
 import { isGenericPosition as isGenericPos } from '../constants/positions'
 
@@ -432,7 +432,8 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
       ...latest,
       position: bestPosition,
       date: sorted[0].date,
-      status: highestStatus,
+      // Status follows the latest meaningful entry; fall back to the highest seen.
+      status: deriveStatusFromHistory(mergedHistory) || highestStatus,
       history: mergedHistory,
       notes: sorted.map(e => e.notes).filter(Boolean).join(' | '),
       _emailBody: emailBodies || undefined,
@@ -677,16 +678,12 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
               .sort((a, b) => new Date(a.date) - new Date(b.date))
             const deduplicated = deduplicateHistoryBySemantics(merged)
             const mergedHistory = mergeHistoryBySameDayTopic(autoCompletePastMeetings(deduplicated))
-            // Upgrade status if new emails show a higher-priority status.
-            const pIdx = STATUS_ORDER.indexOf(p.status)
-            const exIdx = STATUS_ORDER.indexOf(existing.status)
-            let newStatus = pIdx > exIdx ? p.status : existing.status
-            // Guard: an unrecognized parsed status returns indexOf === -1, which
-            // is never > 0, so a job stuck at 'todo' (index 0) would silently
-            // stay 'todo' even though an inbound email clearly means it has
-            // progressed (Bug: Dashlane stayed "À faire" after a confirmation
-            // email). A 'todo' job receiving any real email signal moves forward
-            // to the parsed status, or 'reviewing' when that status is unknown.
+            // Status follows the latest meaningful timeline entry (not a monotonic
+            // max), so a newer update can correct a wrong earlier one. The merged
+            // history already includes the new email entries.
+            let newStatus = deriveStatusFromHistory(mergedHistory) || existing.status
+            // Guard: a 'todo' job receiving any real email signal must move forward,
+            // even if derivation somehow returns 'todo' (e.g. only weak entries).
             if (existing.status === 'todo' && newStatus === 'todo') {
               newStatus = STATUS_ORDER.includes(p.status) ? p.status : 'reviewing'
             }

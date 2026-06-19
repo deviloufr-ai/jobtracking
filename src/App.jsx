@@ -133,7 +133,7 @@ function ExtensionButton({ t }) {
 }
 
 export default function App() {
-  const { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, reprocessJobs, checkAllPositions, findDuplicateInList } = useJobs()
+  const { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, reprocessJobs, checkAllPositions, findDuplicateInList, loading } = useJobs()
   const { cvs } = useCVs()
   const { settings } = useSettings()
 
@@ -430,6 +430,16 @@ export default function App() {
       reprocessJobs()
     }
   }, [settings.archiveSentDays, settings.archiveRejectedDays, reprocessJobs])
+
+  // One-time self-heal once jobs finish loading: re-derives each job's status from
+  // its timeline (latest entry wins) and normalizes history. The archive-settings
+  // effect above skips its first run, so this is what fixes stale statuses on load.
+  const didInitialReprocessRef = useRef(false)
+  useEffect(() => {
+    if (loading || didInitialReprocessRef.current || jobs.length === 0) return
+    didInitialReprocessRef.current = true
+    reprocessJobs()
+  }, [loading, jobs.length, reprocessJobs])
 
   const handleViewChange = (v) => {
     setTrackerView(v)

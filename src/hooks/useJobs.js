@@ -95,6 +95,32 @@ export function getStatusLabel(key, t = (key) => key) {
   return t(`status.${key}`) || status.label
 }
 
+// Job status follows the most recent meaningful timeline entry ("latest wins")
+// instead of a monotonic max, so a job reflects where it actually stands now.
+// Manual edits win naturally — updateStatus saves them as a dated history entry.
+// Ties (same date) break by when the entry was recorded (addedAt), then status rank.
+// Returns null when history has no usable entry, so callers keep the current status.
+// Auto-archiving still has the final say: it runs after this and re-archives stale jobs.
+export function deriveStatusFromHistory(history) {
+  if (!Array.isArray(history) || history.length === 0) return null
+  const known = new Set(STATUSES.map(s => s.key))
+  const candidates = history.filter(h => h && h.date && known.has(h.status))
+  if (candidates.length === 0) return null
+  const ms = v => { const n = v ? new Date(v).getTime() : NaN; return isNaN(n) ? 0 : n }
+  const rank = h => TOPIC_STATUS_ORDER.indexOf(h.status)
+  let best = candidates[0]
+  for (const h of candidates) {
+    const dh = ms(h.date), db = ms(best.date)
+    if (dh > db) { best = h; continue }
+    if (dh < db) continue
+    const ah = ms(h.addedAt), ab = ms(best.addedAt)
+    if (ah > ab) { best = h; continue }
+    if (ah < ab) continue
+    if (rank(h) > rank(best)) best = h
+  }
+  return best.status
+}
+
 function normalizeCompany(name = '') {
   return name.toLowerCase()
     .replace(/\s+(sas|sasu|sarl|sa|srl|inc|ltd|llc|gmbh|bv|nv|ag|spa|oy|ab)\.?\s*$/i, '')
@@ -1560,7 +1586,14 @@ export function useJobs() {
       const revalidated = revalidateArchives(prev)
       // Skip mergeSameDateEntries - it was causing pipe concatenation of history entries
       // Keep history entries separate per date/status combination
-      const processed = autoStale(deduplicateJobs(splitPipeNotes(splitMeetingDatesInJobs(deduplicateHistory(revalidated)))))
+      const cleaned = deduplicateJobs(splitPipeNotes(splitMeetingDatesInJobs(deduplicateHistory(revalidated))))
+      // Self-heal: status follows the latest meaningful timeline entry. autoStale
+      // (which runs revalidateArchives last) then re-archives anything gone stale.
+      const restated = cleaned.map(j => {
+        const s = deriveStatusFromHistory(j.history)
+        return s && s !== j.status ? { ...j, status: s } : j
+      })
+      const processed = autoStale(restated)
 
       return processed.map(job => {
         const hasHelloWorkResponse = (job.notes || '').includes('Réponse reçue de l\'entreprise via HelloWork') ||
