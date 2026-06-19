@@ -192,7 +192,9 @@ export function filterEmailsBeforeParse(emails, jobs) {
       const isEmailEntry = !h.source || h.source === 'email'
       if (isEmailEntry && !h.fromMe && h.date) {
         const ms = new Date(h.date).getTime()
-        if (!isNaN(ms) && ms > lastEmailMs) lastEmailMs = ms
+        // Ignore future-dated entries (e.g. a meeting confirmation re-dated to the
+        // interview day): they'd wrongly suppress every real email older than them.
+        if (!isNaN(ms) && ms <= Date.now() && ms > lastEmailMs) lastEmailMs = ms
       }
       const from = bareAddr(h.from)
       if (isEmailEntry && from && !h.fromMe && !isSharedSenderDomain(from)) {

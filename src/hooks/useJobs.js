@@ -373,18 +373,25 @@ export function splitMeetingDatesInHistory(history) {
       continue
     }
 
-    for (const dateKey of order) {
+    order.forEach((dateKey, idx) => {
       const isBase = dateKey === baseDate
       const next = { ...entry, date: isBase ? entry.date : dateKey, note: groups.get(dateKey).join(' | ') }
-      // Keep the meeting link only on the original-date segment so it isn't duplicated
-      // across split events; downstream link-dedup reconciles the rest.
-      if (!isBase && next.meetingLink) {
+      // Only the FIRST segment keeps the email's identity (gmailId) and meeting link.
+      // historyEntryKey() keys email entries by `gmail:<id>` regardless of date, so
+      // letting every segment share one gmailId makes collapseByCanonicalKey merge
+      // them straight back together (and oscillate across refreshes). Secondary
+      // segments instead fall back to a stable date+status+note key — like calendar
+      // entries — so dedup/tombstones treat them as independent events. The primary
+      // still carries gmailId, so the already-imported filter never re-parses the email.
+      if (idx > 0) {
+        delete next.gmailId
+        delete next.gmailIds
         delete next.meetingLink
         delete next.meetingPlatform
         delete next.meetingEmoji
       }
       out.push(next)
-    }
+    })
   }
 
   return out
