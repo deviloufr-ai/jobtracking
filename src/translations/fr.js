@@ -516,6 +516,7 @@ export const fr = {
     result: 'candidature',
     results: 'candidatures',
     of: '/',
+    filtersTitle: 'Filtres',
   },
   filtersPeriod: {
     all: 'Toutes les périodes',
@@ -603,6 +604,7 @@ export const fr = {
     edit: 'Éditer',
     delete: 'Supprimer',
     fullDetailsDesktop: 'Détails complets disponibles en mode desktop',
+    noTimeline: 'Aucune étape pour le moment',
     salary: 'Salaire',
     id: 'ID',
     location: 'Localisation',

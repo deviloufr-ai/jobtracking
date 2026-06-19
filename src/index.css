@@ -16,6 +16,17 @@
   }
 }
 
+@layer utilities {
+  /* iOS / Android notch + home-indicator insets (referenced by the bottom nav
+     and bottom sheets). Falls back to a small pad on devices without safe areas. */
+  .safe-area-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0.25rem); }
+  .safe-area-top    { padding-top: env(safe-area-inset-top); }
+
+  /* Horizontal scroll strips (mobile stats / quick filters) without a scrollbar */
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+}
+
 @layer components {
   .glass-panel {
     @apply bg-white/75 backdrop-blur-xl border border-white/80 shadow-card rounded-2xl;

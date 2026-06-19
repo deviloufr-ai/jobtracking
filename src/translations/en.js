@@ -324,6 +324,7 @@ export const en = {
     result: 'application',
     results: 'applications',
     of: '/',
+    filtersTitle: 'Filters',
   },
   filtersPeriod: {
     all: 'All periods',
@@ -411,6 +412,7 @@ export const en = {
     edit: 'Edit',
     delete: 'Delete',
     fullDetailsDesktop: 'Full details available in desktop mode',
+    noTimeline: 'No steps yet',
     salary: 'Salary',
     id: 'ID',
     location: 'Location',

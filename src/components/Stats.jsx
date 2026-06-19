@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { STATUSES, getStatusLabel } from '../hooks/useJobs'
 
 function ActivityBars({ values, color = '#6366f1' }) {
@@ -106,28 +106,51 @@ export default function Stats({ jobs, t = (key) => key }) {
   const weekStart = getWeekStart()
   const thisWeek = jobs.filter(j => new Date(j.date) >= weekStart).length
   const rateColor = responseRate >= 30 ? '#10b981' : responseRate >= 15 ? '#f59e0b' : '#6366f1'
-
-  const [open, setOpen] = useState(false)
+  const maxWeekly = Math.max(...weeklyActivity, 1)
 
   return (
     <div className="flex flex-col gap-0">
-      {/* Mobile toggle header */}
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="sm:hidden flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-3 shadow-sm w-full text-left"
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('statsHeader.title')}</span>
-          <span className="text-xs font-bold text-gray-700">{total} {t('statsHeader.summary').split(' · ')[0]} · {responseRate}% {t('statsHeader.summary').split(' · ')[1]} · {thisWeek} {t('statsHeader.summary').split(' · ')[2]}</span>
+      {/* ── Mobile: swipeable KPI strip ──────────────────────────────────────── */}
+      <div className="sm:hidden flex gap-3 overflow-x-auto no-scrollbar -mx-3 px-3 pb-1 snap-x snap-mandatory">
+        {/* Total / active */}
+        <div className="snap-start flex-shrink-0 w-36 bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{t('statsPipeline.title')}</span>
+          <div className="text-4xl font-extrabold text-gray-800 leading-none mt-1">{total}</div>
+          <div className="text-[11px] text-gray-400 mt-1">{active} {t('statsResponse.active')}</div>
         </div>
-        <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0 ${open ? 'rotate-180' : ''}`}
-          fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
 
-      {/* Grid — always visible on sm+, toggled on mobile */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 sm:mt-0 ${open ? 'block' : 'hidden'} sm:grid`}>
+        {/* Response rate radial */}
+        <div className="snap-start flex-shrink-0 w-36 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col items-center justify-center">
+          <RadialProgress value={responseRate} max={100} size={68} color={rateColor} label={`${responseRate}%`} />
+          <span className="text-[11px] text-gray-400 mt-1.5">{t('statsResponse.title')}</span>
+        </div>
+
+        {/* This week + mini bars */}
+        <div className="snap-start flex-shrink-0 w-36 bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{t('statsActivity.title')}</span>
+          <div className="text-4xl font-extrabold text-indigo-600 leading-none mt-1">{thisWeek}</div>
+          <div className="flex items-end gap-1 h-8 mt-2">
+            {weeklyActivity.map((v, i) => (
+              <div key={i} className="flex-1 bg-indigo-500/80 rounded-sm" style={{ height: `${Math.max((v / maxWeekly) * 100, 6)}%` }} />
+            ))}
+          </div>
+        </div>
+
+        {/* Interviews / offers */}
+        <div className="snap-start flex-shrink-0 w-36 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col justify-center gap-3">
+          <div>
+            <div className="text-3xl font-extrabold text-purple-600 leading-none">{interviews}</div>
+            <div className="text-[11px] text-gray-400 mt-0.5">{t('statsPipeline.interviews')}</div>
+          </div>
+          <div>
+            <div className="text-3xl font-extrabold text-green-600 leading-none">{offers}</div>
+            <div className="text-[11px] text-gray-400 mt-0.5">{t('statsPipeline.offers')}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Desktop grid (sm+) ───────────────────────────────────────────────── */}
+      <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 gap-4">
 
       {/* ── Card 1 — Pipeline ─────────────────────────────────── */}
       <Card>

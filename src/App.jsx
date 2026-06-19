@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
 import { useJobs, getStatus } from './hooks/useJobs'
 import { useExtensionImport } from './hooks/useExtensionImport'
 import { useExtensionDetect } from './hooks/useExtensionDetect'
@@ -45,6 +45,7 @@ import { useDebugLogs } from './hooks/useDebugLogs'
 import LandingPage from './components/LandingPage'
 import LandingPageEN from './components/LandingPageEN'
 import OnboardingModal from './components/OnboardingModal'
+import BottomSheet from './components/BottomSheet'
 
 const ONBOARDED_KEY = 'jobtrackr_onboarded'
 const API_KEY_STORAGE = 'jobtrackr_claude_api_key'
@@ -178,7 +179,8 @@ export default function App() {
   const [modal, setModal] = useState(null)
   const prevArchiveSettingsRef = useRef(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [addSheet, setAddSheet] = useState(false)       // mobile FAB → add bottom sheet
+  const [accountSheet, setAccountSheet] = useState(false) // mobile avatar → account bottom sheet
   const [starJob, setStarJob] = useState(null)
   const [emailDraft, setEmailDraft] = useState(null) // { job, type }
   const [toDelete, setToDelete] = useState(null)
@@ -643,7 +645,8 @@ export default function App() {
   const goTab = (id) => {
     if (id !== 'settings') setSettingsInitialTab(null)
     setActiveTab(id)
-    setMobileMenuOpen(false)
+    setAddSheet(false)
+    setAccountSheet(false)
   }
 
   // While the auth session is still loading, render nothing (avoids a flash of
@@ -711,113 +714,84 @@ export default function App() {
         className="min-h-screen transition-colors duration-300"
       >
 
-      {/* ── Mobile drawer overlay ──────────────────────────────────────────── */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden">
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
-          {/* Drawer */}
-          <div className="relative w-72 max-w-[85vw] h-full bg-white shadow-2xl flex flex-col">
-            {/* Drawer header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
-                  <span className="text-white font-bold text-sm">J</span>
-                </div>
-                <span className="font-bold text-gray-900 text-[15px] tracking-tight">JobTrackerAI</span>
+      {/* ── Mobile: Add bottom sheet (FAB) ─────────────────────────────────── */}
+      <BottomSheet open={addSheet} onClose={() => setAddSheet(false)} title={t('addMenu.import')}>
+        <div className="space-y-2">
+          {[
+            { icon: '📧', label: t('mobileMenu.gmail'), sub: t('addMenu.gmailDesc'), tint: 'bg-indigo-50', action: () => { setAddSheet(false); setShowGmail(true) } },
+            { icon: '🖼️', label: t('mobileMenu.screenshot'), sub: t('addMenu.screenshotDesc'), tint: 'bg-purple-50', action: () => { setAddSheet(false); setShowImageImport(true) } },
+            { icon: '✏️', label: t('mobileMenu.manual'), sub: t('addMenu.manualDesc'), tint: 'bg-gray-50', action: () => { setAddSheet(false); setModal('add') } },
+          ].map(item => (
+            <button key={item.label} onClick={item.action}
+              className="w-full flex items-center gap-3.5 p-3 rounded-2xl hover:bg-gray-50 active:scale-[0.98] transition-all text-left">
+              <span className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl ${item.tint}`}>{item.icon}</span>
+              <div className="min-w-0">
+                <div className="font-semibold text-gray-900 text-sm">{item.label}</div>
+                <div className="text-xs text-gray-400">{item.sub}</div>
               </div>
-              <button onClick={() => setMobileMenuOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-
-            {/* Nav links */}
-            <nav className="flex-1 overflow-y-auto py-3 px-3">
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-2">{t('mobileMenu.navigation')}</p>
-              {NAV_TABS.map(tab => (
-                <button key={tab.id} onClick={() => goTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-colors mb-0.5 ${
-                    activeTab === tab.id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="text-lg w-6 text-center">{tab.icon}</span>
-                  <span className="flex-1 text-left">{tab.label}</span>
-                  {tab.badge > 0 && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-600">{tab.badge}</span>
-                  )}
-                </button>
-              ))}
-
-              <div className="my-3 border-t border-gray-100" />
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-2">{t('mobileMenu.add')}</p>
-              {[
-                { icon: '📧', label: t('mobileMenu.gmail'), sub: t('mobileMenu.gmailSub'), action: () => { setMobileMenuOpen(false); setShowGmail(true) } },
-                { icon: '🖼️', label: t('mobileMenu.screenshot'), sub: t('mobileMenu.screenshotSub'), action: () => { setMobileMenuOpen(false); setShowImageImport(true) } },
-                { icon: '✏️', label: t('mobileMenu.manual'), sub: t('mobileMenu.manualSub'), action: () => { setMobileMenuOpen(false); setModal('add') } },
-              ].map(item => (
-                <button key={item.label} onClick={item.action}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-50 transition-colors mb-0.5">
-                  <span className="text-lg w-6 text-center">{item.icon}</span>
-                  <div className="text-left">
-                    <div className="font-medium">{item.label}</div>
-                    <div className="text-[11px] text-gray-400">{item.sub}</div>
-                  </div>
-                </button>
-              ))}
-            </nav>
-
-            {/* Account section at bottom */}
-            <div className="border-t border-gray-100 px-4 py-4">
-              {gmailUser ? (
-                <button onClick={() => { setMobileMenuOpen(false); setShowGmail(true) }}
-                  className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors">
-                  {gmailUser.picture
-                    ? <img src={gmailUser.picture} alt="" className="w-9 h-9 rounded-full" />
-                    : <div className="w-9 h-9 rounded-full bg-indigo-500 text-white text-sm flex items-center justify-center font-bold">{gmailUser.email?.[0]?.toUpperCase()}</div>
-                  }
-                  <div className="flex-1 text-left min-w-0">
-                    <div className="text-sm font-semibold text-gray-800 truncate">{gmailUser.name || gmailUser.email}</div>
-                    <div className="text-xs text-gray-400 truncate">{gmailUser.email}</div>
-                  </div>
-                  {(gmailUser || gmailConnected) && (
-                    <button onClick={(e) => { e.stopPropagation(); doRefresh(false) }} disabled={refreshing}
-                      className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-30">
-                      <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                    </button>
-                  )}
-                </button>
-              ) : (
-                <button onClick={() => { setMobileMenuOpen(false); setShowGmail(true) }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-indigo-50 text-indigo-700 text-sm font-medium hover:bg-indigo-100 transition-colors">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                  </svg>
-                  {t('mobileMenu.connectGmail')}
-                </button>
-              )}
-            </div>
-          </div>
+            </button>
+          ))}
+          {extensionInstalled === false && (
+            <a href="/jobtracker-addon-1.5.0.xpi" onClick={() => setAddSheet(false)}
+              className="w-full flex items-center gap-3.5 p-3 rounded-2xl hover:bg-orange-50 active:scale-[0.98] transition-all text-left">
+              <span className="w-11 h-11 rounded-xl flex items-center justify-center text-xl bg-orange-50">🦊</span>
+              <div className="min-w-0">
+                <div className="font-semibold text-orange-700 text-sm">{t('addMenu.installExt')}</div>
+                <div className="text-xs text-gray-400">{t('addMenu.installExtDesc')}</div>
+              </div>
+            </a>
+          )}
         </div>
-      )}
+      </BottomSheet>
+
+      {/* ── Mobile: Account bottom sheet (avatar) ──────────────────────────── */}
+      <BottomSheet open={accountSheet} onClose={() => setAccountSheet(false)} title={t('nav.tabs.settings')}>
+        <div className="space-y-1">
+          {gmailUser && (
+            <div className="flex items-center gap-3 p-2 mb-2">
+              {gmailUser.picture
+                ? <img src={gmailUser.picture} alt="" className="w-11 h-11 rounded-full" />
+                : <div className="w-11 h-11 rounded-full bg-indigo-500 text-white text-base flex items-center justify-center font-bold">{gmailUser.email?.[0]?.toUpperCase()}</div>
+              }
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold text-gray-900 truncate">{gmailUser.name || gmailUser.email}</div>
+                <div className="text-xs text-gray-400 truncate">{gmailUser.email}</div>
+              </div>
+            </div>
+          )}
+          {(gmailUser || gmailConnected) && (
+            <button onClick={() => { setAccountSheet(false); doRefresh(false) }} disabled={refreshing}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-40">
+              <svg className={`w-5 h-5 text-indigo-500 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              {refreshing ? t('header.loading') : t('nav.refresh')}{lastRefresh ? ` · ${lastRefresh}` : ''}
+            </button>
+          )}
+          <button onClick={() => { setAccountSheet(false); setShowGmail(true) }}
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+            <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>
+            {gmailUser || gmailConnected ? t('nav.connected') : t('mobileMenu.connectGmail')}
+          </button>
+          <button onClick={() => { setAccountSheet(false); goTab('settings') }}
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+            <span className="w-5 h-5 flex items-center justify-center">⚙️</span>
+            {t('nav.tabs.settings')}
+          </button>
+          {session && (
+            <button onClick={() => { setAccountSheet(false); supabase.auth.signOut() }}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+              {t('nav.signOut')}
+            </button>
+          )}
+        </div>
+      </BottomSheet>
 
       {/* ── Header ────────────────────────────────────────────────────────────── */}
       <header className="bg-white border-b border-gray-100 sticky top-0 z-30 shadow-[0_1px_8px_0_rgba(0,0,0,0.06)]">
         <div className="max-w-screen-2xl mx-auto px-3 sm:px-6 flex items-center justify-between gap-2 h-14">
 
-          {/* Left: hamburger (mobile) + logo + desktop nav */}
-          <div className="flex items-center gap-1 sm:gap-6 h-full min-w-0">
-
-            {/* Hamburger — mobile only */}
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden flex items-center justify-center w-9 h-9 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+          {/* Left: logo + desktop nav + mobile page title */}
+          <div className="flex items-center gap-2 sm:gap-6 h-full min-w-0">
 
             {/* Logo */}
             <div className="flex items-center gap-2 shrink-0">
@@ -883,8 +857,8 @@ export default function App() {
 
             <div className="h-5 w-px bg-gray-200 mx-0.5 hidden sm:block" />
 
-            {/* + Add dropdown */}
-            <div className="relative">
+            {/* + Add dropdown — desktop only (mobile uses the bottom FAB) */}
+            <div className="relative hidden sm:block">
               <button onClick={() => setShowAddMenu(v => !v)} title={t('nav.add')}
                 className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:opacity-90 active:scale-95 transition-all shadow-sm shadow-indigo-200">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
@@ -973,15 +947,17 @@ export default function App() {
               </button>
             )}
 
-            {/* Account avatar — mobile only (tappable, opens drawer) */}
-            {gmailUser && (
-              <button onClick={() => setMobileMenuOpen(true)} className="sm:hidden">
-                {gmailUser.picture
-                  ? <img src={gmailUser.picture} alt="" className="w-8 h-8 rounded-full border-2 border-white shadow-sm" />
-                  : <div className="w-8 h-8 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center font-bold">{gmailUser.email?.[0]?.toUpperCase()}</div>
-                }
-              </button>
-            )}
+            {/* Account avatar — mobile only (tappable, opens account sheet) */}
+            <button onClick={() => setAccountSheet(true)} className="sm:hidden flex items-center justify-center" aria-label={t('nav.tabs.settings')}>
+              {gmailUser?.picture
+                ? <img src={gmailUser.picture} alt="" className="w-8 h-8 rounded-full border-2 border-white shadow-sm" />
+                : gmailUser
+                  ? <div className="w-8 h-8 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center font-bold">{gmailUser.email?.[0]?.toUpperCase()}</div>
+                  : <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                    </div>
+              }
+            </button>
           </div>
         </div>
       </header>
@@ -1010,6 +986,12 @@ export default function App() {
               onDraftEmail={(job, type) => setEmailDraft({ job, type })}
               t={t}
             />
+          </div>
+        )}
+        {/* Mobile/tablet: surface upcoming meetings (sidebar is xl-only) */}
+        {jobs.length > 0 && (
+          <div className="xl:hidden mb-4">
+            <UpcomingMeetings jobs={jobs} t={t} />
           </div>
         )}
         <Filters
@@ -1190,31 +1172,34 @@ export default function App() {
       {/* ── Notification Permission Banner ────────────────────────────────────── */}
       <NotificationPermissionBanner />
 
-      {/* ── Mobile bottom nav bar ─────────────────────────────────────────────── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-white border-t border-gray-100 shadow-[0_-2px_12px_0_rgba(0,0,0,0.06)]">
-        <div className="flex items-center justify-around px-2 py-1 safe-area-bottom">
-          {NAV_TABS.map(tab => (
-            // Fix #17 — relative needed so absolute badge positions correctly
-            <button key={tab.id} onClick={() => goTab(tab.id)}
-              className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors min-w-0 flex-1 ${
-                activeTab === tab.id ? 'text-indigo-600' : 'text-gray-400'
-              }`}
-            >
-              <span className="text-xl leading-none">{tab.icon}</span>
-              <span className="text-[10px] font-medium truncate w-full text-center">{tab.label.split(' ')[0]}</span>
-              {tab.badge > 0 && activeTab !== tab.id && (
-                <span className="absolute top-0.5 right-2 w-4 h-4 text-[9px] font-bold bg-indigo-500 text-white rounded-full flex items-center justify-center">{tab.badge > 99 ? '99' : tab.badge}</span>
+      {/* ── Mobile bottom nav bar (4 tabs + raised center FAB) ────────────────── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-white/95 backdrop-blur-lg border-t border-gray-100 shadow-[0_-2px_16px_0_rgba(0,0,0,0.08)]">
+        <div className="flex items-stretch justify-around px-1 pt-1.5 pb-1 safe-area-bottom">
+          {NAV_TABS.map((tab, i) => (
+            <Fragment key={tab.id}>
+              {/* Raised FAB injected in the middle (after the 2nd tab) */}
+              {i === 2 && (
+                <div className="flex-1 flex justify-center">
+                  <button onClick={() => setAddSheet(true)} aria-label={t('nav.add')}
+                    className="-mt-6 w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-300/50 ring-4 ring-white active:scale-90 transition-transform">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                  </button>
+                </div>
               )}
-            </button>
+              <button onClick={() => goTab(tab.id)}
+                className={`relative flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition-colors min-w-0 flex-1 ${
+                  activeTab === tab.id ? 'text-indigo-600' : 'text-gray-400'
+                }`}
+              >
+                <span className={`text-xl leading-none transition-transform ${activeTab === tab.id ? 'scale-110' : ''}`}>{tab.icon}</span>
+                <span className="text-[10px] font-medium truncate w-full text-center">{tab.label.split(' ')[0]}</span>
+                {tab.badge > 0 && activeTab !== tab.id && (
+                  <span className="absolute top-0 right-1.5 min-w-[16px] h-4 px-1 text-[9px] font-bold bg-indigo-500 text-white rounded-full flex items-center justify-center">{tab.badge > 99 ? '99' : tab.badge}</span>
+                )}
+                {activeTab === tab.id && <span className="absolute -top-0.5 w-6 h-1 bg-indigo-600 rounded-full" />}
+              </button>
+            </Fragment>
           ))}
-          {/* + button in bottom bar */}
-          <button onClick={() => setShowAddMenu(v => !v)}
-            className="flex flex-col items-center gap-0.5 px-3 py-1.5 min-w-0 flex-1">
-            <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
-            </span>
-            <span className="text-[10px] font-medium text-gray-400">Ajouter</span>
-          </button>
         </div>
       </nav>
 
