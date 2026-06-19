@@ -44,11 +44,11 @@ ${language === 'auto'
 ═══════════════════════════════════════════════════════════════════════════════
 CORE PRINCIPLE:
 ═══════════════════════════════════════════════════════════════════════════════
-✓ RUTHLESSLY PRIORITIZE: Select TOP 3-5 most recent/relevant roles only (NOT all roles)
+✓ INCLUDE EVERY ROLE from the original CV — do NOT drop or omit any experience
 ✓ ADAPT the language and bullets to highlight relevance to this job
 ✓ DO NOT INVENT — use only actual achievements from the original CV
-✓ REORDER content to put most relevant experience first
-✓ 2-PAGE MAXIMUM: This is non-negotiable. Cut aggressively to fit.
+✓ EMPHASIZE the most relevant experience (more bullets), but still list every role
+✓ CONDENSE older/less relevant roles to fewer bullets — never delete them
 
 ═══════════════════════════════════════════════════════════════════════════════
 STRICT FORMAT RULES — ATS-Compatible:
@@ -80,15 +80,15 @@ GOOD (human): "Built A/B testing framework from scratch—took time to teach the
 ALSO GOOD: "Owned product roadmap for 18-month cycle; shipped features we knew users actually wanted (80% adoption, not lab metrics)"
 
 ═══════════════════════════════════════════════════════════════════════════════
-ROLE SELECTION ALGORITHM (CRITICAL — this determines page count):
+ROLE COVERAGE (CRITICAL):
 ═══════════════════════════════════════════════════════════════════════════════
 
-STEP 1: EXCLUDE roles to fit 2 pages
-- Remove ALL roles older than 8 years (unless directly required by JD)
-- If still too long, remove roles 5-8 years old with low JD relevance
-- RESULT: Keep ONLY 3-5 most recent + most relevant roles
+STEP 1: KEEP EVERY ROLE from the original CV
+- Do NOT remove or omit any role, no matter how old
+- Allocate bullet count by relevance/recency (see LENGTH section), not by inclusion/exclusion
+- The most recent and most JD-relevant roles get the most detail; older roles get condensed to 1-2 bullets
 
-STEP 2: For SELECTED roles only (not all):
+STEP 2: For EVERY role:
 1. Keep role title, company, dates, location as-is (factual)
 2. Adapt bullet descriptions to highlight JD relevance
 3. Reorder bullets: put most relevant to job FIRST
@@ -141,35 +141,25 @@ ATS PARSER RULES (Non-negotiable):
 - Single column layout only
 
 ═══════════════════════════════════════════════════════════════════════════════
-LENGTH OPTIMIZATION (STRICT 2-PAGE MAXIMUM):
+LENGTH OPTIMIZATION (condense, never delete):
 ═══════════════════════════════════════════════════════════════════════════════
-**NON-NEGOTIABLE: Output must fit on 2 pages max. Cut aggressively.**
+**Keep the CV concise, but include EVERY role. Manage length by adjusting bullet
+count per role — NOT by removing roles. Let the CV run to 3 pages if needed to
+cover the full career history.**
 
-Role selection:
-- Include ONLY top 3-5 most recent/relevant roles (cut anything 8+ years old)
-- If original CV has 8+ roles: SELECT the 3-4 most relevant to JD + most recent role
-- Do NOT include all roles "for completeness"
-
-Bullet count per role:
-- Recent role (last 3 years): 3 bullets MAX
-- Older role (3-8 years): 2 bullets only
-- Oldest role (8+ years): 1 bullet or EXCLUDE
+Bullet count per role (allocate by relevance/recency):
+- Recent role (last 3 years): up to 4 bullets
+- Mid role (3-8 years): 2-3 bullets
+- Older role (8+ years): 1-2 bullets (condensed, but still present)
 
 Skills section:
-- Top 10 JD keywords only (organized by category)
-- Total skills section: max 4 lines
+- Top 10-12 JD keywords (organized by category)
 
 Education:
 - 1 line only: "Degree, School | Certifications" (if competitive)
 
-Example 2-page budget:
-- Header/Profile: 4 lines
-- Experience (3-4 roles, 3+3+3+2 bullets): 14 lines
-- Skills (top 10, 1 category): 3 lines
-- Education: 1 line
-TOTAL: ~22 lines = 1.8 pages
-
-**If current CV exceeds this, REMOVE older roles first, then condense bullets to 2 per role.**
+**If the CV feels long, TRIM BULLETS on older roles down to a single line — do
+NOT drop any role.**
 
 ═══════════════════════════════════════════════════════════════════════════════
 FINAL INSTRUCTIONS:
@@ -183,19 +173,18 @@ ${jobDescription}
 
 OUTPUT REQUIREMENTS:
 1. Return ONLY the Markdown CV (no preamble, no comments, no "Here's your CV:")
-2. **MAXIMUM 2 PAGES** — this is hard limit, non-negotiable
-3. Include ONLY 3-4 roles (select top 3-4 by recency + JD relevance; EXCLUDE all others)
-4. Bullets per role: 3 max for recent roles (last 5 years), 2 max for older roles
-5. Every bullet has measurable result/outcome (no process-only language)
-6. Profile: 2-3 sentences, leads with operating model, 60-90 words max
-7. Skills: top 10 JD keywords only, organized by category with proof
-8. Education: 1 line only (degree | certifications), or omit if not relevant
-9. CRITICAL: If output exceeds 2 pages during generation, DELETE the oldest/least relevant role and regenerate
+2. **INCLUDE EVERY ROLE from the original CV** — do NOT omit any experience
+3. Bullets per role: up to 4 for recent roles, 2-3 for mid roles, 1-2 for older roles
+4. Most bullets should have a measurable result/outcome (mix in qualitative ones too)
+5. Profile: 2-3 sentences, leads with operating model, 60-90 words max
+6. Skills: top 10-12 JD keywords, organized by category with proof
+7. Education: 1 line only (degree | certifications), or omit if not relevant
+8. CRITICAL: If the CV is long, CONDENSE bullets on older roles — never delete a role
 
 Priority order (in order):
-1. Fit on 2 pages (CRITICAL — cut roles if needed)
+1. Cover the FULL career history — every role present (CRITICAL)
 2. Show JD relevance (CRITICAL — front-load matching keywords)
-3. Include measurable outcomes (CRITICAL — every bullet has metrics)
+3. Include measurable outcomes where available
 4. Maintain ATS compatibility (important)`
         }]
       })
