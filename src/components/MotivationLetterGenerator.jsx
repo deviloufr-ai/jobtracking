@@ -49,7 +49,7 @@ export default function MotivationLetterGenerator({ job, onClose, cvText, initia
             body: JSON.stringify({ url: job.url })
           })
           const data = await response.json()
-          jobDesc = data.description || ''
+          jobDesc = data.text || ''
         } catch (e) {
           console.warn('Could not fetch job description from URL')
         }
