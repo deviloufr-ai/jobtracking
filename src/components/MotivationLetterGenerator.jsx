@@ -9,6 +9,7 @@ export default function MotivationLetterGenerator({ job, onClose, cvText, initia
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [language, setLanguage] = useState('auto')
+  const [context, setContext] = useState('')
   const [saved, setSaved] = useState(false)
   const editorRef = useRef(null)
 
@@ -65,7 +66,8 @@ export default function MotivationLetterGenerator({ job, onClose, cvText, initia
         jobDescription: jobDesc,
         company: job.company,
         position: job.position,
-        language
+        language,
+        context
       })
 
       if (!response.ok) {
@@ -181,6 +183,20 @@ export default function MotivationLetterGenerator({ job, onClose, cvText, initia
                   <option value="fr">Français</option>
                   <option value="en">English</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">
+                  Contexte additionnel <span className="text-gray-400 font-normal">(optionnel)</span>
+                </label>
+                <textarea
+                  value={context}
+                  onChange={(e) => setContext(e.target.value)}
+                  disabled={loading}
+                  rows={3}
+                  placeholder="Points à mettre en avant, motivation spécifique, disponibilité, ton souhaité…"
+                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
               </div>
 
               {error && (

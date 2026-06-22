@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
   }
 
-  const { cvText, jobDescription, company, position, language } = req.body
+  const { cvText, jobDescription, company, position, language, context } = req.body
   if (!cvText || !jobDescription) {
     res.status(400).json({ error: 'cvText and jobDescription required' }); return
   }
@@ -66,7 +66,10 @@ ${cvText.slice(0, 2000)}
 
 JOB DESCRIPTION (${company} - ${position}):
 ${jobDescription.slice(0, 2000)}
-
+${context && context.trim() ? `
+ADDITIONAL CONTEXT FROM THE CANDIDATE (incorporate naturally; these are priorities and details to emphasize):
+${context.trim().slice(0, 1500)}
+` : ''}
 Return ONLY the motivation letter text (no preamble, no metadata). Include the date, salutation, paragraphs, closing, and signature line. Format as plain text with blank lines between paragraphs.`
         }]
       })
