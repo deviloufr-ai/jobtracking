@@ -109,6 +109,7 @@ export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) 
       status: 'todo',
       date: new Date().toISOString().split('T')[0],
       notes: job.salary ? `Salaire: ${job.salary}` : '',
+      jobDescription: job.description || '',
     })
     setAdded(prev => new Set([...prev, job.id]))
   }
