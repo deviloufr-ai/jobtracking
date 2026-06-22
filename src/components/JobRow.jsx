@@ -401,7 +401,7 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer whitespace-nowrap ${status.color} hover:opacity-80 transition-opacity`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
-            {getStatusLabel(job.status, t)}
+            {getStatusLabel(displayStatusKey, t)}
             <span className="text-xs opacity-60">▾</span>
           </button>
           {showStatusMenu && typeof document !== 'undefined' && (
@@ -415,11 +415,11 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
                   <button
                     key={s.key}
                     onClick={() => { onStatusChange(job.id, s.key); setShowStatusMenu(false) }}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-50 text-left ${s.key === job.status ? 'font-semibold' : ''}`}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-50 text-left ${s.key === displayStatusKey ? 'font-semibold' : ''}`}
                   >
                     <span className={`w-2 h-2 rounded-full ${s.dot}`} />
                     {getStatusLabel(s.key, t)}
-                    {s.key === job.status && <span className="ml-auto text-indigo-500">✓</span>}
+                    {s.key === displayStatusKey && <span className="ml-auto text-indigo-500">✓</span>}
                   </button>
                 ))}
               </div>
