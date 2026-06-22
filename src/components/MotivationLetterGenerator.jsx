@@ -29,7 +29,7 @@ export default function MotivationLetterGenerator({ job, onClose, cvText, initia
       return
     }
 
-    if (!job.jobDescription && !job.url && !job.notes) {
+    if (!job.jobDescription && !job.description && !job.url && !job.notes) {
       setError('Description du poste requise. Ajoutez une URL ou une description.')
       return
     }
@@ -39,7 +39,7 @@ export default function MotivationLetterGenerator({ job, onClose, cvText, initia
 
     try {
       // Try to fetch job description if only URL is available
-      let jobDesc = job.jobDescription || job.notes || ''
+      let jobDesc = job.jobDescription || job.description || job.notes || ''
       if (!jobDesc && job.url) {
         try {
           const response = await fetch('/api/fetch-jd', {
