@@ -411,6 +411,14 @@ const TEMPLATES = [
   { id: 'minimal',   label: 'Minimal',   icon: '✦', desc: 'Ultra-compact, maximal contenu' },
 ]
 
+// ── Language registry ─────────────────────────────────────────────────────────
+const LANGUAGES = [
+  { id: 'auto', label: 'Auto', flag: '🌐' },
+  { id: 'fr',   label: 'Français', flag: '🇫🇷' },
+  { id: 'en',   label: 'English', flag: '🇬🇧' },
+  { id: 'jp',   label: '日本語', flag: '🇯🇵' },
+]
+
 export function renderCV(md, templateId, pic) {
   if (templateId === 'standard')  return renderStandard(md, pic)
   if (templateId === 'classic')   return renderClassic(md, pic)
@@ -469,6 +477,7 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
   const [viewMode, setViewMode]     = useState('split')
   const [template, setTemplate]     = useState('standard')
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
+  const [showLangPicker, setShowLangPicker] = useState(false)
   const [profilePic, setProfilePic] = useState(() => localStorage.getItem('cv_profile_picture') || null)
   const [saved, setSaved]           = useState(false)
   const [selectedLanguage, setSelectedLanguage] = useState('auto')
@@ -530,15 +539,16 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
   }
 
   // ── Generate ──────────────────────────────────────────────────────────────
-  const generateCV = async (jdOverride) => {
-    const jd = (jdOverride ?? jdText)
+  const generateCV = async (jdOverride, langOverride) => {
+    const jd   = (jdOverride ?? jdText)
+    const lang = (langOverride ?? selectedLanguage)
     setStep('generating')
     try {
       if (IS_DEV) {
         const mock = `# Alexandre Leblanc\nParis, France · alexandre@email.com · linkedin.com/in/devilalex\n\n## Profil\nProduct Manager Senior avec 18 ans d'expérience internationale en B2B SaaS, gaming et IoT. Expert en pilotage de roadmap produit orienté OKR, A/B testing et métriques de rétention. Trilingue FR/EN/JP.\n\n## Expérience\n\n### Senior Product Manager — Datachain\nMai 2023 – Juin 2025 | Remote (Tokyo)\n- Piloté l'implémentation d'un pont inter-chaînes Web3/DeFi — discovery, rollout et suivi d'adoption\n- Structuré les interviews clients, recherche concurrentielle et priorisation data-driven\n- Coordonné les équipes cross-fonctionnelles (Engineering, Product, Marketing)\n\n### Program Manager Ads — SmartNews\nJanvier 2021 – Mai 2023 | Remote (Tokyo)\n- Piloté les programmes produit globaux Ads (20M+ MAU)\n- Analyse data pour identifier pain points ; traduit les insights en requirements\n- Frameworks A/B testing et cohort analysis\n\n### Chef de Projet — Hakuhodo I-Studio\nJanvier 2017 – Janvier 2020 | Tokyo\n- Développement end-to-end de l'app IoT Pechat ; 0 à 120K unités vendues\n- Lancement US avec +15% revenue · Good Design Award 2019\n\n## Compétences\n- **Produit** : OKR, roadmap, A/B testing, NPS, DAU/MAU, funnel\n- **Tech** : SQL, Jira, Figma, Confluence, analytics\n- **Méthodo** : Agile/Scrum, RICE, user interviews\n\n## Formation\nArts & Métiers — Ingénieur généraliste (2012)\nJLPT N1 · Trilingue FR/EN/JP`
         setGeneratedCV(mock); setEditableCV(mock); setStep('preview'); return
       }
-      const res  = await aiFetch('/api/generate-cv', {cvText:cv.text,jobDescription:jd,company:job.company,position:job.position,language:selectedLanguage})
+      const res  = await aiFetch('/api/generate-cv', {cvText:cv.text,jobDescription:jd,company:job.company,position:job.position,language:lang})
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setGeneratedCV(data.cv); setEditableCV(data.cv); setStep('preview')
@@ -635,7 +645,15 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
     }
   }
 
-  const currentTpl = TEMPLATES.find(t => t.id === template) || TEMPLATES[0]
+  const currentTpl  = TEMPLATES.find(t => t.id === template) || TEMPLATES[0]
+  const currentLang = LANGUAGES.find(l => l.id === selectedLanguage) || LANGUAGES[0]
+
+  // Change CV language from the preview toolbar → regenerate in the new language.
+  const handleLanguageChange = (langId) => {
+    setSelectedLanguage(langId)
+    setShowLangPicker(false)
+    if (langId !== selectedLanguage) generateCV(undefined, langId)
+  }
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -678,6 +696,28 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
                   {l}
                 </button>
               ))}
+            </div>
+
+            {/* Language picker — regenerates the CV in the chosen language */}
+            <div className="relative">
+              <button onClick={() => setShowLangPicker(v => !v)}
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                <span>{currentLang.flag}</span>
+                <span>{currentLang.label}</span>
+                <span className="text-gray-300 text-[10px]">▾</span>
+              </button>
+              {showLangPicker && (
+                <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-xl shadow-xl border border-gray-100 p-1.5 w-44">
+                  {LANGUAGES.map(l => (
+                    <button key={l.id} onClick={() => handleLanguageChange(l.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${selectedLanguage===l.id ? 'bg-indigo-50' : 'hover:bg-gray-50'}`}>
+                      <span className="text-base">{l.flag}</span>
+                      <p className={`text-xs font-semibold ${selectedLanguage===l.id ? 'text-indigo-700' : 'text-gray-700'}`}>{l.label}</p>
+                      {selectedLanguage===l.id && <span className="ml-auto text-indigo-500 text-xs">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Template picker */}
@@ -755,15 +795,15 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
           />
           <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100 flex-wrap gap-3">
             <div className="flex items-center gap-3">
-              <label className="text-sm font-medium text-gray-700">🌐 Langue du CV :</label>
+              <label className="text-sm font-medium text-gray-700">🌐 {t('cvGeneratorUI.selectLanguage')}</label>
               <select
                 value={selectedLanguage}
                 onChange={e => setSelectedLanguage(e.target.value)}
                 className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
               >
-                <option value="auto">Détection automatique</option>
-                <option value="fr">Français</option>
-                <option value="en">English</option>
+                {LANGUAGES.map(l => (
+                  <option key={l.id} value={l.id}>{l.flag} {l.label}</option>
+                ))}
               </select>
             </div>
             <button onClick={() => generateCV()} disabled={!jdText.trim()}
@@ -823,7 +863,7 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
         </div>
       )}
 
-      {showTemplatePicker && <div className="fixed inset-0 z-40" onClick={() => setShowTemplatePicker(false)} />}
+      {(showTemplatePicker || showLangPicker) && <div className="fixed inset-0 z-40" onClick={() => { setShowTemplatePicker(false); setShowLangPicker(false) }} />}
     </div>
   )
 }

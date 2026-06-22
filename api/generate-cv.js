@@ -20,6 +20,14 @@ export default async function handler(req, res) {
     res.status(400).json({ error: 'cvText and jobDescription required' }); return
   }
 
+  const LANGUAGE_INSTRUCTIONS = {
+    auto: 'DETECT the language of the job description and write the ENTIRE CV in THAT language.\nFrench JD → French CV. English JD → English CV. Japanese JD → Japanese CV.',
+    fr: 'Write the ENTIRE CV in FRENCH.',
+    en: 'Write the ENTIRE CV in ENGLISH.',
+    jp: 'Write the ENTIRE CV in JAPANESE (日本語). Use natural business Japanese (敬語/丁寧語) appropriate for a professional 職務経歴書.',
+  }
+  const languageInstruction = LANGUAGE_INSTRUCTIONS[language] || LANGUAGE_INSTRUCTIONS.auto
+
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -35,11 +43,7 @@ export default async function handler(req, res) {
           role: 'user',
           content: `You are an expert CV writer and ATS specialist. Adapt this CV for the "${position}" role at "${company}".
 
-${language === 'auto'
-  ? 'DETECT the language of the job description and write the ENTIRE CV in THAT language.\nFrench JD → French CV. English JD → English CV.'
-  : language === 'fr'
-  ? 'Write the ENTIRE CV in FRENCH.'
-  : 'Write the ENTIRE CV in ENGLISH.'}
+${languageInstruction}
 
 ═══════════════════════════════════════════════════════════════════════════════
 CORE PRINCIPLE:

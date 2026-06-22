@@ -649,6 +649,9 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
     `in:all ("head of talent" OR "talent acquisition" OR "talent recruiter") ${dateFilter}`,
     // ③ Personal inbox keywords (EN)
     `in:inbox category:personal (interview OR "thank you for applying" OR "thanks for applying" OR "application received" OR "your application" OR "we have received" OR "we regret" OR "not selected" OR "not moving forward" OR "job offer" OR "offer letter" OR "next steps" OR "hiring process") ${dateFilter}`,
+    // ③b Soft rejection / "keep in touch" follow-ups (EN) — polite phrasing with a
+    // generic subject ("Follow Up from X") that none of the above keyword sets catch
+    `in:all ("not a good match" OR "isn't a good match" OR "good match with our" OR "keep your information on file" OR "future open roles" OR "future endeavors" OR "wish you the best in your search") ${baseExclude} ${dateFilter}`,
     // ④ ATS platforms — always relevant regardless of category
     `in:all (from:ashbyhq.com OR from:greenhouse.io OR from:lever.co OR from:workable.com OR from:teamtailor.com OR from:teamtailor-mail.com OR from:recruitee.com OR from:bamboohr.com OR from:smartrecruiters.com OR from:jobvite.com OR from:icims.com OR from:myworkdayjobs.com OR from:taleo.net) ${dateFilter}`,
     // ④b Broad ATS confirmation pattern — catch "we have received your application" type confirmations
@@ -821,6 +824,7 @@ async function fetchEmailDetail(id, token) {
     const fromRaw = get('From').toLowerCase()
     const subjectRaw = get('Subject').toLowerCase()
     const snippetRaw = (data.snippet || '').toLowerCase()
+    const bodyRaw = (body || '').toLowerCase()
 
     // Known ATS domains always pass through — their no-reply addresses are legit
     const ATS_DOMAINS = ['greenhouse.io','lever.co','ashbyhq.com','workable.com','teamtailor.com','teamtailor-mail.com',
@@ -904,8 +908,16 @@ async function fetchEmailDetail(id, token) {
         'hiring process','we\'d love','inmail','viewed your application',
         'applied','applied to','candidate','salary negotiation',
         'get to know you','meet with you','schedule a call','time slot','available times',
+        // EN soft rejection / "keep in touch" follow-ups — polite phrasing that never
+        // uses "we regret"/"not selected" (e.g. "Follow Up from Dashlane")
+        'good match','not a good fit','keep your information on file','future endeavors',
+        'future open roles','wish you the best in your',
       ]
-      const hasJobSignal = JOB_SUBJECT_KEYWORDS.some(k => subjectRaw.includes(k) || snippetRaw.includes(k))
+      // Scan the body too, not just subject+snippet: soft rejections carry a
+      // generic subject ("Follow Up from X") and bury the signal mid-body, past
+      // the ~200-char Gmail snippet boundary.
+      const hasJobSignal = JOB_SUBJECT_KEYWORDS.some(k =>
+        subjectRaw.includes(k) || snippetRaw.includes(k) || bodyRaw.includes(k))
       if (!hasJobSignal) {
         log(`   ❌ Filtered: No job signal keywords found`)
         return null

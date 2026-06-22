@@ -503,13 +503,24 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
       const gmailLookbackDays = settingsRef.current?.gmailPeriodDays || 14
       const months = gmailLookbackDays / 30
 
+      // Company-name search: pull emails that merely NAME a tracked company, even
+      // when their subject/body match no job keyword (e.g. a soft rejection titled
+      // "Follow Up from Dashlane"). Restrict to still-active candidatures — closed
+      // ones don't need new emails — and dedup; fetchJobEmails caps the list at 20.
+      const activeCompanies = [...new Set(
+        jobs
+          .filter(j => !CLOSED_STATUSES.has(j.status))
+          .map(j => (j.company || '').trim())
+          .filter(Boolean)
+      )]
+
       // Fetch from all connected accounts and merge, tagging each email with its account
       const connectedAccts = getConnectedAccounts()
       let allEmails = []
       if (connectedAccts.length > 1) {
         const perAccount = await Promise.all(
           connectedAccts.map(acct =>
-            fetchJobEmailsForAccount(acct.email, 100, months, null, null)
+            fetchJobEmailsForAccount(acct.email, 100, months, null, null, activeCompanies)
               .then(emails => emails.map(e => ({ ...e, _account: acct.email })))
               .catch(() => [])
           )
@@ -522,7 +533,7 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
           }
         }
       } else {
-        allEmails = await fetchJobEmails(100, months, null, null)
+        allEmails = await fetchJobEmails(100, months, null, null, activeCompanies)
       }
       const [emails, calendarEvents] = await Promise.all([
         Promise.resolve(allEmails),
