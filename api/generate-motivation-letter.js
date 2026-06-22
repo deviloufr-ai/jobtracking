@@ -61,6 +61,15 @@ TONE & CONTENT RULES:
 - Avoid: "I am writing to apply", "I believe I would be good at", generic praise
 - Focus on VALUE: What can YOU bring to THEM
 
+WRITE LIKE A HUMAN — this must NOT read as AI-generated:
+- NEVER use the em-dash (—) or en-dash (–). Use a comma, period, or parentheses instead.
+- Vary sentence length: mix short, punchy sentences with longer ones. Avoid a uniform rhythm.
+- Ban AI-cliché phrasing: "I am thrilled/excited to", "delve into", "leverage my skills", "passion for", "in today's fast-paced world", "I am confident that", "furthermore/moreover", "tapestry", "testament to", "navigate the landscape", "spearheaded", "robust".
+- Avoid the rule-of-three list pattern ("X, Y, and Z") in every sentence. Don't over-structure.
+- No bullet points in the letter body. Write flowing prose.
+- It's fine to be slightly imperfect and conversational: a direct statement, a concrete anecdote, plain words. Sound like a real person who knows their work, not a template.
+- Don't start consecutive paragraphs the same way (e.g. all starting with "I").
+
 ORIGINAL CV (for context):
 ${cvText.slice(0, 2000)}
 
