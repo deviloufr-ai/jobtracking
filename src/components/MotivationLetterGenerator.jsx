@@ -99,39 +99,41 @@ export default function MotivationLetterGenerator({ job, onClose, cvText, initia
   const exportPDF = async () => {
     if (!letterText) return
 
-    const { default: html2pdf } = await import('html2pdf.js')
+    const { jsPDF } = await import('jspdf')
 
     // Save letter first
     saveLetter()
 
-    const element = document.createElement('div')
-    element.innerHTML = letterText
-      .split('\n')
-      .map(line => {
-        if (!line.trim()) return '<div style="height: 8px"></div>'
-        return `<p style="margin: 8px 0; line-height: 1.5">${line}</p>`
-      })
-      .join('')
+    // Render real (vector) text rather than rasterizing to an image — crisp at
+    // any zoom, selectable, and a much smaller file.
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
 
-    element.style.cssText = `
-      font-family: 'Segoe UI', Arial, sans-serif;
-      font-size: 11pt;
-      line-height: 1.5;
-      color: #333;
-      padding: 40px;
-      max-width: 800px;
-      background: white;
-    `
+    const pageW = doc.internal.pageSize.getWidth()
+    const pageH = doc.internal.pageSize.getHeight()
+    const margin = 20
+    const maxW = pageW - margin * 2
+    const lineHeight = 6      // mm between wrapped lines
+    const paraGap = 3         // extra mm between paragraphs
 
-    const opt = {
-      margin: 10,
-      filename: `lettre-motivation-${job.company}-${new Date().toISOString().split('T')[0]}.pdf`,
-      image: { type: 'jpeg', quality: 0.75 },  // Reduced from 0.98 for smaller file size
-      html2canvas: { scale: 1, logging: false },  // Scale 1 instead of 2
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true, precision: 10 }
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(11)
+    doc.setTextColor(40, 40, 40)
+
+    let y = margin
+    const paragraphs = letterText.replace(/\r\n/g, '\n').split('\n')
+
+    for (const para of paragraphs) {
+      if (!para.trim()) { y += paraGap; continue }
+      const lines = doc.splitTextToSize(para, maxW)
+      for (const line of lines) {
+        if (y > pageH - margin) { doc.addPage(); y = margin }
+        doc.text(line, margin, y)
+        y += lineHeight
+      }
+      y += paraGap
     }
 
-    html2pdf().set(opt).from(element).save()
+    doc.save(`lettre-motivation-${job.company}-${new Date().toISOString().split('T')[0]}.pdf`)
   }
 
   return (
