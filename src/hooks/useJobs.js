@@ -1847,7 +1847,6 @@ export function useJobs() {
       return debugAtsRecovery(job)
     }
     return () => { delete window.fixAtsCandidatures; delete window.debugAtsRecovery }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched, reprocessJobs, checkPosition, checkAllPositions, clearDeletedJobs, cleanupHistoryDuplicates, deduplicateViaServer, applyAtsSplit, loading, findDuplicateInList: (co, pos) => findDuplicateJob(jobs, co, pos) }

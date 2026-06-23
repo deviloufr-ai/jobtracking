@@ -244,7 +244,7 @@ const URGENCY_DOT = {
 }
 
 // Merge urgent + next steps into one sorted list
-function buildAllActions(activeJobs, s, t = (key) => key) {
+function buildAllActions(activeJobs, s, t = (key) => key, dismissed = new Set()) {
   const items = []
 
   // From urgent rules
@@ -270,13 +270,17 @@ function buildAllActions(activeJobs, s, t = (key) => key) {
   // Sort by priority first
   items.sort((a, b) => a.sortKey - b.sortKey)
 
+  // Drop dismissed actions BEFORE capping — otherwise a hidden action wastes a
+  // slot and can push a real action (e.g. a rejection follow-up) past the limit.
+  const visible = items.filter(item => !dismissed.has(actionKey(item.job, item.rule)))
+
   // Keep only ONE action per job — the highest priority one
   const seenJobs = new Set()
-  return items.filter(item => {
+  return visible.filter(item => {
     if (seenJobs.has(item.job.id)) return false
     seenJobs.add(item.job.id)
     return true
-  }).slice(0, 8)
+  }).slice(0, 10)
 }
 
 export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDraftEmail, t = (key) => key }) {
@@ -289,9 +293,9 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
     setDismissed(next)
     saveDismissed(next)
   }
-  const activeJobs = jobs.filter(j => !['cancelled', 'archived'].includes(j.status))
+  const activeJobs = jobs.filter(j => !['cancelled', 'archived'].includes(effectiveStatus(j)))
   const s = loadSettings()
-  const actions = buildAllActions(activeJobs, s, t).filter(({ job, rule }) => !dismissed.has(actionKey(job, rule)))
+  const actions = buildAllActions(activeJobs, s, t, dismissed)
   const urgentCount = actions.filter(a => a.urgency === 'high').length
 
   if (actions.length === 0) return null

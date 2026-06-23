@@ -334,7 +334,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
           position: p.position,
           status: p.status,
           historyCount: p.history?.length,
-          matched: !!findExisting(p) ? 'update' : 'new',
+          matched: findExisting(p) ? 'update' : 'new',
         })),
       }))
       setResults(displayList)
