@@ -566,17 +566,41 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
       log(`✅ Extracted ${grouped.length} jobs from emails`)
 
       const jobByKey = new Map(jobs.map(j => [`${normalize(j.company)}_${normalize(j.position)}`, j]))
-      const jobByCompany = new Map(jobs.map(j => [normalize(j.company), j]))
+      // ALL jobs per company — a company can hold several distinct applications
+      // (e.g. "Product Owner IA" active + "Product Manager Operations" rejected).
+      // A plain Map keyed by company keeps only the LAST job, so company-only
+      // emails attached to an arbitrary (often closed) job. (Bug: a new entry
+      // landed on the rejected job of a different position, same company.)
+      const jobsByCompany = new Map()
+      for (const j of jobs) {
+        const co = normalize(j.company)
+        if (!jobsByCompany.has(co)) jobsByCompany.set(co, [])
+        jobsByCompany.get(co).push(j)
+      }
+      const TERMINAL_STATUSES = new Set(['rejected', 'rejected_ats', 'cancelled', 'archived'])
+      // When a position-less email could belong to any application at a company,
+      // prefer a live application over a closed one, then the most recent.
+      const pickBestCompanyMatch = candidates => {
+        if (!candidates || candidates.length === 0) return null
+        const active = candidates.filter(j => !TERMINAL_STATUSES.has(j.status))
+        const pool = active.length > 0 ? active : candidates
+        return pool.slice().sort((a, b) =>
+          new Date(b.updated_at || b.date || 0) - new Date(a.updated_at || a.date || 0)
+        )[0]
+      }
       const findExisting = p => {
         // Exact company+position match first
         const key = `${normalize(p.company)}_${normalize(p.position)}`
         if (jobByKey.has(key)) return jobByKey.get(key)
 
         const normCo = normalize(p.company)
+        const companyJobs = jobsByCompany.get(normCo) || []
+        if (companyJobs.length === 0) return null
+
         // Fall back to company-only if the PARSED position is generic.
         // (e.g. a "Thank you for applying" confirmation that carries no job title)
         if (isGenericPos(p.position)) {
-          return jobByCompany.get(normCo) || null
+          return pickBestCompanyMatch(companyJobs)
         }
 
         // Position-compatible company match: when an email at a known company
@@ -585,18 +609,13 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
         // One title being a substring of the other = same role family. Without
         // this, the email is wrongly imported as a NEW job and the existing
         // one never gets its status upgraded (Bug: refresh didn't update status).
-        const candidate = jobByCompany.get(normCo)
-        if (candidate) {
-          const newPos = normalize(p.position)
-          const existPos = normalize(candidate.position)
-          if (
-            isGenericPos(candidate.position) ||
+        const newPos = normalize(p.position)
+        const compatible = companyJobs.filter(c => {
+          const existPos = normalize(c.position)
+          return isGenericPos(c.position) ||
             (newPos && existPos && (newPos.includes(existPos) || existPos.includes(newPos)))
-          ) {
-            return candidate
-          }
-        }
-        return null
+        })
+        return pickBestCompanyMatch(compatible)
       }
 
       let added = 0, updated = 0, skipped = 0
