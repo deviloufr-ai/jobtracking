@@ -152,6 +152,24 @@ function extractMeetingLink(text = '') {
 // emails. Active states (reviewing/interview/waiting/offer) keep pulling updates.
 const CLOSED_STATUSES = new Set(['rejected', 'rejected_ats', 'archived'])
 
+// Job-board notifications that a listing was removed / is no longer available
+// (HelloWork "L'offre n'est plus disponible", Indeed "no longer available"…).
+// The opportunity is gone, but the board doesn't know the outcome — it's not an
+// explicit rejection — so the application should close as ARCHIVED rather than
+// stay stuck in an active state like "reviewing".
+const LISTING_CLOSED_PHRASES = [
+  "n'est plus disponible", "n'est plus en ligne", 'offre supprimée',
+  'offre expirée', 'offre a expiré', 'annonce supprimée', 'annonce expirée',
+  'no longer available', 'this job is no longer', 'offer is no longer',
+]
+const isListingClosedNotification = (text = '') => {
+  const t = text.toLowerCase()
+  return LISTING_CLOSED_PHRASES.some(p => t.includes(p))
+}
+// States open enough to be overridden by a listing-removed notice. We never
+// downgrade a real outcome (interview/offer/done/rejected) to archived.
+const ARCHIVABLE_OPEN_STATUSES = new Set(['todo', 'sent', 'reviewing', 'waiting'])
+
 // A sender is "shared" when it belongs to a job board / ATS rather than one
 // specific employer (e.g. notifications@linkedin.com, no-reply@greenhouse.io).
 // Skipping by shared sender is unsafe — one address serves many companies — so
@@ -357,6 +375,17 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
     if (hasHelloWorkResponse && !hasPositiveKeywords && sorted[sorted.length - 1].status === 'reviewing') {
       // Override to rejection
       sorted[sorted.length - 1].status = 'rejected'
+    }
+
+    // Job-board "listing removed / offer no longer available" notices close the
+    // application as ARCHIVED — the opportunity is gone but it's not an explicit
+    // rejection. Only override still-open states (never interview/offer/done).
+    for (const e of sorted) {
+      const orig = emailByGmailId[e.gmailId]
+      const text = `${e.notes || ''} ${orig?.subject || ''} ${orig?.body || ''}`
+      if (ARCHIVABLE_OPEN_STATUSES.has(e.status) && isListingClosedNotification(text)) {
+        e.status = 'archived'
+      }
     }
     // Group is updateOnly if ALL its emails are updateOnly (e.g. only "viewed" notifications)
     const allUpdateOnly = sorted.every(e => e._updateOnly)
