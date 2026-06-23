@@ -154,7 +154,9 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
   const [sendStatus, setSendStatus] = useState(null) // 'sent' | 'error' | null
   const [gmailConnected, setGmailConnected] = useState(isConnected)
 
-  const lang = detectLanguage(job)
+  // For a refusal reply, answer in the language the recruiter actually used.
+  const refusalContent = type === 'remerciement' ? extractRefusalContent(job) : ''
+  const lang = refusalContent ? detectLanguage({ notes: refusalContent }) : detectLanguage(job)
   const cfg = EMAIL_TYPES[type] || EMAIL_TYPES.remerciement
   const title = typeof cfg.title === 'object' ? cfg.title[lang] : cfg.title
   const receivedBy = extractReceivedByAccount(job)
@@ -225,9 +227,6 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
 
     const profile = loadProfile()
     const promptFn = PROMPTS[type]?.[lang] || PROMPTS[type]?.fr
-    // Feed the recruiter's actual refusal message into the thank-you so it can
-    // rebound on the specific reason given.
-    const refusal = type === 'remerciement' ? extractRefusalContent(job) : ''
     try {
       const res = await fetch('/api/claude', {
         method: 'POST',
@@ -235,7 +234,9 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
         body: JSON.stringify(withUserApiKey({
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 400,
-          messages: [{ role: 'user', content: promptFn(job, profile, refusal) }]
+          // Feed the recruiter's actual refusal message into the thank-you so it
+          // can rebound on the specific reason given.
+          messages: [{ role: 'user', content: promptFn(job, profile, refusalContent) }]
         }))
       })
       const data = await res.json()
