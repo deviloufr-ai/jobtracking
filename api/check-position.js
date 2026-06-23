@@ -1,4 +1,4 @@
-import { assertSafeUrl, safeFetch } from './_lib/http.js'
+import { applyCors, assertSafeUrl, safeFetch, getClientIp, rateLimit } from './_lib/http.js'
 
 const CLOSED_INDICATORS = [
   'position closed', 'job closed', 'this position is closed',
@@ -81,8 +81,17 @@ function detectAvailability(content) {
 }
 
 export default async function handler(req, res) {
+  if (applyCors(req, res, 'POST, OPTIONS')) return
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  // SSRF-guarded, but still a server-side fetcher of user URLs — throttle per IP
+  // so it can't be used as an unbounded URL-probing oracle.
+  const { ok, retryAfter } = rateLimit({ key: `check-position:${getClientIp(req)}`, limit: 30, windowMs: 60_000 })
+  if (!ok) {
+    res.setHeader('Retry-After', String(retryAfter))
+    return res.status(429).json({ error: 'Too many requests. Please slow down.' })
   }
 
   const { url } = req.body

@@ -342,7 +342,6 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
       setStep(STEPS.review)
     } catch (e) {
       if (e.message?.includes('401') || e.message === 'Non connecté à Gmail') {
-        setConnected(false)
         setError('Session expirée — cliquez sur "Reconnecter" puis relancez le scan.')
       } else {
         setError('Erreur lors du scan : ' + e.message)

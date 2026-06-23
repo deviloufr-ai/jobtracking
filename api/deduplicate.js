@@ -6,22 +6,12 @@ export default async function handler(req, res) {
   try {
     console.log('📨 Deduplicate request received')
 
-    const { userId } = req.body
-    if (!userId) {
-      return res.status(400).json({ error: 'Missing userId' })
-    }
-    // Basic shape check so a malformed userId can't be smuggled into the REST filter.
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
-      return res.status(400).json({ error: 'Invalid userId' })
-    }
-
-    console.log(`🔄 Deduplicating for user: ${userId}`)
-
     // Resolve Supabase target from SERVER env only. NEVER trust a URL from the
     // request body — doing so would let a caller redirect the service-role key
     // (full DB admin) to an arbitrary host (credential exfiltration).
     const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
 
     if (!supabaseUrl) {
       console.error('❌ Missing SUPABASE_URL')
@@ -31,6 +21,35 @@ export default async function handler(req, res) {
       console.error('❌ Missing SUPABASE_SERVICE_ROLE_KEY')
       return res.status(500).json({ error: 'Service key not configured' })
     }
+    if (!anonKey) {
+      console.error('❌ Missing SUPABASE_ANON_KEY')
+      return res.status(500).json({ error: 'Anon key not configured' })
+    }
+
+    // ── Authentication ──────────────────────────────────────────────────────
+    // This endpoint runs with the service-role key (bypasses RLS), so it MUST
+    // derive the target user from a VERIFIED access token — never from the
+    // request body. Trusting a client-supplied userId would let anyone delete
+    // another user's rows by guessing their UUID (IDOR / broken access control).
+    const authHeader = req.headers.authorization || ''
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
+    if (!token) {
+      return res.status(401).json({ error: 'Missing access token' })
+    }
+
+    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: { apikey: anonKey, Authorization: `Bearer ${token}` },
+    })
+    if (!userRes.ok) {
+      return res.status(401).json({ error: 'Invalid or expired session' })
+    }
+    const authUser = await userRes.json()
+    const userId = authUser?.id
+    if (!userId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      return res.status(401).json({ error: 'Could not resolve authenticated user' })
+    }
+
+    console.log(`🔄 Deduplicating for user: ${userId}`)
 
     console.log('✓ Service key available')
 

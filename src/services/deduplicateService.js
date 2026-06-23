@@ -1,4 +1,4 @@
-import { resolveAuthUserId } from './supabase'
+import { resolveAuthUserId, getSession } from './supabase'
 
 /**
  * Deduplicate jobs server-side via Vercel Function
@@ -13,17 +13,23 @@ export async function deduplicateJobsViaEdgeFunction() {
       throw new Error('No user ID found. Please log in.')
     }
 
-    console.log('✓ Using sync user ID:', userId)
+    // The server derives the target user from this verified access token (it no
+    // longer trusts a client-supplied userId), so a valid session is required.
+    const session = await getSession()
+    const accessToken = session?.access_token
+    if (!accessToken) {
+      throw new Error('No active session. Please log in.')
+    }
 
-    // Pass Supabase URL from client
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+    console.log('✓ Using sync user ID:', userId)
 
     const response = await fetch('/api/deduplicate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ userId, supabaseUrl })
+      body: JSON.stringify({})
     })
 
     console.log('Response status:', response.status)

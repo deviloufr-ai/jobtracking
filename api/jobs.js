@@ -1,4 +1,4 @@
-import { applyCors } from './_lib/http.js'
+import { applyCors, getClientIp, rateLimit } from './_lib/http.js'
 
 // Simple INSEE code detection (without importing the ref file)
 function detectInseeCode(location) {
@@ -224,6 +224,15 @@ async function handleCommute(req, res) {
 
 export default async function handler(req, res) {
   if (applyCors(req, res, 'GET, POST, OPTIONS')) return
+
+  // This endpoint proxies paid third-party APIs (Google Maps, Adzuna,
+  // France Travail) with the owner's keys and is unauthenticated, so throttle
+  // per IP to bound cost/abuse on a warm instance.
+  const { ok, retryAfter } = rateLimit({ key: `jobs:${getClientIp(req)}`, limit: 40, windowMs: 60_000 })
+  if (!ok) {
+    res.setHeader('Retry-After', String(retryAfter))
+    return res.status(429).json({ error: 'Too many requests. Please slow down.' })
+  }
 
   // Handle POST requests (commute or place search)
   if (req.method === 'POST') {

@@ -194,7 +194,7 @@ function isSharedSenderDomain(addr) {
 // Decide which fetched emails are worth sending to Claude. Three layers, each
 // only ever drops an email we can prove is redundant:
 //   0. already-imported  — its gmailId is already in some job's history
-//   1. closed-candidature — sender maps to ONE refused job
+//   1. closed-candidature — sender maps to ONE archived job (allow rejected/rejected_ats to pass through)
 //   2. older-than-last    — sender maps to ONE job and the email predates that
 //                           job's latest inbound (email-sourced) event
 // Layers 1 & 2 require an UNAMBIGUOUS, non-shared sender; everything else (new
@@ -246,8 +246,9 @@ export function filterEmailsBeforeParse(emails, jobs) {
     const entry = senderMap.get(bareAddr(e.from))
 
     if (entry && !entry.ambiguous) {
-      // Layer 1 — sender's only job is refused.
-      if (CLOSED_STATUSES.has(entry.status)) { reasons.closed++; continue }
+      // Layer 1 — sender's only job is archived. Allow rejection/rejection_ats to pass through so
+      // refusal mail can be added as history entries to rejected (non-archived) jobs.
+      if (entry.status === 'archived') { reasons.closed++; continue }
       // Layer 2 — email is older than that job's last inbound event.
       const ms = e.date ? new Date(e.date).getTime() : NaN
       if (!isNaN(ms) && entry.lastEmailMs && ms < entry.lastEmailMs) { reasons.older++; continue }
