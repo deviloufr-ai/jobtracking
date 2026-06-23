@@ -141,6 +141,7 @@ class SyncManager {
       'updated_at',
       'last_modified_at',
       'from',
+      'jobDescription', // full JD captured at import (extension/search) — needed by CV generator
     ])
 
     // Fields that need JSON serialization for Supabase
