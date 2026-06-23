@@ -276,11 +276,21 @@ function buildAllActions(activeJobs, s, t = (key) => key, dismissed = new Set())
 
   // Keep only ONE action per job — the highest priority one
   const seenJobs = new Set()
-  return visible.filter(item => {
+  const deduped = visible.filter(item => {
     if (seenJobs.has(item.job.id)) return false
     seenJobs.add(item.job.id)
     return true
-  }).slice(0, 12)
+  })
+
+  // Cap the list, but NEVER drop a rejection follow-up draft: a gracious reply
+  // is time-sensitive and there are only a handful, so guarantee they appear
+  // even when higher-priority follow-ups would otherwise fill every slot.
+  const isRejectionDraft = item =>
+    item.rule.type === 'email' && /remerciement|thank/i.test(item.rule.label(item.job))
+  const capped = deduped.slice(0, 12)
+  const cappedSet = new Set(capped)
+  const missedRejections = deduped.filter(item => isRejectionDraft(item) && !cappedSet.has(item))
+  return [...capped, ...missedRejections]
 }
 
 export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDraftEmail, t = (key) => key }) {
