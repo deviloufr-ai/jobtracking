@@ -113,19 +113,19 @@ function getUrgentRules(t = (key) => key) {
   },
   {
     match: j => j.status === 'sent' && daysSince(j) > s.followUpSentDays && hasRealEmail(j),
-    icon: '📨', urgency: 'high',
+    icon: '📨', urgency: 'high', emailType: 'relance',
     label: job => formatTrans(t('nextActionRules.followUpSent'), { company: job.company }),
     tip: job => formatTrans(t('nextActionRules.noResponseSince'), { days: Math.round(daysSince(job)) }),
   },
   {
     match: j => j.status === 'reviewing' && daysSince(j) > s.followUpReviewingDays && hasRealEmail(j),
-    icon: '📨', urgency: 'medium',
+    icon: '📨', urgency: 'medium', emailType: 'relance',
     label: job => formatTrans(t('nextActionRules.followUpReviewing'), { company: job.company }),
     tip: job => formatTrans(t('nextActionRules.reviewingNoResponse'), { days: Math.round(daysSince(job)) }),
   },
   {
     match: j => j.status === 'waiting' && daysSince(j) > s.followUpWaitingDays,
-    icon: '🔔', urgency: 'high',
+    icon: '🔔', urgency: 'high', emailType: 'relance',
     label: job => formatTrans(t('nextActionRules.followUpWaiting'), { company: job.company }),
     tip: job => formatTrans(t('nextActionRules.waitingSince'), { days: Math.round(daysSince(job)) }),
   },
@@ -219,7 +219,7 @@ function getNextStepsRules(t = (key) => key) {
   // Follow-up overdue (only if there's a real email to respond to)
   {
     match: j => j.status === 'sent' && daysSince(j) > 14 && hasRealEmail(j),
-    icon: '✉️', type: 'email',
+    icon: '✉️', type: 'email', emailType: 'relance',
     label: job => formatTrans(t('nextActionRules.followUpOverdue'), { company: job.company }),
     tip: () => t('nextActionRules.followUpTip'),
     cta: t('nextActionRules.draftEmail'),
@@ -227,7 +227,7 @@ function getNextStepsRules(t = (key) => key) {
   // Remerciement after rejection (for all rejected non-archived jobs)
   {
     match: j => ['rejected', 'rejected_ats'].includes(effectiveStatus(j)) && !hasRemerciementSent(j),
-    icon: '💌', type: 'email',
+    icon: '💌', type: 'email', emailType: 'remerciement',
     label: job => formatTrans(t('nextActionRules.sendThanks'), { company: job.company }),
     tip: () => t('nextActionRules.thanksTip'),
     cta: t('nextActionRules.draftEmail'),
@@ -345,14 +345,14 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
                 STAR ✦
               </button>
             )}
-            {(rule.source === 'urgent' || rule.type === 'email') && (rule.label(job).toLowerCase().includes('remerciement') || rule.label(job).toLowerCase().includes('thank')) && onDraftEmail && hasRealEmail(job) && (
+            {rule.emailType === 'remerciement' && onDraftEmail && hasRealEmail(job) && (
               <button onClick={e => { e.stopPropagation(); onDraftEmail(job, 'remerciement') }} className="flex-shrink-0 text-xs font-medium bg-pink-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-pink-600 transition-colors whitespace-nowrap">
-                {rule.label(job).toLowerCase().includes('thank') ? 'Draft' : 'Rédiger'} ✦
+                {t('nextActionRules.draftEmail')} ✦
               </button>
             )}
-            {(rule.label(job).toLowerCase().includes('relancer') || rule.label(job).toLowerCase().includes('follow up')) && onDraftEmail && (
+            {rule.emailType === 'relance' && onDraftEmail && (
               <button onClick={e => { e.stopPropagation(); onDraftEmail(job, 'relance') }} className="flex-shrink-0 text-xs font-medium bg-blue-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap">
-                {rule.label(job).toLowerCase().includes('follow') ? 'Draft' : 'Rédiger'} ✦
+                {t('nextActionRules.draftEmail')} ✦
               </button>
             )}
             {rule.source === 'urgent' && rule.icon === '🎯' && onSTAR && !rule.label(job).toLowerCase().includes('test') && (
