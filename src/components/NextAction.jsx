@@ -1,7 +1,12 @@
 import { useState } from 'react'
-import { getStatus } from '../hooks/useJobs'
+import { getStatus, deriveStatusFromHistory } from '../hooks/useJobs'
 import { loadSettings } from '../hooks/useSettings'
 import { isNoReply } from './EmailDraft'
+
+// Status shown in the UI follows the latest timeline entry (see JobRow), but the
+// raw stored job.status isn't self-healed on initial load. Rules must read the
+// effective status so a job whose pill says "Rejetée" actually matches.
+const effectiveStatus = job => deriveStatusFromHistory(job?.history) || job?.status
 
 const DISMISSED_KEY = 'jobtrackr_dismissed_actions'
 // Persist dismissals across sessions (localStorage) so hiding an action sticks.
@@ -221,12 +226,12 @@ function getNextStepsRules(t = (key) => key) {
   },
   // Remerciement after rejection (for all rejected non-archived jobs)
   {
-    match: j => ['rejected', 'rejected_ats'].includes(j.status) && !hasRemerciementSent(j),
+    match: j => ['rejected', 'rejected_ats'].includes(effectiveStatus(j)) && !hasRemerciementSent(j),
     icon: '💌', type: 'email',
     label: job => formatTrans(t('nextActionRules.sendThanks'), { company: job.company }),
     tip: () => t('nextActionRules.thanksTip'),
     cta: t('nextActionRules.draftEmail'),
-    priority: 5,
+    priority: 2,
   },
 ]
 }
