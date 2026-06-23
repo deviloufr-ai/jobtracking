@@ -303,7 +303,10 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
     setDismissed(next)
     saveDismissed(next)
   }
-  const activeJobs = jobs.filter(j => !['cancelled', 'archived'].includes(effectiveStatus(j)))
+  // archived/cancelled are explicit terminal flags — check the RAW status, not the
+  // derived one. Archiving doesn't add a history entry, so effectiveStatus() of an
+  // archived job still reads "rejected" and would wrongly resurface it here.
+  const activeJobs = jobs.filter(j => !['cancelled', 'archived'].includes(j.status))
   const s = loadSettings()
   const actions = buildAllActions(activeJobs, s, t, dismissed)
   const urgentCount = actions.filter(a => a.urgency === 'high').length
