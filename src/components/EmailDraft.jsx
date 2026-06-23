@@ -154,7 +154,6 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
-  const [editing, setEditing] = useState(false)
   const [to, setTo] = useState(() => extractRecipientEmail(job))
   const [sending, setSending] = useState(false)
   const [sendStatus, setSendStatus] = useState(null) // 'sent' | 'error' | null
@@ -167,6 +166,19 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
   const cfg = EMAIL_TYPES[type] || EMAIL_TYPES.remerciement
   const title = typeof cfg.title === 'object' ? cfg.title[lang] : cfg.title
   const receivedBy = extractReceivedByAccount(job)
+
+  // Default subject — for a rejection reply, reuse the refusal subject as "Re: …"
+  // so it reads as a real reply; otherwise a sensible per-type default.
+  const defaultSubject = (() => {
+    if (type === 'remerciement' && refusalEntry?.subject) {
+      const b = refusalEntry.subject.trim()
+      return /^re:/i.test(b) ? b : `Re: ${b}`
+    }
+    return lang === 'en'
+      ? (type === 'remerciement' ? `${job.position} application — Thank you` : `${job.position} application — Following up`)
+      : (type === 'remerciement' ? `Candidature ${job.position} — Merci` : `Suivi candidature — ${job.position}`)
+  })()
+  const [subject, setSubject] = useState(defaultSubject)
 
   useEffect(() => { generate() }, [])
 
@@ -187,24 +199,20 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
     setSending(true)
     setSendStatus(null)
     setError(null)
-    let subject = lang === 'en'
-      ? (type === 'remerciement' ? `${job.position} application — Thank you` : `${job.position} application — Following up`)
-      : (type === 'remerciement' ? `Candidature ${job.position} — Merci` : `Suivi candidature — ${job.position}`)
 
     // For a rejection reply, send it as a reply in the same Gmail thread as the
-    // refusal email rather than starting a new conversation.
+    // refusal email rather than starting a new conversation. The subject the user
+    // sees/edits is used as-is.
     let threadId, inReplyTo
     if (type === 'remerciement' && refusalEntry?.gmailId) {
       const ctx = await getReplyContext(refusalEntry.gmailId, receivedBy || undefined)
       if (ctx?.threadId) {
         threadId = ctx.threadId
         inReplyTo = ctx.messageId || undefined
-        const base = ctx.subject || refusalEntry.subject
-        if (base) subject = /^re:/i.test(base.trim()) ? base : `Re: ${base}`
       }
     }
     try {
-      await sendEmail({ to: to.trim(), subject, body: draft, fromAccount: receivedBy || undefined, threadId, inReplyTo })
+      await sendEmail({ to: to.trim(), subject: subject.trim(), body: draft, fromAccount: receivedBy || undefined, threadId, inReplyTo })
       setSendStatus('sent')
 
       // Notify parent to update job history
@@ -230,7 +238,6 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
   async function generate() {
     setLoading(true)
     setError(null)
-    setEditing(false)
 
     if (IS_DEV) {
       await new Promise(r => setTimeout(r, 700))
@@ -278,11 +285,8 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
   }
 
   function handleMailto() {
-    const subject = encodeURIComponent(lang === 'en'
-      ? (type === 'remerciement' ? `${job.position} application — Thank you` : `${job.position} application — Following up`)
-      : (type === 'remerciement' ? `Candidature ${job.position} — Merci` : `Suivi candidature — ${job.position}`)
-    )
-    window.open(`mailto:?subject=${subject}&body=${encodeURIComponent(draft)}`)
+    const to_ = to.trim()
+    window.open(`mailto:${encodeURIComponent(to_)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(draft)}`)
   }
 
   return (
@@ -309,64 +313,59 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
           <button onClick={onClose} className="ml-auto w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">✕</button>
         </div>
 
-        {/* Body */}
-        <div className="px-5 py-4">
-          {loading && (
-            <div className="flex flex-col items-center justify-center py-12 gap-3">
-              <div className="w-7 h-7 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin" />
-              <p className="text-sm text-gray-400">Rédaction en cours…</p>
-            </div>
-          )}
+        {/* Loading / error */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <div className="w-7 h-7 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin" />
+            <p className="text-sm text-gray-400">{lang === 'en' ? 'Writing…' : 'Rédaction en cours…'}</p>
+          </div>
+        )}
 
-          {error && (
-            <div className="text-center py-6">
-              <p className="text-sm text-red-500 mb-3">{error}</p>
-              <button onClick={generate} className="text-sm text-indigo-600 underline">Réessayer</button>
-            </div>
-          )}
+        {error && (
+          <div className="text-center py-6 px-5">
+            <p className="text-sm text-red-500 mb-3">{error}</p>
+            <button onClick={generate} className="text-sm text-indigo-600 underline">{lang === 'en' ? 'Retry' : 'Réessayer'}</button>
+          </div>
+        )}
 
-          {!loading && draft && (
-            <>
-              {editing ? (
-                <textarea
-                  value={draft}
-                  onChange={e => setDraft(e.target.value)}
-                  className="w-full text-sm text-gray-700 leading-relaxed border border-indigo-200 rounded-xl p-4 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                  rows={8}
-                  autoFocus
-                />
-              ) : (
-                <div
-                  onClick={() => setEditing(true)}
-                  className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 rounded-xl p-4 cursor-text hover:bg-gray-100/80 transition-colors border border-gray-100"
-                  title="Cliquer pour modifier"
-                >
-                  {draft}
-                </div>
-              )}
-              <p className="text-[10px] text-gray-400 mt-2 text-center">
-                {editing ? 'Cliquer ailleurs pour terminer l\'édition' : 'Cliquer sur le texte pour modifier'}
-              </p>
-            </>
-          )}
-        </div>
-
-        {/* To field + send actions */}
+        {/* Email composer */}
         {!loading && draft && (
-          <div className="px-5 pb-4 space-y-3 border-t border-gray-50 pt-3">
-
-            {/* To: input */}
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-gray-500 w-6 shrink-0">To</label>
-              <input
-                type="email"
-                value={to}
-                onChange={e => setTo(e.target.value)}
-                placeholder={lang === 'en' ? 'recruiter@company.com' : 'recruteur@entreprise.com'}
-                className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all"
-              />
+          <div className="px-5 py-4 space-y-3">
+            {/* To + Subject fields */}
+            <div className="rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+              <div className="flex items-center gap-3 px-3 py-2.5">
+                <span className="text-xs font-semibold text-gray-400 w-12 shrink-0">{lang === 'en' ? 'To' : 'À'}</span>
+                <input
+                  type="email"
+                  value={to}
+                  onChange={e => setTo(e.target.value)}
+                  placeholder={lang === 'en' ? 'recruiter@company.com' : 'recruteur@entreprise.com'}
+                  className="flex-1 text-sm bg-transparent focus:outline-none placeholder-gray-300 text-gray-700"
+                />
+              </div>
+              <div className="flex items-center gap-3 px-3 py-2.5">
+                <span className="text-xs font-semibold text-gray-400 w-12 shrink-0">{lang === 'en' ? 'Subject' : 'Objet'}</span>
+                <input
+                  value={subject}
+                  onChange={e => setSubject(e.target.value)}
+                  className="flex-1 text-sm bg-transparent focus:outline-none font-medium text-gray-800"
+                />
+              </div>
             </div>
 
+            {/* Body — always editable */}
+            <textarea
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+              rows={9}
+              className="w-full text-sm text-gray-700 leading-relaxed bg-gray-50/60 border border-gray-200 rounded-xl p-4 resize-y min-h-[180px] focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all"
+            />
+          </div>
+        )}
+
+        {/* Send actions */}
+        {!loading && draft && (
+          <div className="px-5 pb-4 border-t border-gray-50 pt-3">
             {/* Action row */}
             <div className="flex items-center gap-2">
               <button onClick={generate} className="text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-all">
