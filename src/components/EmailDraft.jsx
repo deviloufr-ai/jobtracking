@@ -51,15 +51,30 @@ function extractRecipientEmail(job) {
   return matches.find(e => !isNoReply(e)) || ''
 }
 
+// Pull the recruiter's actual refusal message from history so the thank-you can
+// rebound on the specific reason given. Prefers the most recent rejection entry's
+// email body, falling back to its note. HTML is stripped and length capped to
+// keep the prompt small.
+export function extractRefusalContent(job) {
+  const hist = job?.history || []
+  const refusal =
+    [...hist].reverse().find(h => (h.status === 'rejected' || h.status === 'rejected_ats') && (h.body || h.note))
+    || [...hist].reverse().find(h => !h.fromMe && (h.body || h.note))
+  if (!refusal) return ''
+  const raw = (refusal.body || refusal.note || '')
+  return raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 1200)
+}
+
 const PROMPTS = {
   remerciement: {
-    fr: (job, profile) => `Rédige un email de remerciement après un refus de candidature pour le poste de ${job.position} chez ${job.company}.
+    fr: (job, profile, refusal) => `Rédige un email de remerciement après un refus de candidature pour le poste de ${job.position} chez ${job.company}.
 
 Candidat : ${profile?.name || 'le candidat'}
-
+${refusal ? `\nMessage de refus reçu (appuie-toi dessus pour rebondir sur la raison évoquée ou l'étape franchie, SANS le citer mot pour mot) :\n"""\n${refusal}\n"""\n` : ''}
 Règles strictes :
 - 3 à 4 phrases maximum — court et percutant
 - Commence par remercier pour le temps accordé et le retour
+${refusal ? '- Rebondis subtilement sur un élément concret du message de refus (raison donnée, étape passée) pour montrer que tu as lu et compris' : ''}
 - Exprime brièvement que l'entreprise reste attractive à long terme
 - Demande subtilement un feedback si possible
 - Termine par une formule de congé simple et directe
@@ -68,13 +83,14 @@ Règles strictes :
 - Signe uniquement avec le prénom (${profile?.name?.split(' ')[0] || 'le prénom'})
 
 Réponds avec l'email uniquement, sans objet ni mise en forme.`,
-    en: (job, profile) => `Write a thank-you email after a job rejection for the ${job.position} role at ${job.company}.
+    en: (job, profile, refusal) => `Write a thank-you email after a job rejection for the ${job.position} role at ${job.company}.
 
 Candidate: ${profile?.name || 'the candidate'}
-
+${refusal ? `\nRejection message received (use it to rebound on the reason given or the stage reached, WITHOUT quoting it verbatim):\n"""\n${refusal}\n"""\n` : ''}
 Strict rules:
 - 3 to 4 sentences maximum — short and impactful
 - Start by thanking them for their time and the update
+${refusal ? '- Subtly rebound on a concrete element from the rejection message (reason given, stage passed) to show you read and understood it' : ''}
 - Briefly express that the company remains attractive long-term
 - Subtly ask for feedback if possible
 - End with a simple, direct closing
@@ -209,6 +225,9 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
 
     const profile = loadProfile()
     const promptFn = PROMPTS[type]?.[lang] || PROMPTS[type]?.fr
+    // Feed the recruiter's actual refusal message into the thank-you so it can
+    // rebound on the specific reason given.
+    const refusal = type === 'remerciement' ? extractRefusalContent(job) : ''
     try {
       const res = await fetch('/api/claude', {
         method: 'POST',
@@ -216,7 +235,7 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
         body: JSON.stringify(withUserApiKey({
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 400,
-          messages: [{ role: 'user', content: promptFn(job, profile) }]
+          messages: [{ role: 'user', content: promptFn(job, profile, refusal) }]
         }))
       })
       const data = await res.json()
