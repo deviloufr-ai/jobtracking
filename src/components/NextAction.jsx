@@ -124,10 +124,19 @@ function getUrgentRules(t = (key) => key) {
     tip: job => formatTrans(t('nextActionRules.reviewingNoResponse'), { days: Math.round(daysSince(job)) }),
   },
   {
-    match: j => j.status === 'waiting' && daysSince(j) > s.followUpWaitingDays,
+    match: j => j.status === 'waiting' && daysSince(j) > s.followUpWaitingDays && hasRealEmail(j),
     icon: '🔔', urgency: 'high', emailType: 'relance',
     label: job => formatTrans(t('nextActionRules.followUpWaiting'), { company: job.company }),
     tip: job => formatTrans(t('nextActionRules.waitingSince'), { days: Math.round(daysSince(job)) }),
+  },
+  {
+    // Post-interview silence — the interview happened (no upcoming event) and
+    // there's been no feedback for a while. Distinct from the "prepare interview"
+    // nudges below, which only help BEFORE the interview.
+    match: j => j.status === 'interview' && !hasUpcomingCalendar(j) && daysSince(j) > s.followUpReviewingDays && hasRealEmail(j),
+    icon: '📨', urgency: 'medium', emailType: 'relance',
+    label: job => formatTrans(t('nextActionRules.followUpInterview'), { company: job.company }),
+    tip: job => formatTrans(t('nextActionRules.interviewNoFeedback'), { days: Math.round(daysSince(job)) }),
   },
   {
     match: j => j.status === 'offer' && daysSince(j) > s.followUpOfferDays,
@@ -154,6 +163,7 @@ function getUrgentRules(t = (key) => key) {
 
 // Next steps — note-aware, contextual. Order = priority shown to user.
 function getNextStepsRules(t = (key) => key) {
+  const s = loadSettings()
   return [
   // Upcoming calendar event (test/meeting) — highest priority
   {
@@ -218,7 +228,7 @@ function getNextStepsRules(t = (key) => key) {
   },
   // Follow-up overdue (only if there's a real email to respond to)
   {
-    match: j => j.status === 'sent' && daysSince(j) > 14 && hasRealEmail(j),
+    match: j => j.status === 'sent' && daysSince(j) > s.followUpSentDays && hasRealEmail(j),
     icon: '✉️', type: 'email', emailType: 'relance',
     label: job => formatTrans(t('nextActionRules.followUpOverdue'), { company: job.company }),
     tip: () => t('nextActionRules.followUpTip'),

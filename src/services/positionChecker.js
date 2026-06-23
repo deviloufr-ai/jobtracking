@@ -3,7 +3,7 @@ export function extractUrlsFromEmail(emailBody) {
   if (!emailBody) return []
 
   // Match http/https URLs + common ATS domains without protocol
-  const urlRegex = /https?:\/\/[^\s<>"{}|\\^`\[\]]+|(?:www\.|apply\.|careers\.|jobs\.)[^\s<>"{}|\\^`\[\]]+/gi
+  const urlRegex = /https?:\/\/[^\s<>"{}|\\^`[\]]+|(?:www\.|apply\.|careers\.|jobs\.)[^\s<>"{}|\\^`[\]]+/gi
 
   const urls = new Set()
   let match

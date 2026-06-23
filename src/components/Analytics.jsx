@@ -46,6 +46,25 @@ function interviewDate(job) {
   return new Date(Math.min(...dates.map(d => d.getTime())))
 }
 
+// Date a job FIRST entered a given stage. 'sent' = application date (earliest
+// known date); other stages = earliest history entry carrying that status.
+function firstStageDate(job, stage) {
+  if (stage === 'sent') return applicationDate(job)
+  const dates = (job.history || [])
+    .filter(h => h.status === stage)
+    .map(h => parseDate(h.date))
+    .filter(Boolean)
+  if (!dates.length) return null
+  return new Date(Math.min(...dates.map(d => d.getTime())))
+}
+
+function median(values) {
+  if (!values.length) return null
+  const s = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(s.length / 2)
+  return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2)
+}
+
 function mondayOf(date) {
   const d = new Date(date)
   d.setHours(0, 0, 0, 0)
@@ -97,6 +116,23 @@ export function computeAnalytics(jobs, weeks = 12) {
     if (idx >= 0 && idx < buckets.length) buckets[idx].count++
   }
 
+  // Median time-in-stage: days between FIRST entering one funnel stage and the
+  // next. Median (not mean) so a single very slow process doesn't skew it.
+  // Keyed by the destination stage for easy lookup beside the funnel bars.
+  const STAGE_TRANSITIONS = [['sent', 'reviewing'], ['reviewing', 'interview'], ['interview', 'offer']]
+  const stageTimes = STAGE_TRANSITIONS.map(([from, to]) => {
+    const samples = []
+    for (const j of applied) {
+      const a0 = firstStageDate(j, from)
+      const b0 = firstStageDate(j, to)
+      if (a0 && b0) {
+        const days = Math.round((b0.getTime() - a0.getTime()) / DAY)
+        if (days >= 0) samples.push(days)
+      }
+    }
+    return { from, to, median: median(samples), n: samples.length }
+  })
+
   const funnel = [
     { key: 'sent', count: total },
     { key: 'reviewing', count: reachedReviewing },
@@ -113,6 +149,7 @@ export function computeAnalytics(jobs, weeks = 12) {
     reachedOffer,
     avgTimeToInterview,
     ttiCount: ttiSamples.length,
+    stageTimes,
     funnel,
     weekly: buckets,
   }
@@ -195,6 +232,8 @@ export default function Analytics({ jobs, t = (k) => k }) {
               const prev = i > 0 ? a.funnel[i - 1].count : null
               const conv = prev != null && prev > 0 ? Math.round((f.count / prev) * 100) : null
               const color = FUNNEL_COLORS[f.key]
+              // Median days to reach THIS stage from the previous one.
+              const stageTime = i > 0 ? a.stageTimes[i - 1] : null
               return (
                 <div key={f.key}>
                   <div className="flex items-center justify-between mb-1.5">
@@ -203,6 +242,11 @@ export default function Analytics({ jobs, t = (k) => k }) {
                       <span className="text-xs text-gray-500">{funnelLabel(f.key)}</span>
                       {conv != null && (
                         <span className="text-[10px] text-gray-400">↳ {conv}%</span>
+                      )}
+                      {stageTime && stageTime.median != null && (
+                        <span className="text-[10px] text-gray-300" title={`n=${stageTime.n}`}>
+                          · {t('analytics.funnel.medianDays').replace('{days}', stageTime.median)}
+                        </span>
                       )}
                     </div>
                     <span className="text-sm font-bold text-gray-700">{f.count}</span>

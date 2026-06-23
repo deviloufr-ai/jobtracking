@@ -9,6 +9,7 @@ import NotificationSettings from './NotificationSettings'
 import { supabase } from '../services/supabase'
 import { indexeddb } from '../services/indexeddb'
 import { THEMES } from '../utils/themes'
+import { getFlag, setFlag, FLAGS } from '../services/featureFlags'
 
 const PROFILE_KEY = 'jobtrackr_profile'
 const PROFILE_DEFAULTS = {
@@ -114,6 +115,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
   const [confirmReset, setConfirmReset] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
   const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('jobtrackr_theme') || 'light')
+  const [jobSearchFlag, setJobSearchFlag] = useState(() => getFlag(FLAGS.JOB_SEARCH))
 
   // Listen for theme changes
   useEffect(() => {
@@ -958,6 +960,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
 
             {/* Debug Tab */}
             {activeTab === 'debug' && (
+              <>
               <Card title={t('settingsDebug.consoleLogs')}>
                 <Row label={t('settingsDebug.enableLogs')} hint={t('settingsDebug.enableLogsHint')}>
                   <button
@@ -972,6 +975,26 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
                   </button>
                 </Row>
               </Card>
+
+              <Card title="🧪 Expérimental" subtitle="Fonctionnalités en cours d'évaluation — peuvent changer ou disparaître.">
+                <Row label="Recherche d'offres" hint="Affiche l'onglet 🔎 Recherche pour explorer des offres (France Travail, Adzuna…). Masqué par défaut.">
+                  <button
+                    onClick={() => {
+                      const next = !jobSearchFlag
+                      setFlag(FLAGS.JOB_SEARCH, next)
+                      setJobSearchFlag(next)
+                    }}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      jobSearchFlag
+                        ? 'bg-green-500 text-white hover:bg-green-600'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    {jobSearchFlag ? '✓ Activée' : 'Désactivée'}
+                  </button>
+                </Row>
+              </Card>
+              </>
             )}
           </div>
         </div>

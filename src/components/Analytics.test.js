@@ -78,6 +78,32 @@ describe('computeAnalytics', () => {
     expect(a.avgTimeToInterview).toBeNull()
   })
 
+  it('computes median time-in-stage per funnel transition', () => {
+    const a = computeAnalytics([
+      {
+        id: '1', status: 'interview', date: daysAgo(30),
+        history: [
+          { date: daysAgo(30), status: 'sent' },
+          { date: daysAgo(25), status: 'reviewing' }, // sent→reviewing: 5d
+          { date: daysAgo(20), status: 'interview' }, // reviewing→interview: 5d
+        ],
+      },
+      {
+        id: '2', status: 'interview', date: daysAgo(40),
+        history: [
+          { date: daysAgo(40), status: 'sent' },
+          { date: daysAgo(31), status: 'reviewing' }, // sent→reviewing: 9d
+          { date: daysAgo(20), status: 'interview' }, // reviewing→interview: 11d
+        ],
+      },
+    ])
+    const sentToReviewing = a.stageTimes.find(s => s.from === 'sent' && s.to === 'reviewing')
+    expect(sentToReviewing.n).toBe(2)
+    expect(sentToReviewing.median).toBe(7) // median(5, 9) = (5+9)/2 = 7
+    const reviewingToInterview = a.stageTimes.find(s => s.from === 'reviewing' && s.to === 'interview')
+    expect(reviewingToInterview.median).toBe(8) // median(5, 11) = 8
+  })
+
   it('buckets applications into the requested number of weekly buckets', () => {
     const a = computeAnalytics(
       [

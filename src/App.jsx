@@ -28,6 +28,7 @@ import { supabase, signInWithGoogle, isSupabaseConfigured } from './services/sup
 import { migrateToAuthIdentity } from './services/authMigration'
 import { initializeSyncCoordinator } from './services/syncCoordinator'
 import JobSearch from './components/JobSearch'
+import { getFlag, FLAGS, FLAGS_EVENT } from './services/featureFlags'
 import CVViewer from './components/CVViewer'
 import CVGenerator from './components/CVGenerator'
 import { useCVs } from './hooks/useCVs'
@@ -192,6 +193,9 @@ export default function App() {
   const [gmailUser, setGmailUser] = useState(() => getCachedUser())
   const [gmailConnected, setGmailConnected] = useState(() => isConnected())
   const [activeTab, setActiveTab] = useState('tracker')
+  // Job search is an experimental, hidden-by-default feature (opt-in from
+  // Settings → Debug). Track the flag and keep it live across toggles.
+  const [searchEnabled, setSearchEnabled] = useState(() => getFlag(FLAGS.JOB_SEARCH))
   const [expandedJobId, setExpandedJobId] = useState(null)
   const [showLandingPage, setShowLandingPage] = useState(true)
   const [syncUserId, setSyncUserId] = useState(null)
@@ -205,6 +209,18 @@ export default function App() {
   const [mergeModal, setMergeModal] = useState(null)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [settingsInitialTab, setSettingsInitialTab] = useState(null)
+
+  // Keep the experimental job-search flag live when toggled from Settings.
+  useEffect(() => {
+    const onFlags = () => {
+      const enabled = getFlag(FLAGS.JOB_SEARCH)
+      setSearchEnabled(enabled)
+      // Don't strand the user on a tab that just disappeared.
+      if (!enabled) setActiveTab(tab => (tab === 'search' ? 'tracker' : tab))
+    }
+    window.addEventListener(FLAGS_EVENT, onFlags)
+    return () => window.removeEventListener(FLAGS_EVENT, onFlags)
+  }, [])
 
   // First-time user onboarding: when a brand-new user logs in without a Claude
   // API key configured (and hasn't dismissed onboarding before), show the
@@ -638,7 +654,8 @@ export default function App() {
   const NAV_TABS = [
     { id: 'tracker',  label: t('nav.tabs.tracker'), icon: '📋', badge: jobs.length || null },
     { id: 'analytics', label: t('nav.tabs.analytics'), icon: '📊', badge: null },
-    { id: 'search',   label: t('nav.tabs.search'),    icon: '🔎', badge: null },
+    // Job search is hidden unless the experimental flag is enabled.
+    ...(searchEnabled ? [{ id: 'search', label: t('nav.tabs.search'), icon: '🔎', badge: null }] : []),
     { id: 'settings', label: t('nav.tabs.settings'),     icon: '⚙️',  badge: null },
   ]
 
@@ -968,7 +985,7 @@ export default function App() {
           <Settings jobs={jobs} syncUserId={syncUserId} onMergeDuplicates={mergeDuplicates} initialTab={settingsInitialTab} />
         ) : activeTab === 'analytics' ? (
           <Analytics jobs={jobs} t={t} />
-        ) : activeTab === 'search' ? (
+        ) : activeTab === 'search' && searchEnabled ? (
           <JobSearch onAddJob={(job) => { addJob(job); showToast(`${job.company} ajouté !`); setActiveTab('tracker') }} existingJobs={jobs} t={t} />
         ) : (
           <>

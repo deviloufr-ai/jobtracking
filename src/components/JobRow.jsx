@@ -15,6 +15,7 @@ import CompanyAvatar from './CompanyAvatar'
 import CommuteInfo from './CommuteInfo'
 import { getCompanyAddress, setCompanyAddress } from '../services/commuteStore'
 import { searchCompanyAddress } from '../services/googlePlaces'
+import { getJobHealth, HEALTH_DOT_CLASS } from '../utils/jobHealth'
 
 // Fix #7 — NOTE_TIPS moved above getTipsFromNote (was referenced before definition)
 const NOTE_TIPS = {
@@ -375,6 +376,16 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
             {/* Company + Position */}
             <div className="min-w-0">
               <div className="font-semibold text-gray-800 text-sm truncate leading-tight flex items-center gap-1.5">
+                {(() => {
+                  const health = getJobHealth(job)
+                  if (health.level === 'none') return null
+                  return (
+                    <span
+                      title={health.message}
+                      className={`flex-shrink-0 w-2 h-2 rounded-full ${HEALTH_DOT_CLASS[health.level]} ${health.level === 'stale' ? 'animate-pulse' : ''}`}
+                    />
+                  )
+                })()}
                 {job.company}
                 {job.companyFromAts && (
                   <span title={t?.table?.viaAtsHint || 'Company not provided by this ATS — showing the source platform name'} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-600 flex-shrink-0">{t?.table?.viaAts || 'ATS'}</span>

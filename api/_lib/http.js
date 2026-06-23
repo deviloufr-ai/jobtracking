@@ -61,6 +61,18 @@ export function getClientIp(req) {
 // shared, so this only throttles bursts on a warm instance — it is a first line
 // of defense, not a substitute for a durable store (KV/Upstash) at scale.
 const buckets = new Map()
+let lastSweep = 0
+
+// Drop expired buckets so the Map can't grow unbounded over a warm instance's
+// lifetime (one entry per distinct key/IP otherwise leaks until the instance
+// recycles). Swept at most once per window — cheap and self-throttling.
+function sweepExpired(now, windowMs) {
+  if (now - lastSweep < windowMs) return
+  lastSweep = now
+  for (const [k, v] of buckets) {
+    if (now > v.reset) buckets.delete(k)
+  }
+}
 
 /**
  * Returns { ok: boolean, retryAfter?: number }. When ok is false, the caller
@@ -68,6 +80,7 @@ const buckets = new Map()
  */
 export function rateLimit({ key, limit = 30, windowMs = 60_000 }) {
   const now = Date.now()
+  sweepExpired(now, windowMs)
   const entry = buckets.get(key)
   if (!entry || now > entry.reset) {
     buckets.set(key, { count: 1, reset: now + windowMs })

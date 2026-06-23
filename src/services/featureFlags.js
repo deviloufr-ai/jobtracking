@@ -1,0 +1,29 @@
+// Device-local experimental feature flags (opt-in).
+//
+// Stored in localStorage — intentionally NOT part of the synced `user_settings`
+// object, so enabling an experiment needs no Supabase schema change and stays
+// scoped to the current device. Components read getFlag() and re-render on the
+// 'jobtrackr-flags-changed' event dispatched by setFlag().
+
+const PREFIX = 'jobtrackr_flag_'
+export const FLAGS_EVENT = 'jobtrackr-flags-changed'
+
+// Flag identifiers. Job search is hidden by default and re-enabled here.
+export const FLAGS = {
+  JOB_SEARCH: 'job_search',
+}
+
+export function getFlag(name) {
+  try {
+    return localStorage.getItem(PREFIX + name) === 'true'
+  } catch {
+    return false
+  }
+}
+
+export function setFlag(name, value) {
+  try {
+    localStorage.setItem(PREFIX + name, value ? 'true' : 'false')
+    window.dispatchEvent(new CustomEvent(FLAGS_EVENT, { detail: { name, value: !!value } }))
+  } catch {}
+}

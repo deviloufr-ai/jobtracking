@@ -3,7 +3,7 @@ import { getAccessToken, getConnectedAccounts } from './gmail'
 
 function extractLink(text = '') {
   const patterns = [
-    /(https:\/\/meet\.google\.com\/[a-z0-9\-]+)/i,
+    /(https:\/\/meet\.google\.com\/[a-z0-9-]+)/i,
     /(https:\/\/[a-z0-9]+\.zoom\.us\/j\/[^\s"<>]+)/i,
     /(https:\/\/teams\.microsoft\.com\/l\/meetup-join\/[^\s"<>]+)/i,
     /(https:\/\/whereby\.com\/[^\s"<>]+)/i,

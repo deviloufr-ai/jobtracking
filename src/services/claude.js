@@ -323,7 +323,7 @@ sur un poste précis) ET qu'aucune entreprise réelle n'est trouvable après les
 ⚠️ Si tu trouves la vraie entreprise → utilise-la et companyFromAts = false.
 
 EXEMPLES :
-✅ "Vous avez reçu une réponse à l'offre : \"Responsable Projects IT H/F\" dans l'entreprise OpenSourcing" → company: "OpenSourcing", companyFromAts: false
+✅ "Vous avez reçu une réponse à l'offre : "Responsable Projects IT H/F" dans l'entreprise OpenSourcing" → company: "OpenSourcing", companyFromAts: false
 ✅ "GojiberryAI · France" → company: "GojiberryAI", companyFromAts: false
 ✅ "You applied to Senior Dev at Acme Corp" → company: "Acme Corp", companyFromAts: false
 ✅ "Your application for Product Manager was sent" (via Jobgether, aucune entreprise) → company: "Jobgether", position: "Product Manager", companyFromAts: true
@@ -485,7 +485,7 @@ De: emploi@emails.hellowork.com
 Sujet: Vous avez reçu une réponse à l'offre
 "Hello Alexandre!
 You received a response to the offer:
-\"Responsable Projects IT H/F\" dans l'entreprise OpenSourcing
+"Responsable Projects IT H/F" dans l'entreprise OpenSourcing
 Your application was studied but the recruiter will not follow up."
 
 ✅ CORRECT OUTPUT:
