@@ -280,7 +280,7 @@ function buildAllActions(activeJobs, s, t = (key) => key, dismissed = new Set())
     if (seenJobs.has(item.job.id)) return false
     seenJobs.add(item.job.id)
     return true
-  }).slice(0, 10)
+  }).slice(0, 12)
 }
 
 export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDraftEmail, t = (key) => key }) {
