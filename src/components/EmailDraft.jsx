@@ -71,15 +71,37 @@ export function extractRefusalContent(job) {
   return raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 1200)
 }
 
+// Extract the recruiter's display name from an inbound email sender so the draft
+// can greet them by name. Returns '' for automated/no-reply or generic team
+// senders (e.g. "Recruiting Team") where a personal greeting would be wrong.
+export function extractRecruiterName(job) {
+  for (const h of (job?.history || [])) {
+    if (h.fromMe || !h.from) continue
+    const raw = h.from.trim()
+    const angleMatch = raw.match(/<([^>]+@[^>]+)>/)
+    const email = angleMatch ? angleMatch[1].trim() : (raw.includes('@') && !raw.includes(' ') ? raw : null)
+    if (email && isNoReply(email)) continue
+    // "Anita LECRECQ <anita@yubo.live>" → "Anita LECRECQ"
+    const m = raw.match(/^"?([^"<]+?)"?\s*</)
+    const name = (m ? m[1] : '').trim()
+    if (!name || name.includes('@')) continue
+    // Skip generic mailbox/team labels — no real person to address.
+    if (/\b(team|équipe|recrutement|recruiting|recruitment|talent|careers?|jobs?|hr|rh|hello|contact|support|info|notifications?|no[-\s]?reply)\b/i.test(name)) continue
+    return name
+  }
+  return ''
+}
+
 const PROMPTS = {
   remerciement: {
-    fr: (job, profile, refusal) => `Rédige un email de remerciement après un refus de candidature pour le poste de ${job.position} chez ${job.company}.
+    fr: (job, profile, refusal, recruiterName) => `Rédige un email de remerciement après un refus de candidature pour le poste de ${job.position} chez ${job.company}.
 
-Candidat : ${profile?.name || 'le candidat'}
+Candidat : ${profile?.name || 'le candidat'}${recruiterName ? `\nRecruteur : ${recruiterName}` : ''}
 ${refusal ? `\nMessage de refus reçu (appuie-toi dessus pour rebondir sur la raison évoquée ou l'étape franchie, SANS le citer mot pour mot) :\n"""\n${refusal}\n"""\n` : ''}
 Règles strictes :
 - 3 à 4 phrases maximum — court et percutant
-- Commence par remercier pour le temps accordé et le retour
+- ${recruiterName ? `Commence par une salutation avec le prénom du recruteur (ex: "Bonjour ${recruiterName.split(' ')[0]},")` : 'Commence par une salutation simple (ex: "Bonjour,")'}
+- Remercie pour le temps accordé et le retour
 ${refusal ? '- Rebondis subtilement sur un élément concret du message de refus (raison donnée, étape passée) pour montrer que tu as lu et compris' : ''}
 - Exprime brièvement que l'entreprise reste attractive à long terme
 - Demande subtilement un feedback si possible
@@ -89,13 +111,14 @@ ${refusal ? '- Rebondis subtilement sur un élément concret du message de refus
 - Signe uniquement avec le prénom (${profile?.name?.split(' ')[0] || 'le prénom'})
 
 Réponds avec l'email uniquement, sans objet ni mise en forme.`,
-    en: (job, profile, refusal) => `Write a thank-you email after a job rejection for the ${job.position} role at ${job.company}.
+    en: (job, profile, refusal, recruiterName) => `Write a thank-you email after a job rejection for the ${job.position} role at ${job.company}.
 
-Candidate: ${profile?.name || 'the candidate'}
+Candidate: ${profile?.name || 'the candidate'}${recruiterName ? `\nRecruiter: ${recruiterName}` : ''}
 ${refusal ? `\nRejection message received (use it to rebound on the reason given or the stage reached, WITHOUT quoting it verbatim):\n"""\n${refusal}\n"""\n` : ''}
 Strict rules:
 - 3 to 4 sentences maximum — short and impactful
-- Start by thanking them for their time and the update
+- ${recruiterName ? `Open with a greeting using the recruiter's first name (e.g. "Hi ${recruiterName.split(' ')[0]},")` : 'Open with a simple greeting (e.g. "Hello,")'}
+- Thank them for their time and the update
 ${refusal ? '- Subtly rebound on a concrete element from the rejection message (reason given, stage passed) to show you read and understood it' : ''}
 - Briefly express that the company remains attractive long-term
 - Subtly ask for feedback if possible
@@ -107,12 +130,13 @@ ${refusal ? '- Subtly rebound on a concrete element from the rejection message (
 Reply with the email only, no subject line or formatting.`,
   },
   relance: {
-    fr: (job, profile) => `Rédige un email de relance pour une candidature sans réponse depuis plusieurs semaines pour le poste de ${job.position} chez ${job.company}.
+    fr: (job, profile, refusal, recruiterName) => `Rédige un email de relance pour une candidature sans réponse depuis plusieurs semaines pour le poste de ${job.position} chez ${job.company}.
 
-Candidat : ${profile?.name || 'le candidat'}
+Candidat : ${profile?.name || 'le candidat'}${recruiterName ? `\nRecruteur : ${recruiterName}` : ''}
 
 Règles strictes :
 - 3 phrases maximum — bref et direct
+- ${recruiterName ? `Commence par une salutation avec le prénom du recruteur (ex: "Bonjour ${recruiterName.split(' ')[0]},")` : 'Commence par une salutation simple (ex: "Bonjour,")'}
 - Rappelle ta candidature avec la date approximative
 - Réaffirme ton intérêt de manière concrète (1 élément spécifique sur l'entreprise)
 - Demande une mise à jour sur le statut
@@ -120,12 +144,13 @@ Règles strictes :
 - Signe avec le prénom uniquement
 
 Réponds avec l'email uniquement, sans objet ni mise en forme.`,
-    en: (job, profile) => `Write a follow-up email for a job application with no response after several weeks for the ${job.position} role at ${job.company}.
+    en: (job, profile, refusal, recruiterName) => `Write a follow-up email for a job application with no response after several weeks for the ${job.position} role at ${job.company}.
 
-Candidate: ${profile?.name || 'the candidate'}
+Candidate: ${profile?.name || 'the candidate'}${recruiterName ? `\nRecruiter: ${recruiterName}` : ''}
 
 Strict rules:
 - 3 sentences maximum — brief and direct
+- ${recruiterName ? `Open with a greeting using the recruiter's first name (e.g. "Hi ${recruiterName.split(' ')[0]},")` : 'Open with a simple greeting (e.g. "Hello,")'}
 - Reference your application with the approximate date
 - Reaffirm your interest with one concrete, specific element about the company
 - Ask for a status update
@@ -162,6 +187,7 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
   // For a refusal reply, answer in the language the recruiter actually used.
   const refusalEntry = type === 'remerciement' ? extractRefusalEntry(job) : null
   const refusalContent = type === 'remerciement' ? extractRefusalContent(job) : ''
+  const recruiterName = extractRecruiterName(job)
   const lang = refusalContent ? detectLanguage({ notes: refusalContent }) : detectLanguage(job)
   const cfg = EMAIL_TYPES[type] || EMAIL_TYPES.remerciement
   const title = typeof cfg.title === 'object' ? cfg.title[lang] : cfg.title
@@ -262,8 +288,9 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 400,
           // Feed the recruiter's actual refusal message into the thank-you so it
-          // can rebound on the specific reason given.
-          messages: [{ role: 'user', content: promptFn(job, profile, refusalContent) }]
+          // can rebound on the specific reason given, and their name so it greets
+          // them personally.
+          messages: [{ role: 'user', content: promptFn(job, profile, refusalContent, recruiterName) }]
         }))
       })
       const data = await res.json()
