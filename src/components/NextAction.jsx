@@ -221,11 +221,12 @@ function getNextStepsRules(t = (key) => key) {
   },
   // Remerciement after rejection (for all rejected non-archived jobs)
   {
-    match: j => ['rejected', 'rejected_ats'].includes(j.status) && hasRealEmail(j) && !hasRemerciementSent(j),
+    match: j => ['rejected', 'rejected_ats'].includes(j.status) && !hasRemerciementSent(j),
     icon: '💌', type: 'email',
     label: job => formatTrans(t('nextActionRules.sendThanks'), { company: job.company }),
     tip: () => t('nextActionRules.thanksTip'),
     cta: t('nextActionRules.draftEmail'),
+    priority: 5,
   },
 ]
 }
