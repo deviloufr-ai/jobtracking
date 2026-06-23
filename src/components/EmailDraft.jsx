@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { detectLanguage } from '../utils/detectLanguage'
-import { isConnected, sendEmail, connectGmail, getCachedUser } from '../services/gmail'
+import { isConnected, sendEmail, connectGmail, getCachedUser, getReplyContext } from '../services/gmail'
 import { withUserApiKey } from '../services/apiKey'
 
 const IS_DEV = import.meta.env.DEV
@@ -55,11 +55,17 @@ function extractRecipientEmail(job) {
 // rebound on the specific reason given. Prefers the most recent rejection entry's
 // email body, falling back to its note. HTML is stripped and length capped to
 // keep the prompt small.
-export function extractRefusalContent(job) {
+export function extractRefusalEntry(job) {
   const hist = job?.history || []
-  const refusal =
+  return (
     [...hist].reverse().find(h => (h.status === 'rejected' || h.status === 'rejected_ats') && (h.body || h.note))
     || [...hist].reverse().find(h => !h.fromMe && (h.body || h.note))
+    || null
+  )
+}
+
+export function extractRefusalContent(job) {
+  const refusal = extractRefusalEntry(job)
   if (!refusal) return ''
   const raw = (refusal.body || refusal.note || '')
   return raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 1200)
@@ -155,6 +161,7 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
   const [gmailConnected, setGmailConnected] = useState(isConnected)
 
   // For a refusal reply, answer in the language the recruiter actually used.
+  const refusalEntry = type === 'remerciement' ? extractRefusalEntry(job) : null
   const refusalContent = type === 'remerciement' ? extractRefusalContent(job) : ''
   const lang = refusalContent ? detectLanguage({ notes: refusalContent }) : detectLanguage(job)
   const cfg = EMAIL_TYPES[type] || EMAIL_TYPES.remerciement
@@ -180,11 +187,24 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
     setSending(true)
     setSendStatus(null)
     setError(null)
-    const subject = lang === 'en'
+    let subject = lang === 'en'
       ? (type === 'remerciement' ? `${job.position} application — Thank you` : `${job.position} application — Following up`)
       : (type === 'remerciement' ? `Candidature ${job.position} — Merci` : `Suivi candidature — ${job.position}`)
+
+    // For a rejection reply, send it as a reply in the same Gmail thread as the
+    // refusal email rather than starting a new conversation.
+    let threadId, inReplyTo
+    if (type === 'remerciement' && refusalEntry?.gmailId) {
+      const ctx = await getReplyContext(refusalEntry.gmailId, receivedBy || undefined)
+      if (ctx?.threadId) {
+        threadId = ctx.threadId
+        inReplyTo = ctx.messageId || undefined
+        const base = ctx.subject || refusalEntry.subject
+        if (base) subject = /^re:/i.test(base.trim()) ? base : `Re: ${base}`
+      }
+    }
     try {
-      await sendEmail({ to: to.trim(), subject, body: draft, fromAccount: receivedBy || undefined })
+      await sendEmail({ to: to.trim(), subject, body: draft, fromAccount: receivedBy || undefined, threadId, inReplyTo })
       setSendStatus('sent')
 
       // Notify parent to update job history

@@ -438,21 +438,25 @@ export async function getGmailUserInfo() {
 
 // ── Send email ────────────────────────────────────────────────────────────────
 // fromAccount: email address of the account to send from (defaults to first connected)
-export async function sendEmail({ to, subject, body, fromAccount }) {
+export async function sendEmail({ to, subject, body, fromAccount, threadId, inReplyTo }) {
   const email = fromAccount || Object.keys(accounts)[0]
   const acct = accounts[email]
   if (!acct?.token) throw new Error('Non connecté à Gmail')
 
   const from = acct.user?.email ? `${acct.user.name || ''} <${acct.user.email}>`.trim() : 'me'
-  const mime = [
+  const headers = [
     `From: ${from}`,
     `To: ${to}`,
     `Subject: ${subject}`,
     `Content-Type: text/plain; charset=utf-8`,
     `MIME-Version: 1.0`,
-    '',
-    body,
-  ].join('\r\n')
+  ]
+  // Thread the message onto an existing conversation (e.g. replying to a refusal).
+  if (inReplyTo) {
+    headers.push(`In-Reply-To: ${inReplyTo}`)
+    headers.push(`References: ${inReplyTo}`)
+  }
+  const mime = [...headers, '', body].join('\r\n')
 
   const encoded = btoa(unescape(encodeURIComponent(mime)))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
@@ -460,7 +464,8 @@ export async function sendEmail({ to, subject, body, fromAccount }) {
   const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
     method: 'POST',
     headers: { Authorization: `Bearer ${acct.token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ raw: encoded }),
+    // threadId keeps the reply in the same Gmail conversation.
+    body: JSON.stringify(threadId ? { raw: encoded, threadId } : { raw: encoded }),
   })
 
   if (!res.ok) {
@@ -469,6 +474,29 @@ export async function sendEmail({ to, subject, body, fromAccount }) {
     throw new Error(err?.error?.message || `Gmail send error ${res.status}`)
   }
   return await res.json()
+}
+
+// Fetch the threading context for a stored message so a draft can be sent as a
+// reply in the same conversation. Returns { threadId, messageId, subject } or
+// null if it can't be resolved (e.g. the message was purged or token expired).
+export async function getReplyContext(gmailId, fromAccount) {
+  if (!gmailId) return null
+  const email = fromAccount || Object.keys(accounts)[0]
+  const acct = accounts[email]
+  if (!acct?.token) return null
+  try {
+    const res = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${gmailId}?format=metadata&metadataHeaders=Message-ID&metadataHeaders=Subject`,
+      { headers: { Authorization: `Bearer ${acct.token}` } }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    const hdrs = data.payload?.headers || []
+    const getH = name => hdrs.find(h => h.name.toLowerCase() === name.toLowerCase())?.value
+    return { threadId: data.threadId, messageId: getH('Message-ID'), subject: getH('Subject') }
+  } catch {
+    return null
+  }
 }
 
 // ── Refresh token for a specific account ─────────────────────────────────────
