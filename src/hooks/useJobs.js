@@ -1043,7 +1043,13 @@ export function normalizeNoteForKey(note = '') {
 export function historyEntryKey(entry) {
   if (!entry) return ''
   if (entry.gmailId) return `gmail:${entry.gmailId}`
-  const date = (entry.date || '').toString()
+  // Key on the DAY, not the full timestamp. Manual/extension imports now carry a
+  // full ISO datetime in `date` (so fresh rows sort to the top by time-of-day),
+  // but the same event can arrive twice the same day (URL ?add import + Supabase
+  // sync) with slightly different timestamps. Normalizing to the date portion
+  // makes those collapse again. Backward-compatible: a date-only string is its
+  // own day. The surviving entry keeps its full timestamp for sorting.
+  const date = (entry.date || '').toString().split('T')[0]
   return `${date}||${entry.status || ''}||${normalizeNoteForKey(entry.note)}`
 }
 
