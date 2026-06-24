@@ -50,7 +50,7 @@ ${language === 'auto'
   ? 'Write the ENTIRE letter in FRENCH.'
   : 'Write the ENTIRE letter in ENGLISH.'}
 
-STRUCTURE (standard professional format):
+STRUCTURE (standard professional format)${hasContext ? ' — adapt freely to the candidate\'s instructions above; if they ask for something shorter/different, FOLLOW THEM and drop or compress these parts' : ''}:
 1. [City], [Date] — top right
 2. Dear Hiring Manager / Dear [Company] Team (professional greeting)
 3. Opening paragraph: Express genuine interest + show knowledge of the company
@@ -64,7 +64,7 @@ TONE & CONTENT RULES:
 - Professional yet warm and personable (avoid generic platitudes)
 - Specific: Reference actual company/product details + exact role requirements
 - Achievements: Use metrics and results (not just responsibilities)
-- Length: 3-4 short paragraphs, about 250-350 words
+- Length: ${hasContext ? 'follow the candidate\'s instructions above; only if they say nothing about length, aim for 3-4 short paragraphs (~250-350 words). If they ask for a short/very short letter, write a genuinely brief one (a few sentences) and ignore the 250-350 word target' : '3-4 short paragraphs, about 250-350 words'}
 - Keywords: Front-load job description keywords naturally
 - Show you've researched: mention company values, products, or recent news if possible
 - Avoid: "I am writing to apply", "I believe I would be good at", generic praise
