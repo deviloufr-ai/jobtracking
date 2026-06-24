@@ -133,22 +133,24 @@ function renderSimple(md) {
 // ── Shared block/section renderers (consistent pagination across templates) ──
 // A role is split into a "head" unit (title + company/dates + first bullet) that
 // is kept together — so a heading never sits alone at the foot of a page — plus
-// "tail" bullets that flow to the next page individually. Each leaf line carries
-// .cv-block so html2pdf never slices a line in half, while page breaks fall
-// cleanly *between* bullets — no more large gaps from refusing to break inside a
-// whole tall role block.
+// "tail" bullets that flow to the next page individually. Every leaf line and
+// the head unit carry CSS break-inside:avoid (honored by html2pdf's 'css' mode),
+// so a page break NEVER slices a line or bullet in half — it falls cleanly
+// *between* bullets, avoiding both mid-line cuts and large gaps from refusing to
+// break inside a whole tall role block.
+const BREAK_AVOID = 'page-break-inside:avoid;break-inside:avoid'
 function blockParts(block, s) {
   if (block.standalone) {
     const it = block.standalone
     const html = it.type === 'li'
-      ? `<div class="cv-block" style="${s.li}">${s.bullet} ${fmt(it.text)}</div>`
-      : `<div class="cv-block" style="${s.p}">${fmt(it.text)}</div>`
+      ? `<div class="cv-block" style="${s.li};${BREAK_AVOID}">${s.bullet} ${fmt(it.text)}</div>`
+      : `<div class="cv-block" style="${s.p};${BREAK_AVOID}">${fmt(it.text)}</div>`
     return { head: html, tail: [], wrap: '' }
   }
   const company = block.meta[0] || ''
   const dates   = block.meta[1] || ''
   const extra   = block.meta.slice(2)
-  const bullets = block.bullets.map(t => `<div class="cv-block" style="${s.li}">${s.bullet} ${fmt(t)}</div>`)
+  const bullets = block.bullets.map(t => `<div class="cv-block" style="${s.li};${BREAK_AVOID}">${s.bullet} ${fmt(t)}</div>`)
   const head = [
     block.title ? `<div style="${s.title}">${fmt(block.title)}</div>` : '',
     s.metaRow ? s.metaRow(company, dates) : '',
@@ -160,11 +162,12 @@ function blockParts(block, s) {
 
 // Render a section: glue the section header to the first role's head unit so a
 // header is never orphaned, then let later roles/bullets flow across pages.
+// The glue unit is break-inside:avoid so title + first bullet stay together.
 function renderSection(headerHTML, blocks, s, sectionWrap) {
   const parts = blocks.map((b, i) => {
     const { head, tail, wrap } = blockParts(b, s)
     const glued = i === 0 ? headerHTML + head : head
-    return `<div style="${wrap}"><div class="cv-block">${glued}</div>${tail.join('')}</div>`
+    return `<div style="${wrap}"><div class="cv-block" style="${BREAK_AVOID}">${glued}</div>${tail.join('')}</div>`
   })
   return `<div style="${sectionWrap}">${parts.join('')}</div>`
 }
