@@ -875,6 +875,10 @@ async function fetchEmailDetail(id, token) {
         'newsletter@', 'digest@', 'news@', 'mailer@', 'info@emails.',
         'donotreply@match.indeed.com', '@match.indeed.com', 'match@indeed.com',
         'suggested@indeed.com', 'recommendations@indeed.com',
+        // LinkedIn "Top job picks for you" / "...role at X: Actively recruiting" digest.
+        // NOT an application — real LinkedIn confirmations come from jobs-noreply@linkedin.com
+        // ("your application was sent", whitelisted above via LINKEDIN_APP_CONFIRMATION).
+        'jobs-listings@linkedin.com', 'jobalerts-noreply@linkedin.com',
         // Marketing/CRM bulk-sending subdomains — used by brands, never by recruiters
         '@crm.', '@email.', '@send.', '@promo.', '@marketing.', // Removed 'noreply@', 'no-reply@' — checked separately
       ]
@@ -905,9 +909,14 @@ async function fetchEmailDetail(id, token) {
         'offre recommand', 'recommended job', 'jobs matching your', 'recrute un ', 'recrute une ',
         'votre parcours pourrait correspondre', 'pourrait correspondre pour', 'correspond à votre profil',
         'your profile matches', 'matches your experience', 'job match',
+        // LinkedIn job-digest subjects: "[Title] role at [Company]: Actively recruiting"
+        'actively recruiting', 'top job picks',
       ]
+      // LinkedIn job-pick digests bury "Top job picks for you" in the body, not the subject.
+      const isJobDigestBody = bodyRaw.includes('top job picks') || snippetRaw.includes('top job picks')
       const isJobAlert = JOB_ALERT_SENDERS.some(s => fromRaw.includes(s))
         || JOB_ALERT_SUBJECTS.some(s => subjectRaw.includes(s))
+        || isJobDigestBody
       if (isJobAlert) {
         log(`   ❌ Filtered: Job alert subject`)
         return null
