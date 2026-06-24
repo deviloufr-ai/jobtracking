@@ -1,50 +1,65 @@
 import { applyCors, getClientIp, rateLimit, enforceSharedKeyQuota } from './_lib/http.js'
 
-export default async function handler(req, res) {
-  if (applyCors(req, res, 'POST, OPTIONS')) return
-  if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return }
+// Target ATS / job-match score the generated CV must reach. The handler
+// generates, self-scores with the same rubric the in-app scorer uses, and
+// refines with targeted feedback until the CV clears this bar (or runs out
+// of attempts).
+const TARGET_SCORE = 90
+const MAX_ATTEMPTS = 3 // 1 initial generation + up to 2 refinement passes
 
-  const { ok, retryAfter } = rateLimit({ key: `generate-cv:${getClientIp(req)}`, limit: 20, windowMs: 60_000 })
-  if (!ok) { res.setHeader('Retry-After', String(retryAfter)); res.status(429).json({ error: 'Too many requests. Please slow down.' }); return }
-
-  const userKey = req.body?.apiKey?.trim()
-  const apiKey = userKey || process.env.ANTHROPIC_API_KEY
-  if (!apiKey) { res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' }); return }
-  if (!userKey) {
-    const quota = await enforceSharedKeyQuota(req)
-    if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
+async function callClaude(apiKey, { maxTokens, prompt }) {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: maxTokens,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error(err?.error?.message || `Claude API ${response.status}`)
   }
+  const data = await response.json()
+  return data.content?.[0]?.text || ''
+}
 
-  const { cvText, jobDescription, company, position, language } = req.body
-  if (!cvText || !jobDescription) {
-    res.status(400).json({ error: 'cvText and jobDescription required' }); return
-  }
+function buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback }) {
+  const feedbackBlock = feedback ? `
+═══════════════════════════════════════════════════════════════════════════════
+⚠️ REVISION REQUIRED — the previous draft scored ${feedback.score}/100 (target ≥ ${TARGET_SCORE}).
+═══════════════════════════════════════════════════════════════════════════════
+A recruiter-style screener flagged these GAPS against the job description:
+${(feedback.gaps || []).map(g => `- ${g}`).join('\n')}
 
-  const LANGUAGE_INSTRUCTIONS = {
-    auto: 'DETECT the language of the job description and write the ENTIRE CV in THAT language.\nFrench JD → French CV. English JD → English CV. Japanese JD → Japanese CV.',
-    fr: 'Write the ENTIRE CV in FRENCH.',
-    en: 'Write the ENTIRE CV in ENGLISH.',
-    jp: 'Write the ENTIRE CV in JAPANESE (日本語). Use natural business Japanese (敬語/丁寧語) appropriate for a professional 職務経歴書.',
-  }
-  const languageInstruction = LANGUAGE_INSTRUCTIONS[language] || LANGUAGE_INSTRUCTIONS.auto
+Close every gap above WITHOUT inventing experience the candidate doesn't have:
+- Surface real, relevant experience already in the original CV that addresses each gap (it may be buried in an older role).
+- Mirror the EXACT skill/keyword wording used in the job description (same terms, same casing) wherever the candidate truthfully has that experience.
+- Front-load the matching keywords in the Profile, the Skills section, and the first bullet of the most relevant roles.
+- If a gap is a genuine hard requirement the candidate lacks, emphasise the closest transferable experience instead — never fabricate.
+` : ''
 
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 8000,
-        messages: [{
-          role: 'user',
-          content: `You are an expert CV writer and ATS specialist. Adapt this CV for the "${position}" role at "${company}".
+  return `You are an expert CV writer and ATS specialist. Adapt this CV for the "${position}" role at "${company}".
 
 ${languageInstruction}
 
+═══════════════════════════════════════════════════════════════════════════════
+PRIMARY OBJECTIVE — ATS / JOB-MATCH SCORE ≥ ${TARGET_SCORE} / 100:
+═══════════════════════════════════════════════════════════════════════════════
+The adapted CV will be graded by an automated recruiter-style screener on:
+  1. Required-skills match (must-have skills/keywords from the JD)
+  2. Experience level (years, seniority, relevant domain)
+  3. Background alignment (industry, company size, role similarity)
+  4. Achievement relevance (measurable outcomes matching the JD context)
+Your CV MUST score at least ${TARGET_SCORE}. To get there, truthfully mirror the JD's
+must-have keywords/skills (same wording) anywhere the candidate genuinely has that
+experience, and front-load that relevance. NEVER fabricate — pull from real history.
+${feedbackBlock}
 ═══════════════════════════════════════════════════════════════════════════════
 CORE PRINCIPLE:
 ═══════════════════════════════════════════════════════════════════════════════
@@ -186,22 +201,135 @@ OUTPUT REQUIREMENTS:
 8. CRITICAL: If the CV is long, CONDENSE bullets on older roles — never delete a role
 
 Priority order (in order):
-1. Cover the FULL career history — every role present (CRITICAL)
-2. Show JD relevance (CRITICAL — front-load matching keywords)
+1. Score ≥ ${TARGET_SCORE} on JD relevance — truthfully mirror must-have keywords (CRITICAL)
+2. Cover the FULL career history — every role present (CRITICAL)
 3. Include measurable outcomes where available
 4. Maintain ATS compatibility (important)`
-        }]
-      })
-    })
+}
 
-    if (!response.ok) {
-      const err = await response.json()
-      throw new Error(err?.error?.message || `Claude API ${response.status}`)
+// Mirrors the rubric in src/services/scoreJob.js so the self-check matches what
+// the in-app "Job Match Score" reports.
+function buildScorePrompt({ cv, jobDescription, company, position }) {
+  return `You are an expert recruiter and CV screener. Analyze how well the candidate's CV matches the job description.
+
+CANDIDATE CV:
+${cv}
+
+JOB DESCRIPTION (${company} - ${position}):
+${jobDescription}
+
+Evaluate the candidate's fit across these dimensions:
+1. Required Skills Match (must-have technical/soft skills from JD)
+2. Experience Level (years, seniority, relevant domain)
+3. Background Alignment (industry, company size, role similarity)
+4. Achievement Relevance (measurable outcomes matching JD context)
+
+Respond with ONLY a JSON object (no markdown, no preamble) with this exact structure:
+{
+  "score": <number 0-100>,
+  "verdict": "<STRONG_MATCH|GOOD_MATCH|PARTIAL_MATCH|WEAK_MATCH>",
+  "gaps": ["<missing skill/keyword the CV should surface>", "<gap>"]
+}`
+}
+
+function extractJSON(rawText) {
+  let jsonText = rawText || '{}'
+  if (jsonText.includes('```json')) {
+    jsonText = jsonText.split('```json')[1]?.split('```')[0] || rawText
+  } else if (jsonText.includes('```')) {
+    jsonText = jsonText.split('```')[1]?.split('```')[0] || rawText
+  }
+  return JSON.parse(jsonText.trim())
+}
+
+async function scoreCV(apiKey, { cv, jobDescription, company, position }) {
+  const raw = await callClaude(apiKey, {
+    maxTokens: 600,
+    prompt: buildScorePrompt({ cv, jobDescription, company, position }),
+  })
+  try {
+    const parsed = extractJSON(raw)
+    return {
+      score: typeof parsed.score === 'number' ? parsed.score : 0,
+      verdict: parsed.verdict || 'PARTIAL_MATCH',
+      gaps: Array.isArray(parsed.gaps) ? parsed.gaps : [],
+    }
+  } catch {
+    // If scoring fails to parse, don't block the generation — treat as unknown.
+    return { score: null, verdict: null, gaps: [] }
+  }
+}
+
+export default async function handler(req, res) {
+  if (applyCors(req, res, 'POST, OPTIONS')) return
+  if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return }
+
+  const { ok, retryAfter } = rateLimit({ key: `generate-cv:${getClientIp(req)}`, limit: 20, windowMs: 60_000 })
+  if (!ok) { res.setHeader('Retry-After', String(retryAfter)); res.status(429).json({ error: 'Too many requests. Please slow down.' }); return }
+
+  const userKey = req.body?.apiKey?.trim()
+  const apiKey = userKey || process.env.ANTHROPIC_API_KEY
+  if (!apiKey) { res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' }); return }
+  if (!userKey) {
+    const quota = await enforceSharedKeyQuota(req)
+    if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
+  }
+
+  const { cvText, jobDescription, company, position, language } = req.body
+  if (!cvText || !jobDescription) {
+    res.status(400).json({ error: 'cvText and jobDescription required' }); return
+  }
+
+  const LANGUAGE_INSTRUCTIONS = {
+    auto: 'DETECT the language of the job description and write the ENTIRE CV in THAT language.\nFrench JD → French CV. English JD → English CV. Japanese JD → Japanese CV.',
+    fr: 'Write the ENTIRE CV in FRENCH.',
+    en: 'Write the ENTIRE CV in ENGLISH.',
+    jp: 'Write the ENTIRE CV in JAPANESE (日本語). Use natural business Japanese (敬語/丁寧語) appropriate for a professional 職務経歴書.',
+  }
+  const languageInstruction = LANGUAGE_INSTRUCTIONS[language] || LANGUAGE_INSTRUCTIONS.auto
+
+  try {
+    let bestCV = ''
+    let bestScore = -1
+    let bestVerdict = null
+    let feedback = null
+
+    // Generate → self-score → refine until the CV clears TARGET_SCORE, keeping
+    // the highest-scoring draft seen across attempts.
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const cv = await callClaude(apiKey, {
+        maxTokens: 8000,
+        prompt: buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback }),
+      })
+
+      const { score, verdict, gaps } = await scoreCV(apiKey, { cv, jobDescription, company, position })
+
+      // Scoring unavailable (parse failure) — return this draft as-is.
+      if (score === null) {
+        bestCV = bestCV || cv
+        bestScore = bestScore < 0 ? null : bestScore
+        bestVerdict = bestVerdict || verdict
+        break
+      }
+
+      if (score > bestScore) {
+        bestCV = cv
+        bestScore = score
+        bestVerdict = verdict
+      }
+
+      if (score >= TARGET_SCORE) break
+
+      // Below target — feed the gaps back into the next generation pass.
+      feedback = { score, gaps }
     }
 
-    const data = await response.json()
-    const generatedCV = data.content?.[0]?.text || ''
-    res.status(200).json({ cv: generatedCV })
+    res.status(200).json({
+      cv: bestCV,
+      atsScore: bestScore < 0 ? null : bestScore,
+      verdict: bestVerdict,
+      targetScore: TARGET_SCORE,
+    })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

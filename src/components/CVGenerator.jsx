@@ -474,6 +474,7 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
   const [jdError, setJdError]       = useState(null)
   const [generatedCV, setGeneratedCV] = useState('')
   const [editableCV, setEditableCV] = useState('')
+  const [atsScore, setAtsScore]     = useState(null)
   const [isEditing, setIsEditing]   = useState(false)
   const [viewMode, setViewMode]     = useState('split')
   const [template, setTemplate]     = useState('standard')
@@ -547,12 +548,12 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
     try {
       if (IS_DEV) {
         const mock = `# Alexandre Leblanc\nParis, France · alexandre@email.com · linkedin.com/in/devilalex\n\n## Profil\nProduct Manager Senior avec 18 ans d'expérience internationale en B2B SaaS, gaming et IoT. Expert en pilotage de roadmap produit orienté OKR, A/B testing et métriques de rétention. Trilingue FR/EN/JP.\n\n## Expérience\n\n### Senior Product Manager — Datachain\nMai 2023 – Juin 2025 | Remote (Tokyo)\n- Piloté l'implémentation d'un pont inter-chaînes Web3/DeFi — discovery, rollout et suivi d'adoption\n- Structuré les interviews clients, recherche concurrentielle et priorisation data-driven\n- Coordonné les équipes cross-fonctionnelles (Engineering, Product, Marketing)\n\n### Program Manager Ads — SmartNews\nJanvier 2021 – Mai 2023 | Remote (Tokyo)\n- Piloté les programmes produit globaux Ads (20M+ MAU)\n- Analyse data pour identifier pain points ; traduit les insights en requirements\n- Frameworks A/B testing et cohort analysis\n\n### Chef de Projet — Hakuhodo I-Studio\nJanvier 2017 – Janvier 2020 | Tokyo\n- Développement end-to-end de l'app IoT Pechat ; 0 à 120K unités vendues\n- Lancement US avec +15% revenue · Good Design Award 2019\n\n## Compétences\n- **Produit** : OKR, roadmap, A/B testing, NPS, DAU/MAU, funnel\n- **Tech** : SQL, Jira, Figma, Confluence, analytics\n- **Méthodo** : Agile/Scrum, RICE, user interviews\n\n## Formation\nArts & Métiers — Ingénieur généraliste (2012)\nJLPT N1 · Trilingue FR/EN/JP`
-        setGeneratedCV(mock); setEditableCV(mock); setStep('preview'); return
+        setGeneratedCV(mock); setEditableCV(mock); setAtsScore(94); setStep('preview'); return
       }
       const res  = await aiFetch('/api/generate-cv', {cvText:cv.text,jobDescription:jd,company:job.company,position:job.position,language:lang})
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      setGeneratedCV(data.cv); setEditableCV(data.cv); setStep('preview')
+      setGeneratedCV(data.cv); setEditableCV(data.cv); setAtsScore(data.atsScore ?? null); setStep('preview')
     } catch(e) { setJdError(e.message); setStep('ready_to_generate') }
   }
 
@@ -672,6 +673,18 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
             <p className="text-sm font-semibold text-gray-800">✨ {job.company} — {job.position}</p>
             <p className="text-xs text-gray-400">{t('cvGeneratorUI.sourceCV')} {cv.name}</p>
           </div>
+          {step === 'preview' && atsScore !== null && (
+            <span
+              title={t('cvGeneratorUI.atsScoreHint') || 'Score de correspondance ATS du CV adapté à cette offre'}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${
+                atsScore >= 90 ? 'bg-green-100 text-green-700 border-green-300'
+                : atsScore >= 75 ? 'bg-blue-100 text-blue-700 border-blue-300'
+                : 'bg-amber-100 text-amber-700 border-amber-300'
+              }`}
+            >
+              🎯 ATS {Math.round(atsScore)}%
+            </span>
+          )}
         </div>
 
         {step === 'preview' && (
