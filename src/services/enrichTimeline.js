@@ -9,7 +9,7 @@ const IS_DEV = import.meta.env.DEV
 function extractMeetingLink(text = '') {
   const patterns = [
     // Google Meet
-    /(https:\/\/meet\.google\.com\/[a-z0-9\-]+)/i,
+    /(https:\/\/meet\.google\.com\/[a-z0-9-]+)/i,
     // Zoom
     /(https:\/\/[a-z0-9]+\.zoom\.us\/j\/[^\s"<>]+)/i,
     // Microsoft Teams
@@ -184,7 +184,7 @@ Emails:
   const data = await res.json()
   const text = data.content?.[0]?.text || '[]'
   try {
-    const clean = text.replace(/\`\`\`json|\`\`\`/g, '').trim()
+    const clean = text.replace(/```json|```/g, '').trim()
     return JSON.parse(clean)
   } catch { return [] }
 }

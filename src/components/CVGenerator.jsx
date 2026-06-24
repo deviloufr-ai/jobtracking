@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { aiFetch } from '../services/apiKey'
-import html2pdf from 'html2pdf.js'
+// html2pdf is heavy (jsPDF + html2canvas); load it lazily at export time so it
+// stays out of the main bundle (see also CVViewer.jsx which already does this).
 
 const IS_DEV = import.meta.env.DEV
 
@@ -456,7 +457,7 @@ export const ONE_PAGE_SCRIPT = `
     });
   });
 })();
-<\/script>`
+</script>`
 
 export const BASE_PRINT_CSS = `
   @page { margin:10mm 12mm; size:A4 portrait; }
@@ -632,14 +633,18 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
     }
 
     try {
-      html2pdf().set(options).from(element).output('blob').then(blob => {
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `${filename}.pdf`
-        link.click()
-        URL.revokeObjectURL(url)
-      })
+      import('html2pdf.js')
+        .then(({ default: html2pdf }) =>
+          html2pdf().set(options).from(element).output('blob'))
+        .then(blob => {
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `${filename}.pdf`
+          link.click()
+          URL.revokeObjectURL(url)
+        })
+        .catch(err => console.error('PDF export error:', err))
     } catch (err) {
       console.error('PDF export error:', err)
     }

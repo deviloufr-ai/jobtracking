@@ -39,18 +39,22 @@ describe('filterEmailsBeforeParse', () => {
     expect(reasons.alreadyImported).toBe(1)
   })
 
-  it('Layer 1: drops new emails from the sender of a refused candidature', () => {
-    const emails = [{ id: 'g-new', from: 'Jane <jane@acme.com>', date: daysAgo(1) }]
-    const { kept, reasons } = filterEmailsBeforeParse(emails, [acmeJob('rejected')])
+  it('Layer 1: only archived candidatures are treated as closed', () => {
+    const emails = [{ id: 'g-new', from: 'jane@acme.com', date: daysAgo(1) }]
+    const { kept, reasons } = filterEmailsBeforeParse(emails, [acmeJob('archived')])
     expect(kept).toHaveLength(0)
     expect(reasons.closed).toBe(1)
   })
 
-  it('Layer 1: also applies to rejected_ats and archived', () => {
-    for (const status of ['rejected_ats', 'archived']) {
-      const emails = [{ id: 'g-new', from: 'jane@acme.com', date: daysAgo(1) }]
-      const { reasons } = filterEmailsBeforeParse(emails, [acmeJob(status)])
-      expect(reasons.closed).toBe(1)
+  it('Layer 1: rejected / rejected_ats senders pass through (refusal mail can attach as history)', () => {
+    // A refusal email to a still-visible rejected candidature must reach the parser
+    // so it can be added as a history entry (feature: refusal-as-history). Only
+    // `archived` short-circuits as closed.
+    for (const status of ['rejected', 'rejected_ats']) {
+      const emails = [{ id: 'g-new', from: 'Jane <jane@acme.com>', date: daysAgo(1) }]
+      const { kept, reasons } = filterEmailsBeforeParse(emails, [acmeJob(status)])
+      expect(kept).toHaveLength(1)
+      expect(reasons.closed).toBe(0)
     }
   })
 

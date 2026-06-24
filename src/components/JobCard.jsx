@@ -4,6 +4,7 @@ import { STATUSES, getStatus, getStatusLabel } from '../hooks/useJobs'
 import { ScoreBadge } from './ScoreJob'
 import CompanyAvatar from './CompanyAvatar'
 import BottomSheet from './BottomSheet'
+import { getJobHealth, HEALTH_DOT_CLASS } from '../utils/jobHealth'
 
 // Sender label for a timeline entry — "You", a recruiter first name, or null.
 // Mirrors JobRow.getSourceLabel so mobile and desktop read the same.
@@ -212,6 +213,16 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
+            {(() => {
+              const health = getJobHealth(job)
+              if (health.level === 'none') return null
+              return (
+                <span
+                  title={health.message}
+                  className={`flex-shrink-0 w-2 h-2 rounded-full ${HEALTH_DOT_CLASS[health.level]} ${health.level === 'stale' ? 'animate-pulse' : ''}`}
+                />
+              )
+            })()}
             <span className="font-semibold text-gray-900 text-[15px] truncate">{job.company}</span>
             <ScoreBadge job={job} t={t} />
             {job.cvSaved && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-600 flex-shrink-0">CV</span>}

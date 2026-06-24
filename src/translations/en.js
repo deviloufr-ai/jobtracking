@@ -15,6 +15,7 @@ export const en = {
       reviewing: 'Responded',
       interview: 'Interview',
       offer: 'Offer',
+      medianDays: '~{days}d med.',
     },
     trend: {
       title: 'Applications per week',
@@ -430,6 +431,8 @@ export const en = {
     reviewingNoResponse: 'Application under review for {days} days without response.',
     followUpWaiting: 'Follow up {company}',
     waitingSince: 'Waiting {days} days — appropriate to follow up.',
+    followUpInterview: 'Follow up after interview — {company}',
+    interviewNoFeedback: 'Interview done, no feedback in {days} days. A follow-up shows your motivation.',
     respondToOffer: 'Respond to {company} offer',
     offerReceived: 'Offer received — negotiate and respond before it expires.',
     prepareInterview: 'Prepare interview for {company}',
