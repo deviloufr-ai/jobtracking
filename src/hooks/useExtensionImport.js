@@ -63,7 +63,11 @@ export function useExtensionImport(addJob, showToast, findDuplicate) {
         position,
         url: params.get('url') || '',
         status: params.get('status') || 'todo',
-        date: params.get('date') || new Date().toISOString().split('T')[0],
+        // Keep the full ISO timestamp (with time) so a fresh import sorts to the
+        // top among same-day rows. The "date" sort keys off the latest history
+        // timestamp; a date-only value (midnight) would lose the tiebreak to any
+        // Gmail entry imported earlier today that carries a real time-of-day.
+        date: params.get('date') || new Date().toISOString(),
         notes: params.get('notes') || '',
         jobDescription: jobDescription, // store full JD for CV generator
       }
