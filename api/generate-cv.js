@@ -88,20 +88,26 @@ STRICT FORMAT RULES — ATS-Compatible:
 9. NO icons, boxes, colors (except **bold** for emphasis), images, or special Unicode characters
 
 ═══════════════════════════════════════════════════════════════════════════════
-TONE & LANGUAGE (Make it sound naturally human, not AI-polished):
+TONE & LANGUAGE (Professional, polished, recruiter-ready — never casual):
 ═══════════════════════════════════════════════════════════════════════════════
-- AVOID: Repetitive structure where every bullet = "Led X, drove Y, resulting in Z%"
-- AVOID: Corporate jargon overload (synergy, leverage, optimize obsessively)
-- AVOID: Every bullet has a metric—mix quantitative + qualitative outcomes
-- DO: Vary sentence structure (some short, some longer; some start with action verb, some with context)
-- DO: Use specific details/context that feels genuine (not generic)
-- DO: Balance precise metrics with human-scale observations ("faster feedback loops", "team morale improved")
-- DO: Sound like a real person reflecting on what they actually did
+This is a formal professional CV. The writing must read as something a senior
+candidate would confidently submit to a hiring manager.
+- TONE: Professional, concise, confident. Third-person-implied résumé style
+  (no "I"/"we", no chatty asides, no self-deprecation, no parenthetical jokes).
+- START each bullet with a strong past-tense action verb (Led, Built, Launched,
+  Scaled, Owned, Delivered, Drove, Established…). Vary the verbs.
+- Each bullet = ONE crisp line: Action + scope/context + outcome. Quantify when
+  the original CV supports it; otherwise state a concrete qualitative outcome.
+- AVOID: Repetitive "Led X, drove Y, resulting in Z%" on every line — vary it.
+- AVOID: Corporate filler (synergy, leverage as a buzzword, dynamic, passionate).
+- AVOID: Casual phrasing, em-dash storytelling ("took time to teach the team…"),
+  hedging, or first-person narration. Keep it tight and businesslike.
+- Mix quantitative and qualitative results — not every bullet needs a percentage.
 
-Example (HUMAN, not AI-obvious):
-BAD (AI-obvious): "Led cross-functional team, implemented A/B testing framework, resulting in 23% conversion improvement"
-GOOD (human): "Built A/B testing framework from scratch—took time to teach the team stats, but we caught 3 major UX issues that were killing conversions"
-ALSO GOOD: "Owned product roadmap for 18-month cycle; shipped features we knew users actually wanted (80% adoption, not lab metrics)"
+Example bullets (PROFESSIONAL):
+WEAK (casual): "Built A/B testing framework from scratch—took time to teach the team stats, but we caught 3 major UX issues"
+STRONG (professional): "Established an A/B testing framework adopted across the product team, surfacing three high-impact UX fixes that lifted conversion."
+STRONG (professional): "Owned the 18-month product roadmap, prioritizing releases that reached 80% user adoption."
 
 ═══════════════════════════════════════════════════════════════════════════════
 ROLE COVERAGE (CRITICAL):
@@ -118,20 +124,20 @@ STEP 2: For EVERY role:
 3. Reorder bullets: put most relevant to job FIRST
 4. Keep original achievements — do NOT add new ones
 5. Vary phrasing (not all bullets follow same pattern)
-6. Example adaptations (HUMAN, not AI-obvious):
+6. Example adaptations (PROFESSIONAL, specific — not templated):
    ORIGINAL: "Led product roadmap using OKR framework"
-   ADAPTED (specific): "Ran quarterly OKR planning cycles—wrote outcomes, partnered with eng to validate, shipped ~8 features per cycle"
-   or: "Managed product roadmap via OKRs; this meant saying no to 60% of feature requests, but improved ship quality"
-   NOT: "Led OKR-driven roadmap, delivering features with 92% on-time delivery" (too templated)
+   ADAPTED: "Ran quarterly OKR planning across engineering and design, delivering roughly eight prioritized features per cycle."
+   or: "Owned the product roadmap end-to-end, focusing the backlog on the highest-impact releases."
+   NOT: "Led OKR-driven roadmap, delivering features with 92% on-time delivery" (templated/fabricated metric)
 
 Profile/Summary:
 - 2-3 sentences (60-90 words max) — absolutely NO longer
-- Lead with operating model/scope (OKR-driven, data-informed, etc.), not just years of experience
-- Sound CONVERSATIONAL, not like a robot wrote it (e.g., "shipped 40+ features" beats "led feature delivery initiatives")
-- Use 4-6 top keywords from job description, but naturally woven in
+- Lead with seniority + operating model/scope (e.g. "Senior Product Manager, OKR-driven…"), then domain and signature outcomes
+- PROFESSIONAL register: confident, concise, specific. No first person, no casual phrasing.
+- Use 4-6 top keywords from job description, naturally woven in
 - Stay truthful to original CV context
-- Example (HUMAN): "Product Manager focused on shipping what users actually need. 10 years in B2B SaaS—worked with teams to validate ideas before building, which cut wasted effort in half."
-- Example (TOO AI): "Strategic Product Manager with expertise in user-centric discovery, data-driven roadmap prioritization, and cross-functional team alignment across B2B SaaS verticals."
+- Example (PROFESSIONAL): "Senior Product Manager with 10 years in B2B SaaS, leading OKR-driven, data-informed roadmaps. Known for validating opportunities before build to focus engineering on the highest-impact work, consistently shipping features with strong user adoption."
+- Example (TOO GENERIC): "Strategic Product Manager with expertise in user-centric discovery, data-driven roadmap prioritization, and cross-functional team alignment across B2B SaaS verticals."
 
 Job Description Keyword Integration:
 - Extract top 8-10 skills/keywords from the JD
@@ -144,8 +150,8 @@ Skills Section:
 - Organize by category, put most JD-relevant category first
 - Add brief proof/context that sounds natural: "Product Discovery — user interviews, A/B testing, prioritization frameworks"
 - Vary the format slightly (not every line identical structure)
-- Example (HUMAN): "Product Strategy: OKR planning, roadmap prioritization, competitive analysis"
-- Example (TOO AI): "Strategic Product Management: OKR framework implementation, data-driven roadmap optimization, competitive landscape analysis"
+- Example (PROFESSIONAL): "Product Strategy: OKR planning, roadmap prioritization, competitive analysis"
+- Example (TOO INFLATED): "Strategic Product Management: OKR framework implementation, data-driven roadmap optimization, competitive landscape analysis"
 - Remove: soft skills (communication, leadership) unless specifically required by JD
 
 Education:
