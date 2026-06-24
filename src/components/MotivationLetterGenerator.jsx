@@ -233,6 +233,26 @@ export default function MotivationLetterGenerator({ job, onClose, cvText, initia
                 />
               </div>
 
+              <div className="mb-4">
+                <label className="block text-xs font-semibold text-gray-600 mb-2">
+                  Contexte additionnel <span className="text-gray-400 font-normal">(pris en compte lors de la regénération)</span>
+                </label>
+                <textarea
+                  value={context}
+                  onChange={(e) => setContext(e.target.value)}
+                  disabled={loading}
+                  rows={3}
+                  placeholder="Points à mettre en avant, motivation spécifique, disponibilité, ton souhaité… puis cliquez sur 🔄 Regénérer"
+                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                  <p className="text-xs text-red-700">{error}</p>
+                </div>
+              )}
+
               <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
                 <p>📝 Vous pouvez éditer le contenu ci-dessus avant d'exporter en PDF</p>
                 {saved && <p className="text-green-600 mt-2">✅ Lettre sauvegardée</p>}

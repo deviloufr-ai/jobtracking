@@ -20,6 +20,8 @@ export default async function handler(req, res) {
     res.status(400).json({ error: 'cvText and jobDescription required' }); return
   }
 
+  const hasContext = !!(context && context.trim())
+
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -34,7 +36,14 @@ export default async function handler(req, res) {
         messages: [{
           role: 'user',
           content: `You are an expert recruiter and professional letter writer. Write a compelling motivation letter (cover letter) for this job application.
-
+${hasContext ? `
+=== TOP PRIORITY: CANDIDATE'S INSTRUCTIONS ===
+The candidate provided the following specific instructions. These OVERRIDE the generic guidance below and MUST be reflected clearly in the letter (priorities to emphasize, tone, availability, specific points). Do not ignore or water them down:
+"""
+${context.trim().slice(0, 1500)}
+"""
+=== END OF CANDIDATE'S INSTRUCTIONS ===
+` : ''}
 ${language === 'auto'
   ? 'DETECT the language of the job description and write the ENTIRE letter in THAT language.\nFrench JD → French letter. English JD → English letter.'
   : language === 'fr'
@@ -75,9 +84,8 @@ ${cvText.slice(0, 2000)}
 
 JOB DESCRIPTION (${company} - ${position}):
 ${jobDescription.slice(0, 2000)}
-${context && context.trim() ? `
-ADDITIONAL CONTEXT FROM THE CANDIDATE (incorporate naturally; these are priorities and details to emphasize):
-${context.trim().slice(0, 1500)}
+${hasContext ? `
+REMINDER: Make sure the candidate's instructions at the top of this prompt are clearly reflected in the letter.
 ` : ''}
 Return ONLY the motivation letter text (no preamble, no metadata). Include the date, salutation, paragraphs, closing, and signature line. Format as plain text with blank lines between paragraphs.`
         }]
