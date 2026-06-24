@@ -79,7 +79,7 @@ STRICT FORMAT RULES — ATS-Compatible:
 ═══════════════════════════════════════════════════════════════════════════════
 1. # Full Name
 2. Contact line: City · Email · Phone · LinkedIn (plain text, NO symbols) — values copied VERBATIM from the original CV; never change the city/address
-3. ## Section Title (use standard names: Professional Experience, Technical Skills, Education, etc.)
+3. ## Section Title — use standard section names TRANSLATED INTO THE CV'S LANGUAGE (e.g. EN: Professional Experience / Technical Skills / Education — FR: Expérience professionnelle / Compétences / Formation). Never leave a header in a different language than the rest of the CV.
 4. ### Job Title (e.g., Senior Product Manager)
 5. Company Name | Start Date – End Date | Location (pipe-separated, single line)
 6. - Bullet point (action verb + quantified result when available)
@@ -286,11 +286,18 @@ export default async function handler(req, res) {
     res.status(400).json({ error: 'cvText and jobDescription required' }); return
   }
 
+  // Hard rule against producing a half-French / half-English CV. EVERYTHING the
+  // model writes must be in ONE language: section headers, profile, every
+  // bullet, skill category labels, and the month names inside dates. The only
+  // things that keep their original form are proper nouns (company names,
+  // product names, school names, certifications like JLPT/PMP) and the
+  // candidate's contact line.
+  const NO_MIX = '\n\nABSOLUTE LANGUAGE CONSISTENCY (no mixing): The WHOLE CV must be written in this ONE language — section titles/headers, the profile, EVERY bullet point, skill category names, and month names in dates all in that language. Do NOT mix two languages. Do NOT leave any header or sentence in another language. The ONLY exceptions are proper nouns kept verbatim (company names, product names, school names, certification names like JLPT/PMP) and the candidate\'s contact line.'
   const LANGUAGE_INSTRUCTIONS = {
-    auto: 'DETECT the language of the job description and write the ENTIRE CV in THAT language.\nFrench JD → French CV. English JD → English CV. Japanese JD → Japanese CV.',
-    fr: 'Write the ENTIRE CV in FRENCH.',
-    en: 'Write the ENTIRE CV in ENGLISH.',
-    jp: 'Write the ENTIRE CV in JAPANESE (日本語). Use natural business Japanese (敬語/丁寧語) appropriate for a professional 職務経歴書.',
+    auto: 'DETECT the language of the job description and write the ENTIRE CV in THAT language.\nFrench JD → French CV. English JD → English CV. Japanese JD → Japanese CV.' + NO_MIX,
+    fr: 'Write the ENTIRE CV in FRENCH — all section headers, bullets, skill labels and dates in French.' + NO_MIX,
+    en: 'Write the ENTIRE CV in ENGLISH — all section headers, bullets, skill labels and dates in English.' + NO_MIX,
+    jp: 'Write the ENTIRE CV in JAPANESE (日本語). Use natural business Japanese (敬語/丁寧語) appropriate for a professional 職務経歴書.' + NO_MIX,
   }
   const languageInstruction = LANGUAGE_INSTRUCTIONS[language] || LANGUAGE_INSTRUCTIONS.auto
 

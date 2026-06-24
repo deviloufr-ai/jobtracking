@@ -43,12 +43,23 @@ export function isAtsRejection(notes = '', fromEmail = '') {
 const historyDayKey = (d) => String(d || '').slice(0, 10)
 
 // Canonical history comparator (ascending / chronological).
-// Same-day tiebreak: a manually-added entry (carries `addedAt`) sorts AFTER
-// same-day entries that lack it, so in the reversed display it appears on top.
+// Same-day tiebreak precedence:
+//   1. Pipeline stage — on the SAME calendar day, an earlier stage (todo) sorts
+//      before a later one (reviewing → interview → …). Without this, a `todo`
+//      seed ("Offre trouvée") could land AFTER a same-day `reviewing` email
+//      ("Candidature reçue"), so the reversed timeline showed "À faire" on top
+//      and the status pill read todo even though the job is under review. Stage
+//      order also survives duplicate-merges that interleave history by updated_at.
+//   2. addedAt — within the same stage, a manually-added entry (carries
+//      `addedAt`) sorts AFTER same-day entries that lack it, so in the reversed
+//      display a freshly-recorded note still appears on top.
 export function compareHistoryEntries(a, b) {
   const ta = new Date(a.date).getTime()
   const tb = new Date(b.date).getTime()
   if (historyDayKey(a.date) === historyDayKey(b.date)) {
+    const ra = TOPIC_STATUS_ORDER.indexOf(a.status)
+    const rb = TOPIC_STATUS_ORDER.indexOf(b.status)
+    if (ra !== -1 && rb !== -1 && ra !== rb) return ra - rb
     const aa = a.addedAt ? new Date(a.addedAt).getTime() : null
     const ba = b.addedAt ? new Date(b.addedAt).getTime() : null
     if (aa !== null || ba !== null) {
@@ -98,7 +109,9 @@ export function getStatusLabel(key, t = (key) => key) {
 // Job status follows the most recent meaningful timeline entry ("latest wins")
 // instead of a monotonic max, so a job reflects where it actually stands now.
 // Manual edits win naturally — updateStatus saves them as a dated history entry.
-// Ties (same date) break by when the entry was recorded (addedAt), then status rank.
+// "Latest" is defined by compareHistoryEntries, so this stays in lock-step with
+// the rendered timeline order: the derived status is exactly the status of the
+// entry that sorts last (same-day ties break by pipeline stage, then addedAt).
 // Returns null when history has no usable entry, so callers keep the current status.
 // Auto-archiving still has the final say: it runs after this and re-archives stale jobs.
 export function deriveStatusFromHistory(history) {
@@ -106,17 +119,9 @@ export function deriveStatusFromHistory(history) {
   const known = new Set(STATUSES.map(s => s.key))
   const candidates = history.filter(h => h && h.date && known.has(h.status))
   if (candidates.length === 0) return null
-  const ms = v => { const n = v ? new Date(v).getTime() : NaN; return isNaN(n) ? 0 : n }
-  const rank = h => TOPIC_STATUS_ORDER.indexOf(h.status)
   let best = candidates[0]
   for (const h of candidates) {
-    const dh = ms(h.date), db = ms(best.date)
-    if (dh > db) { best = h; continue }
-    if (dh < db) continue
-    const ah = ms(h.addedAt), ab = ms(best.addedAt)
-    if (ah > ab) { best = h; continue }
-    if (ah < ab) continue
-    if (rank(h) > rank(best)) best = h
+    if (compareHistoryEntries(h, best) > 0) best = h
   }
   return best.status
 }
@@ -235,7 +240,10 @@ export function deduplicateJobs(jobs) {
       || primary.position
 
     const allHistory = group.flatMap(j => j.history || [])
-    allHistory.sort((a, b) => new Date(a.date) - new Date(b.date))
+    // Sort with the canonical comparator (not raw date) so same-day entries keep
+    // pipeline order after a merge — otherwise the flatMap's updated_at ordering
+    // can leave an earlier stage (todo) sitting after a later one (reviewing).
+    allHistory.sort(compareHistoryEntries)
 
     const seenHistory = new Set()
     const mergedHistory = allHistory.filter(h => {
@@ -763,7 +771,7 @@ export function deduplicateHistory(jobs) {
       }
     }
 
-    return { ...j, history: deduped.sort((a, b) => new Date(a.date) - new Date(b.date)) }
+    return { ...j, history: deduped.sort(compareHistoryEntries) }
   })
 }
 
