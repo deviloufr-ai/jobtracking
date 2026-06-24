@@ -31,6 +31,7 @@ import JobSearch from './components/JobSearch'
 import { getFlag, FLAGS, FLAGS_EVENT } from './services/featureFlags'
 import CVViewer from './components/CVViewer'
 import CVGenerator from './components/CVGenerator'
+import FloatingWindow from './components/FloatingWindow'
 import { useCVs } from './hooks/useCVs'
 import Settings from './components/Settings'
 import ImageImport from './components/ImageImport'
@@ -1228,11 +1229,12 @@ export default function App() {
       {emailDraft && <EmailDraft job={emailDraft.job} type={emailDraft.type} onClose={() => setEmailDraft(null)} onEmailSent={handleEmailSent} />}
       {viewingCV && <CVViewer job={viewingCV} onClose={() => setViewingCV(null)} />}
       {cvGenJob && baseCV && (
-        <div className="fixed inset-0 z-[60] bg-slate-100 overflow-y-auto">
-          <div className="max-w-screen-2xl mx-auto px-3 sm:px-6 py-4 min-h-screen">
-            <CVGenerator cv={baseCV} job={cvGenJob} onBack={() => setCvGenJob(null)} onSaveCV={updateJob} t={t} />
-          </div>
-        </div>
+        <FloatingWindow
+          title={`✨ ${cvGenJob.company} — ${cvGenJob.position}`}
+          onClose={() => setCvGenJob(null)}
+        >
+          <CVGenerator cv={baseCV} job={cvGenJob} onBack={() => setCvGenJob(null)} onSaveCV={updateJob} t={t} />
+        </FloatingWindow>
       )}
       {mergeModal && <MergeModal jobs={mergeModal} onConfirm={handleMergeConfirm} onCancel={() => setMergeModal(null)} t={t} />}
       {showOnboarding && <OnboardingModal onAddKey={handleOnboardingAddKey} onSkip={dismissOnboarding} t={t} />}
