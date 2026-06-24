@@ -68,12 +68,17 @@ CORE PRINCIPLE:
 ✓ DO NOT INVENT — use only actual achievements from the original CV
 ✓ EMPHASIZE the most relevant experience (more bullets), but still list every role
 ✓ CONDENSE older/less relevant roles to fewer bullets — never delete them
+✓ NEVER change the candidate's CONTACT DETAILS — copy the city/address, email,
+  phone and LinkedIn EXACTLY as written in the original CV. Do NOT relocate the
+  candidate to the job's city, do NOT translate or "localize" the address, do
+  NOT invent or guess any contact value. If a field is absent from the original
+  CV, leave it out entirely — never fabricate one.
 
 ═══════════════════════════════════════════════════════════════════════════════
 STRICT FORMAT RULES — ATS-Compatible:
 ═══════════════════════════════════════════════════════════════════════════════
 1. # Full Name
-2. Contact line: City · Email · Phone · LinkedIn (plain text, NO symbols)
+2. Contact line: City · Email · Phone · LinkedIn (plain text, NO symbols) — values copied VERBATIM from the original CV; never change the city/address
 3. ## Section Title (use standard names: Professional Experience, Technical Skills, Education, etc.)
 4. ### Job Title (e.g., Senior Product Manager)
 5. Company Name | Start Date – End Date | Location (pipe-separated, single line)
@@ -199,6 +204,7 @@ OUTPUT REQUIREMENTS:
 6. Skills: top 10-12 JD keywords, organized by category with proof
 7. Education: 1 line only (degree | certifications), or omit if not relevant
 8. CRITICAL: If the CV is long, CONDENSE bullets on older roles — never delete a role
+9. CRITICAL: Reproduce the candidate's name and contact line (city/address, email, phone, LinkedIn) EXACTLY as in the original CV — never relocate, translate, or invent any of them
 
 Priority order (in order):
 1. Score ≥ ${TARGET_SCORE} on JD relevance — truthfully mirror must-have keywords (CRITICAL)
