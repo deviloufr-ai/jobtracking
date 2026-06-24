@@ -130,118 +130,118 @@ function renderSimple(md) {
   }).join('')
 }
 
-// ── Shared: render one experience sub-block (title + company + dates + bullets) ──
-// Leaf lines and the block wrapper carry page-break-inside:avoid (+ .cv-block)
-// so html2pdf never slices a line in half across a page boundary.
-const NB = 'page-break-inside:avoid'
-function expBlock(block, styles) {
+// ── Shared block/section renderers (consistent pagination across templates) ──
+// A role is split into a "head" unit (title + company/dates + first bullet) that
+// is kept together — so a heading never sits alone at the foot of a page — plus
+// "tail" bullets that flow to the next page individually. Each leaf line carries
+// .cv-block so html2pdf never slices a line in half, while page breaks fall
+// cleanly *between* bullets — no more large gaps from refusing to break inside a
+// whole tall role block.
+function blockParts(block, s) {
   if (block.standalone) {
     const it = block.standalone
-    if (it.type === 'p')  return `<div class="cv-block" style="${styles.p};${NB}">${fmt(it.text)}</div>`
-    if (it.type === 'li') return `<div class="cv-block" style="${styles.li};${NB}">${styles.bullet} ${fmt(it.text)}</div>`
-    return ''
+    const html = it.type === 'li'
+      ? `<div class="cv-block" style="${s.li}">${s.bullet} ${fmt(it.text)}</div>`
+      : `<div class="cv-block" style="${s.p}">${fmt(it.text)}</div>`
+    return { head: html, tail: [], wrap: '' }
   }
   const company = block.meta[0] || ''
   const dates   = block.meta[1] || ''
   const extra   = block.meta.slice(2)
-  const bullets = block.bullets
-
-  // Company + dates on one row: company left, dates right as a pill
-  const metaRow = (company || dates) ? `
-    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:1px 0 2px;flex-wrap:wrap">
-      ${company ? `<span style="${styles.company}">${fmt(company)}</span>` : '<span></span>'}
-      ${dates   ? `<span style="${styles.dates}">${fmt(formatDateRange(dates))}</span>` : ''}
-    </div>` : ''
-
-  return `
-    <div class="cv-block" style="${styles.block};${NB}">
-      ${block.title ? `<div style="${styles.title}">${fmt(block.title)}</div>` : ''}
-      ${metaRow}
-      ${extra.map(t => `<div style="${styles.p};${NB}">${fmt(t)}</div>`).join('')}
-      ${bullets.map(t => `<div style="${styles.li};${NB}">${styles.bullet} ${fmt(t)}</div>`).join('')}
-    </div>`
+  const bullets = block.bullets.map(t => `<div class="cv-block" style="${s.li}">${s.bullet} ${fmt(t)}</div>`)
+  const head = [
+    block.title ? `<div style="${s.title}">${fmt(block.title)}</div>` : '',
+    s.metaRow ? s.metaRow(company, dates) : '',
+    ...extra.map(t => `<div style="${s.p}">${fmt(t)}</div>`),
+    bullets[0] || '',
+  ].join('')
+  return { head, tail: bullets.slice(1), wrap: s.block }
 }
 
-// ── Shared: render a section so its header is never orphaned ───────────────────
-// Glue the header to its first item in one no-break unit, then flow the rest.
-function glueSection(wrapperStyle, headerHTML, items) {
-  const list  = items.filter(Boolean)
-  const first = list[0] || ''
-  const rest  = list.slice(1).join('')
-  return `<div style="${wrapperStyle}"><div class="cv-block" style="${NB}">${headerHTML}${first}</div>${rest}</div>`
+// Render a section: glue the section header to the first role's head unit so a
+// header is never orphaned, then let later roles/bullets flow across pages.
+function renderSection(headerHTML, blocks, s, sectionWrap) {
+  const parts = blocks.map((b, i) => {
+    const { head, tail, wrap } = blockParts(b, s)
+    const glued = i === 0 ? headerHTML + head : head
+    return `<div style="${wrap}"><div class="cv-block">${glued}</div>${tail.join('')}</div>`
+  })
+  return `<div style="${sectionWrap}">${parts.join('')}</div>`
 }
 
 // ── Template: MODERN ─────────────────────────────────────────────────────────
 function renderModern(md, pic) {
   const { name, contact, sections } = parseCV(md)
 
-  const expStyles = {
-    block:   'page-break-inside:avoid;margin-bottom:5px;padding-bottom:0px',
-    title:   'font-size:11pt;font-weight:900;color:#0f172a;margin:0;page-break-after:avoid;letter-spacing:-0.01em',
-    company: 'font-size:9.5pt;font-weight:700;color:#4f46e5;letter-spacing:0.01em',
-    dates:   'font-size:8pt;color:#fff;background:#94a3b8;border-radius:999px;padding:1px 8px;white-space:nowrap;font-style:normal',
-    p:       'font-size:9pt;color:#475569;margin:2px 0',
-    li:      'font-size:9.5pt;color:#334155;padding-left:14px;margin:2px 0;line-height:1.45',
+  const s = {
+    block:   'margin-bottom:13px',
+    title:   'font-size:12pt;font-weight:800;color:#0f172a;margin:0 0 1px;letter-spacing:-0.01em;page-break-after:avoid',
+    p:       'font-size:9.5pt;color:#475569;margin:3px 0;line-height:1.5',
+    li:      'font-size:10pt;color:#1e293b;padding-left:16px;text-indent:-16px;margin:4px 0;line-height:1.5',
     bullet:  '▸',
+    metaRow: (company, dates) => (company || dates) ? `
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 5px;flex-wrap:wrap">
+        ${company ? `<span style="font-size:10pt;font-weight:700;color:#4f46e5">${fmt(company)}</span>` : '<span></span>'}
+        ${dates ? `<span style="font-size:8.5pt;color:#fff;background:#94a3b8;border-radius:999px;padding:2px 9px;white-space:nowrap">${fmt(formatDateRange(dates))}</span>` : ''}
+      </div>` : '',
   }
 
   const header = `
-    <div style="background:linear-gradient(135deg,#4338ca 0%,#6366f1 60%,#818cf8 100%);padding:26px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px">
+    <div style="background:linear-gradient(135deg,#4338ca 0%,#6366f1 60%,#818cf8 100%);padding:30px 46px;display:flex;align-items:center;justify-content:space-between;gap:22px">
       <div style="flex:1;min-width:0">
-        <div style="font-size:22pt;font-weight:900;color:#fff;letter-spacing:-0.02em;line-height:1.1;margin-bottom:5px">${name}</div>
-        ${contact ? `<div style="font-size:8.5pt;color:#c7d2fe;letter-spacing:0.03em;line-height:1.3">${contact}</div>` : ''}
+        <div style="font-size:24pt;font-weight:900;color:#fff;letter-spacing:-0.02em;line-height:1.1;margin-bottom:7px">${name}</div>
+        ${contact ? `<div style="font-size:9pt;color:#c7d2fe;letter-spacing:0.02em;line-height:1.5">${contact}</div>` : ''}
       </div>
-      ${picHTML(pic, 84, 'rgba(255,255,255,0.3)')}
+      ${picHTML(pic, 88, 'rgba(255,255,255,0.3)')}
     </div>`
 
-  const body = sections.map(s => {
-    const blocks = groupBlocks(s.items)
-    const items  = blocks.map(b => expBlock(b, expStyles))
+  const body = sections.map(sec => {
     const headerHTML = `
-        <div style="display:flex;align-items:center;gap:10px;margin:3px 0 2px;page-break-after:avoid">
-          <div style="width:3px;height:14px;background:linear-gradient(180deg,#6366f1,#818cf8);border-radius:2px;flex-shrink:0"></div>
-          <div style="font-size:7.5pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.08em">${s.title}</div>
+        <div style="display:flex;align-items:center;gap:10px;margin:0 0 8px;page-break-after:avoid">
+          <div style="width:4px;height:15px;background:linear-gradient(180deg,#6366f1,#818cf8);border-radius:2px;flex-shrink:0"></div>
+          <div style="font-size:9pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.1em">${sec.title}</div>
           <div style="flex:1;height:1px;background:#e0e7ff"></div>
         </div>`
-    return glueSection('margin-bottom:2px', headerHTML, items)
+    return renderSection(headerHTML, groupBlocks(sec.items), s, 'margin-bottom:15px')
   }).join('')
 
-  return `${header}<div style="padding:3px 16px 5px">${body}</div>`
+  return `${header}<div style="padding:20px 46px 24px">${body}</div>`
 }
 
 // ── Template: CLASSIC ─────────────────────────────────────────────────────────
 function renderClassic(md, pic) {
   const { name, contact, sections } = parseCV(md)
 
-  const expStyles = {
-    block:   'page-break-inside:avoid;margin-bottom:5px;padding-bottom:0px',
-    title:   'font-size:11pt;font-weight:900;color:#0f172a;margin:0;page-break-after:avoid;letter-spacing:-0.01em',
-    company: 'font-size:9.5pt;font-weight:700;color:#1e40af;letter-spacing:0.01em',
-    dates:   'font-size:8pt;color:#64748b;background:#f1f5f9;border-radius:999px;padding:1px 8px;white-space:nowrap;border:1px solid #e2e8f0',
-    p:       'font-size:9pt;color:#475569;margin:2px 0',
-    li:      'font-size:9.5pt;color:#1e293b;padding-left:14px;margin:2px 0;line-height:1.45',
+  const s = {
+    block:   'margin-bottom:13px',
+    title:   'font-size:12pt;font-weight:800;color:#0f172a;margin:0 0 1px;letter-spacing:-0.01em;page-break-after:avoid',
+    p:       'font-size:9.5pt;color:#475569;margin:3px 0;line-height:1.5',
+    li:      'font-size:10pt;color:#1e293b;padding-left:16px;text-indent:-16px;margin:4px 0;line-height:1.5',
     bullet:  '–',
+    metaRow: (company, dates) => (company || dates) ? `
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 5px;flex-wrap:wrap">
+        ${company ? `<span style="font-size:10pt;font-weight:700;color:#1e40af">${fmt(company)}</span>` : '<span></span>'}
+        ${dates ? `<span style="font-size:8.5pt;color:#64748b;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:2px 9px;white-space:nowrap">${fmt(formatDateRange(dates))}</span>` : ''}
+      </div>` : '',
   }
 
   const header = `
-    <div style="text-align:center;padding:26px 24px 14px;border-bottom:2.5px solid #0f172a">
-      ${pic ? `<div style="display:flex;justify-content:center;margin-bottom:10px">${picHTML(pic, 76, '#94a3b8')}</div>` : ''}
-      <div style="font-size:21pt;font-weight:900;color:#0f172a;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:5px">${name}</div>
-      ${contact ? `<div style="font-size:8.5pt;color:#64748b;letter-spacing:0.06em;line-height:1.3">${contact}</div>` : ''}
+    <div style="text-align:center;padding:30px 46px 18px;border-bottom:2.5px solid #0f172a">
+      ${pic ? `<div style="display:flex;justify-content:center;margin-bottom:12px">${picHTML(pic, 80, '#94a3b8')}</div>` : ''}
+      <div style="font-size:22pt;font-weight:900;color:#0f172a;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:7px">${name}</div>
+      ${contact ? `<div style="font-size:9pt;color:#64748b;letter-spacing:0.04em;line-height:1.5">${contact}</div>` : ''}
     </div>`
 
-  const body = sections.map(s => {
-    const blocks = groupBlocks(s.items)
-    const items  = blocks.map(b => expBlock(b, expStyles))
+  const body = sections.map(sec => {
     const headerHTML = `
-        <div style="display:flex;align-items:center;gap:12px;margin:5px 0 4px;page-break-after:avoid">
-          <div style="font-size:8pt;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.12em;white-space:nowrap">${s.title}</div>
+        <div style="display:flex;align-items:center;gap:12px;margin:0 0 8px;page-break-after:avoid">
+          <div style="font-size:9.5pt;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.14em;white-space:nowrap">${sec.title}</div>
           <div style="flex:1;height:1px;background:#94a3b8"></div>
         </div>`
-    return glueSection('margin-bottom:3px', headerHTML, items)
+    return renderSection(headerHTML, groupBlocks(sec.items), s, 'margin-bottom:15px')
   }).join('')
 
-  return `${header}<div style="padding:3px 16px 5px">${body}</div>`
+  return `${header}<div style="padding:20px 46px 24px">${body}</div>`
 }
 
 // ── Template: EXECUTIVE (two-column sidebar) ──────────────────────────────────
@@ -256,54 +256,52 @@ function renderExecutive(md, pic) {
   const effectiveSidebar = sidebarSecs.length > 0 ? sidebarSecs : sections.slice(0, 1)
   const effectiveMain    = sidebarSecs.length > 0 ? mainSecs    : sections.slice(1)
 
-  const sidebarExpStyles = {
-    block:   'margin-bottom:4px;padding-bottom:0px',
-    title:   'font-size:8.5pt;font-weight:800;color:#f1f5f9;margin:0;page-break-after:avoid',
-    company: 'font-size:8pt;font-weight:700;color:#818cf8;letter-spacing:0.01em',
-    dates:   'font-size:7.5pt;color:#475569;background:#0f172a;border-radius:999px;padding:1px 6px;white-space:nowrap;border:1px solid #334155',
-    p:       'font-size:8pt;color:#94a3b8;margin:1px 0',
-    li:      'font-size:8pt;color:#cbd5e1;padding-left:8px;margin:1px 0;line-height:1.4',
+  const sideS = {
+    block:   'margin-bottom:9px',
+    title:   'font-size:9pt;font-weight:800;color:#f1f5f9;margin:0 0 1px;page-break-after:avoid',
+    p:       'font-size:8.5pt;color:#cbd5e1;margin:2px 0;line-height:1.5',
+    li:      'font-size:8.5pt;color:#cbd5e1;padding-left:11px;text-indent:-11px;margin:3px 0;line-height:1.45',
     bullet:  '·',
+    metaRow: (company, dates) => `${company ? `<div style="font-size:8pt;font-weight:700;color:#a5b4fc;margin:0 0 1px">${fmt(company)}</div>` : ''}${dates ? `<div style="font-size:7.5pt;color:#94a3b8;margin:0 0 2px">${fmt(formatDateRange(dates))}</div>` : ''}`,
   }
 
-  const mainExpStyles = {
-    block:   'page-break-inside:avoid;margin-bottom:5px;padding-bottom:0px',
-    title:   'font-size:11pt;font-weight:900;color:#0f172a;margin:0;page-break-after:avoid;letter-spacing:-0.01em',
-    company: 'font-size:9.5pt;font-weight:700;color:#4338ca;letter-spacing:0.01em',
-    dates:   'font-size:8pt;color:#fff;background:#94a3b8;border-radius:999px;padding:1px 8px;white-space:nowrap',
-    p:       'font-size:9pt;color:#475569;margin:2px 0',
-    li:      'font-size:9.5pt;color:#1e293b;padding-left:12px;margin:2px 0;line-height:1.45',
+  const mainS = {
+    block:   'margin-bottom:13px',
+    title:   'font-size:12pt;font-weight:800;color:#0f172a;margin:0 0 1px;letter-spacing:-0.01em;page-break-after:avoid',
+    p:       'font-size:9.5pt;color:#475569;margin:3px 0;line-height:1.5',
+    li:      'font-size:10pt;color:#1e293b;padding-left:16px;text-indent:-16px;margin:4px 0;line-height:1.5',
     bullet:  '▹',
+    metaRow: (company, dates) => (company || dates) ? `
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 5px;flex-wrap:wrap">
+        ${company ? `<span style="font-size:10pt;font-weight:700;color:#4338ca">${fmt(company)}</span>` : '<span></span>'}
+        ${dates ? `<span style="font-size:8.5pt;color:#fff;background:#94a3b8;border-radius:999px;padding:2px 9px;white-space:nowrap">${fmt(formatDateRange(dates))}</span>` : ''}
+      </div>` : '',
   }
 
-  const sidebarSection = s => {
-    const blocks = groupBlocks(s.items)
-    const items  = blocks.map(b => expBlock(b, sidebarExpStyles))
-    const headerHTML = `<div style="font-size:7pt;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:#818cf8;padding-bottom:4px;margin-bottom:4px">${s.title}</div>`
-    return glueSection('margin-bottom:8px', headerHTML, items)
-  }
+  const sidebarHTML = effectiveSidebar.map(sec => {
+    const headerHTML = `<div style="font-size:8pt;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:#a5b4fc;border-bottom:1px solid #334155;padding-bottom:4px;margin:0 0 6px;page-break-after:avoid">${sec.title}</div>`
+    return renderSection(headerHTML, groupBlocks(sec.items), sideS, 'margin-bottom:14px')
+  }).join('')
 
-  const mainSection = s => {
-    const blocks = groupBlocks(s.items)
-    const items  = blocks.map(b => expBlock(b, mainExpStyles))
-    const headerHTML = `<div style="font-size:8pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.1em;margin:5px 0 4px;padding-bottom:0px;page-break-after:avoid">${s.title}</div>`
-    return glueSection('margin-bottom:3px', headerHTML, items)
-  }
+  const mainHTML = effectiveMain.map(sec => {
+    const headerHTML = `<div style="font-size:9pt;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:0.1em;border-bottom:1.5px solid #e0e7ff;padding-bottom:4px;margin:0 0 8px;page-break-after:avoid">${sec.title}</div>`
+    return renderSection(headerHTML, groupBlocks(sec.items), mainS, 'margin-bottom:15px')
+  }).join('')
 
   return `
     <table style="width:100%;border-collapse:collapse;table-layout:fixed">
-      <colgroup><col style="width:205px"/><col/></colgroup>
+      <colgroup><col style="width:210px"/><col/></colgroup>
       <tr>
-        <td style="background:#1e293b;padding:18px 14px 18px;vertical-align:top">
-          ${pic ? `<div style="display:flex;justify-content:center;margin-bottom:12px">${picHTML(pic, 72, 'rgba(255,255,255,0.2)')}</div>` : ''}
-          <div style="margin-bottom:16px">
-            <div style="font-size:12.5pt;font-weight:900;color:#fff;line-height:1.15;margin-bottom:5px">${name}</div>
-            ${contact ? `<div style="font-size:7.5pt;color:#94a3b8;line-height:1.7">${contact.split(' · ').join('<br>')}</div>` : ''}
+        <td style="background:#1e293b;padding:26px 22px;vertical-align:top">
+          ${pic ? `<div style="display:flex;justify-content:center;margin-bottom:16px">${picHTML(pic, 80, 'rgba(255,255,255,0.2)')}</div>` : ''}
+          <div style="margin-bottom:20px">
+            <div style="font-size:14pt;font-weight:900;color:#fff;line-height:1.2;margin-bottom:7px">${name}</div>
+            ${contact ? `<div style="font-size:8pt;color:#94a3b8;line-height:1.8">${contact.split(' · ').join('<br>')}</div>` : ''}
           </div>
-          ${effectiveSidebar.map(sidebarSection).join('')}
+          ${sidebarHTML}
         </td>
-        <td style="padding:18px 18px 18px;vertical-align:top;background:#fff">
-          ${effectiveMain.map(mainSection).join('')}
+        <td style="padding:26px 42px 26px 30px;vertical-align:top;background:#fff">
+          ${mainHTML}
         </td>
       </tr>
     </table>`
@@ -312,95 +310,64 @@ function renderExecutive(md, pic) {
 // ── Template: STANDARD (Multi-page, visually attractive, ATS-optimized) ────
 // Horizontal page margins come from this template's padding (consistent on
 // every page). Top/bottom page margins come from html2pdf's `margin` option.
-const STD_SIDE = '52px'  // ≈ 13.8mm side margin on a 210mm-wide A4 element
+const STD_SIDE = '56px'  //≈ 13.8mm side margin on a 210mm-wide A4 element
 
 function renderStandard(md, pic) {
   const { name, contact, sections } = parseCV(md)
 
-  const expStyles = {
-    block:   'margin-bottom:13px;page-break-inside:avoid',
-    title:   'font-size:11.5pt;font-weight:800;color:#0f172a;margin:0 0 1px 0;page-break-after:avoid;letter-spacing:-0.01em',
-    company: 'font-size:9.5pt;font-weight:700;color:#1e40af;display:inline',
-    dates:   'font-size:9pt;color:#64748b;font-weight:600;display:inline',
-    p:       'font-size:9.5pt;color:#334155;margin:5px 0;line-height:1.55;page-break-inside:avoid',
-    li:      'font-size:9.5pt;color:#1e293b;margin:5px 0;line-height:1.5;padding-left:1.1em;text-indent:-1.1em;page-break-inside:avoid',
+  const s = {
+    block:   'margin-bottom:15px',
+    title:   'font-size:12pt;font-weight:800;color:#0f172a;margin:0 0 2px;letter-spacing:-0.01em;page-break-after:avoid',
+    p:       'font-size:10pt;color:#334155;margin:5px 0;line-height:1.55',
+    li:      'font-size:10pt;color:#1e293b;margin:5px 0;line-height:1.5;padding-left:1.2em;text-indent:-1.2em',
+    metaRow: (company, dates) => (company || dates) ? `<div style="margin:0 0 7px">${company ? `<span style="font-size:10pt;font-weight:700;color:#1e40af">${fmt(company)}</span>` : ''}${(company && dates) ? `<span style="color:#cbd5e1;margin:0 8px">|</span>` : ''}${dates ? `<span style="font-size:9.5pt;color:#64748b;font-weight:600">${fmt(formatDateRange(dates))}</span>` : ''}</div>` : '',
     bullet:  '– ',
   }
 
   const header = `
-    <div style="padding:24px ${STD_SIDE} 14px;border-bottom:2.5px solid #0f172a">
-      <div style="font-size:23pt;font-weight:900;color:#0f172a;margin-bottom:7px;line-height:1.05;letter-spacing:-0.02em">${name}</div>
-      ${contact ? `<div style="font-size:8.5pt;color:#64748b;line-height:1.6;letter-spacing:0.02em;font-weight:500">${contact}</div>` : ''}
+    <div style="padding:28px ${STD_SIDE} 16px;border-bottom:2.5px solid #0f172a">
+      <div style="font-size:24pt;font-weight:900;color:#0f172a;margin-bottom:8px;line-height:1.05;letter-spacing:-0.02em">${name}</div>
+      ${contact ? `<div style="font-size:9pt;color:#64748b;line-height:1.6;letter-spacing:0.01em;font-weight:500">${contact}</div>` : ''}
     </div>`
 
-  const body = sections.map(s => {
-    const blocks = groupBlocks(s.items)
-    const items  = blocks.map(b => {
-      if (b.standalone) {
-        const it = b.standalone
-        if (it.type === 'p')  return `<div style="${expStyles.p}">${fmt(it.text)}</div>`
-        if (it.type === 'li') return `<div style="${expStyles.li}">${expStyles.bullet}${fmt(it.text)}</div>`
-        return ''
-      }
-      const company = b.meta[0] || ''
-      const dates   = b.meta[1] || ''
-      const extra   = b.meta.slice(2)
-      const bullets = b.bullets
-      return `
-        <div class="cv-block" style="${expStyles.block}">
-          ${b.title ? `<div style="${expStyles.title}">${fmt(b.title)}</div>` : ''}
-          ${(company || dates) ? `<div style="margin:0 0 6px 0">${company ? `<span style="${expStyles.company}">${fmt(company)}</span>` : ''}${(company && dates) ? `<span style="color:#cbd5e1;margin:0 7px">|</span>` : ''}${dates ? `<span style="${expStyles.dates}">${fmt(dates)}</span>` : ''}</div>` : ''}
-          ${extra.map(t => `<div style="${expStyles.p}">${fmt(t)}</div>`).join('')}
-          ${bullets.map(t => `<div style="${expStyles.li}">${expStyles.bullet}${fmt(t)}</div>`).join('')}
-        </div>`
-    }).filter(Boolean)
-
-    const sectionTitle = `<div style="font-size:10pt;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:10px;padding-bottom:5px;border-bottom:1.5px solid #cbd5e1">${s.title}</div>`
-
-    // Glue the section header to its first item so a header is never orphaned
-    // at the bottom of a page.
-    const firstUnit = `<div class="cv-block" style="page-break-inside:avoid">${sectionTitle}${items[0] || ''}</div>`
-    const rest      = items.slice(1).join('')
-
-    return `<div style="margin-top:18px">${firstUnit}${rest}</div>`
+  const body = sections.map(sec => {
+    const headerHTML = `<div style="font-size:10.5pt;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 10px;padding-bottom:5px;border-bottom:1.5px solid #cbd5e1;page-break-after:avoid">${sec.title}</div>`
+    return renderSection(headerHTML, groupBlocks(sec.items), s, 'margin-top:20px')
   }).join('')
 
-  return `${header}<div style="padding:6px ${STD_SIDE} 8px;font-family:Arial,Helvetica,sans-serif">${body}</div>`
+  return `${header}<div style="padding:8px ${STD_SIDE} 12px;font-family:Arial,Helvetica,sans-serif">${body}</div>`
 }
 
 // ── Template: MINIMAL ────────────────────────────────────────────────────────
 function renderMinimal(md, pic) {
   const { name, contact, sections } = parseCV(md)
 
-  const expStyles = {
-    block:   'margin-bottom:4px;padding-bottom:3px',
-    title:   'font-size:10pt;font-weight:800;color:#1e293b;margin:0;margin-bottom:2px',
-    company: 'font-size:9pt;font-weight:700;color:#334155;margin-bottom:1px',
-    dates:   'font-size:8pt;color:#666;font-style:italic;margin-bottom:2px',
-    p:       'font-size:8.5pt;color:#334155;margin:2px 0;line-height:1.35',
-    li:      'font-size:8.5pt;color:#334155;padding-left:12px;margin:2px 0;line-height:1.4',
+  const s = {
+    block:   'margin-bottom:9px',
+    title:   'font-size:10.5pt;font-weight:800;color:#111827;margin:0 0 1px;page-break-after:avoid',
+    p:       'font-size:9pt;color:#374151;margin:2px 0;line-height:1.45',
+    li:      'font-size:9pt;color:#374151;padding-left:13px;text-indent:-13px;margin:3px 0;line-height:1.45',
     bullet:  '•',
+    metaRow: (company, dates) => `${company ? `<div style="font-size:9pt;font-weight:700;color:#374151;margin:0">${fmt(company)}</div>` : ''}${dates ? `<div style="font-size:8pt;color:#6b7280;font-style:italic;margin:0 0 2px">${fmt(formatDateRange(dates))}</div>` : ''}`,
   }
 
   const header = `
-    <div style="padding:16px 24px;border-bottom:1.5px solid #d1d5db">
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:4px">
-        ${pic ? `<div>${picHTML(pic, 52, '#d1d5db')}</div>` : ''}
+    <div style="padding:22px 42px 16px;border-bottom:1.5px solid #d1d5db">
+      <div style="display:flex;align-items:center;gap:16px">
+        ${pic ? `<div>${picHTML(pic, 56, '#d1d5db')}</div>` : ''}
         <div>
-          <div style="font-size:17pt;font-weight:900;color:#000;margin:0">${name}</div>
-          ${contact ? `<div style="font-size:8pt;color:#666;margin-top:2px;line-height:1.4">${contact}</div>` : ''}
+          <div style="font-size:18pt;font-weight:900;color:#000;margin:0;letter-spacing:-0.01em">${name}</div>
+          ${contact ? `<div style="font-size:8.5pt;color:#6b7280;margin-top:3px;line-height:1.5">${contact}</div>` : ''}
         </div>
       </div>
     </div>`
 
-  const body = sections.map(s => {
-    const blocks = groupBlocks(s.items)
-    const items  = blocks.map(b => expBlock(b, expStyles))
-    const headerHTML = `<div style="font-size:9.5pt;font-weight:800;color:#000;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;border-bottom:1.5px solid #e5e7eb;padding-bottom:2px">${s.title}</div>`
-    return glueSection('margin:9px 0;padding-bottom:2px', headerHTML, items)
+  const body = sections.map(sec => {
+    const headerHTML = `<div style="font-size:9.5pt;font-weight:800;color:#000;text-transform:uppercase;letter-spacing:0.08em;border-bottom:1.5px solid #e5e7eb;padding-bottom:3px;margin:0 0 6px;page-break-after:avoid">${sec.title}</div>`
+    return renderSection(headerHTML, groupBlocks(sec.items), s, 'margin-bottom:12px')
   }).join('')
 
-  return `${header}<div style="padding:12px 24px 14px">${body}</div>`
+  return `${header}<div style="padding:16px 42px 18px">${body}</div>`
 }
 
 // ── Template registry ─────────────────────────────────────────────────────────
