@@ -600,21 +600,23 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
       }
     }
 
+    // html2canvas can only measure an element that's actually laid out in the
+    // document — a detached node reports zero height and yields a blank/failed
+    // render. Mount it off-screen for the duration of the export, then remove
+    // it. We use html2pdf's own .save() so the browser's download isn't aborted
+    // by an over-eager URL.revokeObjectURL (the previous blob path's bug).
+    element.style.position = 'fixed'
+    element.style.left = '-10000px'
+    element.style.top = '0'
+    document.body.appendChild(element)
+
     try {
-      import('html2pdf.js')
-        .then(({ default: html2pdf }) =>
-          html2pdf().set(options).from(element).output('blob'))
-        .then(blob => {
-          const url = URL.createObjectURL(blob)
-          const link = document.createElement('a')
-          link.href = url
-          link.download = `${filename}.pdf`
-          link.click()
-          URL.revokeObjectURL(url)
-        })
-        .catch(err => console.error('PDF export error:', err))
+      const { default: html2pdf } = await import('html2pdf.js')
+      await html2pdf().set(options).from(element).save()
     } catch (err) {
       console.error('PDF export error:', err)
+    } finally {
+      element.remove()
     }
   }
 
