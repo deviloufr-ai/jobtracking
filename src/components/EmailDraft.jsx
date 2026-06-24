@@ -9,6 +9,15 @@ function loadProfile() {
   try { const r = localStorage.getItem('jobtrackr_profile'); return r ? JSON.parse(r) : null } catch { return null }
 }
 
+// Build a deterministic signature block from the profile so contact details are
+// always correct (never invented by the model). Closing line is localized.
+function buildSignature(profile, lang) {
+  const closing = lang === 'en' ? 'Best regards,' : 'Cordialement,'
+  return [closing, profile?.name, profile?.title, profile?.phone, profile?.linkedin]
+    .filter(Boolean)
+    .join('\n')
+}
+
 export const NO_REPLY_RE = /^(no[-_.]?reply|noreply|do[-_.]?not[-_.]?reply|donotreply|notifications?|alerts?|mailer[-_.]?daemon|postmaster|bounce|auto[-_.]?reply|automessage)@/i
 
 export function isNoReply(email) {
@@ -94,70 +103,86 @@ export function extractRecruiterName(job) {
 
 const PROMPTS = {
   remerciement: {
-    fr: (job, profile, refusal, recruiterName) => `Rédige un email de remerciement après un refus de candidature pour le poste de ${job.position} chez ${job.company}.
+    fr: (job, profile, refusal, recruiterName) => `Rédige la salutation et le corps d'un email de remerciement après un refus de candidature pour le poste de ${job.position} chez ${job.company}.
 
 Candidat : ${profile?.name || 'le candidat'}${recruiterName ? `\nRecruteur : ${recruiterName}` : ''}
 ${refusal ? `\nMessage de refus reçu (appuie-toi dessus pour rebondir sur la raison évoquée ou l'étape franchie, SANS le citer mot pour mot) :\n"""\n${refusal}\n"""\n` : ''}
-Règles strictes :
-- 3 à 4 phrases maximum — court et percutant
-- ${recruiterName ? `Commence par une salutation avec le prénom du recruteur (ex: "Bonjour ${recruiterName.split(' ')[0]},")` : 'Commence par une salutation simple (ex: "Bonjour,")'}
-- Remercie pour le temps accordé et le retour
-${refusal ? '- Rebondis subtilement sur un élément concret du message de refus (raison donnée, étape passée) pour montrer que tu as lu et compris' : ''}
-- Exprime brièvement que l'entreprise reste attractive à long terme
-- Demande subtilement un feedback si possible
-- Termine par une formule de congé simple et directe
-- Ton professionnel mais humain — pas de formules creuses RH
-- INTERDIT : tirets longs (—), "Je me permets", "N'hésitez pas", "Fort de"
-- Signe uniquement avec le prénom (${profile?.name?.split(' ')[0] || 'le prénom'})
+FORMAT (respecte-le scrupuleusement) :
+- Ligne 1 : ${recruiterName ? `salutation avec le prénom du recruteur (ex: "Bonjour ${recruiterName.split(' ')[0]},")` : 'salutation simple (ex: "Bonjour,")'}
+- Une ligne vide
+- Le corps en 2 ou 3 paragraphes courts, séparés par une ligne vide
 
-Réponds avec l'email uniquement, sans objet ni mise en forme.`,
-    en: (job, profile, refusal, recruiterName) => `Write a thank-you email after a job rejection for the ${job.position} role at ${job.company}.
+Contenu du corps :
+- Remercie pour le temps accordé et le retour
+${refusal ? '- Rebondis sur un élément concret du message de refus (raison donnée, étape franchie) pour montrer que tu as lu et compris' : ''}
+- Exprime que l'entreprise reste attractive et que tu resterais ouvert à de futures opportunités
+- Demande subtilement un retour constructif sur ta candidature
+
+Ton professionnel mais humain, pas de formules creuses RH.
+INTERDIT : tirets longs (—), "Je me permets", "N'hésitez pas", "Fort de".
+N'ajoute NI formule de politesse finale (pas de "Cordialement") NI signature : elles seront ajoutées automatiquement.
+
+Réponds avec la salutation et le corps uniquement, sans objet.`,
+    en: (job, profile, refusal, recruiterName) => `Write the greeting and body of a thank-you email after a job rejection for the ${job.position} role at ${job.company}.
 
 Candidate: ${profile?.name || 'the candidate'}${recruiterName ? `\nRecruiter: ${recruiterName}` : ''}
 ${refusal ? `\nRejection message received (use it to rebound on the reason given or the stage reached, WITHOUT quoting it verbatim):\n"""\n${refusal}\n"""\n` : ''}
-Strict rules:
-- 3 to 4 sentences maximum — short and impactful
-- ${recruiterName ? `Open with a greeting using the recruiter's first name (e.g. "Hi ${recruiterName.split(' ')[0]},")` : 'Open with a simple greeting (e.g. "Hello,")'}
-- Thank them for their time and the update
-${refusal ? '- Subtly rebound on a concrete element from the rejection message (reason given, stage passed) to show you read and understood it' : ''}
-- Briefly express that the company remains attractive long-term
-- Subtly ask for feedback if possible
-- End with a simple, direct closing
-- Professional but human tone — no hollow HR phrases
-- FORBIDDEN: em dashes (—), "Please don't hesitate", "I take the liberty"
-- Sign with first name only (${profile?.name?.split(' ')[0] || 'first name'})
+FORMAT (follow it exactly):
+- Line 1: ${recruiterName ? `greeting using the recruiter's first name (e.g. "Hi ${recruiterName.split(' ')[0]},")` : 'a simple greeting (e.g. "Hello,")'}
+- One blank line
+- The body in 2 or 3 short paragraphs, separated by a blank line
 
-Reply with the email only, no subject line or formatting.`,
+Body content:
+- Thank them for their time and the update
+${refusal ? '- Rebound on a concrete element from the rejection message (reason given, stage reached) to show you read and understood it' : ''}
+- Express that the company remains attractive and that you would stay open to future opportunities
+- Subtly ask for constructive feedback on your application
+
+Professional but human tone, no hollow HR phrases.
+FORBIDDEN: em dashes (—), "Please don't hesitate", "I take the liberty".
+Do NOT add a closing line (no "Best regards") or a signature: they will be appended automatically.
+
+Reply with the greeting and body only, no subject line.`,
   },
   relance: {
-    fr: (job, profile, refusal, recruiterName) => `Rédige un email de relance pour une candidature sans réponse depuis plusieurs semaines pour le poste de ${job.position} chez ${job.company}.
+    fr: (job, profile, refusal, recruiterName) => `Rédige la salutation et le corps d'un email de relance pour une candidature sans réponse depuis plusieurs semaines pour le poste de ${job.position} chez ${job.company}.
 
 Candidat : ${profile?.name || 'le candidat'}${recruiterName ? `\nRecruteur : ${recruiterName}` : ''}
 
-Règles strictes :
-- 3 phrases maximum — bref et direct
-- ${recruiterName ? `Commence par une salutation avec le prénom du recruteur (ex: "Bonjour ${recruiterName.split(' ')[0]},")` : 'Commence par une salutation simple (ex: "Bonjour,")'}
+FORMAT (respecte-le scrupuleusement) :
+- Ligne 1 : ${recruiterName ? `salutation avec le prénom du recruteur (ex: "Bonjour ${recruiterName.split(' ')[0]},")` : 'salutation simple (ex: "Bonjour,")'}
+- Une ligne vide
+- Le corps en 2 paragraphes courts, séparés par une ligne vide
+
+Contenu du corps :
 - Rappelle ta candidature avec la date approximative
 - Réaffirme ton intérêt de manière concrète (1 élément spécifique sur l'entreprise)
-- Demande une mise à jour sur le statut
-- INTERDIT : tirets longs, formules creuses, "Je me permets de relancer"
-- Signe avec le prénom uniquement
+- Demande une mise à jour sur le statut de ta candidature
 
-Réponds avec l'email uniquement, sans objet ni mise en forme.`,
-    en: (job, profile, refusal, recruiterName) => `Write a follow-up email for a job application with no response after several weeks for the ${job.position} role at ${job.company}.
+Ton professionnel, bref et direct.
+INTERDIT : tirets longs (—), formules creuses, "Je me permets de relancer".
+N'ajoute NI formule de politesse finale NI signature : elles seront ajoutées automatiquement.
+
+Réponds avec la salutation et le corps uniquement, sans objet.`,
+    en: (job, profile, refusal, recruiterName) => `Write the greeting and body of a follow-up email for a job application with no response after several weeks for the ${job.position} role at ${job.company}.
 
 Candidate: ${profile?.name || 'the candidate'}${recruiterName ? `\nRecruiter: ${recruiterName}` : ''}
 
-Strict rules:
-- 3 sentences maximum — brief and direct
-- ${recruiterName ? `Open with a greeting using the recruiter's first name (e.g. "Hi ${recruiterName.split(' ')[0]},")` : 'Open with a simple greeting (e.g. "Hello,")'}
+FORMAT (follow it exactly):
+- Line 1: ${recruiterName ? `greeting using the recruiter's first name (e.g. "Hi ${recruiterName.split(' ')[0]},")` : 'a simple greeting (e.g. "Hello,")'}
+- One blank line
+- The body in 2 short paragraphs, separated by a blank line
+
+Body content:
 - Reference your application with the approximate date
 - Reaffirm your interest with one concrete, specific element about the company
-- Ask for a status update
-- FORBIDDEN: em dashes, hollow phrases, "I am following up to"
-- Sign with first name only
+- Ask for a status update on your application
 
-Reply with the email only, no subject line or formatting.`,
+Professional, brief and direct tone.
+FORBIDDEN: em dashes (—), hollow phrases, "I am following up to".
+Do NOT add a closing line or a signature: they will be appended automatically.
+
+Reply with the greeting and body only, no subject line.`,
   },
 }
 
@@ -265,20 +290,21 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
     setLoading(true)
     setError(null)
 
+    const profile = loadProfile()
+    const greetName = recruiterName ? recruiterName.split(' ')[0] : null
+    const signature = buildSignature(profile, lang)
+
     if (IS_DEV) {
       await new Promise(r => setTimeout(r, 700))
-      const profile = loadProfile()
-      const firstName = profile?.name?.split(' ')[0] || 'Alexandre'
-      if (type === 'remerciement') {
-        setDraft(`Merci pour votre retour concernant ma candidature au poste de ${job.position}.\n\nBien que cette nouvelle soit décevante, je reste très intéressé par ${job.company} et son approche produit. Si vous avez des retours sur ma candidature, je suis preneur — cela m'aide à progresser.\n\nBonne continuation,\n${firstName}`)
-      } else {
-        setDraft(`Je me permets de revenir vers vous concernant ma candidature au poste de ${job.position}, déposée il y a quelques semaines.\n\nSuivant de près l'actualité de ${job.company}, notamment vos récentes initiatives, je reste très motivé par cette opportunité.\n\nPourriez-vous me donner un point sur le statut de ma candidature ?\n\nCordialement,\n${firstName}`)
-      }
+      const hi = (lang === 'en' ? 'Hi' : 'Bonjour') + (greetName ? ` ${greetName},` : ',')
+      const body = type === 'remerciement'
+        ? `Merci pour votre retour concernant ma candidature au poste de ${job.position}.\n\nBien que cette nouvelle soit décevante, je reste très intéressé par ${job.company} et son approche produit, et resterais ouvert à de futures opportunités.\n\nSi vous aviez un retour constructif sur ma candidature, je suis preneur.`
+        : `Je reviens vers vous concernant ma candidature au poste de ${job.position}, déposée il y a quelques semaines.\n\nJe reste très motivé par cette opportunité chez ${job.company}. Pourriez-vous me communiquer le statut de ma candidature ?`
+      setDraft(`${hi}\n\n${body}\n\n${signature}`)
       setLoading(false)
       return
     }
 
-    const profile = loadProfile()
     const promptFn = PROMPTS[type]?.[lang] || PROMPTS[type]?.fr
     try {
       const res = await fetch('/api/claude', {
@@ -286,7 +312,7 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(withUserApiKey({
           model: 'claude-haiku-4-5-20251001',
-          max_tokens: 400,
+          max_tokens: 600,
           // Feed the recruiter's actual refusal message into the thank-you so it
           // can rebound on the specific reason given, and their name so it greets
           // them personally.
@@ -295,9 +321,15 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error?.message || data.error || 'Erreur API')
-      const text = (data.content?.[0]?.text || '').trim()
+      let text = (data.content?.[0]?.text || '').trim()
         .replace(/\s*—\s*/g, ', ')
         .replace(/…/g, '.')
+      // Append the deterministic signature block (the model is told not to add
+      // its own closing/signature). Guard against a stray closing it may add.
+      if (signature) {
+        text = text.replace(/\n+\s*(cordialement|bien (à|a) vous|best regards|kind regards|sincerely|regards)[\s,].*$/is, '').trimEnd()
+        text = `${text}\n\n${signature}`
+      }
       setDraft(text)
     } catch (e) {
       setError(e.message)
