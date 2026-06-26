@@ -9,7 +9,7 @@ const CLOSED_INDICATORS = [
   'already filled', 'this role has been filled',
   'this job has been filled', 'job has been filled',
   'we are no longer accepting', 'we\'re no longer accepting',
-  'position not available', 'not available',
+  'position not available',
   'offre pourvue', 'poste pourvu', 'candidature close', 'recrutement terminé',
   // LinkedIn-specific patterns
   'no longer accepting',
@@ -40,44 +40,30 @@ function stripHtml(html) {
 function detectAvailability(content) {
   const lower = content.toLowerCase()
 
-  // Check for 404 or similar in content (strong closed signal)
-  if (lower.includes('404') || lower.includes('not found') || lower.includes('page not found')) {
-    return { available: false, reason: 'Page not found (404)' }
-  }
-
-  // Check for closed indicators (high confidence)
-  let closedScore = 0
+  // High-confidence CLOSED: an explicit "closed/filled/no longer accepting" phrase
+  // appears in the visible page text. Anything weaker is too risky — a wrong
+  // "closed" verdict auto-rejects the application (see checkPosition() in useJobs.js).
   for (const indicator of CLOSED_INDICATORS) {
-    if (lower.includes(indicator)) closedScore++
+    if (lower.includes(indicator)) {
+      return { available: false, reason: `Detected: "${indicator}"` }
+    }
   }
 
-  // Check for open indicators
+  // Confirm OPEN only with clear apply/hiring cues (need at least 2 to avoid a
+  // stray "apply" in boilerplate flipping the verdict).
   let openScore = 0
   for (const indicator of OPEN_INDICATORS) {
     if (lower.includes(indicator)) openScore++
   }
-
-  // Decision logic
-  if (closedScore >= 1) {
-    // If we found ANY closed indicator, assume closed (conservative approach)
-    return { available: false, reason: `Detected: position closed` }
-  }
-
   if (openScore >= 2) {
-    // Need at least 2 open indicators to confirm available
     return { available: true, reason: 'Found apply/career indicators' }
   }
 
-  // Heuristic: if page has job title/description but no apply button, likely closed
-  const hasJobContent = /job|position|role|title|description|requirement/i.test(content)
-  const hasApply = /apply|candidate|apply now|apply here|easy apply|apply to|candidat/i.test(content)
-
-  if (hasJobContent && !hasApply) {
-    return { available: false, reason: 'No apply button found (likely closed)' }
-  }
-
-  // Default: unknown (couldn't determine)
-  return { available: null, reason: 'Could not determine (no clear indicators)' }
+  // Otherwise: unknown. Most ATS pages (Greenhouse, Lever, LinkedIn, Workday)
+  // render their content with JavaScript, so a plain fetch sees only a shell with
+  // no apply button. Staying "unknown" is correct here — guessing "closed" used to
+  // mass-mislabel open postings as rejected.
+  return { available: null, reason: 'Could not determine (page likely renders client-side)' }
 }
 
 export default async function handler(req, res) {
