@@ -7,23 +7,49 @@ export default function CVViewer({ job, onClose, inline = false }) {
   const html = renderCV(markdown, template, null)
 
   const handleDownloadPDF = async () => {
-    const { default: html2pdf } = await import('html2pdf.js')
-    const element = document.createElement('div')
-    element.innerHTML = html
-    element.style.padding = '20px'
-    element.style.fontFamily = 'Arial, Helvetica, sans-serif'
-    element.style.lineHeight = '1.5'
-    element.style.backgroundColor = '#fff'
+    try {
+      const { default: html2pdf } = await import('html2pdf.js')
+      const element = document.createElement('div')
+      element.innerHTML = html
+      element.style.padding = '0'
+      element.style.margin = '0'
+      element.style.fontFamily = 'Arial, Helvetica, sans-serif'
+      element.style.lineHeight = '1.2'
+      element.style.color = '#000'
+      element.style.backgroundColor = '#fff'
+      element.style.width = '210mm'
+      element.style.boxSizing = 'border-box'
+      element.style.wordWrap = 'break-word'
+      element.style.overflowWrap = 'break-word'
 
-    const opt = {
-      margin: 10,
-      filename: `${filename}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      const opt = {
+        margin: [12, 0, 14, 0],
+        filename: `${filename}.pdf`,
+        image: { type: 'jpeg', quality: 0.92 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+        },
+        jsPDF: {
+          unit: 'mm',
+          format: 'a4',
+          orientation: 'portrait',
+          compress: true,
+          hotfixes: ['px_scaling'],
+        },
+        pagebreak: {
+          mode: ['css', 'legacy'],
+          avoid: '.cv-block',
+        },
+      }
+
+      await html2pdf().set(opt).from(element).save()
+    } catch (err) {
+      console.error('PDF download error:', err)
     }
-
-    html2pdf().set(opt).from(element).save()
   }
 
   // Inline mode — render the CV content directly inside its container (no modal overlay)
