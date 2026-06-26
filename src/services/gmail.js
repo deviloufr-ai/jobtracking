@@ -659,7 +659,7 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
 
   // Gmail-native category filter — "promotions" = newsletters/job alerts → skip entirely
   const noPromo = `-category:promotions -category:forums`
-  const noAlerts = `-subject:"job alert" -subject:"jobs you might like" -subject:"recommended jobs" -subject:"new jobs for you" -subject:"offres d'emploi" -subject:"nouvelles offres" -subject:"alertes emploi" -subject:"emplois recommandés" -subject:"suggested job" -subject:"candidature suggérée" -subject:"jobs suggested" -subject:"offres suggérées" -subject:"new jobs matching" -subject:"emplois correspondant" -subject:"offre recommandée" -subject:"recommended job for you"`
+  const noAlerts = `-subject:"job alert" -subject:"jobs you might like" -subject:"recommended jobs" -subject:"new jobs for you" -subject:"offres d'emploi" -subject:"nouvelles offres" -subject:"alertes emploi" -subject:"emplois recommandés" -subject:"suggested job" -subject:"candidature suggérée" -subject:"jobs suggested" -subject:"offres suggérées" -subject:"new jobs matching" -subject:"emplois correspondant" -subject:"offre recommandée" -subject:"recommended job for you" -subject:"récapitulatif de votre semaine" -subject:"récap de la semaine" -subject:"semaine de recherche d'emploi" -subject:"weekly recap"`
   const baseExclude = `${noPromo} ${noAlerts}`
 
   const queries = [
@@ -911,9 +911,18 @@ async function fetchEmailDetail(id, token) {
         'your profile matches', 'matches your experience', 'job match',
         // LinkedIn job-digest subjects: "[Title] role at [Company]: Actively recruiting"
         'actively recruiting', 'top job picks',
+        // Weekly job-search recap digests (HelloWork "Récapitulatif de votre semaine
+        // de recherche d'emploi", etc.) — a roundup of recommended offers, NOT a
+        // candidature. Real recruiter responses come with a specific subject.
+        'récapitulatif de votre semaine', 'récap de la semaine', 'votre récap de la semaine',
+        'semaine de recherche d\'emploi', 'weekly recap', 'recap of your week',
       ]
-      // LinkedIn job-pick digests bury "Top job picks for you" in the body, not the subject.
+      // LinkedIn job-pick digests bury "Top job picks for you" in the body, not the
+      // subject. HelloWork's weekly recap likewise hides its tell ("Ces offres
+      // publiées dernièrement, sont faites pour vous") in the body.
       const isJobDigestBody = bodyRaw.includes('top job picks') || snippetRaw.includes('top job picks')
+        || bodyRaw.includes('sont faites pour vous') || bodyRaw.includes('offres publiées dernièrement')
+        || bodyRaw.includes('ces offres publiées') || bodyRaw.includes('votre récap de la semaine')
       const isJobAlert = JOB_ALERT_SENDERS.some(s => fromRaw.includes(s))
         || JOB_ALERT_SUBJECTS.some(s => subjectRaw.includes(s))
         || isJobDigestBody
