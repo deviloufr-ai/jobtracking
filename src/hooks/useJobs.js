@@ -139,6 +139,35 @@ const STATUS_PRIORITY = {
   interview: 4, done: 4, offer: 5, rejected: 6, rejected_ats: 6
 }
 
+// Canonical position string: lowercased, h/f markers and ALL punctuation flattened
+// to single spaces. Makes hyphenation/spacing variants compare equal — e.g.
+// "No-Code" === "No Code", "Product Manager (H/F)" === "Product Manager".
+export function canonicalizePosition(pos = '') {
+  return (pos || '')
+    .toLowerCase()
+    .replace(/\(?[hf]\/[hf]\)?/gi, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+// Two positions are the SAME role family when their canonical forms are equal, or
+// one is a word-boundary prefix of the other ("Product Builder IA et No Code" ⊂
+// "Product Builder IA et No Code - Tech"). This is what lets the render-time dedup
+// collapse the same application whose title drifted across imports (Claude
+// variance, a trailing suffix, hyphenation) — the doublon the user still saw.
+// Deliberately prefix-only (not arbitrary substring) so genuinely-distinct roles
+// that merely share a head word ("Product Manager Mobile" vs "Product Manager Web")
+// stay separate.
+export function positionsSameFamily(a, b) {
+  const ca = canonicalizePosition(a)
+  const cb = canonicalizePosition(b)
+  if (!ca || !cb) return false
+  if (ca === cb) return true
+  const [short, long] = ca.length <= cb.length ? [ca, cb] : [cb, ca]
+  return long.startsWith(short + ' ')
+}
+
 // Import all the deduplication/processing functions from original useJobs
 // (These are pure functions, no changes needed)
 export function deduplicateJobs(jobs) {
@@ -164,7 +193,7 @@ export function deduplicateJobs(jobs) {
     }
   }
 
-  const realGroups = new Map()
+  let realGroups = new Map()
   const genericByCompany = new Map()
   for (const [key, group] of groups) {
     if (key.includes('|||')) {
@@ -174,6 +203,29 @@ export function deduplicateJobs(jobs) {
       genericByCompany.set(key, existing ? [...existing, ...group] : group)
     }
   }
+
+  // Consolidate real-position groups of the SAME company whose positions are the
+  // same role family (punctuation/suffix drift like "No Code" vs "No-Code - Tech").
+  // Without this, a title that varies slightly across imports spawns a parallel
+  // group that the exact-key grouping above never reunites → visible doublon.
+  const consolidatedReal = new Map()
+  for (const [key, group] of realGroups) {
+    const sep = key.indexOf('|||')
+    const co = key.slice(0, sep)
+    const pos = key.slice(sep + 3)
+    let target = null
+    for (const existingKey of consolidatedReal.keys()) {
+      const eSep = existingKey.indexOf('|||')
+      if (existingKey.slice(0, eSep) !== co) continue
+      if (positionsSameFamily(pos, existingKey.slice(eSep + 3))) { target = existingKey; break }
+    }
+    if (target) {
+      consolidatedReal.get(target).push(...group)
+    } else {
+      consolidatedReal.set(key, group)
+    }
+  }
+  realGroups = consolidatedReal
 
   for (const [co, genericJobs] of genericByCompany) {
     let merged = false
@@ -215,7 +267,14 @@ export function deduplicateJobs(jobs) {
     })
 
     const realPositions = [...new Set(group.map(j => normPos(j.position)).filter(p => !GENERIC_POSITIONS_SET.has(p)))]
-    if (realPositions.length > 1) {
+    // Collapse punctuation/suffix variants into role families before deciding the
+    // group holds genuinely-distinct roles. Two same-family titles ("No Code" /
+    // "No-Code - Tech") count as ONE, so they merge instead of splitting back out.
+    const families = []
+    for (const p of realPositions) {
+      if (!families.some(f => positionsSameFamily(f, p))) families.push(p)
+    }
+    if (families.length > 1) {
       group.forEach(j => result.push(j))
       continue
     }

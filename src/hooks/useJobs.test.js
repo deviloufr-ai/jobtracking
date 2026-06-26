@@ -177,6 +177,26 @@ describe('deduplicateJobs', () => {
     expect(result.filter(j => j.company === 'Stripe')).toHaveLength(1)
     expect(result.some(j => j.company === 'Figma')).toBe(true)
   })
+
+  it('collapses same-company positions that differ only by punctuation/suffix drift', () => {
+    const jobs = [
+      { id: '1', company: 'Ecole Européenne du Numérique', position: 'Product Builder IA et No Code', status: 'reviewing', date: '2026-06-26', history: [] },
+      { id: '2', company: 'Ecole Européenne du Numérique', position: 'Product Builder IA et No-Code - Tech', status: 'reviewing', date: '2026-06-26', history: [] },
+      { id: '3', company: 'Figma', position: 'Product Engineer', status: 'todo', date: '2026-01-02', history: [] },
+    ]
+    const result = deduplicateJobs(jobs)
+    expect(result.filter(j => j.company.startsWith('Ecole'))).toHaveLength(1)
+  })
+
+  it('keeps genuinely-distinct roles at the same company separate', () => {
+    const jobs = [
+      { id: '1', company: 'Datadog', position: 'Product Manager Mobile', status: 'sent', date: '2026-06-01', history: [] },
+      { id: '2', company: 'Datadog', position: 'Product Manager Web', status: 'sent', date: '2026-06-02', history: [] },
+      { id: '3', company: 'Figma', position: 'Designer', status: 'todo', date: '2026-06-03', history: [] },
+    ]
+    const result = deduplicateJobs(jobs)
+    expect(result.filter(j => j.company === 'Datadog')).toHaveLength(2)
+  })
 })
 
 describe('sortJobHistory', () => {
