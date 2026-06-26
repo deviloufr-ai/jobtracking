@@ -474,7 +474,7 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
   return grouped
 }
 
-export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs, settings) {
+export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs, settings, loading) {
   const [refreshing, setRefreshing] = useState(false)
   const [lastRefresh, setLastRefresh] = useState(() => {
     const stored = localStorage.getItem(REFRESH_KEY)
@@ -485,6 +485,7 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
   const refreshingRef = useRef(refreshing)
   const reprocessJobsRef = useRef(reprocessJobs)
   const settingsRef = useRef(settings)
+  const loadingRef = useRef(loading)
   // doRefresh is memoized with [] deps, so it captures addJob/updateJob from the
   // FIRST render. The first-render updateJob closes over an empty jobs array
   // (before IndexedDB loads), so `jobs.find(...)` finds nothing and the update
@@ -508,6 +509,9 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
     settingsRef.current = settings
   }, [settings])
   useEffect(() => {
+    loadingRef.current = loading
+  }, [loading])
+  useEffect(() => {
     addJobRef.current = addJob
   }, [addJob])
   useEffect(() => {
@@ -516,12 +520,18 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
 
   const doRefresh = useCallback(async (silent = false) => {
     if (!isConnected() || refreshingRef.current) return
+    // Jobs haven't hydrated from IndexedDB yet. Refreshing now would dedup against
+    // an empty list and re-import everything as new — and while render-time
+    // deduplicateJobs silently re-merges the recent ones, OLD ARCHIVED jobs exceed
+    // its 60-day merge threshold and resurface as brand-new candidatures (Bug:
+    // "Nouvelle candidature ajoutée — <archived company>"). Wait for the load.
+    if (loadingRef.current) return
     setRefreshing(true)
 
     // Read the CURRENT jobs list via ref. This callback is memoized with []
     // deps, so the `jobs` param is captured from the first render (empty array
     // before IndexedDB load) — using it for dedup re-imports everything as new.
-    const jobs = jobsRef.current
+    let jobs = jobsRef.current
     // Same reason: use the latest addJob/updateJob, not the first-render ones.
     const addJob = addJobRef.current
     const updateJob = updateJobRef.current
@@ -570,6 +580,12 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
         fetchCalendarEvents('', months).catch(() => []),
       ])
       if (!emails.length) return
+
+      // Defense-in-depth against the hydration race: the Gmail/Calendar fetch
+      // above is async, so IndexedDB may have finished loading jobs into state
+      // while it ran. Re-read the freshest snapshot before any dedup so we never
+      // filter/match against a stale (possibly empty) list.
+      jobs = jobsRef.current
 
       // Intelligent pre-parse filter: drop emails that would only produce
       // redundant updates — already-imported, tied to a refused candidature, or
@@ -793,6 +809,10 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
 
   useEffect(() => {
     if (!isConnected()) return
+    // Don't auto-scan until jobs have hydrated from IndexedDB — otherwise the
+    // mount-time scan dedups against an empty list (see doRefresh guard). When
+    // `loading` flips to false this effect re-runs and the scan proceeds.
+    if (loading) return
 
     // Check if refresh is needed
     const checkAndRefresh = () => {
@@ -819,7 +839,7 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
     const interval = setInterval(checkAndRefresh, 10 * 60 * 1000)
 
     return () => clearInterval(interval)
-  }, [lastRefresh, doRefresh])
+  }, [lastRefresh, doRefresh, loading])
 
   const formatLastRefresh = () => {
     if (!lastRefresh) return null
