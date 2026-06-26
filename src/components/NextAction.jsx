@@ -355,7 +355,10 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
                 STAR ✦
               </button>
             )}
-            {rule.emailType === 'remerciement' && onDraftEmail && hasRealEmail(job) && (
+            {/* No hasRealEmail gate: a thank-you after an ATS/no-reply rejection
+                is still worth drafting — the modal lets the user fill the
+                recipient manually and send it (e.g. to a recruiter on LinkedIn). */}
+            {rule.emailType === 'remerciement' && onDraftEmail && (
               <button onClick={e => { e.stopPropagation(); onDraftEmail(job, 'remerciement') }} className="flex-shrink-0 text-xs font-medium bg-pink-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-pink-600 transition-colors whitespace-nowrap">
                 {t('nextActionRules.draftEmail')} ✦
               </button>
