@@ -146,7 +146,7 @@ export function deduplicateJobs(jobs) {
   if (jobs.length <= 2) return jobs
 
   const normPos = p => (p || '').toLowerCase().trim().replace(/\s*\(?[hf]\/[hf]\)?\s*/gi, '').trim()
-  const isGenericPos = p => GENERIC_POSITIONS_SET.has(normPos(p))
+  const isGenericPos = p => isGenericPosition(normPos(p))
 
   const groups = new Map()
   for (const job of jobs) {
