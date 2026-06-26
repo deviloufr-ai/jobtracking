@@ -136,7 +136,7 @@ function ExtensionButton({ t }) {
 }
 
 export default function App() {
-  const { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, reprocessJobs, checkAllPositions, findDuplicateInList, loading } = useJobs()
+  const { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, mergeJobs, toggleFavorite, reprocessJobs, checkAllPositions, findDuplicateInList, loading } = useJobs()
   const { cvs } = useCVs()
   const { settings } = useSettings()
 
@@ -629,14 +629,12 @@ export default function App() {
     setMergeModal(selectedJobs)
   }
 
-  const handleMergeConfirm = (mergedJob) => {
-    updateJob(mergedJob)
-    // Delete the other selected jobs
-    selectedJobIds.forEach(id => {
-      if (id !== mergedJob.id) {
-        deleteJob(id)
-      }
-    })
+  const handleMergeConfirm = (mergedJob, secondaryIds) => {
+    // Persist the keeper (full data + combined history) and remove the folded-in
+    // secondary rows in one atomic mutation. secondaryIds comes from the modal;
+    // fall back to the current selection minus the keeper for safety.
+    const ids = secondaryIds || [...selectedJobIds].filter(id => id !== mergedJob.id)
+    mergeJobs(mergedJob, ids)
     setSelectedJobIds(new Set())
     setMergeModal(null)
     showToast(t('notifications.jobsMerged') || 'Jobs merged successfully!')

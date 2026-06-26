@@ -345,6 +345,76 @@ export function deduplicateJobs(jobs) {
   return result
 }
 
+// ─── Manual candidature merge ─────────────────────────────────────────────────
+// Explicit user action (≠ deduplicateJobs' render-time heuristic grouping):
+// the user picked a primary keeper and one or more secondaries to fold into it.
+// Unlike a dedup, this NEVER drops data — it keeps the primary's identity
+// (id/company/position/date) but unions everything else so nothing is lost:
+//   • history  — both timelines concatenated, deduped + sorted canonically
+//   • notes    — merged (idempotent, deduped)
+//   • CV / cover letter / use case / links / company address / interview
+//     sessions / any other field — back-filled from the secondaries wherever the
+//     keeper is empty, so e.g. a CV that lived only on the secondary survives.
+//   • favorite — OR of all (a star on any side is kept)
+// `statusFromId` lets the caller pick whose status the keeper adopts (defaults to
+// the primary's). Returns the merged keeper object; the secondary rows are removed
+// by the caller (useJobs.mergeJobs).
+export function mergeJobsData(jobs, primaryId, { statusFromId } = {}) {
+  if (!Array.isArray(jobs) || jobs.length === 0) return null
+  const primary = jobs.find(j => j.id === primaryId) || jobs[0]
+  const others = jobs.filter(j => j.id !== primary.id)
+
+  // History: concat both sides, then run the canonical dedup + sort pipeline so
+  // same-day / re-imported entries collapse instead of piling up after a merge.
+  const allHistory = jobs.flatMap(j => j.history || [])
+  const dedupedHistory = deduplicateHistory([{ ...primary, history: allHistory }])[0].history
+  const history = sortJobHistory({ history: dedupedHistory }).history
+
+  // Back-fill every non-identity field the keeper lacks, freshest secondary first.
+  const IDENTITY = new Set(['id', 'company', 'position', 'date', 'status', 'history',
+    'notes', 'favorite', 'interviewSessions', 'positionLinks', 'positionChecks', 'updated_at'])
+  const isEmpty = (v) => v === undefined || v === null || v === '' ||
+    (Array.isArray(v) && v.length === 0) ||
+    (v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0)
+
+  const merged = { ...primary }
+  const orderedOthers = [...others].sort((a, b) =>
+    new Date(b.updated_at || b.date || 0) - new Date(a.updated_at || a.date || 0))
+  for (const job of orderedOthers) {
+    for (const [key, value] of Object.entries(job)) {
+      if (IDENTITY.has(key) || key.startsWith('_')) continue
+      if (isEmpty(merged[key]) && !isEmpty(value)) merged[key] = value
+    }
+  }
+
+  // Union the collection-shaped fields across ALL jobs (primary first wins ties).
+  merged.favorite = jobs.some(j => j.favorite)
+  const links = []
+  const seenLink = new Set()
+  for (const url of jobs.flatMap(j => j.positionLinks || [])) {
+    if (url && !seenLink.has(url)) { seenLink.add(url); links.push(url) }
+  }
+  if (links.length) merged.positionLinks = links
+  const checks = {}
+  for (const job of [...others, primary]) Object.assign(checks, job.positionChecks || {})
+  if (Object.keys(checks).length) merged.positionChecks = checks
+  const sessions = jobs.flatMap(j => j.interviewSessions || [])
+  if (sessions.length) merged.interviewSessions = sessions
+
+  // Status: keep the primary's unless the caller chose another source job.
+  if (statusFromId) {
+    const src = jobs.find(j => j.id === statusFromId)
+    if (src) merged.status = src.status
+  }
+
+  merged.history = history
+  merged.notes = mergeNotes(...jobs.map(j => j.notes))
+  merged.updated_at = new Date().toISOString()
+  delete merged._merged
+  delete merged._mergedIds
+  return merged
+}
+
 // Physically reconcile duplicate jobs. deduplicateJobs() only hides duplicates
 // at render time — the loser rows live on in IndexedDB + Supabase and get
 // re-fetched on every poll, so they keep coming back (Bug: doublon). This merges
@@ -1599,6 +1669,34 @@ export function useJobs() {
     setJobs(prev => reconcileDuplicateJobs(prev))
   }
 
+  // Apply a manual merge: persist the keeper (history rewritten) and physically
+  // remove the folded-in secondary rows. We tombstone secondaries by ID ONLY
+  // (not by company/position like deleteJob) — the keeper retains that same
+  // company/position, so a company/position tombstone would wrongly block future
+  // Gmail re-imports into the keeper. `mergedJob` comes from mergeJobsData().
+  const mergeJobs = (mergedJob, secondaryIds = []) => {
+    if (!mergedJob?.id) return
+    const final = sortJobHistory({ ...mergedJob, updated_at: new Date().toISOString() })
+    const ids = secondaryIds.filter(id => id && id !== final.id)
+
+    setJobs(prev => prev
+      .filter(j => !ids.includes(j.id))
+      .map(j => (j.id === final.id ? final : j)))
+
+    const coordinator = getSyncCoordinator()
+    indexeddb.saveJob(final).catch(err => console.warn('merge: save keeper failed', err))
+    if (coordinator) {
+      coordinator.mutate('jobs', 'update', final, { syncHistory: true })
+        .catch(err => console.error('merge: sync keeper failed', err))
+    }
+    ids.forEach(id => {
+      markJobIdAsDeleted(id)
+      if (coordinator) coordinator.mutate('jobs', 'delete', { id }).catch(err => console.error('merge: delete secondary failed', err))
+      else indexeddb.deleteJob(id).catch(() => {})
+    })
+    console.log(`🔗 Merged ${ids.length + 1} candidature(s) → "${final.company}" (${final.history?.length || 0} history entries)`)
+  }
+
   const toggleFavorite = (id) => {
     const currentJob = jobs.find(j => j.id === id)
     if (!currentJob) return
@@ -1922,5 +2020,5 @@ export function useJobs() {
     return () => { delete window.fixAtsCandidatures; delete window.debugAtsRecovery }
   }, [])
 
-  return { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, toggleFavorite, markEnriched, clearEnriched, reprocessJobs, checkPosition, checkAllPositions, clearDeletedJobs, cleanupHistoryDuplicates, deduplicateViaServer, applyAtsSplit, loading, findDuplicateInList: (co, pos) => findDuplicateJob(jobs, co, pos) }
+  return { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, mergeJobs, toggleFavorite, markEnriched, clearEnriched, reprocessJobs, checkPosition, checkAllPositions, clearDeletedJobs, cleanupHistoryDuplicates, deduplicateViaServer, applyAtsSplit, loading, findDuplicateInList: (co, pos) => findDuplicateJob(jobs, co, pos) }
 }

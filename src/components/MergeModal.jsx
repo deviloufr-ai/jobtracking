@@ -1,41 +1,30 @@
 import { useState, useMemo } from 'react'
-import { STATUSES, getStatus } from '../hooks/useJobs'
+import { getStatus, mergeJobsData } from '../hooks/useJobs'
 
 export default function MergeModal({ jobs, onConfirm, onCancel, t = (key) => key }) {
   const [primaryJobId, setPrimaryJobId] = useState(jobs[0]?.id)
   const [selectedFields, setSelectedFields] = useState({})
 
   const primaryJob = jobs.find(j => j.id === primaryJobId)
-  const secondaryJobs = jobs.filter(j => j.id !== primaryJobId)
 
+  // Build the exact keeper the merge will persist (history deduped + sorted,
+  // notes merged, CV / cover letter / links / sessions back-filled, favorite
+  // unioned). Using the shared builder keeps this preview === the real result.
   const mergedJob = useMemo(() => {
     if (!primaryJob) return null
+    return mergeJobsData(jobs, primaryJobId, { statusFromId: selectedFields.status })
+  }, [primaryJob, primaryJobId, jobs, selectedFields])
 
-    const merged = { ...primaryJob }
-
-    // Combine histories chronologically
-    const allHistories = jobs.flatMap(j => j.history || [])
-    merged.history = allHistories.sort((a, b) => new Date(a.date) - new Date(b.date))
-
-    // Apply field selections (user can override which job's field to use)
-    if (selectedFields.status && selectedFields.status !== primaryJobId) {
-      const sourceJob = jobs.find(j => j.id === selectedFields.status)
-      if (sourceJob) merged.status = sourceJob.status
-    }
-
-    return merged
-  }, [primaryJob, jobs, selectedFields])
+  // Reassure the user nothing is lost: surface what the keeper carries.
+  const hasCV = !!mergedJob?.cvSaved
+  const hasLetter = !!mergedJob?.letterSaved
+  const cvFromSecondary = !primaryJob?.cvSaved && hasCV
 
   const handleConfirm = () => {
     if (mergedJob) {
-      onConfirm(mergedJob)
+      const secondaryIds = jobs.filter(j => j.id !== primaryJobId).map(j => j.id)
+      onConfirm(mergedJob, secondaryIds)
     }
-  }
-
-  const getFieldSourceLabel = (fieldName, sourceId) => {
-    const sourceJob = jobs.find(j => j.id === sourceId)
-    if (!sourceJob) return 'N/A'
-    return `${sourceJob.company} - ${sourceJob.position}`
   }
 
   return (
@@ -122,6 +111,38 @@ export default function MergeModal({ jobs, onConfirm, onCancel, t = (key) => key
                 <div>
                   <div className="text-xs text-gray-600 font-semibold uppercase mb-1">Total History</div>
                   <div className="font-semibold text-gray-900">{mergedJob?.history?.length || 0} entries</div>
+                </div>
+              </div>
+
+              {/* Preserved data — reassures the merge keeps CV / cover letter / notes */}
+              <div>
+                <div className="text-xs text-gray-600 font-semibold uppercase mb-2">
+                  {t('merge.preserved') || 'Preserved data'}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {hasCV && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-indigo-100 text-indigo-700">
+                      📄 CV{cvFromSecondary ? ' ↗' : ''}
+                    </span>
+                  )}
+                  {hasLetter && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-purple-100 text-purple-700">
+                      ✉️ {t('merge.coverLetter') || 'Cover letter'}
+                    </span>
+                  )}
+                  {mergedJob?.notes && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-gray-100 text-gray-600">
+                      📝 {t('merge.notes') || 'Notes'}
+                    </span>
+                  )}
+                  {mergedJob?.interviewSessions?.length > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-teal-100 text-teal-700">
+                      🎤 {mergedJob.interviewSessions.length}
+                    </span>
+                  )}
+                  {!hasCV && !hasLetter && !mergedJob?.notes && (
+                    <span className="text-xs text-gray-400 italic">—</span>
+                  )}
                 </div>
               </div>
 

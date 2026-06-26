@@ -182,7 +182,10 @@ export const fr = {
     subtitle: 'Combiner {{count}} candidatures',
     keepAs: 'Garder comme principale :',
     preview: 'Résultat fusionné :',
-    info: 'Les autres candidatures seront supprimées. Tous les historiques seront combinés chronologiquement.',
+    preserved: 'Données conservées',
+    coverLetter: 'Lettre de motivation',
+    notes: 'Notes',
+    info: 'Les autres candidatures seront supprimées. Tous les historiques sont combinés chronologiquement, et le CV, la lettre, les notes et les liens sont conservés.',
     confirm: 'Fusionner',
   },
 

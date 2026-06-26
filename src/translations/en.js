@@ -161,7 +161,10 @@ export const en = {
     subtitle: 'Combine {{count}} job applications',
     keepAs: 'Keep as primary:',
     preview: 'Merged Result:',
-    info: 'The other applications will be deleted. All history entries will be combined chronologically.',
+    preserved: 'Preserved data',
+    coverLetter: 'Cover letter',
+    notes: 'Notes',
+    info: 'The other applications will be deleted. All history entries are combined chronologically, and the CV, cover letter, notes and links are kept.',
     confirm: 'Merge',
   },
 
