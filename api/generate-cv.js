@@ -94,8 +94,15 @@ This is a formal professional CV. The writing must read as something a senior
 candidate would confidently submit to a hiring manager.
 - TONE: Professional, concise, confident. Third-person-implied résumé style
   (no "I"/"we", no chatty asides, no self-deprecation, no parenthetical jokes).
-- START each bullet with a strong past-tense action verb (Led, Built, Launched,
-  Scaled, Owned, Delivered, Drove, Established…). Vary the verbs.
+- BULLET OPENING — depends on the CV's language, and MUST be grammatically correct:
+  • English: start with a strong past-tense action verb (Led, Built, Launched,
+    Scaled, Owned, Delivered, Drove, Established…). Vary the verbs.
+  • French: use the NOMINAL style — start with an action NOUN that takes "de/du/de la/des"
+    (Pilotage du…, Conception de…, Déploiement de…, Lancement de…, Direction de…,
+    Mise en place de…, Animation de…, Refonte de…). NEVER write a past participle
+    followed by "du/de la/des" (e.g. "Piloté du cycle" is WRONG → "Pilotage du cycle"
+    or "Piloté le cycle"). Vary the nouns.
+  • Other languages: use the natural résumé convention for that language, grammatically correct.
 - Each bullet = ONE crisp line: Action + scope/context + outcome. Quantify when
   the original CV supports it; otherwise state a concrete qualitative outcome.
 - AVOID: Repetitive "Led X, drove Y, resulting in Z%" on every line — vary it.
@@ -301,7 +308,7 @@ export default async function handler(req, res) {
   const NO_MIX = '\n\nABSOLUTE LANGUAGE CONSISTENCY (no mixing): The WHOLE CV must be written in this ONE language — section titles/headers, the profile, EVERY bullet point, skill category names, and month names in dates all in that language. Do NOT mix two languages. Do NOT leave any header or sentence in another language. The ONLY exceptions are proper nouns kept verbatim (company names, product names, school names, certification names like JLPT/PMP) and the candidate\'s contact line.'
   const LANGUAGE_INSTRUCTIONS = {
     auto: 'DETECT the language of the job description and write the ENTIRE CV in THAT language.\nFrench JD → French CV. English JD → English CV. Japanese JD → Japanese CV.' + NO_MIX,
-    fr: 'Write the ENTIRE CV in FRENCH — all section headers, bullets, skill labels and dates in French.' + NO_MIX,
+    fr: 'Write the ENTIRE CV in FRENCH — all section headers, bullets, skill labels and dates in French. Use the NOMINAL bullet style standard in French CVs (Pilotage du…, Conception de…, Déploiement de…) — never a past participle followed by "du/de la/des" (write "Pilotage du cycle", never "Piloté du cycle"). The French must be grammatically flawless.' + NO_MIX,
     en: 'Write the ENTIRE CV in ENGLISH — all section headers, bullets, skill labels and dates in English.' + NO_MIX,
     jp: 'Write the ENTIRE CV in JAPANESE (日本語). Use natural business Japanese (敬語/丁寧語) appropriate for a professional 職務経歴書.' + NO_MIX,
   }
