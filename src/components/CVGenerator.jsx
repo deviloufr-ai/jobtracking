@@ -1,5 +1,26 @@
 import { useState, useEffect, useRef } from 'react'
 import { aiFetch } from '../services/apiKey'
+import { detectLanguage } from '../utils/detectLanguage'
+
+// Resolve the "Auto" language choice to an explicit fr/en/jp BEFORE calling the
+// API. Letting the server's "DETECT the language" instruction decide is
+// unreliable: it sits inside a large, English-written prompt full of English
+// examples, so French/Japanese JDs frequently came back as English CVs. We detect
+// deterministically from the strongest available signal — the job description
+// first (the CV should match the target posting's language), then the source CV.
+// Japanese is detected by the presence of kana/kanji; everything else defers to
+// the shared en/fr heuristic used by the other AI features (EmailDraft, STAR…).
+// Hiragana + Katakana (U+3040–30FF) and CJK ideographs (U+3400–4DBF, U+4E00–9FFF).
+const HAS_JAPANESE = /[぀-ヿ㐀-䶿一-鿿]/
+function resolveAutoLanguage(jd, cvText, job) {
+  const primary = (jd || '').trim() || (cvText || '').trim()
+  if (HAS_JAPANESE.test(primary)) return 'jp'
+  return detectLanguage({
+    notes: primary,
+    position: job?.position || '',
+    company: job?.company || '',
+  })
+}
 // html2pdf is heavy (jsPDF + html2canvas); load it lazily at export time so it
 // stays out of the main bundle (see also CVViewer.jsx which already does this).
 
@@ -513,7 +534,11 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
   // ── Generate ──────────────────────────────────────────────────────────────
   const generateCV = async (jdOverride, langOverride) => {
     const jd   = (jdOverride ?? jdText)
-    const lang = (langOverride ?? selectedLanguage)
+    let   lang = (langOverride ?? selectedLanguage)
+    // Resolve "Auto" to an explicit language client-side so the server gets a
+    // firm "write in FRENCH/ENGLISH/JAPANESE" instruction instead of having to
+    // detect inside an English-biased prompt (the reason auto-detect failed).
+    if (lang === 'auto') lang = resolveAutoLanguage(jd, cv?.text, job)
     setStep('generating')
     try {
       if (IS_DEV) {
