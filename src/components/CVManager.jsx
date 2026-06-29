@@ -154,7 +154,7 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob, manageOnl
         <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
           <span className="text-base">📄</span>
           <h3 className="text-sm font-semibold text-gray-800">{t('cvManagerUI.title')}</h3>
-          <span className="text-xs text-gray-400 ml-auto">{cvs.length} CV{cvs.length > 1 ? 's' : ''} {t('cvManagerUI.storageInfo')}{cvs.length > 1 ? 's' : ''}</span>
+          <span className="text-xs text-gray-400 ml-auto">{cvs.length} {t(cvs.length > 1 ? 'cvManagerUI.storageInfoPlural' : 'cvManagerUI.storageInfo')}</span>
         </div>
 
         <div className="p-4">

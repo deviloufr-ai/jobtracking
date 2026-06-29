@@ -704,6 +704,7 @@ export const fr = {
   cvManagerUI: {
     title: 'Mes CVs',
     storageInfo: 'CV stocké',
+    storageInfoPlural: 'CVs stockés',
     dragDropPDF: 'Glisser un CV PDF ici',
     orClick: 'ou cliquer pour sélectionner • Max 5MB',
     readingPDF: 'Lecture du PDF en cours...',

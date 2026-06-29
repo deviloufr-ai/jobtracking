@@ -512,6 +512,7 @@ export const en = {
   cvManagerUI: {
     title: 'My CVs',
     storageInfo: 'CV stored',
+    storageInfoPlural: 'CVs stored',
     dragDropPDF: 'Drag a CV PDF here',
     orClick: 'or click to select • Max 5MB',
     readingPDF: 'Reading PDF...',
