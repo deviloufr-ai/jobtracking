@@ -1469,17 +1469,32 @@ export function useJobs() {
     }
   }, [rawJobs, settingsKey])
 
-  // Debounce IndexedDB saves to avoid blocking on every mutation
+  // Debounce IndexedDB saves to avoid blocking on every mutation.
+  //
+  // Persist rawJobs (the source of truth) — NOT the derived `jobs` view. `jobs`
+  // is the render-time pipeline output: it collapses duplicate rows into a single
+  // keeper carrying flatMapped history plus transient `_merged` / `_mergedIds`
+  // markers, and applies auto-archive. Writing that back baked render-time dedup
+  // decisions into durable storage (so an over-merge became permanent and the
+  // keeper's row kept the combined history while loser rows lingered) and leaked
+  // the `_*` markers into IndexedDB. Dedup, archive and tombstone filtering are
+  // all recomputed from rawJobs on every load and render, so storage only needs
+  // the raw rows; physical reconciliation still happens explicitly via
+  // reconcileDuplicateJobs / mergeJobs.
   useEffect(() => {
     if (loading) return
 
     clearTimeout(saveTimeoutRef.current)
     saveTimeoutRef.current = setTimeout(() => {
-      indexeddb.saveJobs(jobs).catch(err => console.error('Failed to save jobs:', err))
+      // Strip any transient render markers before persisting (rawJobs shouldn't
+      // carry them, but be defensive so they can never reach storage).
+      const clean = rawJobs.map(({ _merged, _mergedIds, ...j }) => j)
+      if (clean.length === 0) return // clearAllJobs clears IndexedDB directly
+      indexeddb.saveJobs(clean).catch(err => console.error('Failed to save jobs:', err))
     }, 500)
 
     return () => clearTimeout(saveTimeoutRef.current)
-  }, [jobs, loading])
+  }, [rawJobs, loading])
 
   // Listen for settings changes to re-evaluate archives
   useEffect(() => {

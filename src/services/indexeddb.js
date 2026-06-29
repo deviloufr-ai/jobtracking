@@ -115,6 +115,9 @@ class IndexedDBService {
   }
 
   async saveJobs(jobs) {
+    // An empty list would leave the Promise below unresolved forever (the forEach
+    // never runs, so `count` never reaches `jobs.length`). Resolve immediately.
+    if (!jobs || jobs.length === 0) return
     const store = await this.getStore(STORES.JOBS, 'readwrite')
     return new Promise((resolve, reject) => {
       const transaction = store.transaction
