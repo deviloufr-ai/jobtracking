@@ -557,7 +557,7 @@ export const en = {
   settingsProfile: {
     autoFillSubtitle: 'Auto-fill your profile from your CV',
     extractingFromCV: 'Extract from CV',
-    profileExtractedFrom: 'Profile extracted from {{cvName}}{{date}}',
+    profileExtractedFrom: 'Profile extracted from',
     zeroManualEntry: 'Zero manual entry — extraction from your CV.',
     reExtract: '🔄 Re-extract',
     extract: '✦ Extract',

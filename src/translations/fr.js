@@ -269,7 +269,7 @@ export const fr = {
   settingsProfile: {
     autoFillSubtitle: 'Remplissez automatiquement votre profil depuis votre CV',
     extractingFromCV: 'Extraire du CV',
-    profileExtractedFrom: 'Profil extrait de {{cvName}}{{date}}',
+    profileExtractedFrom: 'Profil extrait de',
     zeroManualEntry: 'Zéro saisie manuelle — extraction depuis votre CV.',
     reExtract: '🔄 Réextraire',
     extract: '✦ Extraire',
