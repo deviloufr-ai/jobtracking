@@ -1447,7 +1447,17 @@ export function useJobs() {
   // Apply processing pipeline: dedup jobs first, then history, then archive validation
   const jobs = useMemo(() => {
     try {
-      return deduplicateJobs(deduplicateHistory(autoStale(rawJobs)))
+      const processed = deduplicateJobs(deduplicateHistory(autoStale(rawJobs)))
+      // Drop tombstoned history entries at render time too. deduplicateJobs merges
+      // the histories of duplicate job rows (flatMap) — so when the user deletes an
+      // entry from the displayed (merged) row, a *duplicate* row still carrying that
+      // entry re-introduces it on the very next render. The tombstone filter only
+      // ran on load/poll, never here, so a deleted entry "never disappeared" while a
+      // duplicate candidature existed. This also keeps the debounced saveJobs(jobs)
+      // from persisting the resurrected copy back to IndexedDB.
+      return processed.map(job =>
+        job.history?.length ? { ...job, history: filterDeletedHistory(job.id, job.history) } : job
+      )
     } catch (err) {
       console.error('❌ Error in jobs processing pipeline:', err)
       // If allocation error during processing, return raw jobs unprocessed
