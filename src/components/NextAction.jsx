@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { getStatus, deriveStatusFromHistory } from '../hooks/useJobs'
 import { loadSettings } from '../hooks/useSettings'
-import { isNoReply } from './EmailDraft'
+import { isNoReply, extractRecipientEmail } from './EmailDraft'
 
 // Status shown in the UI follows the latest timeline entry (see JobRow), but the
 // raw stored job.status isn't self-healed on initial load. Rules must read the
@@ -26,14 +26,7 @@ function actionKey(job, rule) { return `${job.id}__${rule.label(job).slice(0, 40
 
 // Returns true if the job has at least one real (non-ATS, non-no-reply) inbound email address
 function hasRealEmail(job) {
-  for (const h of (job?.history || [])) {
-    if (h.fromMe || !h.from) continue
-    const raw = h.from.trim()
-    const angleMatch = raw.match(/<([^>]+@[^>]+)>/)
-    const email = angleMatch ? angleMatch[1].trim() : (raw.includes('@') && !raw.includes(' ') ? raw : null)
-    if (email && !isNoReply(email)) return true
-  }
-  return false
+  return (job?.history || []).some(inboundEmail)
 }
 
 // Fix #11 — use last history entry date, not updatedAt (which resets on manual edits)
@@ -55,6 +48,35 @@ function lastNote(job) {
 function hasRemerciementSent(job) {
   const hist = (job.history || [])
   return hist.some(h => h.note && h.note.toLowerCase().includes('email de remerciement envoyé'))
+}
+
+// Parse a real recruiter address out of an inbound history entry, skipping
+// no-reply/ATS senders. Returns null when the entry isn't a usable reply.
+function inboundEmail(h) {
+  if (h.fromMe || !h.from) return null
+  const raw = h.from.trim()
+  const angleMatch = raw.match(/<([^>]+@[^>]+)>/)
+  const email = angleMatch ? angleMatch[1].trim() : (raw.includes('@') && !raw.includes(' ') ? raw : null)
+  return email && !isNoReply(email) ? email : null
+}
+
+// True when a follow-up (relance) email has already been sent and the recruiter
+// hasn't replied since — re-suggesting another follow-up would just pester them.
+// A real inbound reply resets the clock, so a fresh follow-up becomes fair game
+// again. Mirrors hasRemerciementSent() for thank-you emails.
+function hasFollowUpSent(job) {
+  const hist = job.history || []
+  // Index of the most recent genuine reply from the recruiter.
+  let lastInbound = -1
+  for (let i = hist.length - 1; i >= 0; i--) {
+    if (inboundEmail(hist[i])) { lastInbound = i; break }
+  }
+  // Any follow-up the candidate sent after that reply?
+  return hist.some((h, i) =>
+    i > lastInbound &&
+    h.fromMe &&
+    /email de relance envoyé|follow-?up (email )?sent/i.test(h.note || '')
+  )
 }
 
 // Unambiguous phrases indicating the candidate already submitted/finished the test.
@@ -112,19 +134,19 @@ function getUrgentRules(t = (key) => key) {
     },
   },
   {
-    match: j => j.status === 'sent' && daysSince(j) > s.followUpSentDays && hasRealEmail(j),
+    match: j => j.status === 'sent' && daysSince(j) > s.followUpSentDays && hasRealEmail(j) && !hasFollowUpSent(j),
     icon: '📨', urgency: 'high', emailType: 'relance',
     label: job => formatTrans(t('nextActionRules.followUpSent'), { company: job.company }),
     tip: job => formatTrans(t('nextActionRules.noResponseSince'), { days: Math.round(daysSince(job)) }),
   },
   {
-    match: j => j.status === 'reviewing' && daysSince(j) > s.followUpReviewingDays && hasRealEmail(j),
+    match: j => j.status === 'reviewing' && daysSince(j) > s.followUpReviewingDays && hasRealEmail(j) && !hasFollowUpSent(j),
     icon: '📨', urgency: 'medium', emailType: 'relance',
     label: job => formatTrans(t('nextActionRules.followUpReviewing'), { company: job.company }),
     tip: job => formatTrans(t('nextActionRules.reviewingNoResponse'), { days: Math.round(daysSince(job)) }),
   },
   {
-    match: j => j.status === 'waiting' && daysSince(j) > s.followUpWaitingDays && hasRealEmail(j),
+    match: j => j.status === 'waiting' && daysSince(j) > s.followUpWaitingDays && hasRealEmail(j) && !hasFollowUpSent(j),
     icon: '🔔', urgency: 'high', emailType: 'relance',
     label: job => formatTrans(t('nextActionRules.followUpWaiting'), { company: job.company }),
     tip: job => formatTrans(t('nextActionRules.waitingSince'), { days: Math.round(daysSince(job)) }),
@@ -133,7 +155,7 @@ function getUrgentRules(t = (key) => key) {
     // Post-interview silence — the interview happened (no upcoming event) and
     // there's been no feedback for a while. Distinct from the "prepare interview"
     // nudges below, which only help BEFORE the interview.
-    match: j => j.status === 'interview' && !hasUpcomingCalendar(j) && daysSince(j) > s.followUpReviewingDays && hasRealEmail(j),
+    match: j => j.status === 'interview' && !hasUpcomingCalendar(j) && daysSince(j) > s.followUpReviewingDays && hasRealEmail(j) && !hasFollowUpSent(j),
     icon: '📨', urgency: 'medium', emailType: 'relance',
     label: job => formatTrans(t('nextActionRules.followUpInterview'), { company: job.company }),
     tip: job => formatTrans(t('nextActionRules.interviewNoFeedback'), { days: Math.round(daysSince(job)) }),
@@ -228,15 +250,17 @@ function getNextStepsRules(t = (key) => key) {
   },
   // Follow-up overdue (only if there's a real email to respond to)
   {
-    match: j => j.status === 'sent' && daysSince(j) > s.followUpSentDays && hasRealEmail(j),
+    match: j => j.status === 'sent' && daysSince(j) > s.followUpSentDays && hasRealEmail(j) && !hasFollowUpSent(j),
     icon: '✉️', type: 'email', emailType: 'relance',
     label: job => formatTrans(t('nextActionRules.followUpOverdue'), { company: job.company }),
     tip: () => t('nextActionRules.followUpTip'),
     cta: t('nextActionRules.draftEmail'),
   },
-  // Remerciement after rejection (for all rejected non-archived jobs)
+  // Remerciement after rejection (only when a real recipient address exists, so
+  // the thank-you can actually be sent — no point suggesting a draft the user
+  // can't send because the Send button stays disabled with an empty recipient)
   {
-    match: j => ['rejected', 'rejected_ats'].includes(effectiveStatus(j)) && !hasRemerciementSent(j),
+    match: j => ['rejected', 'rejected_ats'].includes(effectiveStatus(j)) && !hasRemerciementSent(j) && !!extractRecipientEmail(j),
     icon: '💌', type: 'email', emailType: 'remerciement',
     label: job => formatTrans(t('nextActionRules.sendThanks'), { company: job.company }),
     tip: () => t('nextActionRules.thanksTip'),
@@ -355,9 +379,9 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
                 STAR ✦
               </button>
             )}
-            {/* No hasRealEmail gate: a thank-you after an ATS/no-reply rejection
-                is still worth drafting — the modal lets the user fill the
-                recipient manually and send it (e.g. to a recruiter on LinkedIn). */}
+            {/* Only reaches here when a real recipient address was found (see the
+                remerciement rule's match), so the drafted thank-you can actually
+                be sent rather than landing on a disabled Send button. */}
             {rule.emailType === 'remerciement' && onDraftEmail && (
               <button onClick={e => { e.stopPropagation(); onDraftEmail(job, 'remerciement') }} className="flex-shrink-0 text-xs font-medium bg-pink-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-pink-600 transition-colors whitespace-nowrap">
                 {t('nextActionRules.draftEmail')} ✦

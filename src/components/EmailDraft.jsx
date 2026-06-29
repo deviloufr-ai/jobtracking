@@ -44,7 +44,7 @@ export function extractReceivedByAccount(job) {
 
 // Extract recruiter email from job history (entry.from) or notes text
 // Skips no-reply and ATS system addresses
-function extractRecipientEmail(job) {
+export function extractRecipientEmail(job) {
   // 1. Parse entry.from fields from inbound emails — most reliable source
   for (const h of (job?.history || [])) {
     if (h.fromMe || !h.from) continue
