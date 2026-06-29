@@ -52,6 +52,12 @@ export default function JobCandidaturePanel({
       setShowCVViewer(true)
     }
   }, [activeTab, job.cvSaved])
+
+  // Reset editing state when history changes (e.g. after delete)
+  useEffect(() => {
+    setEditingStep(null)
+    setEditForm({})
+  }, [history?.length])
   const [homeAddress] = useState(() => {
     try {
       const profile = JSON.parse(localStorage.getItem('jobtrackr_profile') || '{}')
