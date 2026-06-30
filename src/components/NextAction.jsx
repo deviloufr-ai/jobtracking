@@ -10,7 +10,7 @@ const effectiveStatus = job => deriveStatusFromHistory(job?.history) || job?.sta
 
 const DISMISSED_KEY = 'jobtrackr_dismissed_actions'
 // Persist dismissals across sessions (localStorage) so hiding an action sticks.
-function loadDismissed() { try { return new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY) || '[]')) } catch { return new Set() } }
+export function loadDismissed() { try { return new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY) || '[]')) } catch { return new Set() } }
 function saveDismissed(s) { try { localStorage.setItem(DISMISSED_KEY, JSON.stringify([...s])) } catch {} }
 
 // Helper to format translation strings with dynamic values
@@ -278,7 +278,7 @@ const URGENCY_DOT = {
 }
 
 // Merge urgent + next steps into one sorted list
-function buildAllActions(activeJobs, s, t = (key) => key, dismissed = new Set()) {
+export function buildAllActions(activeJobs, s, t = (key) => key, dismissed = new Set()) {
   const items = []
 
   // From urgent rules
