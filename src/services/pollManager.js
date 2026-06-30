@@ -1,7 +1,9 @@
 import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
 import { convertHistoryFromSupabase, snakeToCamel, deserializeJobFields } from './fieldConversion'
-import { isDeletedJobId, deduplicateHistory, filterDeletedHistory, historyEntryKey } from '../hooks/useJobs'
+import { isDeletedJobId, deduplicateHistory, filterDeletedHistory, historyEntryKey, markJobIdAsDeletedLocal, partitionJobsByTombstones } from '../hooks/useJobs'
+import { flushPendingTombstones, fetchRemoteTombstones } from './tombstoneService'
+import { getFlag, FLAGS } from './featureFlags'
 
 const POLL_INTERVAL = 300000 // 5 minutes
 
@@ -54,6 +56,11 @@ class PollManager {
     try {
       console.log('📡 Polling Supabase for user:', userId)
       this.notifyListeners({ status: 'polling' })
+
+      // Apply cross-device deletions FIRST, so the merge loop below skips any job
+      // that was deleted on another device (deletion wins over a concurrent edit).
+      const removedAny = await this.applyRemoteTombstones(userId, fullSync)
+      if (removedAny) hasChanges = true
 
       // Fetch jobs changed since last sync
       const jobsQuery = supabase
@@ -207,6 +214,52 @@ class PollManager {
     } catch (err) {
       console.error('Poll error:', err)
       this.notifyListeners({ status: 'error', error: err.message })
+    }
+  }
+
+  // Cross-device deletions: remove any local job that another device tombstoned
+  // in `deleted_jobs`. A job is removed ONLY when its id is explicitly present in
+  // the user's own tombstone table (never inferred from absence), so an unsynced
+  // local job can't be dropped. The destructive half is behind a kill-switch flag.
+  // Returns true when at least one local job was removed. See plan High #2.
+  async applyRemoteTombstones(userId, fullSync) {
+    try {
+      // Always drain the producer queue — writing tombstones deletes nothing locally.
+      await flushPendingTombstones(userId)
+
+      // Consumer (the destructive half) is gated; when disabled, don't advance the
+      // watermark either, so a re-enable still catches up on missed tombstones.
+      if (getFlag(FLAGS.CROSS_DEVICE_DELETE_OFF)) return false
+
+      const since = fullSync ? null : await indexeddb.getMetadata('last_tombstone_sync')
+      const tombstones = await fetchRemoteTombstones(userId, since)
+      if (!tombstones.length) return false
+
+      const ids = tombstones.map(t => t.job_id).filter(Boolean)
+
+      // Mark every id locally (local-only, no re-enqueue) so the same poll's merge
+      // loop skips a concurrently-fetched edit of a deleted job.
+      for (const id of ids) markJobIdAsDeletedLocal(id)
+
+      const localJobs = await indexeddb.getAllJobs()
+      const { removed } = partitionJobsByTombstones(localJobs, ids)
+      for (const job of removed) {
+        await indexeddb.deleteJob(job.id)
+      }
+
+      // Advance the watermark to the newest tombstone applied this cycle.
+      const maxDeletedAt = tombstones.reduce((m, t) =>
+        (!m || new Date(t.deleted_at) > new Date(m)) ? t.deleted_at : m, null)
+      if (maxDeletedAt) await indexeddb.setMetadata('last_tombstone_sync', maxDeletedAt)
+
+      if (removed.length) {
+        console.log(`🗑️ Cross-device: removed ${removed.length} locally-tombstoned job(s)`)
+        return true
+      }
+      return false
+    } catch (err) {
+      console.warn('applyRemoteTombstones failed (non-critical):', err?.message)
+      return false
     }
   }
 

@@ -6,6 +6,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 vi.mock('../services/supabase', () => ({
   supabase: {},
   isSupabaseConfigured: () => false,
+  resolveAuthUserId: () => Promise.resolve(null),
 }))
 
 import {
@@ -24,6 +25,7 @@ import {
   markHistoryEntryAsDeleted,
   isDeletedHistoryEntry,
   filterDeletedHistory,
+  partitionJobsByTombstones,
 } from './useJobs'
 
 const daysAgo = n => new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString()
@@ -247,5 +249,41 @@ describe('deleted-history tombstones (localStorage-backed)', () => {
     const drop = { date: '2026-01-01', status: 'sent', note: 'Applied' }
     markHistoryEntryAsDeleted('job1', drop)
     expect(filterDeletedHistory('job1', [keep, drop])).toEqual([keep])
+  })
+})
+
+describe('partitionJobsByTombstones (cross-device deletion consumer)', () => {
+  const jobs = [
+    { id: 'a', company: 'Stripe' },
+    { id: 'b', company: 'Figma' },
+    { id: 'c', company: 'Notion' },
+  ]
+
+  it('removes only jobs whose id is in the tombstone set, keeps the rest', () => {
+    const { kept, removed } = partitionJobsByTombstones(jobs, new Set(['b']))
+    expect(removed.map(j => j.id)).toEqual(['b'])
+    expect(kept.map(j => j.id)).toEqual(['a', 'c'])
+  })
+
+  it('accepts a plain array of ids as well as a Set', () => {
+    const { removed } = partitionJobsByTombstones(jobs, ['a', 'c'])
+    expect(removed.map(j => j.id)).toEqual(['a', 'c'])
+  })
+
+  it('is a no-op for an empty tombstone set (nothing removed)', () => {
+    const { kept, removed } = partitionJobsByTombstones(jobs, [])
+    expect(removed).toEqual([])
+    expect(kept).toHaveLength(3)
+  })
+
+  it('ignores tombstone ids that match no local job (never removes by inference)', () => {
+    const { kept, removed } = partitionJobsByTombstones(jobs, ['does-not-exist'])
+    expect(removed).toEqual([])
+    expect(kept).toHaveLength(3)
+  })
+
+  it('tolerates empty/missing job lists', () => {
+    expect(partitionJobsByTombstones([], ['a'])).toEqual({ kept: [], removed: [] })
+    expect(partitionJobsByTombstones(undefined, ['a'])).toEqual({ kept: [], removed: [] })
   })
 })

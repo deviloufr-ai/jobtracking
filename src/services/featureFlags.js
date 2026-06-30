@@ -11,6 +11,10 @@ export const FLAGS_EVENT = 'jobtrackr-flags-changed'
 // Flag identifiers. Job search is hidden by default and re-enabled here.
 export const FLAGS = {
   JOB_SEARCH: 'job_search',
+  // Kill-switch for cross-device deletion sync. Stored as a "disable" flag so the
+  // feature is ENABLED by default (absent flag = off = feature on); set it true to
+  // disable the destructive poll consumer instantly if a false deletion is seen.
+  CROSS_DEVICE_DELETE_OFF: 'cross_device_delete_off',
 }
 
 export function getFlag(name) {

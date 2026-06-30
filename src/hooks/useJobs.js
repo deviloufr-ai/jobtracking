@@ -5,6 +5,7 @@ import { indexeddb } from '../services/indexeddb'
 import { syncManager } from '../services/syncManager'
 import { getSyncCoordinator } from '../services/syncCoordinator'
 import { supabase, isSupabaseConfigured, resolveAuthUserId } from '../services/supabase'
+import { enqueueRemoteTombstone, clearRemoteTombstones } from '../services/tombstoneService'
 import { deduplicateJobsViaEdgeFunction, formatDeduplicateResult } from '../services/deduplicateService'
 import { GENERIC_POSITIONS_SET, isGenericPosition } from '../constants/positions'
 import { isJobBoard } from '../constants/jobBoards'
@@ -1144,12 +1145,37 @@ export function isDeletedJobId(jobId) {
   return deleted.includes(jobId)
 }
 
-function markJobIdAsDeleted(jobId) {
+// Local-only tombstone write (no remote propagation). Used by the poll consumer
+// when applying a tombstone that ALREADY came from remote — re-enqueuing it would
+// be a redundant network round-trip and a feedback loop.
+export function markJobIdAsDeletedLocal(jobId) {
   const deleted = JSON.parse(localStorage.getItem(DELETED_JOB_IDS_KEY) || '[]')
   if (!deleted.includes(jobId)) {
     deleted.push(jobId)
     localStorage.setItem(DELETED_JOB_IDS_KEY, JSON.stringify(deleted))
   }
+}
+
+function markJobIdAsDeleted(jobId) {
+  markJobIdAsDeletedLocal(jobId)
+  // Propagate to the user's other devices via the remote tombstone table.
+  // Fire-and-forget + offline-safe (queues locally, retried on the next poll).
+  enqueueRemoteTombstone(jobId)
+}
+
+// Partition jobs by a set of tombstoned ids. Pure + side-effect-free so the poll
+// consumer can be unit-tested without a network. Returns { kept, removed }.
+// A job lands in `removed` ONLY when its id is explicitly in the tombstone set —
+// never inferred from absence — so an unsynced local job can never be dropped.
+export function partitionJobsByTombstones(jobs, tombstoneIds) {
+  const set = tombstoneIds instanceof Set ? tombstoneIds : new Set(tombstoneIds || [])
+  const kept = []
+  const removed = []
+  for (const job of jobs || []) {
+    if (job && set.has(job.id)) removed.push(job)
+    else kept.push(job)
+  }
+  return { kept, removed }
 }
 
 // ─── Canonical history-entry identity ─────────────────────────────────────────
@@ -1865,8 +1891,17 @@ export function useJobs() {
     return results
   }
 
-  const clearDeletedJobs = () => {
+  const clearDeletedJobs = async () => {
     localStorage.removeItem(DELETED_JOB_IDS_KEY)
+    // Also erase the remote tombstones + reset the poll watermark, otherwise the
+    // next poll re-applies them and the re-imported jobs vanish again.
+    try {
+      const userId = await resolveAuthUserId()
+      if (userId) await clearRemoteTombstones(userId)
+      await indexeddb.setMetadata('last_tombstone_sync', null)
+    } catch (err) {
+      console.warn('Failed to clear remote tombstones:', err?.message)
+    }
     console.log('✓ Cleared deleted jobs list — auto-refresh will re-import them')
   }
 

@@ -116,6 +116,8 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
   const [confirmClear, setConfirmClear] = useState(false)
   const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('jobtrackr_theme') || 'light')
   const [jobSearchFlag, setJobSearchFlag] = useState(() => getFlag(FLAGS.JOB_SEARCH))
+  // Cross-device deletion sync is ON by default; the flag is a "disable" kill-switch.
+  const [crossDeleteDisabled, setCrossDeleteDisabled] = useState(() => getFlag(FLAGS.CROSS_DEVICE_DELETE_OFF))
 
   // Listen for theme changes
   useEffect(() => {
@@ -991,6 +993,22 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
                     }`}
                   >
                     {jobSearchFlag ? '✓ Activée' : 'Désactivée'}
+                  </button>
+                </Row>
+                <Row label="Suppression multi-appareils" hint="Propage la suppression d'une candidature à vos autres appareils. Activé par défaut — désactivez seulement en cas de problème de synchronisation.">
+                  <button
+                    onClick={() => {
+                      const disabledNext = !crossDeleteDisabled
+                      setFlag(FLAGS.CROSS_DEVICE_DELETE_OFF, disabledNext)
+                      setCrossDeleteDisabled(disabledNext)
+                    }}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      !crossDeleteDisabled
+                        ? 'bg-green-500 text-white hover:bg-green-600'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    {!crossDeleteDisabled ? '✓ Activée' : 'Désactivée'}
                   </button>
                 </Row>
               </Card>
