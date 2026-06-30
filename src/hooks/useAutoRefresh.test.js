@@ -8,7 +8,7 @@ vi.mock('../services/supabase', () => ({
   resolveAuthUserId: async () => null,
 }))
 
-import { filterEmailsBeforeParse } from './useAutoRefresh'
+import { filterEmailsBeforeParse, historyDedupKeys, isNewHistoryEntry } from './useAutoRefresh'
 
 const daysAgo = n => new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString()
 
@@ -108,5 +108,50 @@ describe('filterEmailsBeforeParse', () => {
     const emails = [{ id: 'g-new', from: 'recruiter@newco.com', date: daysAgo(1) }]
     const { kept } = filterEmailsBeforeParse(emails, [acmeJob('rejected')])
     expect(kept.map(e => e.id)).toEqual(['g-new'])
+  })
+})
+
+describe('historyDedupKeys / isNewHistoryEntry', () => {
+  // Regression: a stored note merged by combineTopicNotes uses the ' · ' separator;
+  // a stored note merged by mergeNotes uses ' | '. The re-import dedup must expand
+  // BOTH so a freshly-parsed individual email matches its merged stored form.
+  // Splitting on only one separator re-imported the entry every refresh, firing a
+  // phantom "X nouvelle entrée dans l'historique" notification with nothing new
+  // visible in the timeline.
+
+  it('expands a stored note merged with the " · " separator', () => {
+    const stored = [{ date: '2026-06-29', note: 'Email reçu · Relance envoyée' }]
+    const keys = historyDedupKeys(stored)
+    // Each individual part is recoverable, so neither re-parsed email looks new.
+    expect(isNewHistoryEntry(keys, { date: '2026-06-29', note: 'Email reçu' })).toBe(false)
+    expect(isNewHistoryEntry(keys, { date: '2026-06-29', note: 'Relance envoyée' })).toBe(false)
+  })
+
+  it('expands a stored note merged with the " | " separator', () => {
+    const stored = [{ date: '2026-06-29', note: 'Email reçu | Relance envoyée' }]
+    const keys = historyDedupKeys(stored)
+    expect(isNewHistoryEntry(keys, { date: '2026-06-29', note: 'Email reçu' })).toBe(false)
+    expect(isNewHistoryEntry(keys, { date: '2026-06-29', note: 'Relance envoyée' })).toBe(false)
+  })
+
+  it('treats a genuinely new note on the same date as new', () => {
+    const keys = historyDedupKeys([{ date: '2026-06-29', note: 'Email reçu · Relance envoyée' }])
+    expect(isNewHistoryEntry(keys, { date: '2026-06-29', note: 'Entretien proposé' })).toBe(true)
+  })
+
+  it('treats the same note on a different date as new', () => {
+    const keys = historyDedupKeys([{ date: '2026-06-29', note: 'Email reçu' }])
+    expect(isNewHistoryEntry(keys, { date: '2026-06-30', note: 'Email reçu' })).toBe(true)
+  })
+
+  it('is whitespace-insensitive (matches normNote normalization)', () => {
+    const keys = historyDedupKeys([{ date: '2026-06-29', note: 'Email   reçu' }])
+    expect(isNewHistoryEntry(keys, { date: '2026-06-29', note: ' Email reçu ' })).toBe(false)
+  })
+
+  it('handles empty / missing history and notes without throwing', () => {
+    expect(historyDedupKeys(undefined).size).toBe(0)
+    expect(historyDedupKeys([{ date: '2026-06-29' }]).size).toBe(1) // empty note → one key
+    expect(isNewHistoryEntry(new Set(), { date: '2026-06-29', note: 'x' })).toBe(true)
   })
 })

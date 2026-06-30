@@ -54,6 +54,33 @@ const REFRESH_INTERVAL_HOURS = 1
 
 const STATUS_ORDER = ['todo','sent','reviewing','interview','done','waiting','offer','rejected','rejected_ats','cancelled','archived']
 
+// ─── History dedup keys ───────────────────────────────────────────────────────
+// Decide whether a freshly-parsed email is already present in a job's history.
+// A stored note may have been merged across refreshes using EITHER separator —
+// mergeNotes joins segments with ' | ', combineTopicNotes (same-day topic merge)
+// with ' · '. So expand stored notes on BOTH separators and key each part by its
+// date. Splitting on only one separator makes a re-parsed individual note look
+// new every refresh, which re-imports it and fires a phantom "nouvelle entrée
+// dans l'historique" notification while the timeline re-merges it away (so the
+// user sees a notification but nothing new). Keep this in sync with the
+// separators used by combineTopicNotes / mergeNotes in useJobs.js.
+const HISTORY_NOTE_SEPARATORS = / · | \| /
+const normNote = s => (s || '').trim().replace(/\s+/g, ' ').slice(0, 80)
+
+export function historyDedupKeys(history) {
+  const keys = new Set()
+  for (const h of history || []) {
+    for (const part of (h.note || '').split(HISTORY_NOTE_SEPARATORS)) {
+      keys.add(`${h.date}_${normNote(part)}`)
+    }
+  }
+  return keys
+}
+
+export function isNewHistoryEntry(existingKeys, entry) {
+  return !existingKeys.has(`${entry?.date}_${normNote(entry?.note)}`)
+}
+
 // ─── Semantic deduplication for history entries ───────────────────────────────
 // Group similar entries on same date by keyword overlap (e.g., multiple "test technique" notes)
 function deduplicateHistoryBySemantics(history) {
@@ -707,13 +734,8 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
 
           // Merge new history entries from this duplicate into the first job
           if (p.history?.length > 0) {
-            const normNote = s => (s || '').trim().replace(/\s+/g, ' ').slice(0, 80)
-            const existingHistKeys = new Set(
-              (firstJobData.history || []).flatMap(h =>
-                (h.note || '').split(' | ').map(n => `${h.date}_${normNote(n)}`)
-              )
-            )
-            const newEntries = p.history.filter(h => !existingHistKeys.has(`${h.date}_${normNote(h.note)}`))
+            const existingHistKeys = historyDedupKeys(firstJobData.history)
+            const newEntries = p.history.filter(h => isNewHistoryEntry(existingHistKeys, h))
 
             if (newEntries.length > 0) {
               const merged = [...(firstJobData.history || []), ...newEntries]
@@ -740,14 +762,8 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
           skipped++
         } else {
           // Existing job — merge any new history entries
-          const normNote = s => (s || '').trim().replace(/\s+/g, ' ').slice(0, 80)
-          // Expand merged notes (stored as "note1 | note2") so individual notes match too
-          const existingHistKeys = new Set(
-            (existing.history || []).flatMap(h =>
-              (h.note || '').split(' | ').map(n => `${h.date}_${normNote(n)}`)
-            )
-          )
-          const newEntries = (p.history || []).filter(h => !existingHistKeys.has(`${h.date}_${normNote(h.note)}`))
+          const existingHistKeys = historyDedupKeys(existing.history)
+          const newEntries = (p.history || []).filter(h => isNewHistoryEntry(existingHistKeys, h))
           if (newEntries.length > 0) {
             log(`📝 Updating ${p.company}/${p.position}: adding ${newEntries.length} new history entries`)
             const merged = [...(existing.history || []), ...newEntries]
