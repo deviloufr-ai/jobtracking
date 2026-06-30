@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, memo } from 'react'
+import { useState, useRef, useEffect, memo, Fragment } from 'react'
 import { enrichJobTimeline } from '../services/enrichTimeline'
 import { STATUSES, getStatus, getStatusLabel } from '../hooks/useJobs'
 import { ScoreBadge } from './ScoreJob'
@@ -60,8 +60,14 @@ function StepForm({ value, onChange, onSubmit, onCancel, submitLabel, t }) {
   )
 }
 
-function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, forceExpand, onForceExpandDone, checkAllPositions, t = (key) => key }) {
-  const [expanded, setExpanded] = useState(false)
+// 3-step funnel position for the progress stepper, derived from the effective
+// status. undefined → no stepper (todo or a terminal/negative status).
+const STEP_REACHED = { sent: 0, reviewing: 0, waiting: 0, interview: 1, done: 1, offer: 2 }
+
+function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, forceExpand, onForceExpandDone, checkAllPositions, variant = 'card', defaultExpanded = false, t = (key) => key }) {
+  const isSheet = variant === 'sheet'
+  const [expanded, setExpanded] = useState(defaultExpanded)
+  const px = isSheet ? 'px-1' : 'px-3.5'
   const [statusSheet, setStatusSheet] = useState(false)
   const [actionsSheet, setActionsSheet] = useState(false)
   const [showAddStep, setShowAddStep] = useState(false)
@@ -203,12 +209,14 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
   return (
     <div
       ref={rowRef}
-      className={`rounded-2xl border transition-all ${
-        job.favorite ? 'bg-amber-50/70 border-amber-200' : 'bg-white border-gray-200'
-      } ${job.status === 'cancelled' ? 'opacity-50' : ''} ${expanded ? 'shadow-md' : 'shadow-sm'}`}
+      className={isSheet
+        ? 'bg-transparent'
+        : `rounded-2xl border transition-all ${
+            job.favorite ? 'bg-amber-50/70 border-amber-200' : 'bg-white border-gray-200'
+          } ${job.status === 'cancelled' ? 'opacity-50' : ''} ${expanded ? 'shadow-md' : 'shadow-sm'}`}
     >
-      {/* ── Header (tap to expand) ─────────────────────────────────────────── */}
-      <div className="flex items-start gap-3 p-3.5 cursor-pointer" onClick={() => setExpanded(v => !v)}>
+      {/* ── Header (tap to expand on cards; static in the detail sheet) ─────── */}
+      <div className={`flex items-start gap-3 ${px} py-3.5 ${isSheet ? '' : 'cursor-pointer'}`} onClick={() => { if (!isSheet) setExpanded(v => !v) }}>
         <CompanyAvatar company={job.company} sizeClass="w-11 h-11" textClass="text-sm" />
 
         <div className="flex-1 min-w-0">
@@ -250,20 +258,39 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
             onClick={e => { e.stopPropagation(); onToggleFavorite?.(job.id) }}
             className={`text-xl leading-none transition-all active:scale-125 ${job.favorite ? 'text-yellow-400' : 'text-gray-300'}`}
           >★</button>
-          <svg className={`w-4 h-4 text-gray-300 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+          {!isSheet && (
+            <svg className={`w-4 h-4 text-gray-300 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
         </div>
       </div>
 
       {/* Collapsed note preview */}
       {!expanded && noteText && (
-        <p className="px-3.5 pb-3.5 -mt-1 text-xs text-gray-500 line-clamp-2">{noteText}</p>
+        <p className={`${px} pb-3.5 -mt-1 text-xs text-gray-500 line-clamp-2`}>{noteText}</p>
       )}
 
       {/* ── Expanded body ──────────────────────────────────────────────────── */}
       {expanded && (
-        <div className="px-3.5 pb-3.5 animate-expand">
+        <div className={`${px} pb-3.5 animate-expand`}>
+          {/* Progress stepper — funnel position at a glance */}
+          {STEP_REACHED[displayStatusKey] !== undefined && (
+            <div className="flex items-center mb-4 px-1">
+              {[getStatusLabel('sent', t), getStatusLabel('interview', t), getStatusLabel('offer', t)].map((label, i) => {
+                const reached = STEP_REACHED[displayStatusKey]
+                return (
+                  <Fragment key={i}>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className={`w-3 h-3 rounded-full ${i <= reached ? 'bg-indigo-500' : 'bg-gray-200'}`} />
+                      <span className={`text-[10px] ${i <= reached ? 'text-indigo-600 font-medium' : 'text-gray-400'}`}>{label}</span>
+                    </div>
+                    {i < 2 && <div className={`flex-1 h-0.5 mx-1 -mt-4 ${i < reached ? 'bg-indigo-500' : 'bg-gray-200'}`} />}
+                  </Fragment>
+                )
+              })}
+            </div>
+          )}
           {/* Meta chips */}
           {(job.location || job.salaryMin || job.salaryMax) && (
             <div className="flex flex-wrap gap-1.5 mb-3">
@@ -304,16 +331,16 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
                       <span className="ml-auto flex items-center gap-1">
                         {confirmDeleteIdx === displayIdx ? (
                           <>
-                            <button onClick={() => deleteStep(displayIdx)} className="text-[11px] font-semibold text-red-600 px-1.5 py-0.5 rounded hover:bg-red-50">✓</button>
-                            <button onClick={() => setConfirmDeleteIdx(null)} className="text-[11px] text-gray-400 px-1.5 py-0.5 rounded hover:bg-gray-100">✕</button>
+                            <button onClick={() => deleteStep(displayIdx)} className="text-xs font-semibold text-red-600 px-2.5 py-1.5 rounded-lg hover:bg-red-50">✓</button>
+                            <button onClick={() => setConfirmDeleteIdx(null)} className="text-xs text-gray-400 px-2.5 py-1.5 rounded-lg hover:bg-gray-100">✕</button>
                           </>
                         ) : (
                           <>
-                            <button onClick={() => startEdit(displayIdx)} className="text-gray-300 hover:text-indigo-600 p-1 rounded">
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                            <button onClick={() => startEdit(displayIdx)} aria-label={t('jobCard.edit')} className="text-gray-300 hover:text-indigo-600 p-2.5 -m-1 rounded-lg">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             </button>
-                            <button onClick={() => setConfirmDeleteIdx(displayIdx)} className="text-gray-300 hover:text-red-600 p-1 rounded">
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            <button onClick={() => setConfirmDeleteIdx(displayIdx)} aria-label={t('jobCard.delete')} className="text-gray-300 hover:text-red-600 p-2.5 -m-1 rounded-lg">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </button>
                           </>
                         )}

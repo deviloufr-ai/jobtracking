@@ -11,6 +11,9 @@ import Analytics from './components/Analytics'
 import Filters from './components/Filters'
 import JobRow from './components/JobRow'
 import JobCard from './components/JobCard'
+import JobFluxRow from './components/JobFluxRow'
+import MobileHome from './components/MobileHome'
+import MobilePipeline from './components/MobilePipeline'
 import KanbanBoard from './components/KanbanBoard'
 import JobModal from './components/JobModal'
 import ConfirmDelete from './components/ConfirmDelete'
@@ -198,6 +201,7 @@ export default function App() {
   // Settings → Debug). Track the flag and keep it live across toggles.
   const [searchEnabled, setSearchEnabled] = useState(() => getFlag(FLAGS.JOB_SEARCH))
   const [expandedJobId, setExpandedJobId] = useState(null)
+  const [detailJob, setDetailJob] = useState(null) // mobile: job open in the full-screen detail sheet
   const [showLandingPage, setShowLandingPage] = useState(true)
   const [syncUserId, setSyncUserId] = useState(null)
   const [initialSyncDone, setInitialSyncDone] = useState(false)
@@ -990,9 +994,23 @@ export default function App() {
           <>
         <div className="flex gap-6 items-start">
         <div className="flex-1 min-w-0">
-        {/* Top 2-col: Stats left, Prochaines étapes right — only when data exists */}
+        {/* Mobile: action-first hero (Accueil) — replaces the heavier stats grid below */}
         {jobs.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4 items-stretch">
+          <div className="md:hidden">
+            <MobileHome
+              jobs={jobs}
+              userName={gmailUser?.name}
+              onOpenJob={(job) => setDetailJob(job)}
+              onGenerateCV={handleGenerateCV}
+              onSTAR={(job) => setStarJob(job)}
+              onDraftEmail={(job, type) => setEmailDraft({ job, type })}
+              t={t}
+            />
+          </div>
+        )}
+        {/* Top 2-col: Stats left, Prochaines étapes right — tablet/desktop only */}
+        {jobs.length > 0 && (
+          <div className="hidden md:grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4 items-stretch">
             <Stats jobs={jobs} t={t} />
             <NextAction
               jobs={jobs}
@@ -1020,15 +1038,29 @@ export default function App() {
         />
 
         {trackerView === 'kanban' && filtered.length > 0 ? (
-          <KanbanBoard
-            jobs={filtered}
-            filters={filters}
-            showArchived={showArchived}
-            onStatusChange={handleStatusChange}
-            onEdit={setModal}
-            onToggleFavorite={toggleFavorite}
-            t={t}
-          />
+          <>
+            {/* Mobile: swipeable stage pipeline */}
+            <div className="md:hidden">
+              <MobilePipeline
+                jobs={filtered}
+                onOpen={(job) => setDetailJob(job)}
+                onToggleFavorite={toggleFavorite}
+                t={t}
+              />
+            </div>
+            {/* Tablet/desktop: drag-and-drop board */}
+            <div className="hidden md:block">
+              <KanbanBoard
+                jobs={filtered}
+                filters={filters}
+                showArchived={showArchived}
+                onStatusChange={handleStatusChange}
+                onEdit={setModal}
+                onToggleFavorite={toggleFavorite}
+                t={t}
+              />
+            </div>
+          </>
         ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           {filtered.length === 0 ? (
@@ -1054,7 +1086,7 @@ export default function App() {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* ── MOBILE: Card layout ──────────────────────────────────────────── */}
+              {/* ── MOBILE: Flux list (swipe a row for quick actions, tap to open) ── */}
               <div className="md:hidden space-y-4">
                 {/* Favorites section */}
                 {filtered.some(j => j.favorite) && (
@@ -1064,7 +1096,7 @@ export default function App() {
                     </div>
                     <div className="space-y-2.5">
                       {filtered.filter(j => j.favorite).map(job => (
-                        <JobCard key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} checkAllPositions={checkAllPositions} t={t} />
+                        <JobFluxRow key={job.id} job={job} onOpen={setDetailJob} onToggleFavorite={toggleFavorite} onArchive={(j) => handleStatusChange(j.id, 'archived')} onRelance={(j) => setEmailDraft({ job: j, type: 'relance' })} t={t} />
                       ))}
                     </div>
                   </>
@@ -1080,7 +1112,7 @@ export default function App() {
                     )}
                     <div className="space-y-2.5">
                       {filtered.filter(j => !j.favorite).map(job => (
-                        <JobCard key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} checkAllPositions={checkAllPositions} t={t} />
+                        <JobFluxRow key={job.id} job={job} onOpen={setDetailJob} onToggleFavorite={toggleFavorite} onArchive={(j) => handleStatusChange(j.id, 'archived')} onRelance={(j) => setEmailDraft({ job: j, type: 'relance' })} t={t} />
                       ))}
                     </div>
                   </>
@@ -1236,6 +1268,27 @@ export default function App() {
       )}
       {mergeModal && <MergeModal jobs={mergeModal} onConfirm={handleMergeConfirm} onCancel={() => setMergeModal(null)} t={t} />}
       {showOnboarding && <OnboardingModal onAddKey={handleOnboardingAddKey} onSkip={dismissOnboarding} t={t} />}
+
+      {/* Mobile: full-screen job detail sheet (opened from the Flux list / pipeline / hero) */}
+      {detailJob && (
+        <BottomSheet open onClose={() => setDetailJob(null)} maxHeight="93vh">
+          <JobCard
+            variant="sheet"
+            defaultExpanded
+            job={jobs.find(j => j.id === detailJob.id) || detailJob}
+            onEdit={(j) => { setDetailJob(null); setModal(j) }}
+            onDelete={(j) => { setDetailJob(null); setToDelete(j) }}
+            onStatusChange={handleStatusChange}
+            onAddStep={addHistoryEntry}
+            onUpdateHistory={handleUpdateHistory}
+            onUpdateJob={updateJob}
+            onGenerateCV={(j) => { setDetailJob(null); handleGenerateCV(j) }}
+            onToggleFavorite={toggleFavorite}
+            checkAllPositions={checkAllPositions}
+            t={t}
+          />
+        </BottomSheet>
+      )}
 
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-5 py-2.5 rounded-full shadow-lg z-50">
