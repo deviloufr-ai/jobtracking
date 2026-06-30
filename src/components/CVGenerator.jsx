@@ -118,22 +118,19 @@ function parseCV(raw) {
   }
   if (cur) sections.push(cur)
 
-  // Clean up contact info
-  const cleanedContact = contact.map(line => {
-    // Clean phone numbers
-    if (line.match(/\+\d+[\d\s]+\d+/)) {
-      return cleanPhone(line)
-    }
-    // Clean LinkedIn URLs
-    if (line.toLowerCase().includes('linkedin')) {
-      return cleanLinkedIn(line)
-    }
-    // Clean emails
-    if (line.includes('@')) {
-      return cleanEmail(line)
-    }
-    return line
-  })
+  // Clean up contact info. The contact line is a single "·"-joined line
+  // (City · Email · Phone · LinkedIn · Website), so clean each field
+  // independently — running the single-value cleaners on the whole line would
+  // discard every other field (cleanLinkedIn keeps only the URL tail, etc.).
+  const cleanedContact = contact.map(line =>
+    line.split(/\s*·\s*/).map(part => {
+      if (!part) return part
+      if (/\+?\d[\d\s().-]{6,}\d/.test(part)) return cleanPhone(part)
+      if (part.toLowerCase().includes('linkedin')) return cleanLinkedIn(part)
+      if (part.includes('@')) return cleanEmail(part)
+      return part
+    }).filter(Boolean).join(' · ')
+  )
 
   return { name, contact: cleanedContact.join(' · '), sections }
 }

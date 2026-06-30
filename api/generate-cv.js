@@ -118,7 +118,7 @@ STRICT FORMAT RULES — ATS-Compatible:
 ═══════════════════════════════════════════════════════════════════════════════
 1. # Full Name
 2. Contact line: City · Email · Phone · LinkedIn (plain text, NO symbols) — values copied VERBATIM from the original CV; never change the city/address
-3. ## Section Title — use standard section names TRANSLATED INTO THE CV'S LANGUAGE (e.g. EN: Professional Experience / Technical Skills / Education — FR: Expérience professionnelle / Compétences / Formation). Never leave a header in a different language than the rest of the CV.
+3. ## Section Title — use standard section names TRANSLATED INTO THE CV'S LANGUAGE (e.g. EN: Professional Experience / Technical Skills / Education — FR: Expérience professionnelle / Compétences / Formation). Never leave a header in a different language than the rest of the CV. The professional summary is itself a "## " section (## Profile / ## Profil) — it is NEVER a bare paragraph under the name.
 4. ### Job Title (e.g., Senior Product Manager)
 5. Company Name | Start Date – End Date | Location (pipe-separated, single line)
 6. - Bullet point (action verb + quantified result when available)
@@ -177,6 +177,10 @@ STEP 2: For EVERY role:
    NOT: "Led OKR-driven roadmap, delivering features with 92% on-time delivery" (templated/fabricated metric)
 
 Profile/Summary:
+- MUST be its OWN section under a "## " heading named in the CV's language
+  (## Profile / ## Profil / ## 概要) placed right after the contact line, BEFORE
+  the experience section. NEVER write the summary as a heading-less paragraph
+  directly under the name/contact line — it must have a "## " heading.
 - 2-3 sentences (60-90 words max) — absolutely NO longer
 - Lead with seniority + operating model/scope (e.g. "Senior Product Manager, OKR-driven…"), then domain and signature outcomes
 - PROFESSIONAL register: confident, concise, specific. No first person, no casual phrasing.
@@ -320,9 +324,11 @@ async function scoreCV(apiKey, { cv, jobDescription, company, position }) {
 
 // Deterministically pin the CV's contact line to the profile's authoritative
 // values. The model is told to copy them verbatim, but it still corrupts
-// email/LinkedIn tokens when rewriting — so we rebuild the contact region here:
-// keep the model's location/city token(s), drop any email/phone/LinkedIn/website
-// it produced, and append the profile's exact values. No-op without a contact.
+// email/LinkedIn tokens when rewriting. We rewrite ONLY the actual contact line
+// (the first non-empty line after the name that contains a contact token):
+// keep its location/city token(s), drop any email/phone/LinkedIn/website it
+// produced, and append the profile's exact values. Everything else — including a
+// heading-less summary paragraph — is left untouched. No-op without a contact.
 function enforceContactLine(md, contact) {
   if (!contact || !md) return md
   const authParts = [contact.email, contact.phone, contact.linkedin, contact.website].filter(Boolean)
@@ -332,31 +338,35 @@ function enforceContactLine(md, contact) {
   const nameIdx = lines.findIndex(l => l.trimStart().startsWith('# '))
   if (nameIdx === -1) return md
 
-  // Contact region = lines between the name heading and the first section.
-  let end = lines.length
-  for (let i = nameIdx + 1; i < lines.length; i++) {
-    const l = lines[i].trimStart()
-    if (l.startsWith('## ') || l.startsWith('### ')) { end = i; break }
-  }
-
   const isEmail    = t => /\S+@\S+\.\S+/.test(t)
   const isLinkedIn = t => /linkedin\.com|linkedin\s*:/i.test(t)
   const isPhone    = t => /\+?\d[\d\s().-]{6,}\d/.test(t)
   const isUrl      = t => /(https?:\/\/|www\.)|\.(com|io|dev|fr|net|me|co|org|app)\b/i.test(t)
   const isContactTok = t => isEmail(t) || isLinkedIn(t) || isPhone(t) || isUrl(t)
 
-  // Keep only the model's non-contact tokens (location/city).
-  const kept = []
-  for (let i = nameIdx + 1; i < end; i++) {
-    const line = lines[i].trim()
-    if (!line) continue
-    for (const tok of line.split(/\s*[·|•]\s*/).map(s => s.trim()).filter(Boolean)) {
-      if (!isContactTok(tok)) kept.push(tok)
-    }
+  // The contact line is the FIRST non-empty line after the name, and only when it
+  // really is a contact line (has a contact token). Stop at any heading so we
+  // never reach into the body or treat a summary paragraph as contact info.
+  let contactIdx = -1
+  for (let i = nameIdx + 1; i < lines.length; i++) {
+    const raw = lines[i]
+    if (!raw.trim()) continue
+    if (raw.trimStart().startsWith('#')) break
+    const toks = raw.trim().split(/\s*[·|•]\s*/).map(s => s.trim()).filter(Boolean)
+    if (toks.some(isContactTok)) contactIdx = i
+    break // only the first non-empty line can be the contact line
   }
 
-  const rebuilt = [...kept, ...authParts].join(' · ')
-  return [...lines.slice(0, nameIdx + 1), rebuilt, '', ...lines.slice(end)].join('\n')
+  // No contact line present — insert one right after the name; body untouched.
+  if (contactIdx === -1) {
+    lines.splice(nameIdx + 1, 0, authParts.join(' · '))
+    return lines.join('\n')
+  }
+
+  const toks = lines[contactIdx].trim().split(/\s*[·|•]\s*/).map(s => s.trim()).filter(Boolean)
+  const kept = toks.filter(t => !isContactTok(t)) // keep city/location
+  lines[contactIdx] = [...kept, ...authParts].join(' · ')
+  return lines.join('\n')
 }
 
 export default async function handler(req, res) {
