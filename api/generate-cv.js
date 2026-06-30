@@ -1,11 +1,25 @@
 import { applyCors, getClientIp, rateLimit, enforceSharedKeyQuota } from './_lib/http.js'
 
-// Target ATS / job-match score the generated CV must reach. The handler
-// generates, self-scores with the same rubric the in-app scorer uses, and
-// refines with targeted feedback until the CV clears this bar (or runs out
-// of attempts).
-const TARGET_SCORE = 90
+// ATS optimization level (set in Settings → My CV). Each level maps to the
+// target ATS / job-match score the generated CV must reach and how aggressively
+// the prompt mirrors the posting's keywords. The handler generates, self-scores
+// with the same rubric the in-app scorer uses, and refines with targeted
+// feedback until the CV clears the target (or runs out of attempts).
+const ATS_LEVELS = {
+  light:    { target: 70 },
+  balanced: { target: 80 },
+  max:      { target: 90 },
+}
+const DEFAULT_ATS_LEVEL = 'max'
 const MAX_ATTEMPTS = 3 // 1 initial generation + up to 2 refinement passes
+
+// Per-level guidance injected into the generation prompt. Higher levels push
+// harder on reusing the posting's exact wording; all levels forbid fabrication.
+const ATS_GUIDANCE = {
+  light: `ATS OPTIMIZATION LEVEL — LIGHT: Integrate only the few most important must-have keywords from the job description, and only where the candidate genuinely has that experience. Prioritise natural, authentic phrasing over keyword density. Do NOT stuff keywords.`,
+  balanced: `ATS OPTIMIZATION LEVEL — BALANCED: Mirror the job description's key must-have keywords/skills wherever the candidate truthfully has that experience, while keeping the writing natural and readable. Front-load the most relevant ones in the Profile and Skills.`,
+  max: `ATS OPTIMIZATION LEVEL — MAXIMUM: Aggressively mirror the job description's exact must-have keywords, skills and title wording everywhere the candidate genuinely qualifies. Front-load them in the Profile, the Skills section and the first bullet of the most relevant roles to maximise the ATS keyword match. NEVER fabricate experience the candidate doesn't have.`,
+}
 
 async function callClaude(apiKey, { maxTokens, prompt }) {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -29,10 +43,31 @@ async function callClaude(apiKey, { maxTokens, prompt }) {
   return data.content?.[0]?.text || ''
 }
 
-function buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback }) {
+function buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact }) {
+  // Authoritative contact details from the candidate's profile. When present,
+  // these OVERRIDE whatever contact info is in the original CV text (the model
+  // tends to corrupt verbatim tokens like emails/LinkedIn URLs when rewriting).
+  const contactLines = contact ? [
+    contact.name ? `Name: ${contact.name}` : '',
+    contact.email ? `Email: ${contact.email}` : '',
+    contact.phone ? `Phone: ${contact.phone}` : '',
+    contact.linkedin ? `LinkedIn: ${contact.linkedin}` : '',
+    contact.website ? `Website/Portfolio: ${contact.website}` : '',
+  ].filter(Boolean).join('\n') : ''
+  const contactBlock = contactLines ? `
+═══════════════════════════════════════════════════════════════════════════════
+AUTHORITATIVE CONTACT DETAILS (from the candidate's profile — use VERBATIM):
+═══════════════════════════════════════════════════════════════════════════════
+${contactLines}
+Use these EXACT values in the contact line, character for character. Do NOT use
+any email, phone, LinkedIn or website found in the ORIGINAL CV text — they may be
+outdated or mis-scanned. Keep the candidate's CITY/location from the original CV.
+Never invent, translate or alter these values.
+` : ''
+
   const feedbackBlock = feedback ? `
 ═══════════════════════════════════════════════════════════════════════════════
-⚠️ REVISION REQUIRED — the previous draft scored ${feedback.score}/100 (target ≥ ${TARGET_SCORE}).
+⚠️ REVISION REQUIRED — the previous draft scored ${feedback.score}/100 (target ≥ ${targetScore}).
 ═══════════════════════════════════════════════════════════════════════════════
 A recruiter-style screener flagged these GAPS against the job description:
 ${(feedback.gaps || []).map(g => `- ${g}`).join('\n')}
@@ -48,15 +83,17 @@ Close every gap above WITHOUT inventing experience the candidate doesn't have:
 
 ${languageInstruction}
 
+${atsGuidance}
+${contactBlock}
 ═══════════════════════════════════════════════════════════════════════════════
-PRIMARY OBJECTIVE — ATS / JOB-MATCH SCORE ≥ ${TARGET_SCORE} / 100:
+PRIMARY OBJECTIVE — ATS / JOB-MATCH SCORE ≥ ${targetScore} / 100:
 ═══════════════════════════════════════════════════════════════════════════════
 The adapted CV will be graded by an automated recruiter-style screener on:
   1. Required-skills match (must-have skills/keywords from the JD)
   2. Experience level (years, seniority, relevant domain)
   3. Background alignment (industry, company size, role similarity)
   4. Achievement relevance (measurable outcomes matching the JD context)
-Your CV MUST score at least ${TARGET_SCORE}. To get there, truthfully mirror the JD's
+Your CV MUST score at least ${targetScore}. To get there, truthfully mirror the JD's
 must-have keywords/skills (same wording) anywhere the candidate genuinely has that
 experience, and front-load that relevance. NEVER fabricate — pull from real history.
 ${feedbackBlock}
@@ -68,11 +105,13 @@ CORE PRINCIPLE:
 ✓ DO NOT INVENT — use only actual achievements from the original CV
 ✓ EMPHASIZE the most relevant experience (more bullets), but still list every role
 ✓ CONDENSE older/less relevant roles to fewer bullets — never delete them
-✓ NEVER change the candidate's CONTACT DETAILS — copy the city/address, email,
+✓ CONTACT DETAILS: If "AUTHORITATIVE CONTACT DETAILS" are provided above, use
+  those EXACT values for email, phone, LinkedIn and website/portfolio (copy the
+  city/location from the original CV). Otherwise copy the city/address, email,
   phone and LinkedIn EXACTLY as written in the original CV. Do NOT relocate the
   candidate to the job's city, do NOT translate or "localize" the address, do
-  NOT invent or guess any contact value. If a field is absent from the original
-  CV, leave it out entirely — never fabricate one.
+  NOT invent or guess any contact value. If a field is absent, leave it out
+  entirely — never fabricate one.
 
 ═══════════════════════════════════════════════════════════════════════════════
 STRICT FORMAT RULES — ATS-Compatible:
@@ -220,7 +259,7 @@ OUTPUT REQUIREMENTS:
 9. CRITICAL: Reproduce the candidate's name and contact line (city/address, email, phone, LinkedIn) EXACTLY as in the original CV — never relocate, translate, or invent any of them
 
 Priority order (in order):
-1. Score ≥ ${TARGET_SCORE} on JD relevance — truthfully mirror must-have keywords (CRITICAL)
+1. Score ≥ ${targetScore} on JD relevance — truthfully mirror must-have keywords (CRITICAL)
 2. Cover the FULL career history — every role present (CRITICAL)
 3. Include measurable outcomes where available
 4. Maintain ATS compatibility (important)`
@@ -279,6 +318,47 @@ async function scoreCV(apiKey, { cv, jobDescription, company, position }) {
   }
 }
 
+// Deterministically pin the CV's contact line to the profile's authoritative
+// values. The model is told to copy them verbatim, but it still corrupts
+// email/LinkedIn tokens when rewriting — so we rebuild the contact region here:
+// keep the model's location/city token(s), drop any email/phone/LinkedIn/website
+// it produced, and append the profile's exact values. No-op without a contact.
+function enforceContactLine(md, contact) {
+  if (!contact || !md) return md
+  const authParts = [contact.email, contact.phone, contact.linkedin, contact.website].filter(Boolean)
+  if (!authParts.length) return md
+
+  const lines = md.split('\n')
+  const nameIdx = lines.findIndex(l => l.trimStart().startsWith('# '))
+  if (nameIdx === -1) return md
+
+  // Contact region = lines between the name heading and the first section.
+  let end = lines.length
+  for (let i = nameIdx + 1; i < lines.length; i++) {
+    const l = lines[i].trimStart()
+    if (l.startsWith('## ') || l.startsWith('### ')) { end = i; break }
+  }
+
+  const isEmail    = t => /\S+@\S+\.\S+/.test(t)
+  const isLinkedIn = t => /linkedin\.com|linkedin\s*:/i.test(t)
+  const isPhone    = t => /\+?\d[\d\s().-]{6,}\d/.test(t)
+  const isUrl      = t => /(https?:\/\/|www\.)|\.(com|io|dev|fr|net|me|co|org|app)\b/i.test(t)
+  const isContactTok = t => isEmail(t) || isLinkedIn(t) || isPhone(t) || isUrl(t)
+
+  // Keep only the model's non-contact tokens (location/city).
+  const kept = []
+  for (let i = nameIdx + 1; i < end; i++) {
+    const line = lines[i].trim()
+    if (!line) continue
+    for (const tok of line.split(/\s*[·|•]\s*/).map(s => s.trim()).filter(Boolean)) {
+      if (!isContactTok(tok)) kept.push(tok)
+    }
+  }
+
+  const rebuilt = [...kept, ...authParts].join(' · ')
+  return [...lines.slice(0, nameIdx + 1), rebuilt, '', ...lines.slice(end)].join('\n')
+}
+
 export default async function handler(req, res) {
   if (applyCors(req, res, 'POST, OPTIONS')) return
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return }
@@ -294,10 +374,15 @@ export default async function handler(req, res) {
     if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
   }
 
-  const { cvText, jobDescription, company, position, language } = req.body
+  const { cvText, jobDescription, company, position, language, atsLevel, contact } = req.body
   if (!cvText || !jobDescription) {
     res.status(400).json({ error: 'cvText and jobDescription required' }); return
   }
+
+  // Resolve the ATS optimization level → target score + keyword aggressiveness.
+  const level = ATS_LEVELS[atsLevel] ? atsLevel : DEFAULT_ATS_LEVEL
+  const targetScore = ATS_LEVELS[level].target
+  const atsGuidance = ATS_GUIDANCE[level]
 
   // Hard rule against producing a half-French / half-English CV. EVERYTHING the
   // model writes must be in ONE language: section headers, profile, every
@@ -320,12 +405,12 @@ export default async function handler(req, res) {
     let bestVerdict = null
     let feedback = null
 
-    // Generate → self-score → refine until the CV clears TARGET_SCORE, keeping
+    // Generate → self-score → refine until the CV clears targetScore, keeping
     // the highest-scoring draft seen across attempts.
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const cv = await callClaude(apiKey, {
         maxTokens: 8000,
-        prompt: buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback }),
+        prompt: buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact }),
       })
 
       const { score, verdict, gaps } = await scoreCV(apiKey, { cv, jobDescription, company, position })
@@ -344,17 +429,17 @@ export default async function handler(req, res) {
         bestVerdict = verdict
       }
 
-      if (score >= TARGET_SCORE) break
+      if (score >= targetScore) break
 
       // Below target — feed the gaps back into the next generation pass.
       feedback = { score, gaps }
     }
 
     res.status(200).json({
-      cv: bestCV,
+      cv: enforceContactLine(bestCV, contact),
       atsScore: bestScore < 0 ? null : bestScore,
       verdict: bestVerdict,
-      targetScore: TARGET_SCORE,
+      targetScore,
     })
   } catch (err) {
     res.status(500).json({ error: err.message })

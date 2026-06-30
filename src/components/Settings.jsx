@@ -12,6 +12,12 @@ import { THEMES } from '../utils/themes'
 import { getFlag, setFlag, FLAGS } from '../services/featureFlags'
 
 const PROFILE_KEY = 'jobtrackr_profile'
+// CV ATS optimization level — kept in its own localStorage key (not the synced
+// settings object) since it's a local generation preference and we don't want to
+// depend on a user_settings DB column. Read at generation time in CVGenerator.
+const CV_ATS_LEVEL_KEY = 'jobtrackr_cv_ats_level'
+const CV_ATS_LEVELS = ['light', 'balanced', 'max']
+const DEFAULT_CV_ATS_LEVEL = 'max'
 const PROFILE_DEFAULTS = {
   name: '',
   title: '',
@@ -151,6 +157,16 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
   const [apiKeyTested, setApiKeyTested] = useState(false)
   const [apiKeyTestLoading, setApiKeyTestLoading] = useState(false)
   const [apiKeyTestError, setApiKeyTestError] = useState(null)
+
+  // CV ATS optimization level (local generation preference)
+  const [cvAtsLevel, setCvAtsLevel] = useState(() => {
+    const v = localStorage.getItem(CV_ATS_LEVEL_KEY)
+    return CV_ATS_LEVELS.includes(v) ? v : DEFAULT_CV_ATS_LEVEL
+  })
+  const handleAtsLevelChange = (v) => {
+    setCvAtsLevel(v)
+    localStorage.setItem(CV_ATS_LEVEL_KEY, v)
+  }
 
   // Profile state
   const [profile, setProfile] = useState(loadProfile)
@@ -550,7 +566,22 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
 
             {/* My CV Tab */}
             {activeTab === 'cv' && (
-              <CVManager jobs={jobs} onUpdateJob={() => {}} manageOnly t={t} />
+              <>
+                <Card title={`🎯 ${t('settingsCV.atsTitle')}`} subtitle={t('settingsCV.atsSubtitle')}>
+                  <Row label={t('settingsCV.atsLevel')} hint={t('settingsCV.atsLevelHint')}>
+                    <select
+                      value={cvAtsLevel}
+                      onChange={e => handleAtsLevelChange(e.target.value)}
+                      className="w-full sm:w-auto text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all"
+                    >
+                      <option value="light">{t('settingsCV.atsLight')}</option>
+                      <option value="balanced">{t('settingsCV.atsBalanced')}</option>
+                      <option value="max">{t('settingsCV.atsMax')}</option>
+                    </select>
+                  </Row>
+                </Card>
+                <CVManager jobs={jobs} onUpdateJob={() => {}} manageOnly t={t} />
+              </>
             )}
 
             {/* Goals Tab */}

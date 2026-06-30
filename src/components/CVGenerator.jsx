@@ -26,6 +26,31 @@ function resolveAutoLanguage(jd, cvText, job) {
 
 const IS_DEV = import.meta.env.DEV
 
+// Contact details come from the user's profile (Settings → Profile), not from the
+// CV text. The model corrupts verbatim tokens like emails/LinkedIn URLs when it
+// rewrites the CV, so we pass these as authoritative values and the API pins the
+// contact line to them. ATS level (Settings → My CV) tunes keyword aggressiveness.
+function loadProfileContact() {
+  try {
+    const p = JSON.parse(localStorage.getItem('jobtrackr_profile') || 'null')
+    if (!p) return null
+    const contact = {
+      name: p.name || '',
+      email: p.email || '',
+      phone: p.phone || '',
+      linkedin: p.linkedin || '',
+      website: p.website || p.portfolio || '',
+    }
+    // Only send if at least one contact field is filled, otherwise let the CV
+    // text remain the source (better than blanking everything out).
+    return (contact.email || contact.phone || contact.linkedin || contact.website) ? contact : null
+  } catch { return null }
+}
+function loadAtsLevel() {
+  const v = localStorage.getItem('jobtrackr_cv_ats_level')
+  return ['light', 'balanced', 'max'].includes(v) ? v : 'max'
+}
+
 // ── HTML escape helper ────────────────────────────────────────────────────────
 const escapeHtml = s => (s || '')
   .replace(/&/g, '&amp;')
@@ -545,7 +570,7 @@ export default function CVGenerator({ cv, job, onBack, onSaveCV, t = (key) => ke
         const mock = `# Alexandre Leblanc\nParis, France · alexandre@email.com · linkedin.com/in/devilalex\n\n## Profil\nProduct Manager Senior avec 18 ans d'expérience internationale en B2B SaaS, gaming et IoT. Expert en pilotage de roadmap produit orienté OKR, A/B testing et métriques de rétention. Trilingue FR/EN/JP.\n\n## Expérience\n\n### Senior Product Manager — Datachain\nMai 2023 – Juin 2025 | Remote (Tokyo)\n- Piloté l'implémentation d'un pont inter-chaînes Web3/DeFi — discovery, rollout et suivi d'adoption\n- Structuré les interviews clients, recherche concurrentielle et priorisation data-driven\n- Coordonné les équipes cross-fonctionnelles (Engineering, Product, Marketing)\n\n### Program Manager Ads — SmartNews\nJanvier 2021 – Mai 2023 | Remote (Tokyo)\n- Piloté les programmes produit globaux Ads (20M+ MAU)\n- Analyse data pour identifier pain points ; traduit les insights en requirements\n- Frameworks A/B testing et cohort analysis\n\n### Chef de Projet — Hakuhodo I-Studio\nJanvier 2017 – Janvier 2020 | Tokyo\n- Développement end-to-end de l'app IoT Pechat ; 0 à 120K unités vendues\n- Lancement US avec +15% revenue · Good Design Award 2019\n\n## Compétences\n- **Produit** : OKR, roadmap, A/B testing, NPS, DAU/MAU, funnel\n- **Tech** : SQL, Jira, Figma, Confluence, analytics\n- **Méthodo** : Agile/Scrum, RICE, user interviews\n\n## Formation\nArts & Métiers — Ingénieur généraliste (2012)\nJLPT N1 · Trilingue FR/EN/JP`
         setGeneratedCV(mock); setEditableCV(mock); setAtsScore(94); setStep('preview'); return
       }
-      const res  = await aiFetch('/api/generate-cv', {cvText:cv.text,jobDescription:jd,company:job.company,position:job.position,language:lang})
+      const res  = await aiFetch('/api/generate-cv', {cvText:cv.text,jobDescription:jd,company:job.company,position:job.position,language:lang,atsLevel:loadAtsLevel(),contact:loadProfileContact()})
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setGeneratedCV(data.cv); setEditableCV(data.cv); setAtsScore(data.atsScore ?? null); setStep('preview')

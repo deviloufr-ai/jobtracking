@@ -244,6 +244,17 @@ export const en = {
     debug: 'Enable or disable console logs',
   },
 
+  // Settings - CV Tab (ATS optimization level)
+  settingsCV: {
+    atsTitle: 'ATS Optimization',
+    atsSubtitle: 'Controls how strongly generated CVs are optimized for ATS filters (job-posting keywords).',
+    atsLevel: 'ATS optimization level',
+    atsLevelHint: 'Higher levels mirror more of the posting\'s exact keywords and aim for a higher ATS score.',
+    atsLight: 'Light — natural, few keywords (target ~70)',
+    atsBalanced: 'Balanced — key keywords woven in (target ~80)',
+    atsMax: 'Maximum — max keyword coverage (target ~90)',
+  },
+
   // JobModal
   jobModal: {
     editTitle: 'Edit application',

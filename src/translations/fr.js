@@ -265,6 +265,17 @@ export const fr = {
     debug: 'Activez ou désactivez les journaux de la console',
   },
 
+  // Settings - CV Tab (ATS optimization level)
+  settingsCV: {
+    atsTitle: 'Optimisation ATS',
+    atsSubtitle: 'Règle l\'intensité de l\'optimisation des CV générés pour les filtres ATS (mots-clés de l\'annonce).',
+    atsLevel: 'Niveau d\'optimisation ATS',
+    atsLevelHint: 'Plus le niveau est élevé, plus le CV reprend les mots-clés exacts de l\'offre et vise un score ATS élevé.',
+    atsLight: 'Léger — naturel, peu de mots-clés (cible ~70)',
+    atsBalanced: 'Équilibré — mots-clés clés intégrés (cible ~80)',
+    atsMax: 'Maximal — couverture mots-clés max (cible ~90)',
+  },
+
   // Settings - Profile Tab
   settingsProfile: {
     autoFillSubtitle: 'Remplissez automatiquement votre profil depuis votre CV',
