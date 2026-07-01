@@ -193,7 +193,11 @@ class PollManager {
         hasChanges = true
         for (const cv of cvs) {
           const cvInCamel = snakeToCamel(cv)
-          await indexeddb.saveCV(cvInCamel)
+          // Supabase stores CV text in `content_raw`; the app reads `text`.
+          await indexeddb.saveCV({
+            ...cvInCamel,
+            text: cvInCamel.text || cvInCamel.contentRaw || '',
+          })
         }
       }
 

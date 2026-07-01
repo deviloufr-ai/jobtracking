@@ -1,12 +1,15 @@
 import { useState, useRef } from 'react'
 import { useCVs } from '../hooks/useCVs'
 import { aiFetch } from '../services/apiKey'
+import { pushProfile } from '../services/profileSync'
 import CVGenerator from './CVGenerator'
 
 const PROFILE_KEY = 'jobtrackr_profile'
 
 function saveProfile(p) {
   try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)) } catch {}
+  // Mirror to Supabase so the profile follows the user to other devices
+  pushProfile(p)
 }
 function loadProfile() {
   try { const r = localStorage.getItem(PROFILE_KEY); return r ? JSON.parse(r) : null } catch { return null }
@@ -226,7 +229,11 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob, manageOnl
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-800 truncate">{cv.name}</p>
-                  <p className="text-xs text-gray-400">{cv.pages} page{cv.pages > 1 ? 's' : ''} · {formatSize(cv.size)} · {new Date(cv.createdAt).toLocaleDateString('fr-FR')}</p>
+                  <p className="text-xs text-gray-400">
+                    {cv.pages ? `${cv.pages} page${cv.pages > 1 ? 's' : ''} · ` : ''}
+                    {cv.size ? `${formatSize(cv.size)} · ` : ''}
+                    {cv.createdAt ? new Date(cv.createdAt).toLocaleDateString('fr-FR') : ''}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { indexeddb } from '../services/indexeddb'
 import { syncManager } from '../services/syncManager'
+import { pushCV, deleteCVRemote } from '../services/cvSync'
 
 export function useCVs() {
   const [cvs, setCVs] = useState([])
@@ -21,6 +22,16 @@ export function useCVs() {
       }
     }
     loadCVs()
+  }, [])
+
+  // Re-read CVs from IndexedDB after a poll merges remote changes (multi-device
+  // sync), so CVs uploaded on another device appear without a page reload.
+  useEffect(() => {
+    const reload = () => {
+      indexeddb.getAllCVs().then(c => setCVs(c || [])).catch(() => {})
+    }
+    window.addEventListener('jobtrackr:datasync', reload)
+    return () => window.removeEventListener('jobtrackr:datasync', reload)
   }, [])
 
   // Persist to IndexedDB whenever CVs change
@@ -50,7 +61,8 @@ export function useCVs() {
   const addCV = (cv) => {
     const entry = { ...cv, id: crypto.randomUUID(), createdAt: new Date().toISOString() }
     setCVs(prev => [entry, ...prev])
-    // CVs are stored locally only, no Supabase sync needed yet
+    // Mirror to Supabase so the CV reaches the user's other devices
+    pushCV(entry)
     return entry
   }
 
@@ -59,16 +71,26 @@ export function useCVs() {
     await indexeddb.deleteCV(id).catch(err => console.error('Failed to delete CV from IndexedDB:', err))
     // Then update state to trigger save effect
     setCVs(prev => prev.filter(c => c.id !== id))
+    // Remove the remote copy too
+    deleteCVRemote(id)
   }
 
   const renameCV = (id, name) => {
-    setCVs(prev => prev.map(c => c.id === id ? { ...c, name } : c))
-    // CVs are stored locally only
+    setCVs(prev => {
+      const next = prev.map(c => c.id === id ? { ...c, name } : c)
+      const merged = next.find(c => c.id === id)
+      if (merged) pushCV(merged)
+      return next
+    })
   }
 
   const updateCV = (id, updates) => {
-    setCVs(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c))
-    // CVs are stored locally only
+    setCVs(prev => {
+      const next = prev.map(c => c.id === id ? { ...c, ...updates } : c)
+      const merged = next.find(c => c.id === id)
+      if (merged) pushCV(merged)
+      return next
+    })
   }
 
   return { cvs, addCV, deleteCV, renameCV, updateCV, loading }

@@ -10,6 +10,7 @@ import { supabase } from '../services/supabase'
 import { indexeddb } from '../services/indexeddb'
 import { THEMES } from '../utils/themes'
 import { getFlag, setFlag, FLAGS } from '../services/featureFlags'
+import { pushProfile, PROFILE_SYNCED_EVENT } from '../services/profileSync'
 
 const PROFILE_KEY = 'jobtrackr_profile'
 // CV ATS optimization level — kept in its own localStorage key (not the synced
@@ -41,6 +42,8 @@ function loadProfile() {
 }
 function saveProfile(p) {
   try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)) } catch {}
+  // Mirror to Supabase so the profile follows the user to other devices
+  pushProfile(p)
 }
 
 function Card({ title, subtitle, children }) {
@@ -180,6 +183,13 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
     setProfileSaved(true)
     setTimeout(() => setProfileSaved(false), 2000)
   }
+
+  // Refresh the form when a remote profile is pulled in on another device's sync.
+  useEffect(() => {
+    const onSynced = (e) => { if (e.detail) setProfile(p => ({ ...p, ...e.detail })) }
+    window.addEventListener(PROFILE_SYNCED_EVENT, onSynced)
+    return () => window.removeEventListener(PROFILE_SYNCED_EVENT, onSynced)
+  }, [])
 
   const handleSaveApiKey = () => {
     if (!apiKey.trim()) {

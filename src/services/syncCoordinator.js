@@ -2,6 +2,8 @@ import { syncManager } from './syncManager'
 import { pollManager } from './pollManager'
 import { indexeddb } from './indexeddb'
 import { isSupabaseConfigured } from './supabase'
+import { pushAllCVs } from './cvSync'
+import { pullProfile, pushProfile, loadLocalProfile } from './profileSync'
 
 const POLL_INTERVAL = 300000 // 5 minutes
 
@@ -61,6 +63,26 @@ class SyncCoordinator {
         }
       } catch (err) {
         console.warn('Initial bulk upload failed (non-critical):', err.message)
+      }
+
+      // Base CVs: upload any local-only CVs (the poll above already downloaded
+      // remote ones into IndexedDB). Idempotent upsert on id.
+      try {
+        await pushAllCVs(this.userId)
+      } catch (err) {
+        console.warn('CV bulk upload failed (non-critical):', err.message)
+      }
+
+      // Profile: remote wins if present (hydrates a fresh device); otherwise push
+      // this device's local profile up so it becomes the canonical copy.
+      try {
+        const remoteProfile = await pullProfile(this.userId)
+        if (!remoteProfile) {
+          const localProfile = loadLocalProfile()
+          if (localProfile) await pushProfile(localProfile)
+        }
+      } catch (err) {
+        console.warn('Profile sync failed (non-critical):', err.message)
       }
 
       // Subsequent polls are incremental.
