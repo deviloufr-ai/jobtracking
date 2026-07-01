@@ -162,9 +162,16 @@ class PollManager {
           const jobInCamel = snakeToCamel(job)
           // Deserialize JSON fields (positionLinks, positionChecks)
           const jobDeserialized = deserializeJobFields(jobInCamel)
+          // Unbundle the `extras` jsonb blob (generated CV, letter, score,
+          // interview sessions…) back into top-level fields. Kept as-is (not
+          // run through snakeToCamel) so nested keys like `hire_decision` survive.
+          const { extras, ...jobBase } = jobDeserialized
+          const jobWithExtras = (extras && typeof extras === 'object' && !Array.isArray(extras))
+            ? { ...jobBase, ...extras }
+            : jobBase
           // Attach history to job
           const jobWithHistory = {
-            ...jobDeserialized,
+            ...jobWithExtras,
             history: historyByJobId.get(job.id) || []
           }
 

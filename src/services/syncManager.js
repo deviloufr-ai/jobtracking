@@ -3,6 +3,27 @@ import { indexeddb } from './indexeddb'
 import { convertHistoryToSupabase } from './fieldConversion'
 import { historyEntryKey } from '../hooks/useJobs'
 
+// Rich per-job fields with no dedicated column — bundled into the `jobs.extras`
+// jsonb blob so generated CVs, cover letters, scores and interview data sync
+// across devices. Requires migration 007 (jobs.extras jsonb).
+const EXTRA_FIELDS = [
+  'cvSaved', 'letterSaved',
+  'score', 'scoreDetails', 'scoreSignature',
+  'interviewSessions', 'useCase',
+  'salaryMin', 'salaryMax', 'location', 'companyAddress', 'companyFromAts',
+]
+
+// Collect the present extra fields off a full job record into a jsonb blob.
+// Returns null when none are set (so we don't overwrite a stored blob with {}).
+function buildExtras(record) {
+  if (!record) return null
+  const extras = {}
+  for (const f of EXTRA_FIELDS) {
+    if (record[f] !== undefined && record[f] !== null) extras[f] = record[f]
+  }
+  return Object.keys(extras).length ? extras : null
+}
+
 // Simple UUID generation
 function generateId() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -184,10 +205,15 @@ class SyncManager {
       const { history: h, ...jobWithoutHistory } = record
       jobRecord = jobWithoutHistory
       history = h
+      // Bundle rich local-only fields (CV, letter, score, sessions…) from the
+      // FULL record before stripping — attached after snake-casing so the blob's
+      // camelCase keys survive untouched.
+      const extras = buildExtras(record)
       // Strip local-only fields (_merged, _history, etc.)
       jobRecord = this.stripLocalOnlyFields(jobRecord)
       // Convert camelCase to snake_case for Supabase
       jobRecord = this.camelToSnake(jobRecord)
+      if (extras) jobRecord.extras = extras
     }
 
     switch (type) {
@@ -286,6 +312,8 @@ class SyncManager {
       const jobRows = jobs.map(job => {
         const { history, ...rest } = job
         const cleaned = this.camelToSnake(this.stripLocalOnlyFields(rest))
+        const extras = buildExtras(job)
+        if (extras) cleaned.extras = extras
         return { ...cleaned, user_id: userId }
       })
 
