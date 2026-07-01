@@ -26,6 +26,8 @@ function cvForJob(job, baseCV) {
 // Identify the JD source cheaply (without fetching) so we can build a signature.
 function jdSourceId(job) {
   if (job.jobDescription && job.jobDescription.trim()) return 'jd:' + hashStr(job.jobDescription)
+  // Backward-compat: older jobs (and the edit modal, historically) stored the JD under `description`.
+  if (job.description && job.description.trim()) return 'jd:' + hashStr(job.description)
   if (job.url) return 'url:' + job.url
   if (job.notes && job.notes.trim().length > 40) return 'notes:' + hashStr(job.notes)
   return null
@@ -34,6 +36,7 @@ function jdSourceId(job) {
 // Resolve the actual JD text (may hit the network for url-only jobs).
 async function resolveJD(job) {
   if (job.jobDescription && job.jobDescription.trim()) return job.jobDescription
+  if (job.description && job.description.trim()) return job.description
   if (job.url) {
     try {
       const res = await fetch('/api/fetch-jd', {

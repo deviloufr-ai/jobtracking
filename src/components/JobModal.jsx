@@ -3,13 +3,18 @@ import { STATUSES, getStatusLabel } from '../hooks/useJobs'
 import { getCompanyAddress, setCompanyAddress } from '../services/commuteStore'
 import ScoreJob from './ScoreJob'
 
-const EMPTY = { company: '', position: '', url: '', companyAddress: '', status: 'sent', date: new Date().toISOString().split('T')[0], notes: '', description: '' }
+const EMPTY = { company: '', position: '', url: '', companyAddress: '', status: 'sent', date: new Date().toISOString().split('T')[0], notes: '', jobDescription: '' }
 
 export default function JobModal({ job, onSave, onClose, findDuplicate, t = (key) => key }) {
   // Prefer the durable commute-store address (survives Supabase polls) over the
   // possibly-stale one on the job object.
   const [form, setForm] = useState(job
-    ? { ...job, companyAddress: getCompanyAddress(job.id) || job.companyAddress || '' }
+    ? {
+        ...job,
+        companyAddress: getCompanyAddress(job.id) || job.companyAddress || '',
+        // Older jobs stored the JD under `description`; surface it in the canonical field.
+        jobDescription: job.jobDescription || job.description || '',
+      }
     : { ...EMPTY })
   const [urlWarning, setUrlWarning] = useState(false)
   const [duplicate, setDuplicate] = useState(null)
@@ -44,7 +49,11 @@ export default function JobModal({ job, onSave, onClose, findDuplicate, t = (key
     // Persist the address to the durable commute store for existing jobs (new
     // jobs have no id yet — their address rides on the job object via onSave).
     if (isEdit && job?.id) setCompanyAddress(job.id, form.companyAddress)
-    onSave(form)
+    // Consolidate onto the canonical `jobDescription` field — drop the legacy
+    // `description` so clearing the textarea isn't silently overridden by it.
+    const { description, ...rest } = form
+    void description
+    onSave(rest)
     onClose()
   }
 
@@ -171,8 +180,8 @@ export default function JobModal({ job, onSave, onClose, findDuplicate, t = (key
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
                   rows={4}
                   placeholder={t('jobModal.descriptionPlaceholder') || 'Paste the job description here to enable CV matching...'}
-                  value={form.description || ''}
-                  onChange={e => set('description', e.target.value)}
+                  value={form.jobDescription || ''}
+                  onChange={e => set('jobDescription', e.target.value)}
                 />
               </div>
 
