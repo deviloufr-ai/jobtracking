@@ -79,21 +79,22 @@ export default function CVViewer({ job, onClose, inline = false }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[94vh] sm:max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
-          <h2 className="text-lg font-bold text-gray-800">📄 {filename}</h2>
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2 p-3 sm:p-4 border-b border-gray-200 flex-shrink-0">
+          <h2 className="text-base sm:text-lg font-bold text-gray-800 truncate min-w-0">📄 {filename}</h2>
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button
               onClick={handleDownloadPDF}
-              className="text-sm text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition-colors"
+              className="text-xs sm:text-sm text-white bg-indigo-600 hover:bg-indigo-700 px-3 sm:px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
             >
-              📥 Télécharger PDF
+              📥 <span className="hidden sm:inline">Télécharger </span>PDF
             </button>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+              className="text-gray-400 hover:text-gray-600 text-2xl leading-none px-1"
+              aria-label="Close"
             >
               ✕
             </button>
@@ -101,9 +102,9 @@ export default function CVViewer({ job, onClose, inline = false }) {
         </div>
 
         {/* CV Content */}
-        <div className="flex-1 overflow-auto bg-gray-50 p-6">
+        <div className="flex-1 overflow-auto bg-gray-50 p-3 sm:p-6">
           <div
-            className="bg-white rounded-lg shadow-sm p-8 max-w-2xl mx-auto"
+            className="bg-white rounded-lg shadow-sm p-4 sm:p-8 max-w-2xl mx-auto"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         </div>

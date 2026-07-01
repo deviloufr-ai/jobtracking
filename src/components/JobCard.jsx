@@ -64,12 +64,13 @@ function StepForm({ value, onChange, onSubmit, onCancel, submitLabel, t }) {
 // status. undefined → no stepper (todo or a terminal/negative status).
 const STEP_REACHED = { sent: 0, reviewing: 0, waiting: 0, interview: 1, done: 1, offer: 2 }
 
-function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, forceExpand, onForceExpandDone, checkAllPositions, variant = 'card', defaultExpanded = false, t = (key) => key }) {
+function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, onViewSavedCV, forceExpand, onForceExpandDone, checkAllPositions, variant = 'card', defaultExpanded = false, t = (key) => key }) {
   const isSheet = variant === 'sheet'
   const [expanded, setExpanded] = useState(defaultExpanded)
   const px = isSheet ? 'px-1' : 'px-3.5'
   const [statusSheet, setStatusSheet] = useState(false)
   const [actionsSheet, setActionsSheet] = useState(false)
+  const [descSheet, setDescSheet] = useState(false)
   const [showAddStep, setShowAddStep] = useState(false)
   const [editingIdx, setEditingIdx] = useState(null)      // display index of step being edited
   const [editForm, setEditForm] = useState({})
@@ -80,6 +81,9 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
   const enrichTimerRef = useRef(null)
 
   const history = job.history || []
+  // Job description text — the field name differs across import paths
+  // (JobModal saves `description`, scoring/imports use `jobDescription`).
+  const jobDescription = (job.jobDescription || job.description || '').trim()
 
   // Status derives from the latest history entry, falling back to job.status.
   const displayStatusKey = history.length ? (history[history.length - 1].status || job.status) : job.status
@@ -233,7 +237,13 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
             })()}
             <span className="font-semibold text-gray-900 text-[15px] truncate">{job.company}</span>
             <ScoreBadge job={job} t={t} />
-            {job.cvSaved && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-600 flex-shrink-0">CV</span>}
+            {job.cvSaved && (
+              <button
+                onClick={e => { e.stopPropagation(); onViewSavedCV?.(job) }}
+                title={t('jobCard.viewCV') || 'View CV'}
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-600 flex-shrink-0 active:scale-95 transition-transform"
+              >CV</button>
+            )}
           </div>
           <div className="text-[13px] text-gray-500 truncate">{job.position}</div>
 
@@ -299,6 +309,28 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
                 <span className="text-[11px] text-gray-600 bg-gray-100 px-2 py-1 rounded-lg">
                   💰 {job.salaryMin ? `${job.salaryMin}€` : ''}{job.salaryMax ? `–${job.salaryMax}€` : ''}
                 </span>
+              )}
+            </div>
+          )}
+
+          {/* Quick view: tailored CV + job description */}
+          {(job.cvSaved || jobDescription) && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {job.cvSaved && (
+                <button
+                  onClick={() => onViewSavedCV?.(job)}
+                  className="inline-flex items-center gap-1.5 text-[12px] font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1.5 rounded-lg hover:bg-indigo-100 active:scale-95 transition-all"
+                >
+                  📄 {t('jobCard.viewCV') || 'View CV'}
+                </button>
+              )}
+              {jobDescription && (
+                <button
+                  onClick={() => setDescSheet(true)}
+                  className="inline-flex items-center gap-1.5 text-[12px] font-medium text-gray-700 bg-gray-100 border border-gray-200 px-2.5 py-1.5 rounded-lg hover:bg-gray-200 active:scale-95 transition-all"
+                >
+                  📋 {t('jobCard.jobDescription') || 'Job description'}
+                </button>
               )}
             </div>
           )}
@@ -422,6 +454,15 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
             <span className="text-lg">🗑️</span><span>{t('jobCard.delete')}</span>
           </button>
         </div>
+      </BottomSheet>
+
+      {/* ── Job description sheet ──────────────────────────────────────────── */}
+      <BottomSheet open={descSheet} onClose={() => setDescSheet(false)} title={t('jobCard.jobDescription') || 'Job description'} subtitle={`${job.company} · ${job.position}`}>
+        {jobDescription ? (
+          <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{jobDescription}</p>
+        ) : (
+          <p className="text-sm text-gray-400 text-center py-6">{t('jobCard.noDescription') || 'No job description saved for this application.'}</p>
+        )}
       </BottomSheet>
     </div>
   )

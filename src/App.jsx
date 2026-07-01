@@ -1283,6 +1283,7 @@ export default function App() {
             onUpdateHistory={handleUpdateHistory}
             onUpdateJob={updateJob}
             onGenerateCV={(j) => { setDetailJob(null); handleGenerateCV(j) }}
+            onViewSavedCV={(j) => { setDetailJob(null); handleViewSavedCV(j) }}
             onToggleFavorite={toggleFavorite}
             checkAllPositions={checkAllPositions}
             t={t}
