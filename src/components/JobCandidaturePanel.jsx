@@ -3,6 +3,7 @@ import CommuteInfo from './CommuteInfo'
 import { getStatus, getStatusLabel, STATUSES } from '../hooks/useJobs'
 import { gmailMessageUrl } from '../services/gmail'
 import { ScoreBreakdown, scoreColorClasses } from './ScoreJob'
+import CVGenerationSettings from './CVGenerationSettings'
 
 export default function JobCandidaturePanel({
   job,
@@ -403,6 +404,9 @@ export default function JobCandidaturePanel({
         {/* CV Tab */}
         {activeTab === 'cv' && (
           <div className="space-y-4 h-full flex flex-col">
+            {/* Generation settings (base CV, ATS level, rules) — read by the
+                generator at generation time. Collapsed once a CV exists. */}
+            <CVGenerationSettings t={t} defaultOpen={!job.cvSaved} />
             {job.cvSaved ? (
               <>
                 <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 flex items-center justify-between">

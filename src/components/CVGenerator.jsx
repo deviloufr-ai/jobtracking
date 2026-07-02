@@ -496,10 +496,17 @@ export const BASE_PRINT_CSS = `
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (key) => key }) {
-  // Source CV the generator adapts from. Defaults to the CV passed in (the most
-  // recent), but the user can switch to any other imported CV and regenerate.
+  // Source CV the generator adapts from. Initial pick honors the base CV the
+  // user chose in the generation settings (persisted in jobtrackr_cv_base_id),
+  // falling back to the CV passed in (the most recent). The user can still
+  // switch to any other imported CV from the toolbar and regenerate.
   const cvList = cvs.length ? cvs : (cv ? [cv] : [])
-  const [selectedCvId, setSelectedCvId] = useState(cv?.id ?? cvList[0]?.id ?? null)
+  const [selectedCvId, setSelectedCvId] = useState(() => {
+    let storedBaseId = null
+    try { storedBaseId = localStorage.getItem('jobtrackr_cv_base_id') } catch { /* ignore */ }
+    if (storedBaseId && cvList.some(c => c.id === storedBaseId)) return storedBaseId
+    return cv?.id ?? cvList[0]?.id ?? null
+  })
   const [showCvPicker, setShowCvPicker] = useState(false)
   const activeCV = cvList.find(c => c.id === selectedCvId) || cv || cvList[0]
   const [step, setStep]             = useState('fetching_jd')
