@@ -24,6 +24,13 @@ const DEFAULT_CV_ATS_LEVEL = 'max'
 // can't bloat / abuse the prompt.
 const CV_CUSTOM_RULES_KEY = 'jobtrackr_cv_custom_rules'
 const CV_CUSTOM_RULES_MAXLEN = 2000
+// Toggleable generation rules (checklist). Each maps to a conditional block in
+// the generation prompt; unchecking relaxes it. All default ON so behavior is
+// unchanged until the user opts out. "No fabrication" is intentionally NOT here —
+// it's a hard integrity floor shown locked-on in the UI and always enforced.
+const CV_RULES_KEY = 'jobtrackr_cv_rules'
+const CV_RULE_IDS = ['keepAllRoles', 'singleLanguage', 'atsFormat', 'keywordMirroring']
+const DEFAULT_CV_RULES = { keepAllRoles: true, singleLanguage: true, atsFormat: true, keywordMirroring: true }
 const PROFILE_DEFAULTS = {
   name: '',
   title: '',
@@ -184,6 +191,21 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
     const next = (v || '').slice(0, CV_CUSTOM_RULES_MAXLEN)
     setCvCustomRules(next)
     try { localStorage.setItem(CV_CUSTOM_RULES_KEY, next) } catch {}
+  }
+
+  // Toggleable CV generation rules (checklist)
+  const [cvRules, setCvRules] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(CV_RULES_KEY) || 'null')
+      return saved ? { ...DEFAULT_CV_RULES, ...saved } : { ...DEFAULT_CV_RULES }
+    } catch { return { ...DEFAULT_CV_RULES } }
+  })
+  const toggleRule = (id) => {
+    setCvRules(prev => {
+      const next = { ...prev, [id]: !prev[id] }
+      try { localStorage.setItem(CV_RULES_KEY, JSON.stringify(next)) } catch {}
+      return next
+    })
   }
 
   // Profile state
@@ -607,13 +629,21 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
                 </Card>
 
                 <Card title={`✍️ ${t('settingsCV.rulesTitle')}`} subtitle={t('settingsCV.rulesSubtitle')}>
-                  <div className="rounded-lg bg-gray-50 border border-gray-100 p-3">
-                    <p className="text-xs font-semibold text-gray-500 mb-1.5">{t('settingsCV.rulesDefaultsTitle')}</p>
-                    <ul className="space-y-1">
-                      {(Array.isArray(t('settingsCV.rulesDefaults')) ? t('settingsCV.rulesDefaults') : []).map((r, i) => (
-                        <li key={i} className="text-xs text-gray-500 flex gap-2"><span className="text-indigo-400">·</span>{r}</li>
-                      ))}
-                    </ul>
+                  <div className="rounded-lg bg-gray-50 border border-gray-100 p-3 space-y-1">
+                    <p className="text-xs font-semibold text-gray-500 mb-1.5">{t('settingsCV.rulesChecklistTitle')}</p>
+                    {CV_RULE_IDS.map(id => (
+                      <label key={id} className="flex items-center gap-2.5 text-xs text-gray-600 cursor-pointer py-0.5">
+                        <input type="checkbox" checked={!!cvRules[id]} onChange={() => toggleRule(id)}
+                          className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-400 focus:ring-offset-0 cursor-pointer" />
+                        <span>{t(`settingsCV.rule_${id}`)}</span>
+                      </label>
+                    ))}
+                    {/* Integrity rule — always enforced, shown locked so it's clear it can't be turned off */}
+                    <label className="flex items-center gap-2.5 text-xs text-gray-400 py-0.5" title={t('settingsCV.ruleLocked')}>
+                      <input type="checkbox" checked disabled className="w-4 h-4 rounded border-gray-300 text-gray-400" />
+                      <span>{t('settingsCV.rule_noFabrication')}</span>
+                      <span className="ml-auto text-[10px] uppercase tracking-wide text-gray-300 whitespace-nowrap">🔒 {t('settingsCV.ruleLocked')}</span>
+                    </label>
                   </div>
                   <Row label={t('settingsCV.rulesLabel')} wide hint={t('settingsCV.rulesHint')}>
                     <TextInput multiline rows={6} value={cvCustomRules} onChange={handleCustomRulesChange} placeholder={t('settingsCV.rulesPlaceholder')} />

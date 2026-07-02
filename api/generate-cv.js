@@ -47,7 +47,7 @@ async function callClaude(apiKey, { maxTokens, prompt }) {
   return data.content?.[0]?.text || ''
 }
 
-function buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules }) {
+function buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules, rules }) {
   // Authoritative contact details from the candidate's profile. When present,
   // these OVERRIDE whatever contact info is in the original CV text (the model
   // tends to corrupt verbatim tokens like emails/LinkedIn URLs when rewriting).
@@ -68,6 +68,31 @@ any email, phone, LinkedIn or website found in the ORIGINAL CV text — they may
 outdated or mis-scanned. Keep the candidate's CITY/location from the original CV.
 Never invent, translate or alter these values.
 ` : ''
+
+  // Toggleable rules the candidate selected (Settings → My CV checklist). Each
+  // line reflects ON (enforce) or OFF (relax) and is stated as an explicit
+  // OVERRIDE so it wins over the more verbose default guidance further below
+  // (e.g. the "include EVERY role / never delete" language). No-fabrication is
+  // always present regardless of any toggle. Defaults to all-on when absent.
+  const R = rules || {}
+  const rulesBlock = `
+═══════════════════════════════════════════════════════════════════════════════
+✅ GENERATION RULES SELECTED BY THE CANDIDATE (these OVERRIDE any conflicting instruction below):
+═══════════════════════════════════════════════════════════════════════════════
+- ${R.keepAllRoles === false
+    ? 'CONCISENESS FIRST — you MAY omit the oldest / least-relevant roles and keep the CV to ~1-2 focused pages. This OVERRIDES every "include EVERY role / never delete a role" instruction below; do NOT force all roles in.'
+    : 'Include EVERY role from the original CV — do not drop or omit any experience.'}
+- ${R.singleLanguage === false
+    ? 'Mixed language is allowed — you may keep widely-recognised tool names, job titles and terms in their original language where it reads naturally.'
+    : 'Write the ENTIRE CV in ONE single, consistent language (headers, bullets, skills, month names).'}
+- ${R.atsFormat === false
+    ? 'Strict ATS-plain styling is NOT required — you may use slightly richer wording and section naming. (Still no tables, multi-column layouts or images — the single-column markdown structure is mandatory.)'
+    : 'Keep strictly ATS-plain formatting — standard section names, ASCII "-" bullets, no icons/emojis, no tables or columns.'}
+- ${R.keywordMirroring === false
+    ? 'Do NOT force the posting\'s exact keywords — write naturally in the candidate\'s own words (keyword coverage is secondary; the target score below is best-effort only).'
+    : 'Mirror the job posting\'s exact must-have keywords/skills (same wording) wherever the candidate truthfully has that experience.'}
+- ALWAYS (non-negotiable): never invent experience, skills, employers, dates or metrics — use ONLY what appears in the original CV.
+`
 
   // The candidate's own generation rules (Settings → My CV). They steer style and
   // content preferences, but are subordinate to the hard safety constraints
@@ -105,7 +130,7 @@ Work EVERY missing term above into the CV WITHOUT inventing experience the candi
 ${languageInstruction}
 
 ${atsGuidance}
-${contactBlock}${customRulesBlock}
+${rulesBlock}${contactBlock}${customRulesBlock}
 ═══════════════════════════════════════════════════════════════════════════════
 PRIMARY OBJECTIVE — ATS KEYWORD-COVERAGE SCORE ≥ ${targetScore} / 100:
 ═══════════════════════════════════════════════════════════════════════════════
@@ -415,7 +440,7 @@ export default async function handler(req, res) {
     if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
   }
 
-  const { cvText, jobDescription, company, position, language, atsLevel, contact, customRules } = req.body
+  const { cvText, jobDescription, company, position, language, atsLevel, contact, customRules, rules } = req.body
   if (!cvText || !jobDescription) {
     res.status(400).json({ error: 'cvText and jobDescription required' }); return
   }
@@ -423,6 +448,17 @@ export default async function handler(req, res) {
   // Candidate's own generation rules (optional free text) — trim + hard-cap so a
   // pasted blob can't blow up the prompt. Empty string ⇒ block is omitted.
   const userRules = typeof customRules === 'string' ? customRules.trim().slice(0, 2000) : ''
+
+  // Toggleable rules checklist. Anything not explicitly false ⇒ ON, so an absent
+  // or partial object preserves the previous (all-on) behavior. "No fabrication"
+  // is never a toggle — it's enforced unconditionally in the prompt.
+  const r = (rules && typeof rules === 'object') ? rules : {}
+  const activeRules = {
+    keepAllRoles:     r.keepAllRoles     !== false,
+    singleLanguage:   r.singleLanguage   !== false,
+    atsFormat:        r.atsFormat        !== false,
+    keywordMirroring: r.keywordMirroring !== false,
+  }
 
   // Resolve the ATS optimization level → target score + keyword aggressiveness.
   const level = ATS_LEVELS[atsLevel] ? atsLevel : DEFAULT_ATS_LEVEL
@@ -455,7 +491,7 @@ export default async function handler(req, res) {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const cv = await callClaude(apiKey, {
         maxTokens: 8000,
-        prompt: buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules: userRules }),
+        prompt: buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules: userRules, rules: activeRules }),
       })
 
       const { score, verdict, gaps } = await scoreCV(apiKey, { cv, jobDescription, company, position })
