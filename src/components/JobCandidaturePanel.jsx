@@ -5,6 +5,14 @@ import { gmailMessageUrl } from '../services/gmail'
 import { ScoreBreakdown, scoreColorClasses } from './ScoreJob'
 import CVGenerationSettings from './CVGenerationSettings'
 
+// ATS keyword-coverage badge colors — mirrors the thresholds in CVGenerator's
+// badge (≥90 green, ≥75 blue, else amber). Distinct from scoreColorClasses,
+// which colors the recruiter *fit* score.
+const atsColorClasses = (s) =>
+  s >= 90 ? 'bg-green-100 text-green-700 border-green-300'
+  : s >= 75 ? 'bg-blue-100 text-blue-700 border-blue-300'
+  : 'bg-amber-100 text-amber-700 border-amber-300'
+
 export default function JobCandidaturePanel({
   job,
   onGenerateCV,
@@ -639,7 +647,7 @@ export default function JobCandidaturePanel({
                   disabled={!job.scoreDetails}
                   className="w-full flex items-center justify-between gap-2 group disabled:cursor-default"
                 >
-                  <span className="text-xs text-gray-500">{t('scoreJob.title') || 'Match score'}</span>
+                  <span className="text-xs text-gray-500" title={t('scoreJob.matchHint')}>{t('scoreJob.title') || 'Match score'}</span>
                   <span className="flex items-center gap-1.5">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border ${scoreColorClasses(job.score)}`}>
                       {Math.round(job.score)}
@@ -654,6 +662,16 @@ export default function JobCandidaturePanel({
                     )}
                   </span>
                 </button>
+                {/* ATS keyword-coverage of the generated CV — the number the CV
+                    optimization actually moves (vs. the fit score above). */}
+                {job.cvSaved?.atsScore != null && (
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-xs text-gray-500" title={t('scoreJob.atsHint')}>🎯 {t('scoreJob.atsTitle')}</span>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border ${atsColorClasses(job.cvSaved.atsScore)}`}>
+                      {Math.round(job.cvSaved.atsScore)}
+                    </span>
+                  </div>
+                )}
                 {showScoreDetails && job.scoreDetails && (
                   <div className="mt-3">
                     <ScoreBreakdown job={job} t={t} />

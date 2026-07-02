@@ -24,6 +24,9 @@ export const en = {
   },
   scoreJob: {
     title: 'Match score',
+    matchHint: 'Overall profile/role fit (seniority, sector…). Largely unaffected by CV optimization.',
+    atsTitle: 'ATS coverage',
+    atsHint: 'How well the tailored CV covers the posting\'s keywords (what ATS filters check). Different from the match score.',
     strengths: 'Strengths',
     gaps: 'Experience gaps',
     scoredWith: 'Scored with',

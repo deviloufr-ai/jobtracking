@@ -24,6 +24,9 @@ export const fr = {
   },
   scoreJob: {
     title: 'Score de correspondance',
+    matchHint: 'Adéquation globale profil/poste (séniorité, secteur…). Peu influencé par l\'optimisation du CV.',
+    atsTitle: 'Couverture ATS',
+    atsHint: 'Couverture des mots-clés de l\'offre par le CV adapté (ce que filtrent les ATS). Différent du score de correspondance.',
     strengths: 'Points forts',
     gaps: 'Lacunes',
     scoredWith: 'Évalué avec',

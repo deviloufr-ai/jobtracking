@@ -618,6 +618,7 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
           template,
           filename,
           savedAt: new Date().toISOString(),
+          atsScore: atsScore ?? null, // ATS keyword-coverage score, surfaced in the candidature panel
         }
       })
       setSaved(true)
