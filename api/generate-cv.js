@@ -1,17 +1,21 @@
 import { applyCors, getClientIp, rateLimit, enforceSharedKeyQuota } from './_lib/http.js'
 
 // ATS optimization level (set in Settings → My CV). Each level maps to the
-// target ATS / job-match score the generated CV must reach and how aggressively
-// the prompt mirrors the posting's keywords. The handler generates, self-scores
-// with the same rubric the in-app scorer uses, and refines with targeted
-// feedback until the CV clears the target (or runs out of attempts).
+// target ATS keyword-COVERAGE score the generated CV must reach and how
+// aggressively the prompt mirrors the posting's exact keywords. The handler
+// generates, self-scores keyword coverage (what an ATS filter actually keys on —
+// NOT a recruiter's holistic fit judgment, which is bounded by immovable factors
+// like years of experience / industry and would stall a rewrite below target),
+// then refines with the SPECIFIC missing keywords until the CV clears the target
+// (or runs out of attempts). Aligning the metric with the setting's own promise
+// ("couverture mots-clés max") is what makes the target reliably reachable.
 const ATS_LEVELS = {
   light:    { target: 70 },
   balanced: { target: 80 },
   max:      { target: 90 },
 }
 const DEFAULT_ATS_LEVEL = 'max'
-const MAX_ATTEMPTS = 3 // 1 initial generation + up to 2 refinement passes
+const MAX_ATTEMPTS = 4 // 1 initial generation + up to 3 refinement passes
 
 // Per-level guidance injected into the generation prompt. Higher levels push
 // harder on reusing the posting's exact wording; all levels forbid fabrication.
@@ -67,16 +71,16 @@ Never invent, translate or alter these values.
 
   const feedbackBlock = feedback ? `
 ═══════════════════════════════════════════════════════════════════════════════
-⚠️ REVISION REQUIRED — the previous draft scored ${feedback.score}/100 (target ≥ ${targetScore}).
+⚠️ REVISION REQUIRED — the previous draft scored ${feedback.score}/100 on ATS keyword coverage (target ≥ ${targetScore}).
 ═══════════════════════════════════════════════════════════════════════════════
-A recruiter-style screener flagged these GAPS against the job description:
+An ATS keyword screener found these must-have terms from the job description MISSING or under-represented in the CV:
 ${(feedback.gaps || []).map(g => `- ${g}`).join('\n')}
 
-Close every gap above WITHOUT inventing experience the candidate doesn't have:
-- Surface real, relevant experience already in the original CV that addresses each gap (it may be buried in an older role).
-- Mirror the EXACT skill/keyword wording used in the job description (same terms, same casing) wherever the candidate truthfully has that experience.
-- Front-load the matching keywords in the Profile, the Skills section, and the first bullet of the most relevant roles.
-- If a gap is a genuine hard requirement the candidate lacks, emphasise the closest transferable experience instead — never fabricate.
+Work EVERY missing term above into the CV WITHOUT inventing experience the candidate doesn't have:
+- Surface real, relevant experience already in the original CV that legitimately involves each term (it may be buried in an older role).
+- Use the EXACT wording from the job description (same terms, same casing) wherever the candidate truthfully has that experience.
+- Front-load these terms in the Profile, the Skills section, and the first bullet of the most relevant roles.
+- If a term is a genuine hard requirement the candidate lacks, use the closest truthful equivalent from their real experience instead — never fabricate.
 ` : ''
 
   return `You are an expert CV writer and ATS specialist. Adapt this CV for the "${position}" role at "${company}".
@@ -86,16 +90,18 @@ ${languageInstruction}
 ${atsGuidance}
 ${contactBlock}
 ═══════════════════════════════════════════════════════════════════════════════
-PRIMARY OBJECTIVE — ATS / JOB-MATCH SCORE ≥ ${targetScore} / 100:
+PRIMARY OBJECTIVE — ATS KEYWORD-COVERAGE SCORE ≥ ${targetScore} / 100:
 ═══════════════════════════════════════════════════════════════════════════════
-The adapted CV will be graded by an automated recruiter-style screener on:
-  1. Required-skills match (must-have skills/keywords from the JD)
-  2. Experience level (years, seniority, relevant domain)
-  3. Background alignment (industry, company size, role similarity)
-  4. Achievement relevance (measurable outcomes matching the JD context)
-Your CV MUST score at least ${targetScore}. To get there, truthfully mirror the JD's
-must-have keywords/skills (same wording) anywhere the candidate genuinely has that
-experience, and front-load that relevance. NEVER fabricate — pull from real history.
+The adapted CV will be graded by an automated ATS keyword screener that measures
+how thoroughly the CV COVERS the posting's must-have keywords, skills and
+requirements using the posting's EXACT terminology — NOT holistic fit, seniority
+or industry background. To clear ${targetScore}:
+  1. Cover the JD's must-have skills/keywords using the posting's EXACT wording
+  2. Mirror the role title and key responsibility terms verbatim where truthful
+  3. Front-load those terms in the Profile, Skills and first bullets
+  4. Surface real but buried experience that matches the JD's requirements
+Only mirror a keyword where the candidate genuinely has that experience. NEVER
+fabricate — pull from real history.
 ${feedbackBlock}
 ═══════════════════════════════════════════════════════════════════════════════
 CORE PRINCIPLE:
@@ -269,10 +275,18 @@ Priority order (in order):
 4. Maintain ATS compatibility (important)`
 }
 
-// Mirrors the rubric in src/services/scoreJob.js so the self-check matches what
-// the in-app "Job Match Score" reports.
+// This self-score GATES the refinement loop and is what the CV generator surfaces
+// as the "ATS" badge, so it must measure the same thing the "ATS optimization
+// level" setting promises: how thoroughly the CV covers the posting's must-have
+// keywords/requirements (what an ATS filter keys on). It deliberately does NOT
+// grade holistic recruiter fit (seniority, years, industry) — that is bounded by
+// factors a rewrite can't change, so it would stall the loop below target no
+// matter how well the CV is optimized. Coverage, by contrast, is genuinely
+// movable, and the returned gaps are the exact missing keywords the next pass
+// injects. (The in-app "Job Match Score" in scoreJob.js still measures fit — a
+// deliberately different number.)
 function buildScorePrompt({ cv, jobDescription, company, position }) {
-  return `You are an expert recruiter and CV screener. Analyze how well the candidate's CV matches the job description.
+  return `You are an Applicant Tracking System (ATS) keyword screener. Score how well the candidate's CV COVERS the must-have keywords, skills and requirements of the job posting — exactly as an automated ATS filter would, by matching the posting's terminology against the CV text.
 
 CANDIDATE CV:
 ${cv}
@@ -280,17 +294,17 @@ ${cv}
 JOB DESCRIPTION (${company} - ${position}):
 ${jobDescription}
 
-Evaluate the candidate's fit across these dimensions:
-1. Required Skills Match (must-have technical/soft skills from JD)
-2. Experience Level (years, seniority, relevant domain)
-3. Background Alignment (industry, company size, role similarity)
-4. Achievement Relevance (measurable outcomes matching JD context)
+METHOD (follow exactly):
+1. Extract the must-have keywords/skills/requirements from the job description: hard skills, tools, methodologies, domain terms, the role title and its key responsibilities. Aim for the 12-20 most important.
+2. For each, check whether the CV contains it — as the exact term, a very close variant, or an unmistakable synonym.
+3. score = round(100 × matched / total). This is a COVERAGE percentage: it reflects ONLY keyword/requirement presence. Do NOT deduct points for the candidate's seniority, years of experience, industry background, or overall desirability.
+4. "gaps" = the specific must-have keywords/terms from the posting that are MISSING or under-represented in the CV — the exact wording that should be added. Highest-impact missing terms first. Return [] if coverage is essentially complete.
 
 Respond with ONLY a JSON object (no markdown, no preamble) with this exact structure:
 {
-  "score": <number 0-100>,
+  "score": <number 0-100 — keyword-coverage percentage>,
   "verdict": "<STRONG_MATCH|GOOD_MATCH|PARTIAL_MATCH|WEAK_MATCH>",
-  "gaps": ["<missing skill/keyword the CV should surface>", "<gap>"]
+  "gaps": ["<missing JD keyword/term to surface, exact wording>", "<gap>"]
 }`
 }
 
