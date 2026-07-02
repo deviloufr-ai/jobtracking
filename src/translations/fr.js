@@ -274,6 +274,20 @@ export const fr = {
     atsLight: 'Léger — naturel, peu de mots-clés (cible ~70)',
     atsBalanced: 'Équilibré — mots-clés clés intégrés (cible ~80)',
     atsMax: 'Maximal — couverture mots-clés max (cible ~90)',
+    rulesTitle: 'Règles de génération du CV',
+    rulesSubtitle: 'Vos consignes personnelles, ajoutées à chaque génération de CV adapté.',
+    rulesDefaultsTitle: 'Règles appliquées par défaut',
+    rulesDefaults: [
+      'Toutes les expériences sont conservées — aucun poste supprimé',
+      'CV rédigé dans une seule langue, cohérente partout',
+      'Format compatible ATS (pas d\'icônes, colonnes ni tableaux)',
+      'Mots-clés de l\'offre repris fidèlement (voir niveau ci-dessus)',
+      'Aucune information inventée — uniquement le CV source',
+    ],
+    rulesLabel: 'Consignes personnalisées',
+    rulesHint: 'Une consigne par ligne. Elles s\'ajoutent aux règles par défaut sans les remplacer, et ne peuvent jamais conduire à inventer une expérience.',
+    rulesPlaceholder: 'Ex. :\n- Limiter à une page\n- Orthographe britannique\n- Mettre en avant le leadership et l\'impact chiffré\n- Ne jamais inclure de photo',
+    rulesReset: 'Réinitialiser',
   },
 
   // Settings - Profile Tab

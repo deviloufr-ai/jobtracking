@@ -47,7 +47,7 @@ async function callClaude(apiKey, { maxTokens, prompt }) {
   return data.content?.[0]?.text || ''
 }
 
-function buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact }) {
+function buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules }) {
   // Authoritative contact details from the candidate's profile. When present,
   // these OVERRIDE whatever contact info is in the original CV text (the model
   // tends to corrupt verbatim tokens like emails/LinkedIn URLs when rewriting).
@@ -69,6 +69,23 @@ outdated or mis-scanned. Keep the candidate's CITY/location from the original CV
 Never invent, translate or alter these values.
 ` : ''
 
+  // The candidate's own generation rules (Settings → My CV). They steer style and
+  // content preferences, but are subordinate to the hard safety constraints
+  // (no fabrication, factual fidelity, ATS-parse structure, verbatim contact).
+  const customRulesBlock = customRules ? `
+═══════════════════════════════════════════════════════════════════════════════
+⭐ THE CANDIDATE'S OWN CV RULES (set in their settings — HONOR THESE):
+═══════════════════════════════════════════════════════════════════════════════
+${customRules}
+
+Apply every rule above. Where one conflicts with the general style guidance
+below, the candidate's rule WINS — EXCEPT it can never override these hard
+constraints: never fabricate experience, keep the CV factually faithful to the
+original, preserve the ATS-parse structure (standard headings, "-" bullets,
+single column, no tables/icons), and keep the contact details verbatim. If a
+rule would break one of those, apply it only as far as the constraint allows.
+` : ''
+
   const feedbackBlock = feedback ? `
 ═══════════════════════════════════════════════════════════════════════════════
 ⚠️ REVISION REQUIRED — the previous draft scored ${feedback.score}/100 on ATS keyword coverage (target ≥ ${targetScore}).
@@ -88,7 +105,7 @@ Work EVERY missing term above into the CV WITHOUT inventing experience the candi
 ${languageInstruction}
 
 ${atsGuidance}
-${contactBlock}
+${contactBlock}${customRulesBlock}
 ═══════════════════════════════════════════════════════════════════════════════
 PRIMARY OBJECTIVE — ATS KEYWORD-COVERAGE SCORE ≥ ${targetScore} / 100:
 ═══════════════════════════════════════════════════════════════════════════════
@@ -398,10 +415,14 @@ export default async function handler(req, res) {
     if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
   }
 
-  const { cvText, jobDescription, company, position, language, atsLevel, contact } = req.body
+  const { cvText, jobDescription, company, position, language, atsLevel, contact, customRules } = req.body
   if (!cvText || !jobDescription) {
     res.status(400).json({ error: 'cvText and jobDescription required' }); return
   }
+
+  // Candidate's own generation rules (optional free text) — trim + hard-cap so a
+  // pasted blob can't blow up the prompt. Empty string ⇒ block is omitted.
+  const userRules = typeof customRules === 'string' ? customRules.trim().slice(0, 2000) : ''
 
   // Resolve the ATS optimization level → target score + keyword aggressiveness.
   const level = ATS_LEVELS[atsLevel] ? atsLevel : DEFAULT_ATS_LEVEL
@@ -434,7 +455,7 @@ export default async function handler(req, res) {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const cv = await callClaude(apiKey, {
         maxTokens: 8000,
-        prompt: buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact }),
+        prompt: buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules: userRules }),
       })
 
       const { score, verdict, gaps } = await scoreCV(apiKey, { cv, jobDescription, company, position })

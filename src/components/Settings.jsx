@@ -19,6 +19,11 @@ const PROFILE_KEY = 'jobtrackr_profile'
 const CV_ATS_LEVEL_KEY = 'jobtrackr_cv_ats_level'
 const CV_ATS_LEVELS = ['light', 'balanced', 'max']
 const DEFAULT_CV_ATS_LEVEL = 'max'
+// Free-text CV generation rules the user can add — stored locally (like the ATS
+// level) and injected into the generation prompt in CVGenerator. Capped so it
+// can't bloat / abuse the prompt.
+const CV_CUSTOM_RULES_KEY = 'jobtrackr_cv_custom_rules'
+const CV_CUSTOM_RULES_MAXLEN = 2000
 const PROFILE_DEFAULTS = {
   name: '',
   title: '',
@@ -169,6 +174,16 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
   const handleAtsLevelChange = (v) => {
     setCvAtsLevel(v)
     localStorage.setItem(CV_ATS_LEVEL_KEY, v)
+  }
+
+  // CV custom generation rules (free-text, added to the generation prompt)
+  const [cvCustomRules, setCvCustomRules] = useState(() => {
+    try { return localStorage.getItem(CV_CUSTOM_RULES_KEY) || '' } catch { return '' }
+  })
+  const handleCustomRulesChange = (v) => {
+    const next = (v || '').slice(0, CV_CUSTOM_RULES_MAXLEN)
+    setCvCustomRules(next)
+    try { localStorage.setItem(CV_CUSTOM_RULES_KEY, next) } catch {}
   }
 
   // Profile state
@@ -590,6 +605,27 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
                     </select>
                   </Row>
                 </Card>
+
+                <Card title={`✍️ ${t('settingsCV.rulesTitle')}`} subtitle={t('settingsCV.rulesSubtitle')}>
+                  <div className="rounded-lg bg-gray-50 border border-gray-100 p-3">
+                    <p className="text-xs font-semibold text-gray-500 mb-1.5">{t('settingsCV.rulesDefaultsTitle')}</p>
+                    <ul className="space-y-1">
+                      {(Array.isArray(t('settingsCV.rulesDefaults')) ? t('settingsCV.rulesDefaults') : []).map((r, i) => (
+                        <li key={i} className="text-xs text-gray-500 flex gap-2"><span className="text-indigo-400">·</span>{r}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <Row label={t('settingsCV.rulesLabel')} wide hint={t('settingsCV.rulesHint')}>
+                    <TextInput multiline rows={6} value={cvCustomRules} onChange={handleCustomRulesChange} placeholder={t('settingsCV.rulesPlaceholder')} />
+                  </Row>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-gray-400">{cvCustomRules.length}/{CV_CUSTOM_RULES_MAXLEN}</span>
+                    {cvCustomRules && (
+                      <button onClick={() => handleCustomRulesChange('')} className="text-xs text-gray-400 hover:text-red-500 transition-colors">{t('settingsCV.rulesReset')}</button>
+                    )}
+                  </div>
+                </Card>
+
                 <CVManager jobs={jobs} onUpdateJob={() => {}} manageOnly t={t} />
               </>
             )}

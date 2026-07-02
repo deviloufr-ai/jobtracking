@@ -253,6 +253,20 @@ export const en = {
     atsLight: 'Light — natural, few keywords (target ~70)',
     atsBalanced: 'Balanced — key keywords woven in (target ~80)',
     atsMax: 'Maximum — max keyword coverage (target ~90)',
+    rulesTitle: 'CV generation rules',
+    rulesSubtitle: 'Your own instructions, added to every tailored-CV generation.',
+    rulesDefaultsTitle: 'Rules applied by default',
+    rulesDefaults: [
+      'Every role is kept — no experience dropped',
+      'CV written in a single, consistent language',
+      'ATS-compatible format (no icons, columns or tables)',
+      'Job-posting keywords mirrored faithfully (see level above)',
+      'Nothing invented — sourced only from your base CV',
+    ],
+    rulesLabel: 'Custom instructions',
+    rulesHint: 'One instruction per line. They add to the default rules (never replace them) and can never lead to fabricating experience.',
+    rulesPlaceholder: 'e.g.:\n- Keep it to one page\n- British spelling\n- Emphasize leadership and quantified impact\n- Never include a photo',
+    rulesReset: 'Reset',
   },
 
   // JobModal
