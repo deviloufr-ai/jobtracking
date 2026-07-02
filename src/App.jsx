@@ -1263,7 +1263,7 @@ export default function App() {
           title={`✨ ${cvGenJob.company} — ${cvGenJob.position}`}
           onClose={() => setCvGenJob(null)}
         >
-          <CVGenerator cv={baseCV} job={cvGenJob} onBack={() => setCvGenJob(null)} onSaveCV={updateJob} t={t} />
+          <CVGenerator cv={baseCV} cvs={cvs} job={cvGenJob} onBack={() => setCvGenJob(null)} onSaveCV={updateJob} t={t} />
         </FloatingWindow>
       )}
       {mergeModal && <MergeModal jobs={mergeModal} onConfirm={handleMergeConfirm} onCancel={() => setMergeModal(null)} t={t} />}

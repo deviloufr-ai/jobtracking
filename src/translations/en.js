@@ -534,6 +534,8 @@ export const en = {
     manualJDTitle: 'No job description found',
     manualJDHint: 'Please paste the job description below:',
     selectLanguage: 'Generate in:',
+    selectCV: 'Source CV',
+    cvSourceHint: 'Choose which base CV to adapt for this job',
   },
 
   // CVManager

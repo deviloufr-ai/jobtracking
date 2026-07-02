@@ -726,6 +726,8 @@ export const fr = {
     manualJDTitle: 'Aucune offre trouvée',
     manualJDHint: 'Veuillez coller l\'offre d\'emploi ci-dessous :',
     selectLanguage: 'Générer en :',
+    selectCV: 'CV source',
+    cvSourceHint: 'Choisissez le CV de base à adapter pour cette offre',
   },
 
   // CVManager
