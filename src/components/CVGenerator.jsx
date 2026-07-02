@@ -58,7 +58,7 @@ function loadCustomRules() {
 // Toggleable generation rules checklist (Settings → My CV). Missing/unknown keys
 // default to ON so behavior matches the pre-checklist default.
 function loadRules() {
-  const defaults = { keepAllRoles: true, singleLanguage: true, atsFormat: true, keywordMirroring: true }
+  const defaults = { keepAllRoles: true, singleLanguage: true, atsFormat: true, keywordMirroring: true, noFabrication: true }
   try {
     const saved = JSON.parse(localStorage.getItem('jobtrackr_cv_rules') || 'null')
     return saved ? { ...defaults, ...saved } : defaults

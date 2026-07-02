@@ -91,7 +91,9 @@ Never invent, translate or alter these values.
 - ${R.keywordMirroring === false
     ? 'Do NOT force the posting\'s exact keywords — write naturally in the candidate\'s own words (keyword coverage is secondary; the target score below is best-effort only).'
     : 'Mirror the job posting\'s exact must-have keywords/skills (same wording) wherever the candidate truthfully has that experience.'}
-- ALWAYS (non-negotiable): never invent experience, skills, employers, dates or metrics — use ONLY what appears in the original CV.
+- ${R.noFabrication === false
+    ? 'CREATIVE LATITUDE ENABLED — you MAY go beyond the literal source CV: infer and add plausible, relevant skills, tools, responsibilities, metrics and elaborations to make the CV as strong and complete as possible for this role. This OVERRIDES every "do not invent / use only the original CV / never fabricate" instruction anywhere below. (Keep it credible — avoid claims that would be trivially disproven in an interview or reference check, e.g. employers, diplomas or titles that never existed.)'
+    : 'Never invent experience, skills, employers, dates or metrics — use ONLY what appears in the original CV.'}
 `
 
   // The candidate's own generation rules (Settings → My CV). They steer style and
@@ -450,14 +452,16 @@ export default async function handler(req, res) {
   const userRules = typeof customRules === 'string' ? customRules.trim().slice(0, 2000) : ''
 
   // Toggleable rules checklist. Anything not explicitly false ⇒ ON, so an absent
-  // or partial object preserves the previous (all-on) behavior. "No fabrication"
-  // is never a toggle — it's enforced unconditionally in the prompt.
+  // or partial object preserves the previous (all-on) behavior. noFabrication
+  // defaults ON (protective) but the user can turn it off to allow the CV to go
+  // beyond the source material.
   const r = (rules && typeof rules === 'object') ? rules : {}
   const activeRules = {
     keepAllRoles:     r.keepAllRoles     !== false,
     singleLanguage:   r.singleLanguage   !== false,
     atsFormat:        r.atsFormat        !== false,
     keywordMirroring: r.keywordMirroring !== false,
+    noFabrication:    r.noFabrication    !== false,
   }
 
   // Resolve the ATS optimization level → target score + keyword aggressiveness.

@@ -283,6 +283,7 @@ export const fr = {
     rule_keywordMirroring: 'Reprendre fidèlement les mots-clés de l\'offre',
     rule_noFabrication: 'Aucune information inventée — uniquement le CV source',
     ruleLocked: 'Toujours actif',
+    noFabWarning: '⚠️ Le CV pourra contenir des informations absentes de votre CV source. Relisez tout avant d\'envoyer — vous restez responsable de son exactitude.',
     panelTitle: 'Réglages de génération du CV',
     baseCV: 'CV de base',
     baseCVHint: 'CV source utilisé pour générer les CV adaptés.',

@@ -262,6 +262,7 @@ export const en = {
     rule_keywordMirroring: 'Mirror the job posting\'s keywords faithfully',
     rule_noFabrication: 'Nothing invented — sourced only from your base CV',
     ruleLocked: 'Always on',
+    noFabWarning: '⚠️ The CV may include details not in your source CV. Review everything before sending — you remain responsible for its accuracy.',
     panelTitle: 'CV generation settings',
     baseCV: 'Base CV',
     baseCVHint: 'Source CV used to generate tailored CVs.',

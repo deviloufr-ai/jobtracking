@@ -11,8 +11,8 @@ const CUSTOM_RULES_KEY  = 'jobtrackr_cv_custom_rules'
 const BASE_CV_KEY       = 'jobtrackr_cv_base_id'
 const CUSTOM_RULES_MAXLEN = 2000
 const ATS_LEVELS = ['light', 'balanced', 'max']
-const RULE_IDS   = ['keepAllRoles', 'singleLanguage', 'atsFormat', 'keywordMirroring']
-const DEFAULT_RULES = { keepAllRoles: true, singleLanguage: true, atsFormat: true, keywordMirroring: true }
+const RULE_IDS   = ['keepAllRoles', 'singleLanguage', 'atsFormat', 'keywordMirroring', 'noFabrication']
+const DEFAULT_RULES = { keepAllRoles: true, singleLanguage: true, atsFormat: true, keywordMirroring: true, noFabrication: true }
 
 function loadAtsLevel() {
   const v = localStorage.getItem(ATS_LEVEL_KEY)
@@ -117,12 +117,13 @@ export default function CVGenerationSettings({ t = (k) => k, defaultOpen = true,
                 <span>{t(`settingsCV.rule_${id}`)}</span>
               </label>
             ))}
-            {/* Integrity rule — always enforced, shown locked */}
-            <label className="flex items-center gap-2.5 text-xs text-gray-400 py-0.5" title={t('settingsCV.ruleLocked')}>
-              <input type="checkbox" checked disabled className="w-4 h-4 rounded border-gray-300 text-gray-400" />
-              <span>{t('settingsCV.rule_noFabrication')}</span>
-              <span className="ml-auto text-[10px] uppercase tracking-wide text-gray-300 whitespace-nowrap">🔒 {t('settingsCV.ruleLocked')}</span>
-            </label>
+            {/* Turning off the integrity rule lets the CV go beyond the source —
+                warn the user, who stays responsible for the CV's accuracy. */}
+            {!rules.noFabrication && (
+              <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2 mt-1.5 leading-snug">
+                {t('settingsCV.noFabWarning')}
+              </p>
+            )}
           </div>
 
           {/* Custom rules */}
