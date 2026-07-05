@@ -68,6 +68,14 @@ export function getEmailCacheStats() {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Wrap a system prompt in a cache_control block so Anthropic caches the (large,
+// static) instruction prefix and only bills the variable tail on later calls.
+// Only worth it when the prefix is reused (≥2 calls) — a lone call pays the
+// cache-WRITE premium (~1.25× input) for no read, so callers gate on `enabled`.
+function cachedSystem(text, enabled = true) {
+  return enabled ? [{ type: 'text', text, cache_control: { type: 'ephemeral' } }] : text
+}
+
 async function callClaude(systemPrompt, userContent, retries = 3) {
   if (!CLAUDE_ENDPOINT) return JSON.stringify(MOCK_PARSE_RESULT)
 
@@ -234,6 +242,12 @@ export async function parseEmailsForJobs(emails) {
   const BATCH_DELAY_MS = 1500 // 1.5s between batches → ~40 batches/min → ~62.5k tokens/min (safe margin)
   const all = []
 
+  // Prompt caching only pays off when the big static instruction prefix is sent
+  // more than once: with >1 batch, batch 1 writes the cache and the rest read it
+  // ~10× cheaper. For a single batch we'd pay the cache-write premium (~1.25×)
+  // with no later read, so cache only when there are multiple batches.
+  const useCache = emails.length > BATCH
+
   for (let i = 0; i < emails.length; i += BATCH) {
     const batch = emails.slice(i, i + BATCH)
     // Delay between batches to avoid hitting the 50k tokens/min rate limit
@@ -282,7 +296,7 @@ export async function parseEmailsForJobs(emails) {
       return `[${j + 1}] De: ${e.from}\nSujet: ${e.subject}\nDate: ${dateStr}${catHint ? '\n' + catHint : ''}\n${bodySection}`
     }).join('\n\n---\n\n')
 
-    const prompt = `Tu analyses des emails pour extraire des candidatures d'emploi avec HAUTE PRÉCISION.
+    const parseInstructions = `Tu analyses des emails pour extraire des candidatures d'emploi avec HAUTE PRÉCISION.
 
 ═══════════════════════════════════════════════════════════════════════════
 RÈGLES ABSOLUES STRICTES
@@ -523,12 +537,10 @@ OUTPUT JSON FORMAT
     "notes": "...",
     "confidence": 0-100
   }
-]
+]`
 
-EMAILS À TRAITER :
-${emailsText}`
-
-    const raw = await callClaude(system, prompt)
+    const userContent = `EMAILS À TRAITER :\n${emailsText}`
+    const raw = await callClaude(cachedSystem(`${system}\n\n${parseInstructions}`, useCache), userContent)
     const parsed = parseJSON(raw).filter(j => (j.confidence || 0) >= 35).map(j => {
       // Normalize emailId: Claude sometimes returns "[1]", "1", or 1 — strip brackets and coerce
       const emailIdx = parseInt(String(j.emailId).replace(/\D/g, ''), 10) - 1

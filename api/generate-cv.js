@@ -15,7 +15,7 @@ const ATS_LEVELS = {
   max:      { target: 90 },
 }
 const DEFAULT_ATS_LEVEL = 'max'
-const MAX_ATTEMPTS = 4 // 1 initial generation + up to 3 refinement passes
+const MAX_ATTEMPTS = 2 // 1 initial generation + up to 1 refinement pass (fewer passes → far fewer output tokens)
 
 // Per-level guidance injected into the generation prompt. Higher levels push
 // harder on reusing the posting's exact wording; all levels forbid fabrication.
@@ -465,7 +465,10 @@ export default async function handler(req, res) {
   }
 
   // Resolve the ATS optimization level → target score + keyword aggressiveness.
-  const level = ATS_LEVELS[atsLevel] ? atsLevel : DEFAULT_ATS_LEVEL
+  let level = ATS_LEVELS[atsLevel] ? atsLevel : DEFAULT_ATS_LEVEL
+  // Free-trial (shared) key: don't burn extra refinement rounds chasing the
+  // 'max' 90 target on our dime — cap at 'balanced' so the loop exits sooner.
+  if (!userKey && ATS_LEVELS[level].target > ATS_LEVELS.balanced.target) level = 'balanced'
   const targetScore = ATS_LEVELS[level].target
   const atsGuidance = ATS_GUIDANCE[level]
 
