@@ -1,6 +1,6 @@
 // Centralized job board detection — used across email parsing and filtering
 export const JOB_BOARD_NAMES = new Set([
-  'linkedin', 'indeed', 'welcometothejungle', 'wttj', 'apec', 'monster', 'cadremploi',
+  'linkedin', 'indeed', 'welcometothejungle', 'welcomekit', 'wttj', 'apec', 'monster', 'cadremploi',
   'hellowork', 'freework', 'malt', 'jobteaser', 'glassdoor', 'meteojob', 'regionsjob',
   'keljob', 'poleemploi', 'francetravail', 'talentio', 'otta', 'remixjobs', 'remotive',
   'jobboard', 'smartrecruiters', 'workday', 'greenhouse', 'lever', 'ashby', 'jobvite',

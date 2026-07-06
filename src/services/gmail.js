@@ -681,7 +681,9 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
     // generic subject ("Follow Up from X") that none of the above keyword sets catch
     `in:all ("not a good match" OR "isn't a good match" OR "good match with our" OR "keep your information on file" OR "future open roles" OR "future endeavors" OR "wish you the best in your search") ${baseExclude} ${dateFilter}`,
     // ④ ATS platforms — always relevant regardless of category
-    `in:all (from:ashbyhq.com OR from:greenhouse.io OR from:lever.co OR from:workable.com OR from:teamtailor.com OR from:teamtailor-mail.com OR from:recruitee.com OR from:bamboohr.com OR from:smartrecruiters.com OR from:jobvite.com OR from:icims.com OR from:myworkdayjobs.com OR from:taleo.net) ${dateFilter}`,
+    // welcomekit.co = Welcome to the Jungle's ATS (candidate notification emails
+    // come from candidates.welcomekit.co, NOT welcometothejungle.com — the job board).
+    `in:all (from:ashbyhq.com OR from:greenhouse.io OR from:lever.co OR from:workable.com OR from:teamtailor.com OR from:teamtailor-mail.com OR from:recruitee.com OR from:bamboohr.com OR from:smartrecruiters.com OR from:jobvite.com OR from:icims.com OR from:myworkdayjobs.com OR from:taleo.net OR from:welcomekit.co) ${dateFilter}`,
     // ④b Broad ATS confirmation pattern — catch "we have received your application" type confirmations
     `in:all ("we have received" OR "application received" OR "application confirmed" OR "thanks for applying") (application OR candidature OR candidacy) ${dateFilter}`,
     // ⑤ Job boards — only when accompanied by real action keywords
@@ -845,7 +847,7 @@ async function fetchEmailDetail(id, token) {
 
     // ATS senders ship a gutted text/plain part — pull the HTML for them so the
     // import parser sees the real employer + position, not just "candidature envoyée".
-    const preferHtml = /indeed\.com|linkedin\.com|jobgether\.com|welcometothejungle|hellowork|apec\.fr/i.test(from)
+    const preferHtml = /indeed\.com|linkedin\.com|jobgether\.com|welcometothejungle|welcomekit|hellowork|apec\.fr/i.test(from)
     const body = extractBody(data.payload, { preferHtml }).slice(0, 4000)
 
     // Drop job-alert / digest emails based on sender + subject patterns
@@ -857,7 +859,7 @@ async function fetchEmailDetail(id, token) {
     // Known ATS domains always pass through — their no-reply addresses are legit
     const ATS_DOMAINS = ['greenhouse.io','lever.co','ashbyhq.com','workable.com','teamtailor.com','teamtailor-mail.com',
       'recruitee.com','bamboohr.com','smartrecruiters.com','jobvite.com','icims.com',
-      'myworkdayjobs.com','taleo.net','jobgether.com']
+      'myworkdayjobs.com','taleo.net','jobgether.com','welcomekit.co']
     // LinkedIn application confirmations are legitimate, not job alerts
     const LINKEDIN_APP_CONFIRMATION = subjectRaw.includes('your application was sent') &&
                                        fromRaw.includes('jobs-noreply@linkedin.com')
