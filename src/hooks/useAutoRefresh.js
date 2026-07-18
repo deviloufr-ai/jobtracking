@@ -208,10 +208,24 @@ function bareAddr(from) {
   return (m ? m[1] : s).trim()
 }
 
+// Multi-tenant recruiting infrastructure: ONE sender domain serves thousands of
+// distinct employers (Oracle Fusion Recruiting, Workday, SAP SuccessFactors…).
+// Their addresses LOOK company-specific — e.g. Oracle sends every tenant's mail
+// from `<tenant>-saasfaprod1.fa.sender@workflow.mail.<region>.cloud.oracle.com` —
+// so they slip past the job-board-name check below and get mistaken for a single
+// employer's address. That let a brand-new Virtuos application confirmation map to
+// one unrelated archived job and be dropped as a "closed-candidature". Treat these
+// as shared so they never anchor a sender→single-job skip.
+const MULTITENANT_ATS_INFRA = [
+  'cloud.oracle.com', 'oraclecloud.com', 'myworkday.com', 'myworkdayjobs.com',
+  'successfactors.com', 'successfactors.eu', 'sapsf.com', 'sapsf.eu',
+]
+
 function isSharedSenderDomain(addr) {
   const domain = (addr || '').split('@')[1] || ''
   if (!domain) return true
   if (ATS_DOMAINS.some(d => domain.includes(d))) return true
+  if (MULTITENANT_ATS_INFRA.some(d => domain.includes(d))) return true
   // Match job-board name fragments against the domain's labels
   // ("notifications.linkedin.com" → labels ["notifications","linkedin","com"]).
   const labels = domain.split('.')
@@ -667,7 +681,23 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
         if (jobByKey.has(key)) return jobByKey.get(key)
 
         const normCo = normalize(p.company)
-        const companyJobs = jobsByCompany.get(normCo) || []
+        let companyJobs = jobsByCompany.get(normCo) || []
+
+        // Polluted-company fallback: a job seeded from a scraped ATS career page
+        // often stores the page title as the company ("Virtuos Career Site
+        // Careers") while the confirmation email carries the clean name
+        // ("Virtuos"). Exact bucketing then misses and the email would spawn a
+        // duplicate instead of updating the existing row. Union every bucket whose
+        // normalized company contains, or is contained by, the parsed one (min 5
+        // chars to avoid trivial hits), then let the position + active-job checks
+        // below pick the right one. Mirrors the manual-import flow (GmailImport).
+        if (companyJobs.length === 0 && normCo.length >= 5) {
+          const fuzzy = []
+          for (const [co, list] of jobsByCompany) {
+            if (co.length >= 5 && (co.includes(normCo) || normCo.includes(co))) fuzzy.push(...list)
+          }
+          companyJobs = fuzzy
+        }
         if (companyJobs.length === 0) return null
 
         // Fall back to company-only if the PARSED position is generic.
