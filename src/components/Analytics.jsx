@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import WeeklyRecap from './WeeklyRecap'
 
 // ── Pure aggregation ──────────────────────────────────────────────────────────
 // Stage progression used for funnel + "furthest stage reached". Terminal states
@@ -23,13 +24,13 @@ function hasResponse(job) {
   return (job.history || []).some(h => RESPONSE_STATUSES.has(h.status))
 }
 
-function parseDate(d) {
+export function parseDate(d) {
   if (!d) return null
   const dt = new Date(d)
   return isNaN(dt) ? null : dt
 }
 
-function applicationDate(job) {
+export function applicationDate(job) {
   const dates = [job.date, ...(job.history || []).map(h => h.date)]
     .map(parseDate)
     .filter(Boolean)
@@ -65,7 +66,7 @@ function median(values) {
   return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2)
 }
 
-function mondayOf(date) {
+export function mondayOf(date) {
   const d = new Date(date)
   d.setHours(0, 0, 0, 0)
   const day = d.getDay() // 0 = Sun
@@ -73,7 +74,7 @@ function mondayOf(date) {
   return new Date(d.setDate(diff))
 }
 
-const DAY = 86400000
+export const DAY = 86400000
 
 export function computeAnalytics(jobs, weeks = 12) {
   const applied = jobs.filter(j => j.status !== 'todo')
@@ -179,7 +180,7 @@ function MetricCard({ label, value, suffix, hint, color = '#6366f1' }) {
 
 const FUNNEL_COLORS = { sent: '#3b82f6', reviewing: '#f59e0b', interview: '#8b5cf6', offer: '#10b981' }
 
-export default function Analytics({ jobs, t = (k) => k }) {
+export default function Analytics({ jobs, t = (k) => k, language = 'en' }) {
   const a = useMemo(() => computeAnalytics(jobs), [jobs])
 
   const funnelLabel = (key) => t(`analytics.funnel.${key}`)
@@ -187,10 +188,13 @@ export default function Analytics({ jobs, t = (k) => k }) {
 
   if (a.total === 0) {
     return (
-      <Card className="items-center text-center py-12">
-        <span className="text-3xl">📊</span>
-        <p className="text-sm text-gray-500 max-w-sm">{t('analytics.empty')}</p>
-      </Card>
+      <div className="flex flex-col gap-4">
+        <WeeklyRecap jobs={jobs} t={t} language={language} />
+        <Card className="items-center text-center py-12">
+          <span className="text-3xl">📊</span>
+          <p className="text-sm text-gray-500 max-w-sm">{t('analytics.empty')}</p>
+        </Card>
+      </div>
     )
   }
 
@@ -198,6 +202,9 @@ export default function Analytics({ jobs, t = (k) => k }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Weekly recap */}
+      <WeeklyRecap jobs={jobs} t={t} language={language} />
+
       {/* Metric cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard label={t('analytics.metrics.totalApps')} value={a.total} color="#374151" />

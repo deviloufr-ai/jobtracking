@@ -149,7 +149,7 @@ export default function App() {
     return [...cvs].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
   }, [cvs])
   useDebugLogs() // Control console.log visibility based on debugLogsEnabled setting
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const extensionInstalled = useExtensionDetect()
   const { permission: notificationPermission } = useNotificationPermission()
   useNotificationScenarios(jobs, notificationPermission)
@@ -987,7 +987,7 @@ export default function App() {
         {activeTab === 'settings' ? (
           <Settings jobs={jobs} syncUserId={syncUserId} onMergeDuplicates={mergeDuplicates} initialTab={settingsInitialTab} />
         ) : activeTab === 'analytics' ? (
-          <Analytics jobs={jobs} t={t} />
+          <Analytics jobs={jobs} t={t} language={language} />
         ) : activeTab === 'search' && searchEnabled ? (
           <JobSearch onAddJob={(job) => { addJob(job); showToast(`${job.company} ajouté !`); setActiveTab('tracker') }} existingJobs={jobs} t={t} />
         ) : (
