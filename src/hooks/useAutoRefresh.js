@@ -13,6 +13,15 @@ import { isGenericPosition as isGenericPos } from '../constants/positions'
 const isDebug = () => typeof window !== 'undefined' && localStorage?.getItem('debug') === '1'
 const log = (...args) => { if (isDebug()) console.log(...args) }
 
+// Normalized role with pure seniority-LEVEL qualifiers removed, so an ATS email
+// that names the role "Product Manager" reconciles with a tracked "Senior Product
+// Manager" (same application — the employer just dropped the level) instead of
+// spawning a duplicate row. Only level words are stripped; role/scope-changing
+// words (Lead, Principal, Staff, Head, Director, VP) are deliberately kept so
+// genuinely different roles stay separate.
+const SENIORITY_LEVEL_RE = /\b(senior|sr|junior|jr|confirmé|confirme|confirmée|expérimenté|experimente|expérimentée|mid|middle|entry|graduate|débutant|debutant|stagiaire|intern|internship|alternance|apprenti)\b/gi
+const stripSeniority = (pos) => normalize((pos || '').replace(SENIORITY_LEVEL_RE, ' '))
+
 // Auto-mark previous history items as done when their corresponding meeting has finished
 function autoCompletePastMeetings(history) {
   if (!history || history.length === 0) return history
@@ -713,10 +722,17 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
         // this, the email is wrongly imported as a NEW job and the existing
         // one never gets its status upgraded (Bug: refresh didn't update status).
         const newPos = normalize(p.position)
+        // Seniority-insensitive base role: lets an email's "Product Manager"
+        // reconcile with a tracked "Senior Product Manager" (same application) so
+        // a refusal marks the existing candidature rejected instead of creating a
+        // parallel row. Kept narrow — only seniority LEVEL words are stripped.
+        const newBase = stripSeniority(p.position)
         const compatible = companyJobs.filter(c => {
           const existPos = normalize(c.position)
+          const existBase = stripSeniority(c.position)
           return isGenericPos(c.position) ||
-            (newPos && existPos && (newPos.includes(existPos) || existPos.includes(newPos)))
+            (newPos && existPos && (newPos.includes(existPos) || existPos.includes(newPos))) ||
+            (newBase && existBase && (newBase === existBase || newBase.includes(existBase) || existBase.includes(newBase)))
         })
         return pickBestCompanyMatch(compatible)
       }
