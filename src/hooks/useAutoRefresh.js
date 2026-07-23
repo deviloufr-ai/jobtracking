@@ -601,7 +601,7 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
       if (connectedAccts.length > 1) {
         const perAccount = await Promise.all(
           connectedAccts.map(acct =>
-            fetchJobEmailsForAccount(acct.email, 100, months, null, null, activeCompanies)
+            fetchJobEmailsForAccount(acct.email, 150, months, null, null, activeCompanies)
               .then(emails => emails.map(e => ({ ...e, _account: acct.email })))
               .catch(() => [])
           )
@@ -614,7 +614,7 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
           }
         }
       } else {
-        allEmails = await fetchJobEmails(100, months, null, null, activeCompanies)
+        allEmails = await fetchJobEmails(150, months, null, null, activeCompanies)
       }
       const [emails, calendarEvents] = await Promise.all([
         Promise.resolve(allEmails),

@@ -654,7 +654,10 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
     dateFilter = `newer_than:${days}d`
   }
 
-  const autoLimit = Math.floor(Math.min(effectiveMonths * 60, 500))
+  // Floor the overall detail-fetch cap so short windows (e.g. the default 2-week
+  // refresh, where effectiveMonths ≈ 0.47) aren't starved down to ~28 emails and
+  // silently drop real candidatures. Long windows still scale up toward 500.
+  const autoLimit = Math.max(150, Math.floor(Math.min(effectiveMonths * 60, 500)))
   maxResults = maxResults ?? autoLimit
 
   // Gmail-native category filter — "promotions" = newsletters/job alerts → skip entirely
@@ -662,38 +665,45 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
   const noAlerts = `-subject:"job alert" -subject:"jobs you might like" -subject:"recommended jobs" -subject:"new jobs for you" -subject:"offres d'emploi" -subject:"nouvelles offres" -subject:"alertes emploi" -subject:"emplois recommandés" -subject:"suggested job" -subject:"candidature suggérée" -subject:"jobs suggested" -subject:"offres suggérées" -subject:"new jobs matching" -subject:"emplois correspondant" -subject:"offre recommandée" -subject:"recommended job for you" -subject:"récapitulatif de votre semaine" -subject:"récap de la semaine" -subject:"semaine de recherche d'emploi" -subject:"weekly recap"`
   const baseExclude = `${noPromo} ${noAlerts}`
 
+  // Each query carries a `pages` count: how many Gmail result pages to walk via
+  // nextPageToken. High-signal catch-alls (ATS, ATS confirmations, transactional
+  // Updates, per-company) get extra pages so a busy inbox can't truncate real
+  // candidatures at the single-page cap. Order matters: the ATS queries run FIRST
+  // so their message ids are collected before the final slice(0, maxResults), and
+  // are never dropped in favour of lower-value keyword hits.
   const queries = [
-    // ① Gmail "Updates" category = transactional — best signal for ATS/confirmations
-    `category:updates (candidature OR application OR entretien OR interview OR recrutement OR recruteur OR recruiter OR "votre candidature" OR "thank you for applying" OR "application received" OR "your application" OR "we regret" OR "not selected" OR "job offer" OR "next steps") ${dateFilter}`,
-    // ① Inbox emails with common job keywords (broader net)
-    `in:inbox (job AND (offer OR application OR candidature)) ${dateFilter}`,
-    // ② Personal inbox keywords (FR)
-    `in:inbox category:personal (candidature OR postulation OR entretien OR recrutement OR "votre candidature" OR "nous avons bien reçu" OR "suite à votre candidature" OR "nous avons le regret" OR "sans suite" OR "n'avons pas retenu") ${dateFilter}`,
-    // ②b Recruiter acknowledgement emails (FR)
-    `in:all "nous vous remercions" ${dateFilter}`,
-    // ②c Recruiter interview invitation emails (FR) — both "faire plus ample connaissance" patterns
-    `in:all ("faire plus ample connaissance" OR "ample connaissance") ${dateFilter}`,
-    // ②d Talent acquisition emails
-    `in:all ("head of talent" OR "talent acquisition" OR "talent recruiter") ${dateFilter}`,
-    // ③ Personal inbox keywords (EN)
-    `in:inbox category:personal (interview OR "thank you for applying" OR "thanks for applying" OR "application received" OR "your application" OR "we have received" OR "we regret" OR "not selected" OR "not moving forward" OR "job offer" OR "offer letter" OR "next steps" OR "hiring process") ${dateFilter}`,
-    // ③b Soft rejection / "keep in touch" follow-ups (EN) — polite phrasing with a
-    // generic subject ("Follow Up from X") that none of the above keyword sets catch
-    `in:all ("not a good match" OR "isn't a good match" OR "good match with our" OR "keep your information on file" OR "future open roles" OR "future endeavors" OR "wish you the best in your search") ${baseExclude} ${dateFilter}`,
-    // ④ ATS platforms — always relevant regardless of category
+    // ④ ATS platforms — highest-signal catch-all; one query fans out across every
+    // ATS domain, so it runs first and pulls multiple pages.
     // welcomekit.co = Welcome to the Jungle's ATS (candidate notification emails
     // come from candidates.welcomekit.co, NOT welcometothejungle.com — the job board).
-    `in:all (from:ashbyhq.com OR from:greenhouse.io OR from:lever.co OR from:workable.com OR from:teamtailor.com OR from:teamtailor-mail.com OR from:recruitee.com OR from:bamboohr.com OR from:smartrecruiters.com OR from:jobvite.com OR from:icims.com OR from:myworkdayjobs.com OR from:taleo.net OR from:welcomekit.co) ${dateFilter}`,
+    { q: `in:all (from:ashbyhq.com OR from:greenhouse.io OR from:lever.co OR from:workable.com OR from:teamtailor.com OR from:teamtailor-mail.com OR from:recruitee.com OR from:bamboohr.com OR from:smartrecruiters.com OR from:jobvite.com OR from:icims.com OR from:myworkdayjobs.com OR from:taleo.net OR from:welcomekit.co) ${dateFilter}`, pages: 2 },
     // ④b Broad ATS confirmation pattern — catch "we have received your application" type confirmations
-    `in:all ("we have received" OR "application received" OR "application confirmed" OR "thanks for applying") (application OR candidature OR candidacy) ${dateFilter}`,
+    { q: `in:all ("we have received" OR "application received" OR "application confirmed" OR "thanks for applying") (application OR candidature OR candidacy) ${dateFilter}`, pages: 2 },
+    // ① Gmail "Updates" category = transactional — best signal for ATS/confirmations
+    { q: `category:updates (candidature OR application OR entretien OR interview OR recrutement OR recruteur OR recruiter OR "votre candidature" OR "thank you for applying" OR "application received" OR "your application" OR "we regret" OR "not selected" OR "job offer" OR "next steps") ${dateFilter}`, pages: 2 },
+    // ① Inbox emails with common job keywords (broader net)
+    { q: `in:inbox (job AND (offer OR application OR candidature)) ${dateFilter}`, pages: 1 },
+    // ② Personal inbox keywords (FR)
+    { q: `in:inbox category:personal (candidature OR postulation OR entretien OR recrutement OR "votre candidature" OR "nous avons bien reçu" OR "suite à votre candidature" OR "nous avons le regret" OR "sans suite" OR "n'avons pas retenu") ${dateFilter}`, pages: 1 },
+    // ②b Recruiter acknowledgement emails (FR)
+    { q: `in:all "nous vous remercions" ${dateFilter}`, pages: 1 },
+    // ②c Recruiter interview invitation emails (FR) — both "faire plus ample connaissance" patterns
+    { q: `in:all ("faire plus ample connaissance" OR "ample connaissance") ${dateFilter}`, pages: 1 },
+    // ②d Talent acquisition emails
+    { q: `in:all ("head of talent" OR "talent acquisition" OR "talent recruiter") ${dateFilter}`, pages: 1 },
+    // ③ Personal inbox keywords (EN)
+    { q: `in:inbox category:personal (interview OR "thank you for applying" OR "thanks for applying" OR "application received" OR "your application" OR "we have received" OR "we regret" OR "not selected" OR "not moving forward" OR "job offer" OR "offer letter" OR "next steps" OR "hiring process") ${dateFilter}`, pages: 1 },
+    // ③b Soft rejection / "keep in touch" follow-ups (EN) — polite phrasing with a
+    // generic subject ("Follow Up from X") that none of the above keyword sets catch
+    { q: `in:all ("not a good match" OR "isn't a good match" OR "good match with our" OR "keep your information on file" OR "future open roles" OR "future endeavors" OR "wish you the best in your search") ${baseExclude} ${dateFilter}`, pages: 1 },
     // ⑤ Job boards — only when accompanied by real action keywords
-    `in:all (from:linkedin.com OR from:jobs-noreply@linkedin.com OR from:welcometothejungle.com OR from:apec.fr OR from:indeed.com OR from:monster.fr OR from:cadremploi.fr OR from:hellowork.com OR from:jobteaser.com) (candidature OR application OR entretien OR interview OR "InMail" OR recruteur OR recruiter OR "was viewed" OR "viewed" OR sent OR applied OR confirmation OR "application sent" OR "applied to") ${noAlerts} ${dateFilter}`,
+    { q: `in:all (from:linkedin.com OR from:jobs-noreply@linkedin.com OR from:welcometothejungle.com OR from:apec.fr OR from:indeed.com OR from:monster.fr OR from:cadremploi.fr OR from:hellowork.com OR from:jobteaser.com) (candidature OR application OR entretien OR interview OR "InMail" OR recruteur OR recruiter OR "was viewed" OR "viewed" OR sent OR applied OR confirmation OR "application sent" OR "applied to") ${noAlerts} ${dateFilter}`, pages: 1 },
     // ⑤b LinkedIn application confirmations — explicit subject match
-    `from:jobs-noreply@linkedin.com subject:"your application was sent" ${dateFilter}`,
+    { q: `from:jobs-noreply@linkedin.com subject:"your application was sent" ${dateFilter}`, pages: 1 },
     // ⑥ Recruiter-pattern senders in inbox
-    `in:inbox (from:talent@ OR from:recrutement@ OR from:rh@ OR from:careers@ OR from:jobs@ OR from:hiring@ OR from:recruiter@) ${baseExclude} ${dateFilter}`,
+    { q: `in:inbox (from:talent@ OR from:recrutement@ OR from:rh@ OR from:careers@ OR from:jobs@ OR from:hiring@ OR from:recruiter@) ${baseExclude} ${dateFilter}`, pages: 1 },
     // ⑦ Sent emails (outbound applications)
-    `in:sent (has:attachment OR subject:candidature OR subject:postulation OR "je postule" OR "je vous contacte" OR "je me permets" OR "I am applying" OR "please find my CV" OR "please find attached my resume") ${dateFilter}`,
+    { q: `in:sent (has:attachment OR subject:candidature OR subject:postulation OR "je postule" OR "je vous contacte" OR "je me permets" OR "I am applying" OR "please find my CV" OR "please find attached my resume") ${dateFilter}`, pages: 1 },
   ]
 
   // ⑧ Company-based search — if candidature companies exist, search for emails mentioning each company
@@ -702,15 +712,17 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
     const validCompanies = companies
       .map(c => c.trim())
       .filter(c => c.length > 0 && c.length < 100) // Avoid empty or unreasonably long names
-      .slice(0, 20) // Limit to 20 companies to avoid query explosion
+      .slice(0, 30) // Limit to 30 companies to avoid query explosion
 
     for (const company of validCompanies) {
       // Escape special Gmail search characters and quote the company name for exact matching
       const escapedCompany = company.replace(/"/g, '\\"')
       // Search for company name alone - simpler syntax, more reliable with Gmail API
-      // Other queries will catch the job keywords, this just ensures company emails are found
+      // Other queries will catch the job keywords, this just ensures company emails are found.
+      // 2 pages: a tracked company can accumulate several emails (confirmation →
+      // review → interview → refusal) within one window; one page may miss the latest.
       queries.push(
-        `in:all "${escapedCompany}" ${dateFilter}`
+        { q: `in:all "${escapedCompany}" ${dateFilter}`, pages: 2 }
       )
     }
   }
@@ -718,20 +730,31 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
   const allMessageIds = new Set()
   const allMessages = []
 
-  const runQuery = async (query) => {
+  // Per-page result cap. The old formula (effectiveMonths * 20) collapsed to just
+  // 9 for the default 2-week window, so a single query fanning out across ~14 ATS
+  // domains returned only the 9 newest emails and dropped the rest. Floor it at 50
+  // (Gmail's page max is 100) so short windows get real coverage; combined with
+  // per-query pagination below, a busy inbox no longer truncates candidatures.
+  const perPage = Math.min(100, Math.max(50, Math.round(effectiveMonths * 60)))
+
+  const runQuery = async ({ q, pages = 1 }) => {
     try {
-      log(`📨 Running query: ${query.slice(0, 80)}...`)
-      const maxResults = Math.max(1, Math.floor(Math.min(effectiveMonths * 20, 100)))
-      const data = await gmailFetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${maxResults}&q=${encodeURIComponent(query)}`,
-        token
-      )
-      const newCount = (data.messages || []).length
-      log(`✅ Query returned ${newCount} emails`)
-      for (const m of (data.messages || [])) {
-        if (!allMessageIds.has(m.id)) { allMessageIds.add(m.id); allMessages.push(m) }
+      log(`📨 Running query (${pages}p): ${q.slice(0, 80)}...`)
+      let pageToken = null
+      for (let page = 0; page < pages; page++) {
+        const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${perPage}` +
+          (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '') +
+          `&q=${encodeURIComponent(q)}`
+        const data = await gmailFetch(url, token)
+        const msgs = data.messages || []
+        log(`✅ Query page ${page + 1} returned ${msgs.length} emails`)
+        for (const m of msgs) {
+          if (!allMessageIds.has(m.id)) { allMessageIds.add(m.id); allMessages.push(m) }
+        }
+        pageToken = data.nextPageToken
+        if (!pageToken) break // no more pages for this query
       }
-    } catch (e) { console.warn('❌ Query failed:', query.slice(0, 60), e.message) }
+    } catch (e) { console.warn('❌ Query failed:', q.slice(0, 60), e.message) }
   }
 
   for (let i = 0; i < queries.length; i += 6) {
