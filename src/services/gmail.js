@@ -859,24 +859,29 @@ async function fetchEmailDetail(id, token) {
     const get = (name) => headers.find(h => h.name === name)?.value || ''
     const subject = get('Subject')
     const from = get('From')
+    const fromRaw = from.toLowerCase()
 
     log(`📧 Processing email: "${subject}" from ${from}`)
 
-    // ATS senders ship a gutted text/plain part — pull the HTML for them so the
-    // import parser sees the real employer + position, not just "candidature envoyée".
-    const preferHtml = /indeed\.com|linkedin\.com|jobgether\.com|welcometothejungle|welcomekit|hellowork|apec\.fr/i.test(from)
-    const body = extractBody(data.payload, { preferHtml }).slice(0, 4000)
-
-    // Drop job-alert / digest emails based on sender + subject patterns
-    const fromRaw = get('From').toLowerCase()
-    const subjectRaw = get('Subject').toLowerCase()
-    const snippetRaw = (data.snippet || '').toLowerCase()
-    const bodyRaw = (body || '').toLowerCase()
-
-    // Known ATS domains always pass through — their no-reply addresses are legit
+    // Known ATS domains — their no-reply addresses are legit AND their text/plain
+    // part is typically gutted (only the HTML carries the employer/position/decision).
     const ATS_DOMAINS = ['greenhouse.io','lever.co','ashbyhq.com','workable.com','teamtailor.com','teamtailor-mail.com',
       'recruitee.com','bamboohr.com','smartrecruiters.com','jobvite.com','icims.com',
       'myworkdayjobs.com','taleo.net','jobgether.com','welcomekit.co']
+
+    // Prefer the HTML part for ATS / job-board senders — their text/plain is gutted,
+    // so it drops the real employer, position AND the decision itself. An Ashby
+    // refusal whose text/plain was a stub left Claude seeing only the "Bonjour…"
+    // greeting snippet, which it low-confidenced (<35) → the candidature never
+    // updated. The pure ATS domains were missing from this list; include them.
+    const preferHtml = /indeed\.com|linkedin\.com|jobgether\.com|welcometothejungle|welcomekit|hellowork|apec\.fr/i.test(from)
+      || ATS_DOMAINS.some(d => fromRaw.includes(d))
+    const body = extractBody(data.payload, { preferHtml }).slice(0, 4000)
+
+    // Drop job-alert / digest emails based on sender + subject patterns
+    const subjectRaw = subject.toLowerCase()
+    const snippetRaw = (data.snippet || '').toLowerCase()
+    const bodyRaw = (body || '').toLowerCase()
     // LinkedIn application confirmations are legitimate, not job alerts
     const LINKEDIN_APP_CONFIRMATION = subjectRaw.includes('your application was sent') &&
                                        fromRaw.includes('jobs-noreply@linkedin.com')
