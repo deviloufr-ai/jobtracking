@@ -886,7 +886,28 @@ async function fetchEmailDetail(id, token) {
     // LinkedIn application confirmations are legitimate, not job alerts
     const LINKEDIN_APP_CONFIRMATION = subjectRaw.includes('your application was sent') &&
                                        fromRaw.includes('jobs-noreply@linkedin.com')
-    const isATS = ATS_DOMAINS.some(d => fromRaw.includes(d)) || LINKEDIN_APP_CONFIRMATION
+
+    // A genuine candidature confirmation / recruiter acknowledgement can arrive from
+    // the SAME bulk-notification address a job board uses for alerts — e.g. HelloWork's
+    // notification@emails.hellowork.com sends BOTH "Votre candidature est enregistrée"
+    // (a real application confirmation) and weekly job digests. The sender blocklist
+    // below would drop the confirmation with the alerts, leaving the candidature stuck
+    // in "À faire". Detect an explicit candidature-confirmation phrase and let it
+    // bypass the alert filters, exactly like an ATS email. Digests never carry these
+    // phrases (they say "offres recommandées"/"récap de la semaine"), so nothing leaks.
+    const CANDIDATURE_CONFIRMATION_SIGNALS = [
+      'votre candidature est enregistrée', 'candidature est enregistrée', 'candidature enregistrée',
+      'nous avons bien reçu votre candidature', 'bien reçu votre candidature', 'candidature bien reçue',
+      'votre candidature a bien été', 'candidature a bien été', 'candidature a été transmise',
+      'transmettons au recruteur', 'transmise au recruteur', 'transmis au recruteur',
+      'we have received your application', 'we received your application',
+      'your application has been received', 'thank you for applying', 'thanks for applying',
+      'application received',
+    ]
+    const hasCandidatureConfirmation = CANDIDATURE_CONFIRMATION_SIGNALS.some(s =>
+      subjectRaw.includes(s) || snippetRaw.includes(s) || bodyRaw.includes(s))
+
+    const isATS = ATS_DOMAINS.some(d => fromRaw.includes(d)) || LINKEDIN_APP_CONFIRMATION || hasCandidatureConfirmation
 
     if (isATS) {
       log(`   ✅ Passed: Recognized ATS domain`)
