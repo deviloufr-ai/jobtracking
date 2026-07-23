@@ -862,12 +862,6 @@ async function fetchEmailDetail(id, token) {
 
     log(`📧 Processing email: "${subject}" from ${from}`)
 
-    // Safety net: drop promotional/forum emails even if they slipped through query filters
-    if (labelIds.includes('CATEGORY_PROMOTIONS') || labelIds.includes('CATEGORY_FORUMS')) {
-      log(`   ❌ Filtered: Promotional/Forum category`)
-      return null
-    }
-
     // ATS senders ship a gutted text/plain part — pull the HTML for them so the
     // import parser sees the real employer + position, not just "candidature envoyée".
     const preferHtml = /indeed\.com|linkedin\.com|jobgether\.com|welcometothejungle|welcomekit|hellowork|apec\.fr/i.test(from)
@@ -908,6 +902,17 @@ async function fetchEmailDetail(id, token) {
       subjectRaw.includes(s) || snippetRaw.includes(s) || bodyRaw.includes(s))
 
     const isATS = ATS_DOMAINS.some(d => fromRaw.includes(d)) || LINKEDIN_APP_CONFIRMATION || hasCandidatureConfirmation
+
+    // Safety net: drop promotional/forum emails even if they slipped through the
+    // query filters — BUT never drop a recognized ATS message or an explicit
+    // candidature confirmation. Gmail routinely mis-files ATS no-reply mail
+    // (rejections + confirmations from ashbyhq/greenhouse/lever…) under the
+    // Promotions tab; dropping those here left real candidatures stuck in "À faire"
+    // (the Pennylane refusal never reached the parser). isATS wins over the category.
+    if (!isATS && (labelIds.includes('CATEGORY_PROMOTIONS') || labelIds.includes('CATEGORY_FORUMS'))) {
+      log(`   ❌ Filtered: Promotional/Forum category`)
+      return null
+    }
 
     if (isATS) {
       log(`   ✅ Passed: Recognized ATS domain`)
