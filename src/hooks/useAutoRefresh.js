@@ -661,14 +661,30 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
 
       log(`✅ Extracted ${grouped.length} jobs from emails`)
 
-      const jobByKey = new Map(jobs.map(j => [`${normalize(j.company)}_${normalize(j.position)}`, j]))
+      // Archived candidatures are intentionally closed and hidden — a refresh must
+      // NEVER resurrect one. Exclude them from all matching so a fresh email lands on
+      // an ACTIVE candidature (or creates a new one), not an old archived application.
+      // (Bug: a July Pennylane refusal updated the January *archived* Pennylane job
+      // instead of the active "À faire" one.)
+      const matchable = jobs.filter(j => j.status !== 'archived')
+
+      // company+position → ALL jobs sharing that exact key. Several jobs can share a
+      // position (an old rejected application + a fresh one), so keep every one and
+      // let the active-preferring picker choose. A plain Map keeps only the LAST,
+      // which is often the closed one (Bug: exact-key match returned the archived job).
+      const jobsByKey = new Map()
+      for (const j of matchable) {
+        const k = `${normalize(j.company)}_${normalize(j.position)}`
+        if (!jobsByKey.has(k)) jobsByKey.set(k, [])
+        jobsByKey.get(k).push(j)
+      }
       // ALL jobs per company — a company can hold several distinct applications
       // (e.g. "Product Owner IA" active + "Product Manager Operations" rejected).
       // A plain Map keyed by company keeps only the LAST job, so company-only
       // emails attached to an arbitrary (often closed) job. (Bug: a new entry
       // landed on the rejected job of a different position, same company.)
       const jobsByCompany = new Map()
-      for (const j of jobs) {
+      for (const j of matchable) {
         const co = normalize(j.company)
         if (!jobsByCompany.has(co)) jobsByCompany.set(co, [])
         jobsByCompany.get(co).push(j)
@@ -685,9 +701,10 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
         )[0]
       }
       const findExisting = p => {
-        // Exact company+position match first
+        // Exact company+position match first — prefer the ACTIVE job when several
+        // share the key, so a new email never lands on a closed/archived one.
         const key = `${normalize(p.company)}_${normalize(p.position)}`
-        if (jobByKey.has(key)) return jobByKey.get(key)
+        if (jobsByKey.has(key)) return pickBestCompanyMatch(jobsByKey.get(key))
 
         const normCo = normalize(p.company)
         let companyJobs = jobsByCompany.get(normCo) || []
