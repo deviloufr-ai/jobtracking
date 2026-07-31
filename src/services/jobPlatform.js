@@ -83,33 +83,51 @@ function platformForName(name) {
 }
 
 // Detect the platform a candidature came through. Precedence, strongest signal
-// first: an explicit saved posting URL → a board-named company (ATS-only
-// candidature where the employer is hidden) → the sender domain of any
-// email-sourced history entry → extracted position links. No match → "direct".
+// first:
+//   1. the sender domain of the earliest email-sourced history entry — the
+//      actual channel the application went through (a LinkedIn confirmation);
+//   2. an explicit saved posting URL (and the offerUrl on "todo" entries);
+//   3. extracted position links from the email body;
+//   4. a board-named company (the ATS-only fallback where the real employer is
+//      hidden and the company field holds the board name, e.g. "Jobgether").
+// No match → "direct".
+//
+// The board-named company is deliberately LAST, not first: an aggregator such
+// as Jobgether can surface a posting while the application is actually submitted
+// via LinkedIn — so the company name reflects where the job was *found*, not the
+// channel it went *through*. The email sender is the reliable record of that.
 export function detectPlatform(job) {
   if (!job) return PLATFORM_DIRECT
 
-  // 1. Saved posting URL (offerUrl on todo entries carries the same link).
-  const byUrl = platformForHost(hostFromUrl(job.url))
-  if (byUrl) return byUrl
+  // Scan history oldest-first so the application/confirmation email (not a later
+  // recruiter reply that may route through a different ATS) decides the channel.
+  const history = [...(job.history || [])].sort(
+    (a, b) => new Date(a?.date || 0) - new Date(b?.date || 0)
+  )
 
-  // 2. Board-named company (companyFromAts case: "Jobgether", "Indeed"…).
-  const byCompany = platformForName(job.company)
-  if (byCompany) return byCompany
-
-  // 3. Sender domain of email-sourced history entries.
-  for (const h of job.history || []) {
+  // 1. Sender domain of email-sourced history entries.
+  for (const h of history) {
     const byFrom = platformForHost(domainFromEmail(h?.from))
     if (byFrom) return byFrom
+  }
+
+  // 2. Saved posting URL (offerUrl on todo entries carries the same link).
+  const byUrl = platformForHost(hostFromUrl(job.url))
+  if (byUrl) return byUrl
+  for (const h of history) {
     const byOffer = platformForHost(hostFromUrl(h?.offerUrl))
     if (byOffer) return byOffer
   }
 
-  // 4. Extracted position links (ranked URLs pulled from the email body).
+  // 3. Extracted position links (ranked URLs pulled from the email body).
   for (const link of job.positionLinks || []) {
     const byLink = platformForHost(hostFromUrl(typeof link === 'string' ? link : link?.url))
     if (byLink) return byLink
   }
+
+  // 4. Last resort: a board-named company (ATS-only candidature, employer hidden).
+  const byCompany = platformForName(job.company)
+  if (byCompany) return byCompany
 
   return PLATFORM_DIRECT
 }
