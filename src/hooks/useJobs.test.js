@@ -190,6 +190,17 @@ describe('deduplicateJobs', () => {
     expect(result.filter(j => j.company.startsWith('Ecole'))).toHaveLength(1)
   })
 
+  it('collapses same-company positions that differ only by a French gender marker', () => {
+    const jobs = [
+      { id: '1', company: 'Source.paris', position: 'Chef(fe) de Projet Senior', status: 'rejected', date: '2026-07-31', history: [] },
+      { id: '2', company: 'Source.paris', position: 'Chef de Projet Senior', status: 'rejected', date: '2026-07-31', history: [] },
+      { id: '3', company: 'Figma', position: 'Product Engineer', status: 'todo', date: '2026-01-02', history: [] },
+    ]
+    const result = deduplicateJobs(jobs)
+    expect(result.filter(j => j.company === 'Source.paris')).toHaveLength(1)
+    expect(result.some(j => j.company === 'Figma')).toBe(true)
+  })
+
   it('keeps genuinely-distinct roles at the same company separate', () => {
     const jobs = [
       { id: '1', company: 'Datadog', position: 'Product Manager Mobile', status: 'sent', date: '2026-06-01', history: [] },

@@ -140,13 +140,29 @@ const STATUS_PRIORITY = {
   interview: 4, done: 4, offer: 5, rejected: 6, rejected_ats: 6
 }
 
-// Canonical position string: lowercased, h/f markers and ALL punctuation flattened
-// to single spaces. Makes hyphenation/spacing variants compare equal — e.g.
-// "No-Code" === "No Code", "Product Manager (H/F)" === "Product Manager".
+// French inclusive-writing gender markers glue a short parenthesized suffix onto
+// the end of a word: "Chef(fe)", "Chargé(e)", "Développeur(se)", "Technicien(ne)",
+// "Directeur(trice)". They denote the SAME role as the base word, so an import
+// carrying the marker must compare equal to one without it — otherwise the same
+// application splits into a visible doublon ("Chef(fe) de Projet Senior" vs
+// "Chef de Projet Senior"). We drop the "(suffix)" and keep the base word.
+// Guards against false hits: the paren must abut a non-space char (so a spaced
+// parenthetical like " (Remote)" or " (H/F)" is left untouched) and the suffix
+// must be ≤5 letters (excludes real words like "remote"/"senior"). Accents included.
+const GENDER_SUFFIX_RE = /(\S)\([a-zà-ÿ]{1,5}\)/gi
+export function stripGenderSuffix(pos = '') {
+  return (pos || '').replace(GENDER_SUFFIX_RE, '$1')
+}
+
+// Canonical position string: lowercased, h/f + French gender markers stripped, and
+// ALL punctuation flattened to single spaces. Makes hyphenation/spacing/gender
+// variants compare equal — e.g. "No-Code" === "No Code",
+// "Product Manager (H/F)" === "Product Manager", "Chef(fe)" === "Chef".
 export function canonicalizePosition(pos = '') {
   return (pos || '')
     .toLowerCase()
     .replace(/\(?[hf]\/[hf]\)?/gi, ' ')
+    .replace(GENDER_SUFFIX_RE, '$1')
     .replace(/[^a-z0-9]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
@@ -175,7 +191,7 @@ export function deduplicateJobs(jobs) {
   // Early exit: if few jobs, deduplication is cheap
   if (jobs.length <= 2) return jobs
 
-  const normPos = p => (p || '').toLowerCase().trim().replace(/\s*\(?[hf]\/[hf]\)?\s*/gi, '').trim()
+  const normPos = p => stripGenderSuffix((p || '').toLowerCase()).replace(/\s*\(?[hf]\/[hf]\)?\s*/gi, '').trim()
   const isGenericPos = p => isGenericPosition(normPos(p))
 
   const groups = new Map()
