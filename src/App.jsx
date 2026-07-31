@@ -15,6 +15,7 @@ import JobFluxRow from './components/JobFluxRow'
 import MobileHome from './components/MobileHome'
 import MobilePipeline from './components/MobilePipeline'
 import KanbanBoard from './components/KanbanBoard'
+import PlatformView from './components/PlatformView'
 import JobModal from './components/JobModal'
 import ConfirmDelete from './components/ConfirmDelete'
 import GmailImport from './components/GmailImport'
@@ -467,6 +468,17 @@ export default function App() {
   const handleViewChange = (v) => {
     setTrackerView(v)
     localStorage.setItem('jobtrackr_view', v)
+  }
+
+  // Open a candidature from a compact list (e.g. the Platforms view): the edit
+  // modal on desktop, the full-screen detail sheet on mobile — matching how the
+  // table and kanban views route clicks per breakpoint.
+  const openJob = (job) => {
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+      setDetailJob(job)
+    } else {
+      setModal(job)
+    }
   }
 
   const handleSort = (col) => {
@@ -1037,7 +1049,9 @@ export default function App() {
           t={t}
         />
 
-        {trackerView === 'kanban' && filtered.length > 0 ? (
+        {trackerView === 'platforms' ? (
+          <PlatformView jobs={filtered} onOpen={openJob} language={language} t={t} />
+        ) : trackerView === 'kanban' && filtered.length > 0 ? (
           <>
             {/* Mobile: swipeable stage pipeline */}
             <div className="md:hidden">
@@ -1203,8 +1217,8 @@ export default function App() {
         </div>
         </div>{/* end flex-1 */}
 
-        {/* Right sidebar — meetings à venir (top-aligned with stats). Hidden in kanban view so the board spans full width. */}
-        {trackerView !== 'kanban' && (
+        {/* Right sidebar — meetings à venir (top-aligned with stats). Hidden in kanban/platforms views so the board spans full width. */}
+        {trackerView !== 'kanban' && trackerView !== 'platforms' && (
           <div className="w-80 flex-shrink-0 hidden xl:block">
             <div className="sticky top-24">
               <UpcomingMeetings jobs={jobs} t={t} />

@@ -120,7 +120,7 @@ export default function Filters({ filters, onChange, onReset, total, filtered, s
         {/* View toggle */}
         {onViewChange && (
           <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-1">
-            {[['table', '☰ ' + (t('view.table') || 'Table')], ['kanban', '▦ ' + (t('view.kanban') || 'Kanban')]].map(([val, label]) => (
+            {[['table', '☰ ' + (t('view.table') || 'Table')], ['kanban', '▦ ' + (t('view.kanban') || 'Kanban')], ['platforms', '🌐 ' + (t('view.platforms') || 'Platforms')]].map(([val, label]) => (
               <button key={val} onClick={() => onViewChange(val)}
                 className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${view === val ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500'}`}>
                 {label}
@@ -207,6 +207,16 @@ export default function Filters({ filters, onChange, onReset, total, filtered, s
             >
               <span>▦</span>
               <span className="hidden sm:inline">{t('view.kanban') || 'Kanban'}</span>
+            </button>
+            <button
+              onClick={() => onViewChange('platforms')}
+              title={t('view.platforms') || 'Platforms'}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                view === 'platforms' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <span>🌐</span>
+              <span className="hidden sm:inline">{t('view.platforms') || 'Platforms'}</span>
             </button>
           </div>
         )}

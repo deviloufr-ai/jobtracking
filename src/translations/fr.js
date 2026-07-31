@@ -189,6 +189,17 @@ export const fr = {
   view: {
     table: 'Tableau',
     kanban: 'Kanban',
+    platforms: 'Plateformes',
+  },
+
+  // Vue Plateformes — candidatures regroupées par plateforme d'origine
+  platformView: {
+    direct: 'Direct / Autre',
+    platform: 'plateforme',
+    platforms: 'plateformes',
+    candidature: 'candidature',
+    candidatures: 'candidatures',
+    empty: 'Aucune candidature à regrouper par plateforme pour l\'instant',
   },
 
   // Kanban Board

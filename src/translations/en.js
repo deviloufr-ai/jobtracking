@@ -168,6 +168,17 @@ export const en = {
   view: {
     table: 'Table',
     kanban: 'Kanban',
+    platforms: 'Platforms',
+  },
+
+  // Platforms view — candidatures grouped by the job platform they came through
+  platformView: {
+    direct: 'Direct / Other',
+    platform: 'platform',
+    platforms: 'platforms',
+    candidature: 'application',
+    candidatures: 'applications',
+    empty: 'No applications to group by platform yet',
   },
 
   // Kanban Board
