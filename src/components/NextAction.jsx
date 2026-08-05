@@ -345,13 +345,34 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
   const actions = buildAllActions(activeJobs, s, t, dismissed)
   const urgentCount = actions.filter(a => a.urgency === 'high').length
 
-  if (actions.length === 0) return null
+  // Empty state — no pending actions. Return a friendly "all caught up" card
+  // (NOT null): this component sits in a 2-col grid next to Stats, so returning
+  // null collapses its grid cell and leaves the whole right half blank.
+  if (actions.length === 0) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-4 h-full flex flex-col">
+        <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-2">
+          <span className="text-base">🗺️</span>
+          <h3 className="text-sm font-semibold text-gray-800">{t('nextAction.title')}</h3>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-10">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-sm shadow-green-200/60 mb-4">
+            <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <p className="text-sm font-semibold text-gray-800">{t('nextAction.emptyTitle')}</p>
+          <p className="text-xs text-gray-400 mt-1 max-w-[240px] leading-relaxed">{t('nextAction.emptyDesc')}</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-4 h-full flex flex-col">
       <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-2">
         <span className="text-base">🗺️</span>
-        <h3 className="text-sm font-semibold text-gray-800">Prochaines étapes</h3>
+        <h3 className="text-sm font-semibold text-gray-800">{t('nextAction.title')}</h3>
         {urgentCount > 0 && (
           <span className="text-xs bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full ml-1">
             {urgentCount} urgent{urgentCount > 1 ? 'es' : 'e'}

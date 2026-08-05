@@ -649,6 +649,8 @@ export const fr = {
     urgentActions: 'Actions urgentes',
     recommendedSteps: 'Étapes recommandées',
     noActions: 'Aucune action requise',
+    emptyTitle: 'Vous êtes à jour !',
+    emptyDesc: 'Aucune action urgente pour le moment. Continuez sur votre lancée 👏',
   },
 
   // RowActions

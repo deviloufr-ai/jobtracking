@@ -457,6 +457,8 @@ export const en = {
     urgentActions: 'Urgent actions',
     recommendedSteps: 'Recommended steps',
     noActions: 'No actions required',
+    emptyTitle: "You're all caught up!",
+    emptyDesc: 'No urgent actions right now. Keep up the momentum 👏',
   },
 
   // RowActions
