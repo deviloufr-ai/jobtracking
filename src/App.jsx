@@ -6,7 +6,7 @@ import { useSettings } from './hooks/useSettings'
 import { useLanguage } from './hooks/useLanguage'
 import './styles/themes.css'
 import ErrorBoundary from './components/ErrorBoundary'
-import Stats from './components/Stats'
+import KpiStrip from './components/KpiStrip'
 import Analytics from './components/Analytics'
 import Filters from './components/Filters'
 import JobRow from './components/JobRow'
@@ -1004,8 +1004,7 @@ export default function App() {
           <JobSearch onAddJob={(job) => { addJob(job); showToast(`${job.company} ajouté !`); setActiveTab('tracker') }} existingJobs={jobs} t={t} />
         ) : (
           <>
-        <div className="flex gap-6 items-start">
-        <div className="flex-1 min-w-0">
+        <div className="w-full min-w-0">
         {/* Mobile: action-first hero (Accueil) — replaces the heavier stats grid below */}
         {jobs.length > 0 && (
           <div className="md:hidden">
@@ -1020,10 +1019,22 @@ export default function App() {
             />
           </div>
         )}
-        {/* Top 2-col: Stats left, Prochaines étapes right — tablet/desktop only */}
+        {/* Mobile: upcoming meetings (md+ shows them in the home row below) */}
         {jobs.length > 0 && (
-          <div className="hidden md:grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4 items-stretch">
-            <Stats jobs={jobs} t={t} />
+          <div className="md:hidden mb-4">
+            <UpcomingMeetings jobs={jobs} t={t} />
+          </div>
+        )}
+        {/* Desktop/tablet home: compact KPI strip, then an action-first row —
+            "Focus du jour" as the primary column, "Cette semaine" (meetings +
+            goals) as the right rail. Mobile keeps MobileHome above. */}
+        {jobs.length > 0 && (
+          <div className="hidden md:block mb-4">
+            <KpiStrip jobs={jobs} t={t} />
+          </div>
+        )}
+        {jobs.length > 0 && (
+          <div className="hidden md:grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4 mb-4 items-start">
             <NextAction
               jobs={jobs}
               onGenerateCV={handleGenerateCV}
@@ -1032,12 +1043,11 @@ export default function App() {
               onDraftEmail={(job, type) => setEmailDraft({ job, type })}
               t={t}
             />
-          </div>
-        )}
-        {/* Mobile/tablet: surface upcoming meetings (sidebar is xl-only) */}
-        {jobs.length > 0 && (
-          <div className="xl:hidden mb-4">
-            <UpcomingMeetings jobs={jobs} t={t} />
+            {/* Cette semaine — meetings + goals unified into one rail */}
+            <div>
+              <UpcomingMeetings jobs={jobs} t={t} />
+              <Goals jobs={jobs} t={t} />
+            </div>
           </div>
         )}
         <Filters
@@ -1215,18 +1225,7 @@ export default function App() {
             </div>
           )}
         </div>
-        </div>{/* end flex-1 */}
-
-        {/* Right sidebar — meetings à venir (top-aligned with stats). Hidden in kanban/platforms views so the board spans full width. */}
-        {trackerView !== 'kanban' && trackerView !== 'platforms' && (
-          <div className="w-80 flex-shrink-0 hidden xl:block">
-            <div className="sticky top-24">
-              <UpcomingMeetings jobs={jobs} t={t} />
-              <Goals jobs={jobs} t={t} />
-            </div>
-          </div>
-        )}
-        </div>{/* end flex row */}
+        </div>{/* end home wrapper */}
           </>
         )}
       </main>
