@@ -1,42 +1,14 @@
 import { useMemo } from 'react'
 import WeeklyRecap from './WeeklyRecap'
+import {
+  DAY, parseDate, applicationDate, mondayOf,
+  maxStageReached, hasResponse, sentJobs, responseRate as computeResponseRate,
+} from '../utils/metrics'
 
 // ── Pure aggregation ──────────────────────────────────────────────────────────
-// Stage progression used for funnel + "furthest stage reached". Terminal states
-// (rejected/cancelled/archived) rank 0 on their own — a job that was interviewed
-// then rejected still counts as having reached "interview" because updateStatus
-// records a dated history entry with status on every transition.
-const STAGE_RANK = { todo: 0, sent: 1, reviewing: 2, waiting: 2, interview: 3, offer: 4, done: 5 }
-const RESPONSE_STATUSES = new Set(['reviewing', 'waiting', 'interview', 'offer', 'done', 'rejected', 'rejected_ats'])
-
-function maxStageReached(job) {
-  let max = STAGE_RANK[job.status] ?? 0
-  for (const h of job.history || []) {
-    const r = STAGE_RANK[h.status] ?? 0
-    if (r > max) max = r
-  }
-  return max
-}
-
-function hasResponse(job) {
-  if (RESPONSE_STATUSES.has(job.status)) return true
-  if (maxStageReached(job) >= 2) return true
-  return (job.history || []).some(h => RESPONSE_STATUSES.has(h.status))
-}
-
-export function parseDate(d) {
-  if (!d) return null
-  const dt = new Date(d)
-  return isNaN(dt) ? null : dt
-}
-
-export function applicationDate(job) {
-  const dates = [job.date, ...(job.history || []).map(h => h.date)]
-    .map(parseDate)
-    .filter(Boolean)
-  if (!dates.length) return null
-  return new Date(Math.min(...dates.map(d => d.getTime())))
-}
+// Stage ranking, response detection and the date helpers now come from the shared
+// metrics module (utils/metrics). Only the analytics-specific aggregations below
+// (time-to-interview, time-in-stage, weekly buckets) live here.
 
 function interviewDate(job) {
   const dates = (job.history || [])
@@ -66,18 +38,8 @@ function median(values) {
   return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2)
 }
 
-export function mondayOf(date) {
-  const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
-  const day = d.getDay() // 0 = Sun
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  return new Date(d.setDate(diff))
-}
-
-export const DAY = 86400000
-
 export function computeAnalytics(jobs, weeks = 12) {
-  const applied = jobs.filter(j => j.status !== 'todo')
+  const applied = sentJobs(jobs)
   const total = applied.length
 
   const responded = applied.filter(hasResponse).length
@@ -85,7 +47,8 @@ export function computeAnalytics(jobs, weeks = 12) {
   const reachedInterview = applied.filter(j => maxStageReached(j) >= 3).length
   const reachedOffer = applied.filter(j => maxStageReached(j) >= 4).length
 
-  const responseRate = total > 0 ? Math.round((responded / total) * 100) : 0
+  // Canonical rate from the shared module (identical to responded/total here).
+  const responseRate = computeResponseRate(jobs)
   const interviewRate = total > 0 ? Math.round((reachedInterview / total) * 100) : 0
 
   // Avg time-to-interview (days) over jobs with a determinable interview date.

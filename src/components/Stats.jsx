@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { STATUSES, getStatusLabel } from '../hooks/useJobs'
+import { responseRate as computeResponseRate } from '../utils/metrics'
 
 function ActivityBars({ values, color = '#6366f1' }) {
   if (!values || values.length !== 7) return null
@@ -64,10 +65,10 @@ export default function Stats({ jobs, t = (key) => key }) {
   const active = jobs.filter(j => ['sent','reviewing','interview','waiting'].includes(j.status)).length
   const interviews = jobs.filter(j => j.status === 'interview').length
   const offers = jobs.filter(j => j.status === 'offer').length
-  const rejected = jobs.filter(j => ['rejected','rejected_ats'].includes(j.status)).length
   const sent = jobs.filter(j => ['sent','reviewing','interview','waiting','offer','rejected','rejected_ats'].includes(j.status)).length
 
-  const responseRate = total > 0 ? Math.round(((interviews + offers + rejected) / total) * 100) : 0
+  // Canonical taux de réponse — shared with the Analyse tab and the Goals card.
+  const responseRate = computeResponseRate(jobs)
   const offerRate = total > 0 ? Math.round((offers / total) * 100) : 0
   const interviewRate = total > 0 ? Math.round(((interviews + offers) / total) * 100) : 0
 

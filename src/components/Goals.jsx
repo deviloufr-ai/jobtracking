@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useSettings } from '../hooks/useSettings'
+import { responseRate as computeResponseRate } from '../utils/metrics'
 
 function ProgressBar({ value, max, color = 'bg-indigo-500' }) {
   const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0
@@ -35,10 +36,8 @@ export default function Goals({ jobs, t = (key) => key }) {
     const weekStart = getWeekStart()
     const weeklyApps = jobs.filter(j => new Date(j.date) >= weekStart).length
 
-    // Response rate (non-archived)
-    const active = jobs.filter(j => j.status !== 'archived')
-    const responded = active.filter(j => ['interview','offer','rejected','rejected_ats','done','waiting'].includes(j.status)).length
-    const responseRate = active.length > 0 ? Math.round((responded / active.length) * 100) : 0
+    // Canonical taux de réponse — shared with the Stats cards and the Analyse tab.
+    const responseRate = computeResponseRate(jobs)
 
     // Interviews this month
     const monthlyInterviews = jobs.filter(j => {

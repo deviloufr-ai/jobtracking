@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { parseDate, applicationDate, mondayOf, DAY } from './Analytics'
+import { parseDate, applicationDate, mondayOf, DAY } from '../utils/metrics'
 import { getStatusLabel } from '../hooks/useJobs'
 
 // ── Pure aggregation ──────────────────────────────────────────────────────────
