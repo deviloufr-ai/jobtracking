@@ -280,6 +280,10 @@ export const fr = {
     data: 'Données',
     extension: 'Extension',
     debug: 'Debug',
+    groupYou: 'Vous',
+    groupAI: 'IA & automatisation',
+    groupSync: 'Synchro & données',
+    groupAdvanced: 'Avancé',
   },
 
   // Settings Descriptions

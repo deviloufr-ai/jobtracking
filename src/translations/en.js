@@ -259,6 +259,10 @@ export const en = {
     data: 'Data',
     extension: 'Extension',
     debug: 'Debug',
+    groupYou: 'You',
+    groupAI: 'AI & automation',
+    groupSync: 'Sync & data',
+    groupAdvanced: 'Advanced',
   },
 
   // Settings Descriptions

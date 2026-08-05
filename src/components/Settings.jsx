@@ -96,18 +96,20 @@ function TextInput({ value, onChange, placeholder, multiline = false, rows = 2 }
     : <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={cls} />
 }
 
+// Sidebar entries, ordered into four families. The `group` key labels the
+// section header shown above the first item of each group.
 const getCATEGORIES = (t) => [
-  { id: 'profile', label: t('settingsSidebar.profile'), icon: '👤' },
-  { id: 'cv', label: t('settingsSidebar.cv'), icon: '📄' },
-  { id: 'goals', label: t('settingsSidebar.goals'), icon: '🎯' },
-  { id: 'automation', label: t('settingsSidebar.automation'), icon: '⚙️' },
-  { id: 'api', label: t('settingsSidebar.apiClaude'), icon: '🔑' },
-  { id: 'notifications', label: t('settingsSidebar.notifications'), icon: '🔔' },
-  { id: 'followups', label: t('settingsSidebar.followups'), icon: '⏰' },
-  { id: 'appearance', label: t('settingsSidebar.appearance'), icon: '🎨' },
-  { id: 'data', label: t('settingsSidebar.data'), icon: '💾' },
-  { id: 'extension', label: t('settingsSidebar.extension'), icon: '🦊' },
-  { id: 'debug', label: t('settingsSidebar.debug'), icon: '🐛' },
+  { id: 'profile', label: t('settingsSidebar.profile'), icon: '👤', group: t('settingsSidebar.groupYou') },
+  { id: 'cv', label: t('settingsSidebar.cv'), icon: '📄', group: t('settingsSidebar.groupYou') },
+  { id: 'goals', label: t('settingsSidebar.goals'), icon: '🎯', group: t('settingsSidebar.groupYou') },
+  { id: 'api', label: t('settingsSidebar.apiClaude'), icon: '🔑', group: t('settingsSidebar.groupAI') },
+  { id: 'automation', label: t('settingsSidebar.automation'), icon: '⚙️', group: t('settingsSidebar.groupAI') },
+  { id: 'followups', label: t('settingsSidebar.followups'), icon: '⏰', group: t('settingsSidebar.groupAI') },
+  { id: 'notifications', label: t('settingsSidebar.notifications'), icon: '🔔', group: t('settingsSidebar.groupSync') },
+  { id: 'data', label: t('settingsSidebar.data'), icon: '💾', group: t('settingsSidebar.groupSync') },
+  { id: 'appearance', label: t('settingsSidebar.appearance'), icon: '🎨', group: t('settingsSidebar.groupAdvanced') },
+  { id: 'extension', label: t('settingsSidebar.extension'), icon: '🦊', group: t('settingsSidebar.groupAdvanced') },
+  { id: 'debug', label: t('settingsSidebar.debug'), icon: '🐛', group: t('settingsSidebar.groupAdvanced') },
 ]
 
 export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialTab }) {
@@ -401,20 +403,30 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
         </button>
 
         <div className="p-5 space-y-1.5">
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => { setActiveTab(cat.id); setSidebarOpen(false) }}
-              className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${
-                activeTab === cat.id
-                  ? 'bg-indigo-100 text-indigo-700'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              <span className="text-lg">{cat.icon}</span>
-              <span>{cat.label}</span>
-            </button>
-          ))}
+          {CATEGORIES.map((cat, i) => {
+            // Render a group header before the first item of each family.
+            const showHeader = i === 0 || CATEGORIES[i - 1].group !== cat.group
+            return (
+              <div key={cat.id}>
+                {showHeader && (
+                  <p className={`px-4 text-[11px] font-semibold text-gray-400 uppercase tracking-wider ${i === 0 ? 'pb-1.5' : 'pt-4 pb-1.5'}`}>
+                    {cat.group}
+                  </p>
+                )}
+                <button
+                  onClick={() => { setActiveTab(cat.id); setSidebarOpen(false) }}
+                  className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${
+                    activeTab === cat.id
+                      ? 'bg-indigo-100 text-indigo-700'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <span className="text-lg">{cat.icon}</span>
+                  <span>{cat.label}</span>
+                </button>
+              </div>
+            )
+          })}
         </div>
       </div>
 
