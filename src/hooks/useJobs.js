@@ -27,7 +27,13 @@ export const ATS_DOMAINS = [
   'ashbyhq.com', 'greenhouse.io', 'lever.co', 'workable.com',
   'recruitee.com', 'bamboohr.com', 'smartrecruiters.com', 'taleo.net',
   'successfactors.com', 'jobvite.com', 'icims.com', 'myworkdayjobs.com',
-  'teamtailor.com', 'breezy.hr', 'pinpoint.com', 'dover.com',
+  // Teamtailor sends every customer's candidate mail from <tenant>.teamtailor-mail.com
+  // (e.g. no-reply@epicompany.teamtailor-mail.com), NOT teamtailor.com. Listing only
+  // teamtailor.com made isSharedSenderDomain treat that per-tenant address as
+  // company-specific, so an archived Epi Company application swallowed fresh Epi mail
+  // as "closed-candidature" and a re-application never reached the parser. Same
+  // multi-tenant class as Oracle/Workday — the shared infra must be recognized.
+  'teamtailor.com', 'teamtailor-mail.com', 'breezy.hr', 'pinpoint.com', 'dover.com',
   'comeet.com', 'jazz.co', 'rippling.com', 'notion.so'
 ]
 

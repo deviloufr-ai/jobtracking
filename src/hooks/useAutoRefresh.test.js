@@ -109,6 +109,27 @@ describe('filterEmailsBeforeParse', () => {
     const { kept } = filterEmailsBeforeParse(emails, [acmeJob('rejected')])
     expect(kept.map(e => e.id)).toEqual(['g-new'])
   })
+
+  it('treats *.teamtailor-mail.com as a shared multi-tenant ATS domain (never anchors a closed-skip)', () => {
+    // Teamtailor sends EVERY customer's candidate mail from <tenant>.teamtailor-mail.com,
+    // so no-reply@epicompany.teamtailor-mail.com is shared infra, not a company address.
+    // ATS_DOMAINS listed only teamtailor.com, so isSharedSenderDomain missed it: an
+    // ARCHIVED Epi Company application (a prior rejected role) claimed that sender and
+    // swallowed fresh Epi mail — including the position-bearing "Complete the application
+    // for Senior Product Manager…" — as "closed-candidature", so the re-application never
+    // reached Claude and the active "À faire" job never updated.
+    const archivedEpi = {
+      company: 'Epi Company', position: 'Product Manager - Wero App', status: 'archived',
+      history: [
+        { date: daysAgo(60), status: 'reviewing', from: '"Rébecca - Epi Company" <rebecca@epicompany.teamtailor-mail.com>', source: 'email', gmailId: 'g-old' },
+        { date: daysAgo(40), status: 'reviewing', from: 'Epi Company <no-reply@epicompany.teamtailor-mail.com>', source: 'email', gmailId: 'g-old2' },
+      ],
+    }
+    const emails = [{ id: 'g-new', from: 'Epi Company <no-reply@epicompany.teamtailor-mail.com>', date: daysAgo(1) }]
+    const { kept, reasons } = filterEmailsBeforeParse(emails, [archivedEpi])
+    expect(kept.map(e => e.id)).toEqual(['g-new']) // shared ATS sender → not skipped as closed
+    expect(reasons.closed).toBe(0)
+  })
 })
 
 describe('historyDedupKeys / isNewHistoryEntry', () => {
