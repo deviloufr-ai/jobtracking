@@ -308,11 +308,18 @@ export default function App() {
 
   // Apply theme on load and when settings change
   useEffect(() => {
+    // Dark themes also get a shared `is-dark` marker so cross-cutting rules
+    // (e.g. theming native form controls, which the per-class bg-white override
+    // can't reach) apply once instead of being duplicated per theme.
+    const DARK_THEMES = ['dark', 'midnight', 'nocturne', 'ocean', 'forest', 'sunset']
     const applyTheme = (theme) => {
       console.log('🎨 Applying theme:', theme)
-      document.body.classList.remove('theme-dark', 'theme-midnight', 'theme-nocturne', 'theme-ocean', 'theme-forest', 'theme-sunset', 'theme-minimal')
+      document.body.classList.remove('theme-dark', 'theme-midnight', 'theme-nocturne', 'theme-ocean', 'theme-forest', 'theme-sunset', 'theme-minimal', 'is-dark')
       if (theme !== 'light') {
         document.body.classList.add(`theme-${theme}`)
+      }
+      if (DARK_THEMES.includes(theme)) {
+        document.body.classList.add('is-dark')
       }
       setCurrentTheme(theme)
     }

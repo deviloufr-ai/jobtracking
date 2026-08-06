@@ -1,5 +1,23 @@
 /* Simple theme system using body class */
 
+/* ── Dark themes: native form controls ──────────────────────────────────────
+   Inputs/selects/textareas have no bg-white class, so the per-theme bg-white
+   override can't reach them and they render bright white on dark grounds. This
+   shared rule (body.is-dark, added alongside every dark theme class) uses a
+   translucent fill + inherited text so it adapts to any dark background. */
+body.is-dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+body.is-dark select,
+body.is-dark textarea {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: inherit !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+body.is-dark input::placeholder,
+body.is-dark textarea::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
 /* Dark theme base */
 body.theme-dark {
   background-color: #0c0f16;

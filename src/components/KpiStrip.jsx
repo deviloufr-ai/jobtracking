@@ -25,7 +25,7 @@ export default function KpiStrip({ jobs, t = (k) => k }) {
       {kpis.map((k, i) => (
         <div key={k.key} className={`flex-1 min-w-[96px] px-4 py-2.5 rounded-lg ${i > 0 ? 'border-l border-gray-50' : ''}`}>
           <div className="text-2xl font-extrabold text-gray-800 leading-none tabular-nums tracking-tight">{k.value}</div>
-          <div className="text-[11px] text-gray-400 mt-1.5 font-medium capitalize">{k.label}</div>
+          <div className="text-[11px] text-gray-400 mt-1.5 font-medium">{k.label}</div>
         </div>
       ))}
     </div>
