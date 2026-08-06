@@ -38,6 +38,28 @@ body.is-dark [class*="bg-white/"] {
   background-color: rgba(20, 23, 34, 0.9) !important;
 }
 
+/* ── Dark themes: pastel GRADIENT containers ─────────────────────────────────
+   Gradient utilities aren't themed, so a light pastel gradient (e.g. the job
+   detail header: from-slate-50 via-indigo-50 to-violet-50) keeps its light
+   background while the theme flips its gray text to light → invisible. Flatten
+   pastel gradients (…-50 / …-100 stops) to a dark surface. Saturated gradients
+   used as buttons (from-indigo-500, from-orange-500 …) are a different token,
+   so exact-token (~=) matching leaves them — and their white text — intact. */
+body.is-dark [class~="from-slate-50"],
+body.is-dark [class~="from-gray-50"],
+body.is-dark [class~="from-zinc-50"],
+body.is-dark [class~="from-indigo-50"],
+body.is-dark [class~="from-indigo-100"],
+body.is-dark [class~="from-violet-50"],
+body.is-dark [class~="from-purple-50"],
+body.is-dark [class~="from-blue-50"],
+body.is-dark [class~="from-blue-100"],
+body.is-dark [class~="from-cyan-50"],
+body.is-dark [class~="from-sky-50"] {
+  background-image: none !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
 /* Dark theme base */
 body.theme-dark {
   background-color: #0c0f16;
