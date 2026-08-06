@@ -18,6 +18,26 @@ body.is-dark textarea::placeholder {
   color: rgba(255, 255, 255, 0.4) !important;
 }
 
+/* ── Dark themes: opacity-modified light backgrounds ─────────────────────────
+   Utilities like bg-gray-50/60 (table header rows), bg-amber-50/40 (favourite
+   rows) and bg-white/95 (floating overlays) are DISTINCT class names — the
+   per-theme .bg-white override can't match them, so they render as light bands
+   around the table. Catch every opacity variant by class-substring. */
+body.is-dark [class*="bg-gray-50/"],
+body.is-dark [class*="bg-slate-50/"],
+body.is-dark [class*="bg-gray-100/"] {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+body.is-dark [class*="bg-yellow-50/"],
+body.is-dark [class*="bg-amber-50/"] {
+  background-color: rgba(251, 191, 36, 0.09) !important;
+}
+
+body.is-dark [class*="bg-white/"] {
+  background-color: rgba(20, 23, 34, 0.9) !important;
+}
+
 /* Dark theme base */
 body.theme-dark {
   background-color: #0c0f16;
