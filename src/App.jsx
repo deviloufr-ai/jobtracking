@@ -310,7 +310,7 @@ export default function App() {
   useEffect(() => {
     const applyTheme = (theme) => {
       console.log('🎨 Applying theme:', theme)
-      document.body.classList.remove('theme-dark', 'theme-midnight', 'theme-ocean', 'theme-forest', 'theme-sunset', 'theme-minimal')
+      document.body.classList.remove('theme-dark', 'theme-midnight', 'theme-nocturne', 'theme-ocean', 'theme-forest', 'theme-sunset', 'theme-minimal')
       if (theme !== 'light') {
         document.body.classList.add(`theme-${theme}`)
       }
