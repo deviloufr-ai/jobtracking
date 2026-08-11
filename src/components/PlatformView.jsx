@@ -18,7 +18,7 @@ function fmtDate(dateStr, language) {
 }
 
 // One candidature line inside a platform card.
-function CandidatureRow({ job, onOpen, language }) {
+function CandidatureRow({ job, onOpen, language, t }) {
   const status = getStatus(job.status)
   return (
     <button
@@ -33,7 +33,7 @@ function CandidatureRow({ job, onOpen, language }) {
       <div className="flex flex-col items-end gap-1 flex-shrink-0">
         <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${status.color}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
-          {getStatusLabel(job.status)}
+          {getStatusLabel(job.status, t)}
         </span>
         <span className="text-[10px] text-gray-300">{fmtDate(lastActivity(job), language)}</span>
       </div>
@@ -72,7 +72,7 @@ function PlatformCard({ platform, jobs, total, onOpen, language, t }) {
       </div>
       <div className="p-1.5 space-y-0.5 max-h-96 overflow-y-auto">
         {sorted.map(job => (
-          <CandidatureRow key={job.id} job={job} onOpen={onOpen} language={language} />
+          <CandidatureRow key={job.id} job={job} onOpen={onOpen} language={language} t={t} />
         ))}
       </div>
     </div>
