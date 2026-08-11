@@ -1,5 +1,15 @@
 /* Simple theme system using body class */
 
+/* ── Document "paper" — always light, theme-independent ──────────────────────
+   A CV/letter preview is a document (it becomes the exported PDF) and carries
+   its own dark inline text colours. It must stay a light page in EVERY theme,
+   or the dark text lands on a theme-darkened surface and becomes unreadable.
+   Applied to the CV preview containers (CVViewer, CVGenerator). */
+.cv-paper {
+  background-color: #ffffff;
+  color: #1a1a1a;
+}
+
 /* ── Dark themes: kill the light body gradient ───────────────────────────────
    index.css gives <body> an opaque LIGHT gradient via the `background:`
    shorthand (background-IMAGE). Per-theme rules only set background-COLOR, so

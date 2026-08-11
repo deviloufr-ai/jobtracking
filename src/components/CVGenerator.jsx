@@ -937,8 +937,8 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
                     <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">CV Original</span>
                     <span className="text-xs text-gray-400 ml-auto">{activeCV?.name}</span>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-5">
-                    <div style={{ fontFamily:'Arial,sans-serif', lineHeight:'1.5' }}
+                  <div className="flex-1 overflow-y-auto p-5" style={{ background:'#f1f5f9' }}>
+                    <div className="cv-paper" style={{ fontFamily:'Arial,sans-serif', lineHeight:'1.5', padding:'20px', borderRadius:4 }}
                       dangerouslySetInnerHTML={{ __html: renderSimple(activeCV?.text) }} />
                   </div>
                 </div>

@@ -70,7 +70,7 @@ export default function CVViewer({ job, onClose, inline = false }) {
         {/* CV Content */}
         <div className="flex-1 overflow-auto bg-gray-50 p-6">
           <div
-            className="bg-white rounded-lg shadow-sm p-8 max-w-2xl mx-auto"
+            className="cv-paper rounded-lg shadow-sm p-8 max-w-2xl mx-auto"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         </div>
@@ -104,7 +104,7 @@ export default function CVViewer({ job, onClose, inline = false }) {
         {/* CV Content */}
         <div className="flex-1 overflow-auto bg-gray-50 p-3 sm:p-6">
           <div
-            className="bg-white rounded-lg shadow-sm p-4 sm:p-8 max-w-2xl mx-auto"
+            className="cv-paper rounded-lg shadow-sm p-4 sm:p-8 max-w-2xl mx-auto"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         </div>
