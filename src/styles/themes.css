@@ -1,5 +1,15 @@
 /* Simple theme system using body class */
 
+/* ── Dark themes: kill the light body gradient ───────────────────────────────
+   index.css gives <body> an opaque LIGHT gradient via the `background:`
+   shorthand (background-IMAGE). Per-theme rules only set background-COLOR, so
+   that image hides the dark colour and shows through any uncovered area (the
+   Réglages margins, gaps around content). Clear the image so the theme's dark
+   background-color shows edge to edge. Light themes never get `is-dark`. */
+body.is-dark {
+  background-image: none !important;
+}
+
 /* ── Dark themes: native form controls ──────────────────────────────────────
    Inputs/selects/textareas have no bg-white class, so the per-theme bg-white
    override can't reach them and they render bright white on dark grounds. This
