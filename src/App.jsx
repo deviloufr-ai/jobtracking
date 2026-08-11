@@ -5,6 +5,7 @@ import { useExtensionDetect } from './hooks/useExtensionDetect'
 import { useSettings } from './hooks/useSettings'
 import { useLanguage } from './hooks/useLanguage'
 import './styles/themes.css'
+import { applyTheme as applyThemeTokens } from './utils/themes'
 import ErrorBoundary from './components/ErrorBoundary'
 import KpiStrip from './components/KpiStrip'
 import Analytics from './components/Analytics'
@@ -314,6 +315,8 @@ export default function App() {
     const DARK_THEMES = ['dark', 'midnight', 'nocturne', 'ocean', 'forest', 'sunset']
     const applyTheme = (theme) => {
       console.log('🎨 Applying theme:', theme)
+      // Set the --theme-* custom properties that themes.css reads.
+      applyThemeTokens(theme)
       document.body.classList.remove('theme-dark', 'theme-midnight', 'theme-nocturne', 'theme-ocean', 'theme-forest', 'theme-sunset', 'theme-minimal', 'is-dark')
       if (theme !== 'light') {
         document.body.classList.add(`theme-${theme}`)

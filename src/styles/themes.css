@@ -1,4 +1,10 @@
-/* Simple theme system using body class */
+/* Theme system — token-driven.
+   applyTheme() in src/utils/themes.js sets the --theme-* custom properties on
+   :root from the selected THEMES record (the same data that draws the picker
+   swatches). App.jsx adds a `theme-<id>` class plus a shared `is-dark` marker
+   for the six dark themes. Everything below drives the DARK overrides off the
+   variables, so adding/adjusting a theme is just editing THEMES — no per-theme
+   CSS. Light themes (light, minimal) never get `is-dark` and are untouched. */
 
 /* ── Document "paper" — always light, theme-independent ──────────────────────
    A CV/letter preview is a document (it becomes the exported PDF) and carries
@@ -10,21 +16,75 @@
   color: #1a1a1a;
 }
 
-/* ── Dark themes: kill the light body gradient ───────────────────────────────
-   index.css gives <body> an opaque LIGHT gradient via the `background:`
-   shorthand (background-IMAGE). Per-theme rules only set background-COLOR, so
-   that image hides the dark colour and shows through any uncovered area (the
-   Réglages margins, gaps around content). Clear the image so the theme's dark
-   background-color shows edge to edge. Light themes never get `is-dark`. */
+/* ── Dark themes: page + surfaces + text + borders + accent ──────────────────
+   One layer for all dark themes, resolved through the per-theme variables.
+   Fallbacks (the original "dark" theme values) keep it sane if the JS token
+   setter hasn't run yet. `background-image: none` also clears index.css's light
+   body gradient, which the shorthand would otherwise leave covering the page. */
 body.is-dark {
+  background-color: var(--theme-bg, #0c0f16) !important;
   background-image: none !important;
+  color: var(--theme-text, #f0f4f8);
+}
+
+body.is-dark .bg-white,
+body.is-dark .bg-slate-50,
+body.is-dark .bg-gray-50,
+body.is-dark .bg-gray-100,
+body.is-dark table {
+  background-color: var(--theme-surface, #161b26) !important;
+}
+
+body.is-dark thead,
+body.is-dark th,
+body.is-dark tbody tr:hover {
+  background-color: var(--theme-surface2, #1f2533) !important;
+}
+
+body.is-dark .text-gray-900,
+body.is-dark .text-gray-800,
+body.is-dark .text-gray-700,
+body.is-dark td,
+body.is-dark th {
+  color: var(--theme-text, #f0f4f8) !important;
+}
+
+body.is-dark .text-gray-600,
+body.is-dark .text-gray-500 {
+  color: var(--theme-text-dim, #cbd5e1) !important;
+}
+
+body.is-dark .text-gray-400,
+body.is-dark .text-gray-300 {
+  color: var(--theme-text-faint, #94a3b8) !important;
+}
+
+body.is-dark .border-gray-50,
+body.is-dark .border-gray-100,
+body.is-dark .border-gray-200 {
+  border-color: var(--theme-border, #3d4556) !important;
+}
+
+/* Indigo accents follow the theme's own primary (sky in Ocean, green in Forest,
+   amber in Sunset…) so accent contrast is right on every dark ground. */
+body.is-dark .bg-indigo-50,
+body.is-dark .bg-indigo-100 {
+  background-color: var(--theme-primary-soft, rgba(139, 92, 246, 0.15)) !important;
+}
+
+body.is-dark .text-indigo-600,
+body.is-dark .text-indigo-700 {
+  color: var(--theme-primary, #8b5cf6) !important;
+}
+
+body.is-dark .border-indigo-200 {
+  border-color: var(--theme-primary, #8b5cf6) !important;
 }
 
 /* ── Dark themes: native form controls ──────────────────────────────────────
-   Inputs/selects/textareas have no bg-white class, so the per-theme bg-white
-   override can't reach them and they render bright white on dark grounds. This
-   shared rule (body.is-dark, added alongside every dark theme class) uses a
-   translucent fill + inherited text so it adapts to any dark background. */
+   Inputs/selects/textareas have no bg-white class, so the surface rule can't
+   reach them and they render bright white on dark grounds. A translucent fill +
+   inherited text adapts to any dark background. */
 body.is-dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
 body.is-dark select,
 body.is-dark textarea {
@@ -41,8 +101,8 @@ body.is-dark textarea::placeholder {
 /* ── Dark themes: opacity-modified light backgrounds ─────────────────────────
    Utilities like bg-gray-50/60 (table header rows), bg-amber-50/40 (favourite
    rows) and bg-white/95 (floating overlays) are DISTINCT class names — the
-   per-theme .bg-white override can't match them, so they render as light bands
-   around the table. Catch every opacity variant by class-substring. */
+   surface rule can't match them, so they render as light bands. Catch every
+   opacity variant by class-substring. */
 body.is-dark [class*="bg-gray-50/"],
 body.is-dark [class*="bg-slate-50/"],
 body.is-dark [class*="bg-gray-100/"] {
@@ -78,364 +138,4 @@ body.is-dark [class~="from-cyan-50"],
 body.is-dark [class~="from-sky-50"] {
   background-image: none !important;
   background-color: rgba(255, 255, 255, 0.05) !important;
-}
-
-/* Dark theme base */
-body.theme-dark {
-  background-color: #0c0f16;
-  color: #f0f4f8;
-}
-
-/* Override Tailwind colors for dark theme */
-body.theme-dark .bg-white,
-body.theme-dark .bg-slate-50,
-body.theme-dark .bg-gray-50,
-body.theme-dark .bg-gray-100 {
-  background-color: #161b26 !important;
-}
-
-body.theme-dark .text-gray-900,
-body.theme-dark .text-gray-800,
-body.theme-dark .text-gray-700 {
-  color: #f0f4f8 !important;
-}
-
-body.theme-dark .text-gray-600,
-body.theme-dark .text-gray-500 {
-  color: #cbd5e1 !important;
-}
-
-body.theme-dark .text-gray-400,
-body.theme-dark .text-gray-300 {
-  color: #94a3b8 !important;
-}
-
-body.theme-dark .border-gray-100,
-body.theme-dark .border-gray-200 {
-  border-color: #3d4556 !important;
-}
-
-body.theme-dark .bg-indigo-50,
-body.theme-dark .bg-indigo-100 {
-  background-color: rgba(139, 92, 246, 0.15) !important;
-}
-
-body.theme-dark .border-indigo-200 {
-  border-color: #8b5cf6 !important;
-}
-
-body.theme-dark .text-indigo-600,
-body.theme-dark .text-indigo-700 {
-  color: #8b5cf6 !important;
-}
-
-body.theme-dark table {
-  background-color: #161b26 !important;
-}
-
-body.theme-dark thead {
-  background-color: #1f2533 !important;
-}
-
-body.theme-dark th {
-  color: #f0f4f8 !important;
-  background-color: #1f2533 !important;
-}
-
-body.theme-dark td {
-  color: #f0f4f8 !important;
-}
-
-body.theme-dark tbody tr:hover {
-  background-color: #1f2533 !important;
-}
-
-/* Midnight theme */
-body.theme-midnight {
-  background-color: #0a0e13;
-  color: #f3f7fb;
-}
-
-body.theme-midnight .bg-white,
-body.theme-midnight .bg-slate-50,
-body.theme-midnight .bg-gray-50,
-body.theme-midnight .bg-gray-100 {
-  background-color: #131820 !important;
-}
-
-body.theme-midnight .text-gray-900,
-body.theme-midnight .text-gray-800,
-body.theme-midnight .text-gray-700 {
-  color: #f3f7fb !important;
-}
-
-body.theme-midnight .text-gray-600,
-body.theme-midnight .text-gray-500 {
-  color: #cbd5e1 !important;
-}
-
-body.theme-midnight .text-gray-400,
-body.theme-midnight .text-gray-300 {
-  color: #94a3b8 !important;
-}
-
-body.theme-midnight .border-gray-100,
-body.theme-midnight .border-gray-200 {
-  border-color: #3a4556 !important;
-}
-
-body.theme-midnight table {
-  background-color: #131820 !important;
-}
-
-body.theme-midnight thead {
-  background-color: #1a2231 !important;
-}
-
-body.theme-midnight th {
-  color: #f3f7fb !important;
-  background-color: #1a2231 !important;
-}
-
-body.theme-midnight td {
-  color: #f3f7fb !important;
-}
-
-body.theme-midnight tbody tr:hover {
-  background-color: #1a2231 !important;
-}
-
-/* Nocturne theme — deep-navy indigo (matches the refonte proposal) */
-body.theme-nocturne {
-  background-color: #0c0e15;
-  color: #eef0f8;
-}
-
-body.theme-nocturne .bg-white,
-body.theme-nocturne .bg-slate-50,
-body.theme-nocturne .bg-gray-50,
-body.theme-nocturne .bg-gray-100 {
-  background-color: #151824 !important;
-}
-
-body.theme-nocturne .text-gray-900,
-body.theme-nocturne .text-gray-800,
-body.theme-nocturne .text-gray-700 {
-  color: #eef0f8 !important;
-}
-
-body.theme-nocturne .text-gray-600,
-body.theme-nocturne .text-gray-500 {
-  color: #a7adc2 !important;
-}
-
-body.theme-nocturne .text-gray-400,
-body.theme-nocturne .text-gray-300 {
-  color: #6b7189 !important;
-}
-
-body.theme-nocturne .border-gray-100,
-body.theme-nocturne .border-gray-200,
-body.theme-nocturne .border-gray-50 {
-  border-color: #252a3a !important;
-}
-
-body.theme-nocturne .bg-indigo-50,
-body.theme-nocturne .bg-indigo-100 {
-  background-color: rgba(129, 140, 248, 0.16) !important;
-}
-
-body.theme-nocturne .border-indigo-200 {
-  border-color: #818cf8 !important;
-}
-
-body.theme-nocturne .text-indigo-600,
-body.theme-nocturne .text-indigo-700 {
-  color: #a5b4fc !important;
-}
-
-body.theme-nocturne table {
-  background-color: #151824 !important;
-}
-
-body.theme-nocturne thead {
-  background-color: #1a1e2c !important;
-}
-
-body.theme-nocturne th {
-  color: #eef0f8 !important;
-  background-color: #1a1e2c !important;
-}
-
-body.theme-nocturne td {
-  color: #eef0f8 !important;
-}
-
-body.theme-nocturne tbody tr:hover {
-  background-color: #1a1e2c !important;
-}
-
-/* Ocean theme */
-body.theme-ocean {
-  background-color: #0f172a;
-  color: #f1f5f9;
-}
-
-body.theme-ocean .bg-white,
-body.theme-ocean .bg-slate-50,
-body.theme-ocean .bg-gray-50,
-body.theme-ocean .bg-gray-100 {
-  background-color: #1e293b !important;
-}
-
-body.theme-ocean .text-gray-900,
-body.theme-ocean .text-gray-800,
-body.theme-ocean .text-gray-700 {
-  color: #f1f5f9 !important;
-}
-
-body.theme-ocean .text-gray-600,
-body.theme-ocean .text-gray-500 {
-  color: #e2e8f0 !important;
-}
-
-body.theme-ocean .text-gray-400,
-body.theme-ocean .text-gray-300 {
-  color: #cbd5e1 !important;
-}
-
-body.theme-ocean .border-gray-100,
-body.theme-ocean .border-gray-200 {
-  border-color: #5a7a99 !important;
-}
-
-body.theme-ocean table {
-  background-color: #1e293b !important;
-}
-
-body.theme-ocean thead {
-  background-color: #334155 !important;
-}
-
-body.theme-ocean th {
-  color: #f1f5f9 !important;
-  background-color: #334155 !important;
-}
-
-body.theme-ocean td {
-  color: #f1f5f9 !important;
-}
-
-body.theme-ocean tbody tr:hover {
-  background-color: #334155 !important;
-}
-
-/* Forest theme */
-body.theme-forest {
-  background-color: #0f2818;
-  color: #f0fdf4;
-}
-
-body.theme-forest .bg-white,
-body.theme-forest .bg-slate-50,
-body.theme-forest .bg-gray-50,
-body.theme-forest .bg-gray-100 {
-  background-color: #1a3a2a !important;
-}
-
-body.theme-forest .text-gray-900,
-body.theme-forest .text-gray-800,
-body.theme-forest .text-gray-700 {
-  color: #f0fdf4 !important;
-}
-
-body.theme-forest .text-gray-600,
-body.theme-forest .text-gray-500 {
-  color: #d1fae5 !important;
-}
-
-body.theme-forest .text-gray-400,
-body.theme-forest .text-gray-300 {
-  color: #a7f3d0 !important;
-}
-
-body.theme-forest .border-gray-100,
-body.theme-forest .border-gray-200 {
-  border-color: #4a9d6f !important;
-}
-
-body.theme-forest table {
-  background-color: #1a3a2a !important;
-}
-
-body.theme-forest thead {
-  background-color: #245339 !important;
-}
-
-body.theme-forest th {
-  color: #f0fdf4 !important;
-  background-color: #245339 !important;
-}
-
-body.theme-forest td {
-  color: #f0fdf4 !important;
-}
-
-body.theme-forest tbody tr:hover {
-  background-color: #245339 !important;
-}
-
-/* Sunset theme */
-body.theme-sunset {
-  background-color: #1f1409;
-  color: #fef9e7;
-}
-
-body.theme-sunset .bg-white,
-body.theme-sunset .bg-slate-50,
-body.theme-sunset .bg-gray-50,
-body.theme-sunset .bg-gray-100 {
-  background-color: #2d1f14 !important;
-}
-
-body.theme-sunset .text-gray-900,
-body.theme-sunset .text-gray-800,
-body.theme-sunset .text-gray-700 {
-  color: #fef9e7 !important;
-}
-
-body.theme-sunset .text-gray-600,
-body.theme-sunset .text-gray-500 {
-  color: #fde68a !important;
-}
-
-body.theme-sunset .text-gray-400,
-body.theme-sunset .text-gray-300 {
-  color: #fcd34d !important;
-}
-
-body.theme-sunset .border-gray-100,
-body.theme-sunset .border-gray-200 {
-  border-color: #7a5c3a !important;
-}
-
-body.theme-sunset table {
-  background-color: #2d1f14 !important;
-}
-
-body.theme-sunset thead {
-  background-color: #3d2817 !important;
-}
-
-body.theme-sunset th {
-  color: #fef9e7 !important;
-  background-color: #3d2817 !important;
-}
-
-body.theme-sunset td {
-  color: #fef9e7 !important;
-}
-
-body.theme-sunset tbody tr:hover {
-  background-color: #3d2817 !important;
 }
