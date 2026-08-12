@@ -677,6 +677,7 @@ export const en = {
     generateCVs: 'Generate CVs',
     generateCVsTitle: 'Generate CVs',
     generateCVsSubtitle: 'Generates and saves a tailored CV for each selected application (ones that already have one will be regenerated).',
+    dragHint: 'Drag to move the window',
     generatableCount: '{n}/{total} with a usable posting',
     willRegenerate: 'regenerate',
     setStatus: 'Status',

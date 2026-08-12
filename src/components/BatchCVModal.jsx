@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCVs } from '../hooks/useCVs'
 import { useBatchCVGeneration } from '../hooks/useBatchCVGeneration'
 import { TEMPLATES, LANGUAGES } from './CVGenerator'
@@ -37,6 +37,38 @@ export default function BatchCVModal({ jobs = [], onUpdateJob, onClose, t = (k) 
   const generatable = jobs.filter(hasJd)
   const runBatch = () => run({ targets: jobs, baseCV, language, template })
 
+  // ── Free-drag (non-modal floating panel) — same pointer-event pattern as
+  // FloatingWindow: drag by the header, clamped to the viewport. `pos` is null
+  // until measured/centered on first mount. Removing the dimming backdrop lets
+  // the user reposition the panel and still see the list behind it.
+  const [pos, setPos] = useState(null)
+  const drag = useRef({ active: false, sx: 0, sy: 0, ox: 0, oy: 0 })
+  const clamp = useCallback((x, y, w) => ({
+    x: Math.min(Math.max(8, x), Math.max(8, window.innerWidth - w - 8)),
+    y: Math.min(Math.max(8, y), Math.max(8, window.innerHeight - 48)),
+  }), [])
+  useEffect(() => {
+    const w = Math.min(576, window.innerWidth - 24)
+    setPos({ x: Math.max(12, (window.innerWidth - w) / 2), y: Math.max(12, Math.round(window.innerHeight * 0.08)), w })
+  }, [])
+  useEffect(() => {
+    const move = (e) => {
+      if (!drag.current.active) return
+      const nx = drag.current.ox + (e.clientX - drag.current.sx)
+      const ny = drag.current.oy + (e.clientY - drag.current.sy)
+      setPos(p => p ? { ...p, ...clamp(nx, ny, p.w) } : p)
+    }
+    const up = () => { drag.current.active = false; document.body.style.userSelect = '' }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    return () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
+  }, [clamp])
+  const startDrag = (e) => {
+    if (!pos) return
+    drag.current = { active: true, sx: e.clientX, sy: e.clientY, ox: pos.x, oy: pos.y }
+    document.body.style.userSelect = 'none'
+  }
+
   const selectCls = 'text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 bg-white'
 
   // ── Per-candidate status chip ──
@@ -66,18 +98,26 @@ export default function BatchCVModal({ jobs = [], onUpdateJob, onClose, t = (k) 
     return null
   }
 
-  return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl max-w-xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-          <span className="text-base">✨</span>
-          <h3 className="text-sm font-semibold text-gray-800">{t('bulkBar.generateCVsTitle')}</h3>
-          <span className="text-xs text-gray-400 ml-auto mr-2">{t('bulkBar.selectedCount').replace('{n}', jobs.length)}</span>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-        </div>
+  if (!pos) return null
 
-        <div className="p-5 space-y-4 overflow-y-auto">
+  return (
+    <div
+      className="fixed z-50 bg-white rounded-xl shadow-2xl ring-1 ring-black/5 border border-gray-100 flex flex-col max-h-[88vh]"
+      style={{ left: pos.x, top: pos.y, width: pos.w }}
+    >
+      {/* Header — drag handle */}
+      <div
+        onPointerDown={startDrag}
+        className="px-5 py-4 border-b border-gray-100 flex items-center gap-2 cursor-move select-none touch-none"
+      >
+        <span className="text-base">✨</span>
+        <h3 className="text-sm font-semibold text-gray-800">{t('bulkBar.generateCVsTitle')}</h3>
+        <span className="text-gray-300 text-xs ml-1" title={t('bulkBar.dragHint')}>⠿</span>
+        <span className="text-xs text-gray-400 ml-auto mr-2">{t('bulkBar.selectedCount').replace('{n}', jobs.length)}</span>
+        <button onPointerDown={e => e.stopPropagation()} onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+      </div>
+
+      <div className="p-5 space-y-4 overflow-y-auto">
           {sortedCvs.length === 0 ? (
             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
               {t('batchCV.noBaseCv')}
@@ -173,7 +213,6 @@ export default function BatchCVModal({ jobs = [], onUpdateJob, onClose, t = (k) 
             {finished ? t('common.close') : t('common.cancel')}
           </button>
         </div>
-      </div>
     </div>
   )
 }

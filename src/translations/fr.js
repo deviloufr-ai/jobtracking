@@ -869,6 +869,7 @@ export const fr = {
     generateCVs: 'Générer les CV',
     generateCVsTitle: 'Générer les CV',
     generateCVsSubtitle: 'Génère et enregistre un CV adapté pour chaque candidature sélectionnée (celles qui en ont déjà un seront régénérées).',
+    dragHint: 'Glisser pour déplacer la fenêtre',
     generatableCount: '{n}/{total} avec une offre exploitable',
     willRegenerate: 'régénérer',
     setStatus: 'Statut',
