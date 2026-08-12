@@ -581,6 +581,17 @@ export const en = {
     missingPoints: 'Missing points',
   },
 
+  // CVViewer — saved (adapted) CV: view, switch design, edit content in place
+  cvViewer: {
+    design: 'Design',
+    edit: 'Edit',
+    preview: 'Preview',
+    save: 'Save',
+    saved: 'Saved',
+    download: 'Download PDF',
+    editHint: 'Edit the Markdown — the preview updates live',
+  },
+
   // CVSuggestions — "Missing points" panel
   cvSuggestions: {
     title: '➕ Missing points',

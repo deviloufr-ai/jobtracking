@@ -773,6 +773,17 @@ export const fr = {
     missingPoints: 'Points manquants',
   },
 
+  // CVViewer — CV sauvegardé (adapté) : voir, changer le design, éditer le contenu
+  cvViewer: {
+    design: 'Design',
+    edit: 'Modifier',
+    preview: 'Aperçu',
+    save: 'Enregistrer',
+    saved: 'Enregistré',
+    download: 'Télécharger PDF',
+    editHint: "Éditez le Markdown — l'aperçu se met à jour en direct",
+  },
+
   // CVSuggestions — "Points manquants" panel
   cvSuggestions: {
     title: '➕ Points manquants',

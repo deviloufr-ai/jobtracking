@@ -1280,7 +1280,7 @@ export default function App() {
       {showImageImport && <ImageImport onImport={handleBulkImport} onClose={() => setShowImageImport(false)} existingJobs={jobs} />}
       {starJob && <STARGenerator job={starJob} onClose={() => setStarJob(null)} />}
       {emailDraft && <EmailDraft job={emailDraft.job} type={emailDraft.type} onClose={() => setEmailDraft(null)} onEmailSent={handleEmailSent} />}
-      {viewingCV && <CVViewer job={viewingCV} onClose={() => setViewingCV(null)} />}
+      {viewingCV && <CVViewer job={jobs.find(j => j.id === viewingCV.id) || viewingCV} onClose={() => setViewingCV(null)} onUpdate={updateJob} t={t} />}
       {cvGenJob && baseCV && (
         <FloatingWindow
           title={`✨ ${cvGenJob.company} — ${cvGenJob.position}`}

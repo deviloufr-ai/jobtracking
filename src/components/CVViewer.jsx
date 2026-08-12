@@ -1,10 +1,44 @@
-import { renderCV, BASE_PRINT_CSS } from './CVGenerator'
+import { useState, useEffect, useRef } from 'react'
+import { renderCV, TEMPLATES } from './CVGenerator'
 
-export default function CVViewer({ job, onClose, inline = false }) {
-  if (!job?.cvSaved) return null
+// View a saved (adapted) CV — and, when onUpdate is provided, edit it in place:
+// switch the design/template live and tweak the Markdown content, then persist
+// back to the candidature (job.cvSaved) with NO AI call. Used both inline inside
+// the candidature CV tab and as a full-screen modal.
+export default function CVViewer({ job, onClose, inline = false, onUpdate = null, t = (key) => key }) {
+  const saved = job?.cvSaved
+  const [md, setMd] = useState(saved?.markdown || '')
+  const [tpl, setTpl] = useState(saved?.template || 'standard')
+  const [editing, setEditing] = useState(false)
+  const [showTplMenu, setShowTplMenu] = useState(false)
+  const [flash, setFlash] = useState(false) // brief "Saved" confirmation
+  const profilePic = useRef((() => { try { return localStorage.getItem('cv_profile_picture') || null } catch { return null } })()).current
 
-  const { markdown, template, filename } = job.cvSaved
-  const html = renderCV(markdown, template, null)
+  // Re-sync local state when the underlying CV changes (switching jobs, or a
+  // remote sync replaces cvSaved). Keyed on identity that changes on real edits.
+  useEffect(() => {
+    setMd(saved?.markdown || '')
+    setTpl(saved?.template || 'standard')
+    setEditing(false)
+    setShowTplMenu(false)
+  }, [job?.id, saved?.savedAt])
+
+  if (!saved) return null
+
+  const filename = saved.filename || 'CV'
+  const canEdit = typeof onUpdate === 'function'
+  const dirty = md !== (saved.markdown || '') || tpl !== (saved.template || 'standard')
+  const currentTpl = TEMPLATES.find(x => x.id === tpl) || TEMPLATES[0]
+  const html = renderCV(md, tpl, profilePic)
+
+  const persist = () => {
+    if (!canEdit || !dirty) return
+    onUpdate(job.id, {
+      cvSaved: { ...saved, markdown: md, template: tpl, savedAt: new Date().toISOString() },
+    })
+    setFlash(true)
+    setTimeout(() => setFlash(false), 2500)
+  }
 
   const handleDownloadPDF = async () => {
     try {
@@ -52,61 +86,127 @@ export default function CVViewer({ job, onClose, inline = false }) {
     }
   }
 
-  // Inline mode — render the CV content directly inside its container (no modal overlay)
+  // ── Toolbar (design picker + edit toggle + save + download) ─────────────────
+  const toolbar = (
+    <div className="flex items-center gap-2 flex-wrap min-w-0">
+      <span className="text-sm font-semibold text-gray-700 truncate min-w-0 mr-auto">📄 {filename}</span>
+
+      {/* Design / template picker — switching applies to the preview live */}
+      <div className="relative">
+        <button
+          onClick={() => setShowTplMenu(v => !v)}
+          className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+          title={t('cvViewer.design')}
+        >
+          <span>{currentTpl.icon}</span>
+          <span className="hidden sm:inline">{currentTpl.label}</span>
+          <span className="text-gray-300 text-[10px]">▾</span>
+        </button>
+        {showTplMenu && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setShowTplMenu(false)} />
+            <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-xl shadow-xl border border-gray-100 p-1.5 w-52">
+              {TEMPLATES.map(x => (
+                <button
+                  key={x.id}
+                  onClick={() => { setTpl(x.id); setShowTplMenu(false) }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${tpl === x.id ? 'bg-indigo-50' : 'hover:bg-gray-50'}`}
+                >
+                  <span className="text-lg">{x.icon}</span>
+                  <div className="min-w-0">
+                    <p className={`text-xs font-semibold ${tpl === x.id ? 'text-indigo-700' : 'text-gray-700'}`}>{x.label}</p>
+                    <p className="text-[10px] text-gray-400 truncate">{x.desc}</p>
+                  </div>
+                  {tpl === x.id && <span className="ml-auto text-indigo-500 text-xs">✓</span>}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Edit / preview toggle — only when the caller can persist edits */}
+      {canEdit && (
+        <button
+          onClick={() => setEditing(v => !v)}
+          className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${editing ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+        >
+          {editing ? '👁 ' + t('cvViewer.preview') : '✎ ' + t('cvViewer.edit')}
+        </button>
+      )}
+
+      {/* Save — appears once the content or design has changed */}
+      {canEdit && (dirty || flash) && (
+        <button
+          onClick={persist}
+          disabled={!dirty}
+          className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${flash && !dirty ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+        >
+          {flash && !dirty ? '✓ ' + t('cvViewer.saved') : '💾 ' + t('cvViewer.save')}
+        </button>
+      )}
+
+      <button
+        onClick={handleDownloadPDF}
+        className="text-xs font-semibold text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
+      >
+        📥 {t('cvViewer.download')}
+      </button>
+    </div>
+  )
+
+  // ── Content (live preview, or split editor when editing) ────────────────────
+  const preview = (
+    <div className="cv-paper rounded-lg shadow-sm p-4 sm:p-8 max-w-2xl mx-auto bg-white"
+      dangerouslySetInnerHTML={{ __html: html }} />
+  )
+
+  const editor = (
+    <div className="flex flex-col lg:flex-row gap-3 h-full">
+      <div className="lg:w-1/2 flex flex-col min-h-[280px]">
+        <p className="text-[11px] text-gray-400 mb-1.5">{t('cvViewer.editHint')}</p>
+        <textarea
+          value={md}
+          onChange={e => setMd(e.target.value)}
+          className="flex-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-mono text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none min-h-[280px]"
+        />
+      </div>
+      <div className="lg:w-1/2 overflow-y-auto bg-gray-50 rounded-xl p-4">
+        {preview}
+      </div>
+    </div>
+  )
+
+  // Inline mode — render directly inside the candidature CV tab container
   if (inline) {
     return (
       <div className="flex flex-col h-full">
-        {/* Toolbar */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 flex-shrink-0 bg-white">
-          <span className="text-sm font-semibold text-gray-700 truncate">📄 {filename}</span>
-          <button
-            onClick={handleDownloadPDF}
-            className="text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
-          >
-            📥 Télécharger PDF
-          </button>
+        <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-gray-200 flex-shrink-0 bg-white">
+          {toolbar}
         </div>
-
-        {/* CV Content */}
-        <div className="flex-1 overflow-auto bg-gray-50 p-6">
-          <div
-            className="cv-paper rounded-lg shadow-sm p-8 max-w-2xl mx-auto"
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
+        <div className="flex-1 overflow-auto bg-gray-50 p-4 sm:p-6">
+          {editing ? editor : preview}
         </div>
       </div>
     )
   }
 
+  // Modal mode — full-screen overlay
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-2 sm:p-4">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[94vh] sm:max-h-[90vh] flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between gap-2 p-3 sm:p-4 border-b border-gray-200 flex-shrink-0">
-          <h2 className="text-base sm:text-lg font-bold text-gray-800 truncate min-w-0">📄 {filename}</h2>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              onClick={handleDownloadPDF}
-              className="text-xs sm:text-sm text-white bg-indigo-600 hover:bg-indigo-700 px-3 sm:px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
-            >
-              📥 <span className="hidden sm:inline">Télécharger </span>PDF
-            </button>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-2xl leading-none px-1"
-              aria-label="Close"
-            >
-              ✕
-            </button>
-          </div>
+          <div className="flex-1 min-w-0">{toolbar}</div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-2xl leading-none px-1 flex-shrink-0"
+            aria-label="Close"
+          >
+            ✕
+          </button>
         </div>
-
-        {/* CV Content */}
         <div className="flex-1 overflow-auto bg-gray-50 p-3 sm:p-6">
-          <div
-            className="cv-paper rounded-lg shadow-sm p-4 sm:p-8 max-w-2xl mx-auto"
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
+          {editing ? editor : preview}
         </div>
       </div>
     </div>

@@ -530,7 +530,7 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
                 addrError={addrError}
                 onStartMockInterview={() => setShowMockInterview(true)}
                 onGenerateCoverLetter={() => setShowMotivationLetter(true)}
-                CVViewerComponent={job.cvSaved ? <CVViewer job={job} onClose={() => {}} inline={true} /> : null}
+                CVViewerComponent={job.cvSaved ? <CVViewer job={job} onClose={() => {}} inline={true} onUpdate={onUpdateJob} t={t} /> : null}
                 t={t}
               />
             </div>
