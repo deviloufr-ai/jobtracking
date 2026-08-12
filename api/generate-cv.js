@@ -610,9 +610,16 @@ export default async function handler(req, res) {
     let bestVerdict = null
     let feedback = null
 
+    // When the candidate confirmed "Points manquants" (additions), the gaps the
+    // refinement pass would chase are ALREADY folded into the prompt — so a single
+    // pass is enough. Skipping the refinement round saves ~one 8k-token generation
+    // (the suggest call that produced these additions is far cheaper). Falls back
+    // to the full refine loop for plain generations with no additions.
+    const maxAttempts = safeAdditions.length ? 1 : MAX_ATTEMPTS
+
     // Generate → self-score → refine until the CV clears targetScore, keeping
     // the highest-scoring draft seen across attempts.
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       const cv = await callClaude(apiKey, {
         maxTokens: 8000,
         prompt: buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules: userRules, rules: activeRules, additions: safeAdditions }),
