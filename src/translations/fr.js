@@ -860,6 +860,30 @@ export const fr = {
     trialExhausted: 'Essai gratuit épuisé. Ajoutez votre clé API Claude dans les Réglages pour continuer la génération.',
   },
 
+  // BulkActionBar — batch actions over the selected candidatures
+  bulkBar: {
+    selected: 'sélectionnée(s)',
+    selectedCount: '{n} sélectionnée(s)',
+    selectAll: 'Tout sélectionner',
+    deselectAll: 'Tout désélectionner',
+    generateCVs: 'Générer les CV',
+    generateCVsTitle: 'Générer les CV',
+    generateCVsSubtitle: 'Génère et enregistre un CV adapté pour chaque candidature sélectionnée (celles qui en ont déjà un seront régénérées).',
+    generatableCount: '{n}/{total} avec une offre exploitable',
+    willRegenerate: 'régénérer',
+    setStatus: 'Statut',
+    archive: 'Archiver',
+    favorite: 'Favoris',
+    unfavorite: 'Retirer des favoris',
+    merge: 'Fusionner',
+    delete: 'Supprimer',
+    confirmDelete: 'Supprimer {n} candidature(s) ?',
+    confirmYes: 'Supprimer',
+    toastStatus: '{n} candidature(s) → {status}',
+    toastArchived: '{n} candidature(s) archivée(s)',
+    toastDeleted: '{n} candidature(s) supprimée(s)',
+  },
+
   // UpcomingMeetings
   upcomingMeetings: {
     title: 'Entretiens à venir',

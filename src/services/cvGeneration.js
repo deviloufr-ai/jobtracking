@@ -90,6 +90,17 @@ export function saveTemplate(id) {
   try { localStorage.setItem(TEMPLATE_KEY, id) } catch { /* ignore */ }
 }
 
+// Default language for batch generation ('auto' resolves per posting). Shared by
+// the Settings batch panel and the selection-driven batch modal so the choice
+// carries across both entry points.
+const BATCH_LANG_KEY = 'jobtrackr_cv_batch_lang'
+export function loadBatchLang() {
+  try { return localStorage.getItem(BATCH_LANG_KEY) || 'auto' } catch { return 'auto' }
+}
+export function saveBatchLang(v) {
+  try { localStorage.setItem(BATCH_LANG_KEY, v) } catch { /* ignore */ }
+}
+
 // The candidate name is the CV's "# Name" heading — used to build the filename.
 export function cvCandidateName(markdown) {
   const m = (markdown || '').match(/^#\s+(.+)$/m)

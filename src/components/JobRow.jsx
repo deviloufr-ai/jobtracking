@@ -357,7 +357,9 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
       <tr
         ref={rowRef}
         className={`border-b transition-colors group cursor-pointer ${
-          job.favorite ? 'bg-amber-50/40 hover:bg-amber-50/70 border-amber-100' : 'border-gray-50 hover:bg-indigo-50/30'
+          isSelected
+            ? 'bg-indigo-50 hover:bg-indigo-100 border-indigo-100'
+            : job.favorite ? 'bg-amber-50/40 hover:bg-amber-50/70 border-amber-100' : 'border-gray-50 hover:bg-indigo-50/30'
         } ${job.status === 'cancelled' ? 'opacity-40' : ''}`}
         onClick={() => setExpanded(v => !v)}
       >

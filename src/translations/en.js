@@ -668,6 +668,30 @@ export const en = {
     trialExhausted: 'Free trial used up. Add your Claude API key in Settings to keep generating.',
   },
 
+  // BulkActionBar — batch actions over the selected candidatures
+  bulkBar: {
+    selected: 'selected',
+    selectedCount: '{n} selected',
+    selectAll: 'Select all',
+    deselectAll: 'Deselect all',
+    generateCVs: 'Generate CVs',
+    generateCVsTitle: 'Generate CVs',
+    generateCVsSubtitle: 'Generates and saves a tailored CV for each selected application (ones that already have one will be regenerated).',
+    generatableCount: '{n}/{total} with a usable posting',
+    willRegenerate: 'regenerate',
+    setStatus: 'Status',
+    archive: 'Archive',
+    favorite: 'Favorite',
+    unfavorite: 'Unfavorite',
+    merge: 'Merge',
+    delete: 'Delete',
+    confirmDelete: 'Delete {n} application(s)?',
+    confirmYes: 'Delete',
+    toastStatus: '{n} application(s) → {status}',
+    toastArchived: '{n} application(s) archived',
+    toastDeleted: '{n} application(s) deleted',
+  },
+
   // UpcomingMeetings
   upcomingMeetings: {
     title: 'Upcoming Interviews',

@@ -36,6 +36,8 @@ import JobSearch from './components/JobSearch'
 import { getFlag, FLAGS, FLAGS_EVENT } from './services/featureFlags'
 import CVViewer from './components/CVViewer'
 import CVGenerator from './components/CVGenerator'
+import BatchCVModal from './components/BatchCVModal'
+import BulkActionBar from './components/BulkActionBar'
 import FloatingWindow from './components/FloatingWindow'
 import { useCVs } from './hooks/useCVs'
 import Settings from './components/Settings'
@@ -213,6 +215,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [currentTheme, setCurrentTheme] = useState(settings.theme || 'light')
   const [selectedJobIds, setSelectedJobIds] = useState(new Set())
+  const [bulkCvOpen, setBulkCvOpen] = useState(false)
   const [mergeModal, setMergeModal] = useState(null)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [settingsInitialTab, setSettingsInitialTab] = useState(null)
@@ -666,6 +669,37 @@ export default function App() {
     showToast(t('notifications.jobsMerged') || 'Jobs merged successfully!')
   }
 
+  // ── Bulk actions over the current selection (driven by BulkActionBar) ──
+  const selectedJobs = useMemo(() => jobs.filter(j => selectedJobIds.has(j.id)), [jobs, selectedJobIds])
+  const allSelectedFavorite = selectedJobs.length > 0 && selectedJobs.every(j => j.favorite)
+  const clearSelection = () => setSelectedJobIds(new Set())
+
+  const bulkSetStatus = (status) => {
+    const n = selectedJobIds.size
+    selectedJobIds.forEach(id => updateStatus(id, status))
+    clearSelection()
+    showToast(t('bulkBar.toastStatus').replace('{n}', n).replace('{status}', getStatus(status).label))
+  }
+  const bulkArchive = () => {
+    const n = selectedJobIds.size
+    selectedJobIds.forEach(id => updateStatus(id, 'archived'))
+    clearSelection()
+    showToast(t('bulkBar.toastArchived').replace('{n}', n))
+  }
+  const bulkToggleFavorite = () => {
+    // If every selected row is already a favorite, un-favorite all; otherwise add
+    // the ones that aren't (leaving already-favorite rows untouched).
+    const turnOff = allSelectedFavorite
+    selectedJobs.forEach(j => { if (turnOff ? j.favorite : !j.favorite) toggleFavorite(j.id) })
+    clearSelection()
+  }
+  const bulkDelete = () => {
+    const n = selectedJobIds.size
+    selectedJobIds.forEach(id => deleteJob(id))
+    clearSelection()
+    showToast(t('bulkBar.toastDeleted').replace('{n}', n))
+  }
+
   const ThHeader = ({ col, label }) => (
     <th
       onClick={() => handleSort(col)}
@@ -674,6 +708,37 @@ export default function App() {
       {label}<SortIcon col={col} sort={sort} />
     </th>
   )
+
+  // Company column header with a "select all in this section" checkbox aligned
+  // with the per-row checkboxes. `rows` are the jobs rendered in that table.
+  const SelectAllTh = ({ rows }) => {
+    const ids = rows.map(r => r.id)
+    const allSel = ids.length > 0 && ids.every(id => selectedJobIds.has(id))
+    const someSel = ids.some(id => selectedJobIds.has(id))
+    const toggleAll = () => setSelectedJobIds(prev => {
+      const next = new Set(prev)
+      if (allSel) ids.forEach(id => next.delete(id))
+      else ids.forEach(id => next.add(id))
+      return next
+    })
+    return (
+      <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            checked={allSel}
+            ref={el => { if (el) el.indeterminate = !allSel && someSel }}
+            onChange={toggleAll}
+            className="flex-shrink-0 accent-indigo-600 w-4 h-4 cursor-pointer"
+            title={t('bulkBar.selectAll')}
+          />
+          <span onClick={() => handleSort('company')} className="cursor-pointer hover:text-indigo-600 select-none inline-flex items-center">
+            {t('table.company')}<SortIcon col="company" sort={sort} />
+          </span>
+        </div>
+      </th>
+    )
+  }
 
   // ── nav tabs config ─────────────────────────────────────────────────────────
   const NAV_TABS = [
@@ -1165,7 +1230,7 @@ export default function App() {
                       <JobTableColgroup />
                       <thead>
                         <tr className="border-b border-yellow-100 bg-yellow-50/60">
-                          <th onClick={() => handleSort('company')} className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-indigo-600 select-none">{t('table.company')}<SortIcon col="company" sort={sort} /></th>
+                          <SelectAllTh rows={filtered.filter(j => j.favorite)} />
                           <ThHeader col="score" label={t('table.score')} />
                           <ThHeader col="status" label={t('table.status')} />
                           <ThHeader col="date" label={t('table.date')} />
@@ -1193,7 +1258,7 @@ export default function App() {
                     <JobTableColgroup />
                     <thead>
                       <tr className="border-b border-gray-100 bg-gray-50/60">
-                        <th onClick={() => handleSort('company')} className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-indigo-600 select-none">{t('table.company')}<SortIcon col="company" sort={sort} /></th>
+                        <SelectAllTh rows={filtered.filter(j => !j.favorite)} />
                         <ThHeader col="score" label={t('table.score')} />
                         <ThHeader col="status" label={t('table.status')} />
                         <ThHeader col="date" label={t('table.date')} />
@@ -1218,12 +1283,6 @@ export default function App() {
           <p className="text-xs text-gray-300">JobTrackerAI v0.4 <span title={`commit ${__COMMIT_HASH__}`}>· #{__COMMIT_COUNT__}</span></p>
           {jobs.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap justify-end">
-              {selectedJobIds.size >= 2 && (
-                <button onClick={handleMergeSelected}
-                  className="text-xs text-blue-400 hover:text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors border border-blue-200 hover:border-blue-400">
-                  🔗 {t('footer.mergeSelected').replace('{{count}}', selectedJobIds.size)}
-                </button>
-              )}
               <button onClick={mergeDuplicates}
                 className="text-xs text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors border border-transparent hover:border-indigo-200">
                 {t('footer.mergeDuplicates')}
@@ -1291,6 +1350,25 @@ export default function App() {
       )}
       {mergeModal && <MergeModal jobs={mergeModal} onConfirm={handleMergeConfirm} onCancel={() => setMergeModal(null)} t={t} />}
       {showOnboarding && <OnboardingModal onAddKey={handleOnboardingAddKey} onSkip={dismissOnboarding} t={t} />}
+
+      {/* Bulk-action bar — table view of Candidatures, when rows are selected */}
+      {activeTab === 'tracker' && trackerView === 'table' && (
+        <BulkActionBar
+          count={selectedJobIds.size}
+          allFavorite={allSelectedFavorite}
+          onGenerateCVs={() => setBulkCvOpen(true)}
+          onSetStatus={bulkSetStatus}
+          onArchive={bulkArchive}
+          onToggleFavorite={bulkToggleFavorite}
+          onMerge={handleMergeSelected}
+          onDelete={bulkDelete}
+          onClear={clearSelection}
+          t={t}
+        />
+      )}
+      {bulkCvOpen && (
+        <BatchCVModal jobs={selectedJobs} onUpdateJob={updateJob} onClose={() => setBulkCvOpen(false)} t={t} />
+      )}
 
       {/* Mobile: full-screen job detail sheet (opened from the Flux list / pipeline / hero) */}
       {detailJob && (

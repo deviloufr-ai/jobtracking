@@ -29,6 +29,7 @@ export default function Filters({ filters, onChange, onReset, total, filtered, s
     return (
       <button
         onClick={() => cycleStatus(s.key)}
+        title={!state ? t('filtersStatus.tooltip1') : state === 'include' ? t('filtersStatus.show') : t('filtersStatus.hidden')}
         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all select-none whitespace-nowrap
           ${state === 'include'
             ? s.color + ' border-transparent shadow-sm'
@@ -144,9 +145,10 @@ export default function Filters({ filters, onChange, onReset, total, filtered, s
     </BottomSheet>
 
     {/* ── Desktop filter bar (sm+) ───────────────────────────────────────────── */}
-    <div className="hidden sm:block bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-4">
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="relative flex-1 min-w-[200px]">
+    <div className="hidden sm:block bg-white rounded-xl shadow-sm border border-gray-100 mb-4 overflow-hidden">
+      {/* Row 1 — search + a single cohesive controls cluster on the right */}
+      <div className="flex flex-wrap items-center gap-2.5 p-3">
+        <div className="relative flex-1 min-w-[220px]">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
           <input
             className="w-full pl-8 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
@@ -161,11 +163,45 @@ export default function Filters({ filters, onChange, onReset, total, filtered, s
             >✕</button>
           )}
         </div>
+
+        {/* View switcher */}
+        {onViewChange && (
+          <div className="flex items-center bg-gray-100 rounded-lg p-0.5 gap-0.5">
+            {[['table', '☰', t('view.table') || 'Table'], ['kanban', '▦', t('view.kanban') || 'Kanban'], ['platforms', '🌐', t('view.platforms') || 'Platforms']].map(([val, icon, label]) => (
+              <button
+                key={val}
+                onClick={() => onViewChange(val)}
+                title={label}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  view === val ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <span>{icon}</span>
+                <span className="hidden md:inline">{label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Period */}
+        <select
+          className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          value={filters.period}
+          onChange={e => onChange({ ...filters, period: e.target.value })}
+        >
+          <option value="all">{t('filtersPeriod.all')}</option>
+          <option value="week">{t('filtersPeriod.week')}</option>
+          <option value="month">{t('filtersPeriod.month')}</option>
+        </select>
+
+        <div className="h-6 w-px bg-gray-200" />
+
         {/* Favoris + Archives toggles */}
         {onToggleFav && (
           <button
             onClick={onToggleFav}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
+            title={t('stats.favorites') || 'Favoris'}
+            className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-sm font-medium border transition-all ${
               showFavOnly ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-white border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50'
             }`}
           >
@@ -176,7 +212,8 @@ export default function Filters({ filters, onChange, onReset, total, filtered, s
         {onToggleArchived && (
           <button
             onClick={onToggleArchived}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
+            title={t('jobActions.archive') || 'Archives'}
+            className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-sm font-medium border transition-all ${
               showArchived ? 'bg-gray-100 border-gray-300 text-gray-700' : 'bg-white border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50'
             }`}
           >
@@ -185,88 +222,22 @@ export default function Filters({ filters, onChange, onReset, total, filtered, s
           </button>
         )}
 
-        {/* View toggle — Table / Kanban */}
-        {onViewChange && (
-          <div className="flex items-center bg-gray-100 rounded-lg p-0.5 gap-0.5">
-            <button
-              onClick={() => onViewChange('table')}
-              title={t('view.table') || 'Table'}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
-                view === 'table' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <span>☰</span>
-              <span className="hidden sm:inline">{t('view.table') || 'Table'}</span>
-            </button>
-            <button
-              onClick={() => onViewChange('kanban')}
-              title={t('view.kanban') || 'Kanban'}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
-                view === 'kanban' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <span>▦</span>
-              <span className="hidden sm:inline">{t('view.kanban') || 'Kanban'}</span>
-            </button>
-            <button
-              onClick={() => onViewChange('platforms')}
-              title={t('view.platforms') || 'Platforms'}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
-                view === 'platforms' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <span>🌐</span>
-              <span className="hidden sm:inline">{t('view.platforms') || 'Platforms'}</span>
-            </button>
-          </div>
-        )}
-
-        <select
-          className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
-          value={filters.period}
-          onChange={e => onChange({ ...filters, period: e.target.value })}
-        >
-          <option value="all">{t('filtersPeriod.all')}</option>
-          <option value="week">{t('filtersPeriod.week')}</option>
-          <option value="month">{t('filtersPeriod.month')}</option>
-        </select>
+        {/* Count pill + reset */}
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-2.5 py-1.5 whitespace-nowrap">
+          <span className="font-semibold text-gray-700">{filtered}</span>
+          <span className="text-gray-300">/</span>
+          {total}
+        </span>
         {hasActive && (
           <button onClick={onReset} className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline whitespace-nowrap">
             {t('filtersSearch.reset')}
           </button>
         )}
-        <span className="text-xs text-gray-400 ml-auto whitespace-nowrap">
-          {filtered} {t('filtersSearch.of')} {total} {total > 1 ? t('filtersSearch.results') : t('filtersSearch.result')}
-        </span>
       </div>
 
-      <div className="flex flex-wrap gap-2 mt-3">
-        {STATUSES.map(s => {
-          const state = (filters.statuses || {})[s.key] // undefined | 'include' | 'exclude'
-          return (
-            <button
-              key={s.key}
-              onClick={() => cycleStatus(s.key)}
-              title={!state ? t('filtersStatus.tooltip1') : state === 'include' ? t('filtersStatus.show') : t('filtersStatus.hidden')}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all select-none
-                ${state === 'include'
-                  ? s.color + ' border-transparent shadow-sm'
-                  : state === 'exclude'
-                  ? 'bg-red-50 border-red-200 text-red-400 line-through opacity-60'
-                  : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
-                }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                state === 'include' ? s.dot
-                : state === 'exclude' ? 'bg-red-300'
-                : 'bg-gray-300'
-              }`} />
-              {getStatusLabel(s.key, t)}
-              {state === 'include' && <span className="text-[10px] opacity-70">✓</span>}
-              {state === 'exclude' && <span className="text-[10px]">✕</span>}
-            </button>
-          )
-        })}
+      {/* Row 2 — status chips */}
+      <div className="flex flex-wrap gap-2 px-3 pt-3 pb-3 border-t border-gray-100 bg-gray-50/40">
+        {STATUSES.map(s => <StatusChip key={s.key} s={s} />)}
       </div>
     </div>
     </>

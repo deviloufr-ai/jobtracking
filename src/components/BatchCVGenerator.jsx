@@ -1,25 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCVs } from '../hooks/useCVs'
-import { TrialExhaustedError } from '../services/apiKey'
+import { useBatchCVGeneration } from '../hooks/useBatchCVGeneration'
 import { TEMPLATES, LANGUAGES } from './CVGenerator'
 import {
-  generateCVForJob,
   loadBaseCvId, saveBaseCvId,
   loadTemplate, saveTemplate,
+  loadBatchLang, saveBatchLang,
 } from '../services/cvGeneration'
 import CVEditModal from './CVEditModal'
 
 // Candidatures in these states are closed — generating a tailored CV for them is
 // pointless, so they're excluded from the batch targets.
 const SKIP_STATUSES = new Set(['rejected', 'rejected_ats', 'cancelled', 'archived'])
-const BATCH_LANG_KEY = 'jobtrackr_cv_batch_lang'
-
-function loadBatchLang() {
-  try { return localStorage.getItem(BATCH_LANG_KEY) || 'auto' } catch { return 'auto' }
-}
-function saveBatchLang(v) {
-  try { localStorage.setItem(BATCH_LANG_KEY, v) } catch { /* ignore */ }
-}
 
 // Bulk "write a CV for every application that doesn't have one yet". Fully
 // automatic (per the user's chosen automation): for each selected candidature it
@@ -69,65 +61,16 @@ export default function BatchCVGenerator({ jobs = [], onUpdateJob, t = (k) => k 
   const selectAll = () => setSelectedIds(new Set(candidates.map(j => j.id)))
   const selectNone = () => setSelectedIds(new Set())
 
-  // ── Batch run state ──
-  const [running, setRunning] = useState(false)
-  const [progress, setProgress] = useState({ done: 0, total: 0 })
-  const [results, setResults] = useState({}) // id -> { status, atsScore, error }
-  const [batchError, setBatchError] = useState(null)
-  const cancelRef = useRef(false)
+  // ── Batch run state (shared engine) ──
+  const { run, stop: stopBatch, running, progress, results, batchError, finished, anyResult, resultCounts } =
+    useBatchCVGeneration({ onUpdateJob, t })
 
   const selectedCount = candidates.filter(j => selectedIds.has(j.id)).length
 
-  const runBatch = async () => {
+  const runBatch = () => {
     const targets = candidates.filter(j => selectedIds.has(j.id))
-    if (!baseCV || targets.length === 0) return
-
-    setRunning(true)
-    setBatchError(null)
-    cancelRef.current = false
-    setProgress({ done: 0, total: targets.length })
-    setResults(Object.fromEntries(targets.map(j => [j.id, { status: 'pending' }])))
-
-    for (const job of targets) {
-      if (cancelRef.current) break
-      setResults(prev => ({ ...prev, [job.id]: { status: 'running' } }))
-      try {
-        const { markdown, atsScore, filename } = await generateCVForJob({
-          job, cvText: baseCV.text, language, template,
-        })
-        onUpdateJob(job.id, {
-          cvSaved: { markdown, template, filename, savedAt: new Date().toISOString(), atsScore: atsScore ?? null },
-        })
-        setResults(prev => ({ ...prev, [job.id]: { status: 'done', atsScore } }))
-      } catch (err) {
-        if (err instanceof TrialExhaustedError || err?.code === 'TRIAL_EXHAUSTED') {
-          // Shared-key free trial spent — stop the whole batch and prompt for a key.
-          setResults(prev => ({ ...prev, [job.id]: { status: 'error', error: 'trial' } }))
-          setBatchError(t('batchCV.trialExhausted'))
-          break
-        }
-        if (err?.code === 'NO_JD') {
-          setResults(prev => ({ ...prev, [job.id]: { status: 'skipped' } }))
-        } else {
-          setResults(prev => ({ ...prev, [job.id]: { status: 'error', error: err?.message || 'error' } }))
-        }
-      }
-      setProgress(prev => ({ ...prev, done: prev.done + 1 }))
-    }
-    setRunning(false)
+    run({ targets, baseCV, language, template })
   }
-  const stopBatch = () => { cancelRef.current = true }
-
-  const resultCounts = useMemo(() => {
-    const vals = Object.values(results)
-    return {
-      done: vals.filter(r => r.status === 'done').length,
-      skipped: vals.filter(r => r.status === 'skipped').length,
-      error: vals.filter(r => r.status === 'error').length,
-    }
-  }, [results])
-  const finished = !running && progress.total > 0 && progress.done >= progress.total
-  const anyResult = Object.keys(results).length > 0
 
   const selectCls = 'text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 bg-white'
 
