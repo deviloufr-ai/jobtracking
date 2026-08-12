@@ -302,6 +302,36 @@ export function deduplicateJobs(jobs) {
       continue
     }
 
+    // ── Re-application boundary ──────────────────────────────────────────────
+    // Two rows for the same company+role are DISTINCT candidatures — not one
+    // timeline — when one has already CLOSED (rejected / archived / cancelled) and
+    // the other only BEGINS after that closure: a genuine re-application. Merging
+    // them folds a fresh "à faire" lead into a dead application and shows the whole
+    // thing under the new status (Bug: a new Nextep HR lead swallowed the archived
+    // June candidature). Note 'archived' is NOT in TERMINAL below — the old span
+    // heuristic never treated it as closed and a ~60-day gap slid under the 90-day
+    // threshold, so the two merged. Compare each job's own first/last activity
+    // (history dates, falling back to job.date) so the split is exact rather than
+    // relying on a fixed day count. Keep every row separate when a boundary exists.
+    if (group.length > 1) {
+      const CLOSED = new Set(['rejected', 'rejected_ats', 'cancelled', 'archived'])
+      const activity = group.map(j => {
+        const times = (j.history || []).map(h => new Date(h.date).getTime()).filter(t => !isNaN(t))
+        const fallback = new Date(j.date).getTime()
+        return {
+          status: j.status,
+          first: times.length ? Math.min(...times) : fallback,
+          last: times.length ? Math.max(...times) : fallback,
+        }
+      })
+      const reapplication = activity.some(a =>
+        CLOSED.has(a.status) && activity.some(b => b !== a && b.first > a.last))
+      if (reapplication) {
+        group.forEach(j => result.push(j))
+        continue
+      }
+    }
+
     const TERMINAL = ['rejected', 'rejected_ats', 'cancelled']
     const hasTerminal = group.some(j => TERMINAL.includes(j.status))
     if (group.length > 1) {
@@ -2101,6 +2131,60 @@ export function useJobs() {
     }
     return () => { delete window.fixAtsCandidatures; delete window.debugAtsRecovery }
   }, [])
+
+  // One-time heal for candidatures merged BEFORE the re-application boundary fix.
+  // reconcileDuplicateJobs used to physically fold a fresh `todo` lead into an
+  // already-CLOSED candidature at the same company+role (keeping the newest row and
+  // absorbing the archived timeline), so it can't be undone by deduplicateJobs —
+  // it's one persisted row now. Detect rows whose timeline crosses a closed → to-apply
+  // boundary and split them back into two: the fresh lead keeps the row id (and its
+  // CV / links), the closed history becomes its own candidature. `todo` after a
+  // closed status only ever arises from that merge (addJob seeds a todo as a NEW
+  // row; refresh never appends todo to an archived job), so the trigger is precise.
+  // Guarded by a version flag so it runs once. reapplication in deduplicateJobs now
+  // keeps the two apart, so a later poll won't re-merge them.
+  useEffect(() => {
+    if (loading || rawJobs.length === 0) return
+    const FLAG = 'jobtrackr_reapply_split_v1'
+    if (localStorage.getItem(FLAG)) return
+
+    const CLOSED = new Set(['rejected', 'rejected_ats', 'cancelled', 'archived'])
+    const plans = []
+    for (const job of rawJobs) {
+      const h = [...(job.history || [])].sort(compareHistoryEntries)
+      if (h.length < 2) continue
+      // Boundary = first `todo` entry preceded (chronologically) by a closed one.
+      let boundary = -1, sawClosed = false
+      for (let i = 0; i < h.length; i++) {
+        if (CLOSED.has(h[i].status)) sawClosed = true
+        else if (h[i].status === 'todo' && sawClosed) { boundary = i; break }
+      }
+      if (boundary <= 0) continue
+      plans.push({ job, oldHistory: h.slice(0, boundary), freshHistory: h.slice(boundary) })
+    }
+
+    localStorage.setItem(FLAG, '1')
+    if (plans.length === 0) return
+
+    const joinNotes = entries => entries.map(e => e.note).filter(Boolean).join(' | ')
+    for (const { job, oldHistory, freshHistory } of plans) {
+      // groups[0] keeps the original row id (the still-open fresh lead, plus its CV /
+      // links / favorite); groups[1] spins the closed history off into its own row.
+      applyAtsSplit(job, [
+        {
+          company: job.company, position: job.position,
+          status: deriveStatusFromHistory(freshHistory) || 'todo',
+          date: freshHistory[0].date, history: freshHistory, notes: joinNotes(freshHistory),
+        },
+        {
+          company: job.company, position: job.position,
+          status: deriveStatusFromHistory(oldHistory) || 'archived',
+          date: oldHistory[0].date, history: oldHistory, notes: joinNotes(oldHistory),
+        },
+      ])
+    }
+    console.log(`🩹 Re-application heal: separated ${plans.length} merged candidature(s)`)
+  }, [loading, rawJobs, applyAtsSplit])
 
   return { jobs, addJob, updateJob, deleteJob, clearAllJobs, updateStatus, addHistoryEntry, mergeDuplicates, mergeJobs, toggleFavorite, markEnriched, clearEnriched, reprocessJobs, checkPosition, checkAllPositions, clearDeletedJobs, cleanupHistoryDuplicates, deduplicateViaServer, applyAtsSplit, loading, findDuplicateInList: (co, pos) => findDuplicateJob(jobs, co, pos) }
 }

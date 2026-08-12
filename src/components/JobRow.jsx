@@ -365,7 +365,10 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
         <td className="py-3.5 px-4">
           <div className="flex items-center gap-3 min-w-0">
             {/* Checkbox */}
-            <input type="checkbox" className="flex-shrink-0 accent-indigo-600 w-4 h-4 cursor-pointer" checked={isSelected} onChange={(e) => { e.stopPropagation(); onSelect?.(job.id) }} />
+            {/* onClick stops the checkbox's own click bubbling to the row (which toggles
+                expand). stopPropagation on onChange only covers the change event, not the
+                click — so without this, ticking the box also opened the candidature. */}
+            <input type="checkbox" className="flex-shrink-0 accent-indigo-600 w-4 h-4 cursor-pointer" checked={isSelected} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); onSelect?.(job.id) }} />
             {/* Favorite star */}
             <button
               onClick={e => { e.stopPropagation(); onToggleFavorite && onToggleFavorite(job.id) }}
