@@ -3,6 +3,7 @@ import { useCVs } from '../hooks/useCVs'
 import { aiFetch } from '../services/apiKey'
 import { pushProfile } from '../services/profileSync'
 import CVGenerator from './CVGenerator'
+import CVEditModal from './CVEditModal'
 
 const PROFILE_KEY = 'jobtrackr_profile'
 
@@ -25,7 +26,6 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob, manageOnl
   const [justExtracted, setJustExtracted] = useState(false)
   const [newCvId, setNewCvId] = useState(null) // CV just uploaded — prompt extraction
   const [editingCvId, setEditingCvId] = useState(null)
-  const [editingText, setEditingText] = useState('')
   const fileRef = useRef()
 
   async function handleExtractProfile(cv) {
@@ -43,18 +43,6 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob, manageOnl
       alert('Erreur : ' + e.message)
     }
     setExtractingId(null)
-  }
-
-  function handleOpenEdit(cv) {
-    setEditingCvId(cv.id)
-    setEditingText(cv.text)
-  }
-
-  function handleSaveEdit() {
-    if (!editingCvId) return
-    updateCV(editingCvId, { text: editingText })
-    setEditingCvId(null)
-    setEditingText('')
   }
 
   const handleUpload = async (file) => {
@@ -114,44 +102,18 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob, manageOnl
     )
   }
 
-  if (editingCvId) {
-    const editingCV = cvs.find(c => c.id === editingCvId)
-    return (
-      <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
-          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Éditer le contenu du CV</h3>
-            <button onClick={() => setEditingCvId(null)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-          </div>
-          <div className="flex-1 overflow-y-auto p-6">
-            <p className="text-sm text-gray-600 mb-3">{editingCV?.name}</p>
-            <textarea
-              value={editingText}
-              onChange={e => setEditingText(e.target.value)}
-              className="w-full h-[400px] text-sm border border-gray-200 rounded-lg p-3 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 resize-none"
-            />
-          </div>
-          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-2">
-            <button
-              onClick={() => setEditingCvId(null)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Annuler
-            </button>
-            <button
-              onClick={handleSaveEdit}
-              className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              ✓ Enregistrer
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  const editingCV = editingCvId ? cvs.find(c => c.id === editingCvId) : null
 
   return (
     <div className="space-y-4">
+      {editingCV && (
+        <CVEditModal
+          cv={editingCV}
+          onSave={(text) => { updateCV(editingCvId, { text }); setEditingCvId(null) }}
+          onClose={() => setEditingCvId(null)}
+          t={t}
+        />
+      )}
       {/* Upload zone */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
@@ -237,11 +199,11 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob, manageOnl
                 </div>
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
-                    onClick={() => handleOpenEdit(cv)}
+                    onClick={() => setEditingCvId(cv.id)}
                     className="text-xs font-medium text-blue-600 hover:text-white hover:bg-blue-500 border border-blue-200 hover:border-blue-500 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 whitespace-nowrap"
-                    title="Éditer le contenu"
+                    title={t('cvManagerUI.editContent')}
                   >
-                    ✎ Éditer
+                    ✎ {t('common.edit')}
                   </button>
                   <button
                     onClick={() => handleExtractProfile(cv)}

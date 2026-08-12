@@ -1007,7 +1007,7 @@ export default function App() {
       {/* ── Main content ───────────────────────────────────────────────────────── */}
       <main className="max-w-screen-2xl mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-24 md:pb-6">
         {activeTab === 'settings' ? (
-          <Settings jobs={jobs} syncUserId={syncUserId} onMergeDuplicates={mergeDuplicates} initialTab={settingsInitialTab} />
+          <Settings jobs={jobs} syncUserId={syncUserId} onMergeDuplicates={mergeDuplicates} onUpdateJob={updateJob} initialTab={settingsInitialTab} />
         ) : activeTab === 'analytics' ? (
           <Analytics jobs={jobs} t={t} language={language} />
         ) : activeTab === 'search' && searchEnabled ? (

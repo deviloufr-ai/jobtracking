@@ -1,13 +1,15 @@
 # JobTrackr — Claude Code Context
 
 ## Project Overview
+
 Job application tracker with AI features. Built as a technical test for Publidata (recruiter: Rémi Wetteren).
 
-**Production**: https://jobtracking-three.vercel.app  
-**GitHub**: https://github.com/deviloufr-ai/jobtracking (private, deviloufr@gmail.com)  
-**Notion**: https://www.notion.so/373cc77e6ec181219e83f3eb51390690
+- **Production**: https://jobtracking-three.vercel.app
+- **GitHub**: https://github.com/deviloufr-ai/jobtracking (private, deviloufr@gmail.com)
+- **Notion**: https://www.notion.so/373cc77e6ec181219e83f3eb51390690
 
 ## Stack
+
 - **Frontend**: React + Tailwind (Vite)
 - **Backend**: Vercel Serverless Functions (`/api/`)
 - **AI**: Claude Haiku via proxy `/api/claude`
@@ -15,6 +17,7 @@ Job application tracker with AI features. Built as a technical test for Publidat
 - **Deploy**: Vercel (auto-deploy on push to main)
 
 ## Key Environment Variables (Vercel)
+
 - `ANTHROPIC_API_KEY` — Claude API
 - `VITE_GOOGLE_CLIENT_ID` — Gmail OAuth client ID
 - `GOOGLE_CLIENT_SECRET` — Gmail OAuth client secret (for refresh token flow)
@@ -22,6 +25,7 @@ Job application tracker with AI features. Built as a technical test for Publidat
 - `SHARED_KEY_TRIAL_LIMIT` (default 15) + `SHARED_KEY_WINDOW_DAYS` (default 30) — per-IP free-trial cap on the shared `ANTHROPIC_API_KEY`. Once spent, AI endpoints return `402 {code:'TRIAL_EXHAUSTED'}` and the app prompts the user to add their own key. Tracked in Supabase `shared_key_usage` (migration `003`).
 
 ## Project Structure
+
 ```
 src/
   App.jsx                    # Main app, tabs, global state
@@ -55,42 +59,50 @@ api/
 ```
 
 ## Available Job Statuses
+
 `todo` | `sent` | `reviewing` | `interview` | `waiting` | `offer` | `rejected` | `rejected_ats` | `cancelled` | `archived`
 
 ## Key Business Rules
-- `sent/reviewing/waiting` with no response after 60 days → auto-archived
-- `rejected/rejected_ats/cancelled` after 90 days → auto-archived  
+
+- `sent` / `reviewing` / `waiting` with no response after 60 days → auto-archived
+- `rejected` / `rejected_ats` / `cancelled` after 90 days → auto-archived
 - Notes with ` | ` → split into separate history entries on load (`splitPipeNotes`)
 - Same-date history entries → merged on load (`mergeSameDateEntries`)
 - ATS rejection auto-detected (ashbyhq, greenhouse, lever, workable, teamtailor...)
 
 ## Build & Deploy
+
 ```bash
 npm run dev      # Local dev (Vite)
 npm run build    # Build check before push
 git add -A && git commit -m "message" && git push origin main --force
 ```
-Note: `&&` doesn't work in PowerShell, use `;` instead or separate commands.
+
+Note: `&&` doesn't work in PowerShell — use `;` instead, or run the commands separately.
 
 ## Known Issues / In Progress
-- Gmail import: email dates sometimes grouped on same date — fix in claude.js prompt
+
+- Gmail import: email dates sometimes grouped on same date — fix in `claude.js` prompt
 - Gmail token refresh: ✅ **AUTOMATED** — uses refresh token flow for silent renewal, no user interaction needed
   - Requires `GOOGLE_CLIENT_SECRET` in Vercel environment
   - Old accounts without refresh tokens fall back to interactive re-auth
 - localStorage sync: local Cursor files often out of sync with Claude's container
 
 ## Firefox Extension
+
 - Location: `/jobtrackr-extension/` folder at project root
 - Install: `about:debugging` → Load Temporary Add-on → `manifest.json`
 - Reads full page text via content script → Claude Vision analysis
 - Passes job data to app via URL params
 
 ## Notion Workspace
+
 - Main page: `373cc77e6ec181219e83f3eb51390690`
 - Backlog DB: `3ece7e0cda494ab3b1891c4a842e52b9`
 - User Stories DB: `ae2a2d9dd4cd49c19088a320c45c83ac`
 - Roadmap: `373cc77e6ec18161aaa7e79e512962db`
 
 ## Owner
-Alexandre Leblanc — PM Senior, 18 years experience, trilingual FR/EN/JP  
-Currently in active job search, test technique for Publidata in progress.
+
+Alexandre Leblanc — PM Senior, 18 years experience, trilingual FR/EN/JP.
+Currently in active job search; test technique for Publidata in progress.

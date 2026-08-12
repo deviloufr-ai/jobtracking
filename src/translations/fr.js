@@ -770,6 +770,28 @@ export const fr = {
     selectLanguage: 'Générer en :',
     selectCV: 'CV source',
     cvSourceHint: 'Choisissez le CV de base à adapter pour cette offre',
+    missingPoints: 'Points manquants',
+  },
+
+  // CVSuggestions — "Points manquants" panel
+  cvSuggestions: {
+    title: '➕ Points manquants',
+    subtitle: 'Points à ajouter pour mieux coller à l\'offre — chacun rattaché à une expérience',
+    selectAll: 'Tout sélectionner',
+    deselectAll: 'Tout désélectionner',
+    grounded: 'Basé sur votre CV',
+    groundedHint: 'Ce point s\'appuie sur une expérience déjà présente dans votre CV',
+    toVerify: 'À confirmer',
+    toVerifyHint: 'Ce point va au-delà de votre CV — vérifiez qu\'il est exact avant de l\'ajouter',
+    edit: 'Modifier la formulation',
+    verifyWarning: '{n} point(s) « À confirmer » sélectionné(s) — vérifiez-les avant l\'entretien.',
+    generateWith: 'Générer avec {n} points',
+    regenerateWith: 'Regénérer avec {n} points',
+    generateWithout: 'Générer sans ajout',
+    generateCV: 'Générer le CV',
+    generating: 'Génération...',
+    emptyTitle: 'CV déjà aligné',
+    emptyHint: 'Aucun point manquant détecté pour cette offre.',
   },
 
   // CVManager
@@ -797,6 +819,34 @@ export const fr = {
     uploadCVForJob: 'Uploadez un CV pour générer une version adaptée à {company} — {position}',
     pages: 'page|pages',
     profileCheckmark: 'profil ✓',
+    editTitle: 'Éditer le contenu du CV',
+    editContent: 'Éditer le contenu',
+  },
+
+  // Batch CV generation (Settings → Mon CV)
+  batchCV: {
+    title: 'Génération des CV en lot',
+    withoutCv: 'sans CV',
+    subtitle: 'Génère et enregistre automatiquement un CV adapté pour chaque candidature sélectionnée qui n\'en a pas encore.',
+    noBaseCv: 'Aucun CV de base — importez un CV PDF dans « Mes CVs » ci-dessous pour activer la génération.',
+    baseCV: 'CV de base',
+    editBaseHint: 'Éditer le texte du CV de base utilisé pour la génération',
+    template: 'Modèle',
+    language: 'Langue',
+    allHaveCv: 'Toutes vos candidatures actives ont déjà un CV.',
+    selectAll: 'Tout sélectionner',
+    selectNone: 'Aucune',
+    selectedCount: '{n}/{total} sélectionnées',
+    stop: 'Arrêter',
+    generateBtn: 'Générer {n} CV',
+    progress: 'Génération {done}/{total}…',
+    finished: 'Terminé',
+    generating: 'Génération…',
+    doneRow: 'Généré',
+    skippedNoJd: 'Ignoré — pas d\'offre',
+    errorRow: 'Échec',
+    noJdBadge: 'sans offre',
+    trialExhausted: 'Essai gratuit épuisé. Ajoutez votre clé API Claude dans les Réglages pour continuer la génération.',
   },
 
   // UpcomingMeetings

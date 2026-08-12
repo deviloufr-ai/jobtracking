@@ -1,69 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
-import { aiFetch } from '../services/apiKey'
-import { detectLanguage } from '../utils/detectLanguage'
+import { resolveAutoLanguage, generateTailoredCV, suggestCvPoints } from '../services/cvGeneration'
+import CVSuggestions from './CVSuggestions'
 
-// Resolve the "Auto" language choice to an explicit fr/en/jp BEFORE calling the
-// API. Letting the server's "DETECT the language" instruction decide is
-// unreliable: it sits inside a large, English-written prompt full of English
-// examples, so French/Japanese JDs frequently came back as English CVs. We detect
-// deterministically from the strongest available signal — the job description
-// first (the CV should match the target posting's language), then the source CV.
-// Japanese is detected by the presence of kana/kanji; everything else defers to
-// the shared en/fr heuristic used by the other AI features (EmailDraft, STAR…).
-// Hiragana + Katakana (U+3040–30FF) and CJK ideographs (U+3400–4DBF, U+4E00–9FFF).
-const HAS_JAPANESE = /[぀-ヿ㐀-䶿一-鿿]/
-function resolveAutoLanguage(jd, cvText, job) {
-  const primary = (jd || '').trim() || (cvText || '').trim()
-  if (HAS_JAPANESE.test(primary)) return 'jp'
-  return detectLanguage({
-    notes: primary,
-    position: job?.position || '',
-    company: job?.company || '',
-  })
-}
 // html2pdf is heavy (jsPDF + html2canvas); load it lazily at export time so it
 // stays out of the main bundle (see also CVViewer.jsx which already does this).
 
 const IS_DEV = import.meta.env.DEV
 
-// Contact details come from the user's profile (Settings → Profile), not from the
-// CV text. The model corrupts verbatim tokens like emails/LinkedIn URLs when it
-// rewrites the CV, so we pass these as authoritative values and the API pins the
-// contact line to them. ATS level (Settings → My CV) tunes keyword aggressiveness.
-function loadProfileContact() {
-  try {
-    const p = JSON.parse(localStorage.getItem('jobtrackr_profile') || 'null')
-    if (!p) return null
-    const contact = {
-      name: p.name || '',
-      email: p.email || '',
-      phone: p.phone || '',
-      linkedin: p.linkedin || '',
-      website: p.website || p.portfolio || '',
-    }
-    // Only send if at least one contact field is filled, otherwise let the CV
-    // text remain the source (better than blanking everything out).
-    return (contact.email || contact.phone || contact.linkedin || contact.website) ? contact : null
-  } catch { return null }
-}
-function loadAtsLevel() {
-  const v = localStorage.getItem('jobtrackr_cv_ats_level')
-  return ['light', 'balanced', 'max'].includes(v) ? v : 'max'
-}
-// User-authored CV generation rules (Settings → My CV). Free text, injected into
-// the generation prompt server-side as additional (non-overriding) constraints.
-function loadCustomRules() {
-  try { return (localStorage.getItem('jobtrackr_cv_custom_rules') || '').trim() } catch { return '' }
-}
-// Toggleable generation rules checklist (Settings → My CV). Missing/unknown keys
-// default to ON so behavior matches the pre-checklist default.
-function loadRules() {
-  const defaults = { keepAllRoles: true, singleLanguage: true, atsFormat: true, keywordMirroring: true, noFabrication: true }
-  try {
-    const saved = JSON.parse(localStorage.getItem('jobtrackr_cv_rules') || 'null')
-    return saved ? { ...defaults, ...saved } : defaults
-  } catch { return defaults }
-}
+// Mock "Points manquants" for local dev (no API call). Roles match the dev mock CV.
+const MOCK_SUGGESTIONS = [
+  { id: 'p1', gap: 'A/B testing', role: 'Senior Product Manager', company: 'Datachain', bullet: "Mise en place d'un framework A/B testing pour valider les hypothèses produit avant développement.", confidence: 'to_verify' },
+  { id: 'p2', gap: 'SQL', role: 'Program Manager Ads', company: 'SmartNews', bullet: 'Analyses SQL des cohortes utilisateurs pour prioriser la roadmap Ads.', confidence: 'grounded' },
+  { id: 'p3', gap: 'OKR', role: 'Chef de Projet', company: 'Hakuhodo I-Studio', bullet: 'Pilotage des objectifs produit via un cadre OKR trimestriel.', confidence: 'to_verify' },
+]
 
 // ── HTML escape helper ────────────────────────────────────────────────────────
 const escapeHtml = s => (s || '')
@@ -431,7 +380,7 @@ function renderMinimal(md, pic) {
 }
 
 // ── Template registry ─────────────────────────────────────────────────────────
-const TEMPLATES = [
+export const TEMPLATES = [
   { id: 'standard',  label: 'Standard',  icon: '✓', desc: 'ATS-optimized, une page' },
   { id: 'modern',    label: 'Moderne',   icon: '🎨', desc: 'Header dégradé indigo' },
   { id: 'classic',   label: 'Classique', icon: '📄', desc: 'Sobre, centré, intemporel' },
@@ -440,7 +389,7 @@ const TEMPLATES = [
 ]
 
 // ── Language registry ─────────────────────────────────────────────────────────
-const LANGUAGES = [
+export const LANGUAGES = [
   { id: 'auto', label: 'Auto', flag: '🌐' },
   { id: 'fr',   label: 'Français', flag: '🇫🇷' },
   { id: 'en',   label: 'English', flag: '🇬🇧' },
@@ -526,7 +475,31 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
   const [isCompressing, setIsCompressing] = useState(false)
   const picInputRef = useRef()
 
+  // ── "Points manquants" state ────────────────────────────────────────────────
+  // suggestions: the missing points (each assigned to an existing role) proposed
+  // BEFORE generation; selectedPointIds: which the candidate keeps (all pre-
+  // checked); showPointsPanel: the overlay reopened from the preview toolbar.
+  const [suggestions, setSuggestions]         = useState([])
+  const [selectedPointIds, setSelectedPointIds] = useState(() => new Set())
+  const [showPointsPanel, setShowPointsPanel] = useState(false)
+  const [suggestLoading, setSuggestLoading]   = useState(false)
+
   useEffect(() => { fetchJobDescription() }, [])
+
+  // Confirmed additions (checked points) → { role, company, bullet } for the API.
+  const buildAdditions = () => suggestions
+    .filter(s => selectedPointIds.has(s.id))
+    .map(s => ({ role: s.role, company: s.company, bullet: s.bullet }))
+
+  const togglePoint = (id) => setSelectedPointIds(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+  const toggleAllPoints = () => setSelectedPointIds(prev =>
+    prev.size === suggestions.length ? new Set() : new Set(suggestions.map(s => s.id)))
+  const editPointBullet = (id, text) => setSuggestions(prev =>
+    prev.map(s => s.id === id ? { ...s, bullet: text } : s))
 
   // ── Profile picture upload + compression ──────────────────────────────────
   const handlePicUpload = e => {
@@ -555,13 +528,69 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
   const removePic = () => { setProfilePic(null); localStorage.removeItem('cv_profile_picture') }
 
   // ── JD fetch ──────────────────────────────────────────────────────────────
-  // Once a job description is obtained we generate straight away (no manual
-  // review step). If none is available, warn the user instead of generating.
+  // Once a job description is obtained we surface the "Points manquants" (missing
+  // points to fold in) BEFORE generating. If none is available, warn instead.
   const proceedWithJd = (jd) => {
     const text = (jd || '').trim()
     setJdText(jd || '')
     if (!text) { setJdError(null); setStep('no_jd'); return }
-    generateCV(jd)
+    startSuggestFlow(jd)
+  }
+
+  // ── Points manquants: fetch → review → generate ─────────────────────────────
+  const resolveLang = (jd, srcCV) => {
+    const lang = selectedLanguage
+    return lang === 'auto' ? resolveAutoLanguage(jd, srcCV?.text, job) : lang
+  }
+
+  // Core fetch — returns the list, throws on error. IS_DEV serves a static mock.
+  const loadSuggestions = async (jd, srcCV, lang) => {
+    if (IS_DEV) return MOCK_SUGGESTIONS
+    return suggestCvPoints({
+      cvText: srcCV?.text || '',
+      jobDescription: jd,
+      company: job.company,
+      position: job.position,
+      language: lang,
+      knownGaps: job?.scoreDetails?.gaps || [], // seed from the Job Match Score gaps
+    })
+  }
+
+  // Pre-generation gate: analyse gaps → show the review panel. Never blocks — an
+  // empty list or any failure falls straight through to generation.
+  const startSuggestFlow = async (jdOverride, cvOverride) => {
+    const src = cvOverride ?? activeCV
+    const jd  = (jdOverride ?? jdText)
+    const lang = resolveLang(jd, src)
+    setStep('suggesting'); setJdError(null)
+    try {
+      const list = await loadSuggestions(jd, src, lang)
+      setSuggestions(list)
+      setSelectedPointIds(new Set(list.map(s => s.id)))
+      if (!list.length) { generateCV(jd, lang, src, []); return }
+      setStep('review_points')
+    } catch (e) {
+      // Suggest failed (incl. trial wall already signalled) — don't block.
+      setJdError(e.message)
+      generateCV(jd, lang, src, [])
+    }
+  }
+
+  // Reopen the panel from the preview toolbar (overlay). Lazily fetches if the
+  // list isn't loaded yet (e.g. the user skipped it the first time).
+  const reopenPointsPanel = async () => {
+    setShowPointsPanel(true)
+    if (suggestions.length || suggestLoading) return
+    setSuggestLoading(true); setJdError(null)
+    try {
+      const list = await loadSuggestions(jdText, activeCV, resolveLang(jdText, activeCV))
+      setSuggestions(list)
+      setSelectedPointIds(new Set(list.map(s => s.id)))
+    } catch (e) {
+      setJdError(e.message)
+    } finally {
+      setSuggestLoading(false)
+    }
   }
 
   const fetchJobDescription = async () => {
@@ -581,7 +610,9 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
   }
 
   // ── Generate ──────────────────────────────────────────────────────────────
-  const generateCV = async (jdOverride, langOverride, cvOverride) => {
+  // additionsOverride: [] forces "generate without", undefined uses the checked
+  // "Points manquants". These flow into the prompt as REQUIRED ADDITIONS.
+  const generateCV = async (jdOverride, langOverride, cvOverride, additionsOverride) => {
     const srcCV = cvOverride ?? activeCV
     const jd   = (jdOverride ?? jdText)
     let   lang = (langOverride ?? selectedLanguage)
@@ -589,16 +620,16 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
     // firm "write in FRENCH/ENGLISH/JAPANESE" instruction instead of having to
     // detect inside an English-biased prompt (the reason auto-detect failed).
     if (lang === 'auto') lang = resolveAutoLanguage(jd, srcCV?.text, job)
+    const additions = additionsOverride ?? buildAdditions()
+    setShowPointsPanel(false)
     setStep('generating')
     try {
       if (IS_DEV) {
         const mock = `# Alexandre Leblanc\nParis, France · alexandre@email.com · linkedin.com/in/devilalex\n\n## Profil\nProduct Manager Senior avec 18 ans d'expérience internationale en B2B SaaS, gaming et IoT. Expert en pilotage de roadmap produit orienté OKR, A/B testing et métriques de rétention. Trilingue FR/EN/JP.\n\n## Expérience\n\n### Senior Product Manager — Datachain\nMai 2023 – Juin 2025 | Remote (Tokyo)\n- Piloté l'implémentation d'un pont inter-chaînes Web3/DeFi — discovery, rollout et suivi d'adoption\n- Structuré les interviews clients, recherche concurrentielle et priorisation data-driven\n- Coordonné les équipes cross-fonctionnelles (Engineering, Product, Marketing)\n\n### Program Manager Ads — SmartNews\nJanvier 2021 – Mai 2023 | Remote (Tokyo)\n- Piloté les programmes produit globaux Ads (20M+ MAU)\n- Analyse data pour identifier pain points ; traduit les insights en requirements\n- Frameworks A/B testing et cohort analysis\n\n### Chef de Projet — Hakuhodo I-Studio\nJanvier 2017 – Janvier 2020 | Tokyo\n- Développement end-to-end de l'app IoT Pechat ; 0 à 120K unités vendues\n- Lancement US avec +15% revenue · Good Design Award 2019\n\n## Compétences\n- **Produit** : OKR, roadmap, A/B testing, NPS, DAU/MAU, funnel\n- **Tech** : SQL, Jira, Figma, Confluence, analytics\n- **Méthodo** : Agile/Scrum, RICE, user interviews\n\n## Formation\nArts & Métiers — Ingénieur généraliste (2012)\nJLPT N1 · Trilingue FR/EN/JP`
         setGeneratedCV(mock); setEditableCV(mock); setAtsScore(94); setStep('preview'); return
       }
-      const res  = await aiFetch('/api/generate-cv', {cvText:srcCV.text,jobDescription:jd,company:job.company,position:job.position,language:lang,atsLevel:loadAtsLevel(),contact:loadProfileContact(),customRules:loadCustomRules(),rules:loadRules()})
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      setGeneratedCV(data.cv); setEditableCV(data.cv); setAtsScore(data.atsScore ?? null); setStep('preview')
+      const { cv, atsScore } = await generateTailoredCV({ cvText: srcCV.text, jobDescription: jd, company: job.company, position: job.position, language: lang, additions })
+      setGeneratedCV(cv); setEditableCV(cv); setAtsScore(atsScore ?? null); setStep('preview')
     } catch(e) { setJdError(e.message); setStep('ready_to_generate') }
   }
 
@@ -713,7 +744,10 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
     if (cvId === selectedCvId) return
     setSelectedCvId(cvId)
     const nextCV = cvList.find(c => c.id === cvId)
-    if (nextCV) generateCV(undefined, undefined, nextCV)
+    // The old suggestions are assigned to the previous CV's roles — drop them and
+    // regenerate cleanly. The user can reopen "Points manquants" for the new CV.
+    setSuggestions([]); setSelectedPointIds(new Set())
+    if (nextCV) generateCV(undefined, undefined, nextCV, [])
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -849,6 +883,15 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${isEditing ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
               {isEditing ? t('cvGeneratorUI.preview') : t('cvGeneratorUI.edit')}
             </button>
+            {/* Reopen the "Points manquants" panel to fold different points in and regenerate */}
+            <button onClick={reopenPointsPanel}
+              title={t('cvSuggestions.subtitle')}
+              className="text-xs font-medium border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors flex items-center gap-1.5">
+              ➕ {t('cvGeneratorUI.missingPoints')}
+              {suggestions.length > 0 && (
+                <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-indigo-600 text-white text-[10px] font-bold">{suggestions.length}</span>
+              )}
+            </button>
             <button onClick={() => generateCV()} className="text-xs font-medium border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50">{t('cvGeneratorUI.regenerate')}</button>
             <button onClick={handleExportPDF}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${saved ? 'bg-indigo-600 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}`}>
@@ -859,17 +902,34 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
       </div>
 
       {/* Loading */}
-      {['fetching_jd','generating'].includes(step) && (
+      {['fetching_jd','suggesting','generating'].includes(step) && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
           <svg className="w-10 h-10 text-indigo-400 animate-spin mx-auto mb-4" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
           </svg>
           <p className="font-medium text-gray-700">
-            {step === 'fetching_jd' ? "🔍 Récupération de l'offre..." : '✨ Génération du CV adapté...'}
+            {step === 'fetching_jd' ? "🔍 Récupération de l'offre..."
+              : step === 'suggesting' ? '🧩 Analyse des points manquants...'
+              : '✨ Génération du CV adapté...'}
           </p>
+          {step === 'suggesting' && <p className="text-xs text-gray-400 mt-1">Comparaison de votre CV avec l'offre pour repérer les points à ajouter</p>}
           {step === 'generating' && <p className="text-xs text-gray-400 mt-1">Claude reformule vos expériences pour matcher l'offre</p>}
         </div>
+      )}
+
+      {/* Review "Points manquants" before generating */}
+      {step === 'review_points' && (
+        <CVSuggestions
+          suggestions={suggestions}
+          selectedIds={selectedPointIds}
+          onToggle={togglePoint}
+          onToggleAll={toggleAllPoints}
+          onEditBullet={editPointBullet}
+          onGenerate={() => generateCV()}
+          onSkip={() => generateCV(undefined, undefined, undefined, [])}
+          t={t}
+        />
       )}
 
       {/* JD input — shown only when there's no job description to generate from.
@@ -906,7 +966,7 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
                 ))}
               </select>
             </div>
-            <button onClick={() => generateCV()} disabled={!jdText.trim()}
+            <button onClick={() => startSuggestFlow(jdText)} disabled={!jdText.trim()}
               className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-40">
               ✨ Générer le CV adapté
             </button>
@@ -960,6 +1020,36 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* "Points manquants" overlay — reopened from the preview toolbar */}
+      {showPointsPanel && (
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" onClick={() => setShowPointsPanel(false)}>
+          <div className="w-full max-w-2xl max-h-[85vh] flex" onClick={e => e.stopPropagation()}>
+            {suggestLoading ? (
+              <div className="bg-white rounded-xl shadow-xl p-12 text-center w-full">
+                <svg className="w-9 h-9 text-indigo-400 animate-spin mx-auto mb-3" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                <p className="text-sm font-medium text-gray-700">🧩 Analyse des points manquants...</p>
+              </div>
+            ) : (
+              <CVSuggestions
+                suggestions={suggestions}
+                selectedIds={selectedPointIds}
+                onToggle={togglePoint}
+                onToggleAll={toggleAllPoints}
+                onEditBullet={editPointBullet}
+                onGenerate={() => generateCV()}
+                onSkip={() => generateCV(undefined, undefined, undefined, [])}
+                onClose={() => setShowPointsPanel(false)}
+                isReopen
+                t={t}
+              />
+            )}
+          </div>
         </div>
       )}
 

@@ -47,7 +47,7 @@ async function callClaude(apiKey, { maxTokens, prompt }) {
   return data.content?.[0]?.text || ''
 }
 
-function buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules, rules }) {
+function buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules, rules, additions }) {
   // Authoritative contact details from the candidate's profile. When present,
   // these OVERRIDE whatever contact info is in the original CV text (the model
   // tends to corrupt verbatim tokens like emails/LinkedIn URLs when rewriting).
@@ -127,12 +127,29 @@ Work EVERY missing term above into the CV WITHOUT inventing experience the candi
 - If a term is a genuine hard requirement the candidate lacks, use the closest truthful equivalent from their real experience instead — never fabricate.
 ` : ''
 
+  // Points the candidate explicitly selected in the "Points manquants" panel.
+  // Each is assigned to a specific role and MUST be worked into that role as a
+  // bullet. These are user-approved, so they OVERRIDE the no-fabrication rule for
+  // these specific points only — but keep them credible and in the CV's language.
+  const additionsBlock = (Array.isArray(additions) && additions.length) ? `
+═══════════════════════════════════════════════════════════════════════════════
+➕ REQUIRED ADDITIONS — points the candidate CONFIRMED to add (integrate EVERY one):
+═══════════════════════════════════════════════════════════════════════════════
+The candidate reviewed the gaps against this job and explicitly chose to add the
+points below. Work EACH one into the CV as a bullet UNDER THE SPECIFIED ROLE,
+rephrased naturally in the CV's language and ATS style (do not paste verbatim).
+These are approved by the candidate and OVERRIDE the "never invent" rule for these
+specific points only — keep them credible (nothing trivially disprovable in an
+interview). If the named role is not found, attach the point to the closest role.
+${additions.map((a, i) => `${i + 1}. Under role "${a.role}"${a.company ? ` (${a.company})` : ''}: ${a.bullet}`).join('\n')}
+` : ''
+
   return `You are an expert CV writer and ATS specialist. Adapt this CV for the "${position}" role at "${company}".
 
 ${languageInstruction}
 
 ${atsGuidance}
-${rulesBlock}${contactBlock}${customRulesBlock}
+${rulesBlock}${contactBlock}${customRulesBlock}${additionsBlock}
 ═══════════════════════════════════════════════════════════════════════════════
 PRIMARY OBJECTIVE — ATS KEYWORD-COVERAGE SCORE ≥ ${targetScore} / 100:
 ═══════════════════════════════════════════════════════════════════════════════
@@ -380,6 +397,71 @@ async function scoreCV(apiKey, { cv, jobDescription, company, position }) {
   }
 }
 
+// ── SUGGEST MODE: "Points manquants" ─────────────────────────────────────────
+// Compare the ORIGINAL CV to the posting and propose the missing points that
+// would close the gap — each rewritten as one bullet and ASSIGNED to an existing
+// role in the CV. Seeded by the match-score gaps (job.scoreDetails.gaps) when the
+// client has them, otherwise the model derives the gaps itself. The candidate
+// reviews/toggles these BEFORE generation; the chosen ones flow back into
+// buildGeneratePrompt as REQUIRED ADDITIONS.
+function buildSuggestPrompt({ cvText, jobDescription, company, position, languageInstruction, knownGaps }) {
+  const gapsBlock = (Array.isArray(knownGaps) && knownGaps.length) ? `
+A prior CV↔job match analysis already flagged these GAPS (missing skills/experience). Turn these into concrete additions FIRST, then add any others you find:
+${knownGaps.map(g => `- ${g}`).join('\n')}
+` : ''
+
+  return `You are a CV coach. Compare the candidate's ORIGINAL CV to the job posting and propose the missing points that would make the CV match the posting.
+
+${languageInstruction}
+
+CANDIDATE CV (the source of the real roles/experiences — read the "### " role titles):
+${cvText}
+
+JOB DESCRIPTION (${company} - ${position}):
+${jobDescription}
+${gapsBlock}
+YOUR TASK:
+1. Identify the must-have skills/experiences/keywords from the posting that are MISSING or under-represented in the CV.
+2. For EACH, write ONE concise, ATS-style bullet the candidate could add, and ASSIGN it to the single most relevant EXISTING role in the CV.
+3. "role" MUST be the EXACT "### " job-title heading text of an existing role in the CV (copy it verbatim). "company" = that role's company. NEVER invent a new role or company.
+4. Write "bullet" in the SAME language as the CV (see the language instruction above). Keep it credible for that role.
+5. Set "confidence" to "grounded" when the point clearly builds on experience already implied by that role, or "to_verify" when it plausibly extends beyond the CV (the candidate will confirm it).
+6. Propose at most 12 points, highest-impact first. If the CV already covers the posting well, return an empty list.
+
+Respond with ONLY a JSON object (no markdown, no preamble) with this exact structure:
+{
+  "suggestions": [
+    { "id": "p1", "gap": "<the JD requirement this closes>", "role": "<exact ### role title from the CV>", "company": "<that role's company>", "bullet": "<one bullet to add>", "confidence": "grounded|to_verify" }
+  ]
+}`
+}
+
+async function suggestPoints(apiKey, { cvText, jobDescription, company, position, languageInstruction, knownGaps }) {
+  const raw = await callClaude(apiKey, {
+    maxTokens: 1500,
+    prompt: buildSuggestPrompt({ cvText, jobDescription, company, position, languageInstruction, knownGaps }),
+  })
+  try {
+    const parsed = extractJSON(raw)
+    const list = Array.isArray(parsed.suggestions) ? parsed.suggestions : []
+    // Normalise, assign stable ids, drop malformed entries.
+    return list
+      .filter(s => s && typeof s.bullet === 'string' && s.bullet.trim() && typeof s.role === 'string' && s.role.trim())
+      .slice(0, 12)
+      .map((s, i) => ({
+        id: (typeof s.id === 'string' && s.id.trim()) ? s.id.trim() : `p${i + 1}`,
+        gap: typeof s.gap === 'string' ? s.gap.trim() : '',
+        role: s.role.trim(),
+        company: typeof s.company === 'string' ? s.company.trim() : '',
+        bullet: s.bullet.trim(),
+        confidence: s.confidence === 'grounded' ? 'grounded' : 'to_verify',
+      }))
+  } catch {
+    // Parse failure — don't block the flow; the client falls back to direct generation.
+    return []
+  }
+}
+
 // Deterministically pin the CV's contact line to the profile's authoritative
 // values. The model is told to copy them verbatim, but it still corrupts
 // email/LinkedIn tokens when rewriting. We rewrite ONLY the actual contact line
@@ -437,15 +519,32 @@ export default async function handler(req, res) {
   const userKey = req.body?.apiKey?.trim()
   const apiKey = userKey || process.env.ANTHROPIC_API_KEY
   if (!apiKey) { res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' }); return }
-  if (!userKey) {
+  // Suggest mode ("Points manquants") is a small pre-generation helper that runs
+  // before EVERY generation — don't charge it against the shared-key free trial
+  // (it would halve the number of free CVs). Still rate-limited above. The actual
+  // generation call still consumes a trial credit.
+  if (!userKey && req.body?.mode !== 'suggest') {
     const quota = await enforceSharedKeyQuota(req)
     if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
   }
 
-  const { cvText, jobDescription, company, position, language, atsLevel, contact, customRules, rules } = req.body
+  const { cvText, jobDescription, company, position, language, atsLevel, contact, customRules, rules, mode, additions, knownGaps } = req.body
   if (!cvText || !jobDescription) {
     res.status(400).json({ error: 'cvText and jobDescription required' }); return
   }
+
+  // Confirmed additions from the "Points manquants" panel (optional). Bound the
+  // list + field lengths so a tampered client can't blow up the prompt.
+  const safeAdditions = Array.isArray(additions)
+    ? additions
+        .filter(a => a && typeof a.bullet === 'string' && a.bullet.trim())
+        .slice(0, 15)
+        .map(a => ({
+          role: String(a.role || '').slice(0, 200),
+          company: String(a.company || '').slice(0, 200),
+          bullet: String(a.bullet).slice(0, 400),
+        }))
+    : []
 
   // Candidate's own generation rules (optional free text) — trim + hard-cap so a
   // pasted blob can't blow up the prompt. Empty string ⇒ block is omitted.
@@ -487,6 +586,24 @@ export default async function handler(req, res) {
   }
   const languageInstruction = LANGUAGE_INSTRUCTIONS[language] || LANGUAGE_INSTRUCTIONS.auto
 
+  // ── SUGGEST MODE ──────────────────────────────────────────────────────────
+  // Return the list of missing points (each assigned to an existing role) that
+  // would strengthen the CV↔job match. Called by the "Points manquants" panel
+  // BEFORE generation so the candidate can pick which to fold in. Reuses the same
+  // rate-limit + shared-key quota as generation.
+  if (mode === 'suggest') {
+    try {
+      const suggestions = await suggestPoints(apiKey, {
+        cvText, jobDescription, company, position, languageInstruction,
+        knownGaps: Array.isArray(knownGaps) ? knownGaps.slice(0, 20).map(g => String(g).slice(0, 200)) : [],
+      })
+      res.status(200).json({ suggestions })
+    } catch (err) {
+      res.status(500).json({ error: err.message })
+    }
+    return
+  }
+
   try {
     let bestCV = ''
     let bestScore = -1
@@ -498,7 +615,7 @@ export default async function handler(req, res) {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const cv = await callClaude(apiKey, {
         maxTokens: 8000,
-        prompt: buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules: userRules, rules: activeRules }),
+        prompt: buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules: userRules, rules: activeRules, additions: safeAdditions }),
       })
 
       const { score, verdict, gaps } = await scoreCV(apiKey, { cv, jobDescription, company, position })

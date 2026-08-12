@@ -578,6 +578,28 @@ export const en = {
     selectLanguage: 'Generate in:',
     selectCV: 'Source CV',
     cvSourceHint: 'Choose which base CV to adapt for this job',
+    missingPoints: 'Missing points',
+  },
+
+  // CVSuggestions — "Missing points" panel
+  cvSuggestions: {
+    title: '➕ Missing points',
+    subtitle: 'Points to add for a better match — each tied to one of your experiences',
+    selectAll: 'Select all',
+    deselectAll: 'Deselect all',
+    grounded: 'Based on your CV',
+    groundedHint: 'This point builds on experience already present in your CV',
+    toVerify: 'To confirm',
+    toVerifyHint: 'This point goes beyond your CV — make sure it is accurate before adding it',
+    edit: 'Edit wording',
+    verifyWarning: '{n} "To confirm" point(s) selected — verify them before the interview.',
+    generateWith: 'Generate with {n} points',
+    regenerateWith: 'Regenerate with {n} points',
+    generateWithout: 'Generate without additions',
+    generateCV: 'Generate CV',
+    generating: 'Generating...',
+    emptyTitle: 'CV already aligned',
+    emptyHint: 'No missing points detected for this job.',
   },
 
   // CVManager
@@ -605,6 +627,34 @@ export const en = {
     uploadCVForJob: 'Upload a CV to generate an adapted version for {company} — {position}',
     pages: 'page|pages',
     profileCheckmark: 'profile ✓',
+    editTitle: 'Edit CV content',
+    editContent: 'Edit content',
+  },
+
+  // Batch CV generation (Settings → My CV)
+  batchCV: {
+    title: 'Batch CV generation',
+    withoutCv: 'without a CV',
+    subtitle: 'Automatically generate and save a tailored CV for each selected application that doesn\'t have one yet.',
+    noBaseCv: 'No base CV — upload a PDF CV in "My CVs" below to enable generation.',
+    baseCV: 'Base CV',
+    editBaseHint: 'Edit the base CV text used for generation',
+    template: 'Template',
+    language: 'Language',
+    allHaveCv: 'All your active applications already have a CV.',
+    selectAll: 'Select all',
+    selectNone: 'None',
+    selectedCount: '{n}/{total} selected',
+    stop: 'Stop',
+    generateBtn: 'Generate {n} CV',
+    progress: 'Generating {done}/{total}…',
+    finished: 'Done',
+    generating: 'Generating…',
+    doneRow: 'Generated',
+    skippedNoJd: 'Skipped — no posting',
+    errorRow: 'Failed',
+    noJdBadge: 'no posting',
+    trialExhausted: 'Free trial used up. Add your Claude API key in Settings to keep generating.',
   },
 
   // UpcomingMeetings

@@ -6,6 +6,7 @@ import { useLanguage } from '../hooks/useLanguage'
 import { useCVs } from '../hooks/useCVs'
 import CVManager from './CVManager'
 import CVGenerationSettings from './CVGenerationSettings'
+import BatchCVGenerator from './BatchCVGenerator'
 import NotificationSettings from './NotificationSettings'
 import { supabase } from '../services/supabase'
 import { indexeddb } from '../services/indexeddb'
@@ -112,7 +113,7 @@ const getCATEGORIES = (t) => [
   { id: 'debug', label: t('settingsSidebar.debug'), icon: '🐛', group: t('settingsSidebar.groupAdvanced') },
 ]
 
-export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialTab }) {
+export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdateJob, initialTab }) {
   const { settings, updateSetting, resetSettings } = useSettings()
   const { deduplicateViaServer } = useJobs()
   const { t, language, setLanguage, availableLanguages } = useLanguage()
@@ -579,7 +580,9 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, initialT
               <>
                 <CVGenerationSettings t={t} defaultOpen />
 
-                <CVManager jobs={jobs} onUpdateJob={() => {}} manageOnly t={t} />
+                <BatchCVGenerator jobs={jobs} onUpdateJob={onUpdateJob} t={t} />
+
+                <CVManager jobs={jobs} onUpdateJob={onUpdateJob || (() => {})} manageOnly t={t} />
               </>
             )}
 
