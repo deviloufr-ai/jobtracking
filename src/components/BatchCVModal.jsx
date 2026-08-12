@@ -37,12 +37,17 @@ export default function BatchCVModal({ jobs = [], onUpdateJob, onClose, t = (k) 
   const generatable = jobs.filter(hasJd)
   const runBatch = () => run({ targets: jobs, baseCV, language, template })
 
-  // ── Free-drag (non-modal floating panel) — same pointer-event pattern as
-  // FloatingWindow: drag by the header, clamped to the viewport. `pos` is null
-  // until measured/centered on first mount. Removing the dimming backdrop lets
-  // the user reposition the panel and still see the list behind it.
+  // ── Free-drag + edge-snap docking (non-modal floating panel) ──
+  // Drag by the header (pointer events, clamped to the viewport). Drag the panel
+  // within SNAP_PX of the left/right edge to dock it there as a full-height side
+  // panel; drag it back toward the middle to undock. `pos` is null until
+  // measured/centered on first mount. No dimming backdrop, so the list stays
+  // visible/usable behind it.
+  const SNAP_PX = 48
   const [pos, setPos] = useState(null)
-  const drag = useRef({ active: false, sx: 0, sy: 0, ox: 0, oy: 0 })
+  const [dock, setDock] = useState(null)       // null | 'left' | 'right'
+  const [snapHint, setSnapHint] = useState(null) // preview side while dragging
+  const drag = useRef({ active: false, sx: 0, sy: 0, ox: 0, oy: 0, hint: null })
   const clamp = useCallback((x, y, w) => ({
     x: Math.min(Math.max(8, x), Math.max(8, window.innerWidth - w - 8)),
     y: Math.min(Math.max(8, y), Math.max(8, window.innerHeight - 48)),
@@ -54,18 +59,36 @@ export default function BatchCVModal({ jobs = [], onUpdateJob, onClose, t = (k) 
   useEffect(() => {
     const move = (e) => {
       if (!drag.current.active) return
-      const nx = drag.current.ox + (e.clientX - drag.current.sx)
-      const ny = drag.current.oy + (e.clientY - drag.current.sy)
-      setPos(p => p ? { ...p, ...clamp(nx, ny, p.w) } : p)
+      const hint = e.clientX <= SNAP_PX ? 'left' : e.clientX >= window.innerWidth - SNAP_PX ? 'right' : null
+      drag.current.hint = hint
+      setSnapHint(hint)
+      if (!hint) {
+        // Away from the edges → floating: undock and follow the cursor.
+        const nx = drag.current.ox + (e.clientX - drag.current.sx)
+        const ny = drag.current.oy + (e.clientY - drag.current.sy)
+        setDock(null)
+        setPos(p => p ? { ...p, ...clamp(nx, ny, p.w) } : p)
+      }
     }
-    const up = () => { drag.current.active = false; document.body.style.userSelect = '' }
+    const up = () => {
+      if (drag.current.active && (drag.current.hint === 'left' || drag.current.hint === 'right')) {
+        setDock(drag.current.hint)
+      }
+      drag.current.active = false
+      drag.current.hint = null
+      setSnapHint(null)
+      document.body.style.userSelect = ''
+    }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
     return () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
   }, [clamp])
   const startDrag = (e) => {
     if (!pos) return
-    drag.current = { active: true, sx: e.clientX, sy: e.clientY, ox: pos.x, oy: pos.y }
+    // Start from the panel's current visual top-left so undocking detaches smoothly.
+    const ox = dock === 'left' ? 0 : dock === 'right' ? Math.max(0, window.innerWidth - pos.w) : pos.x
+    const oy = dock ? 0 : pos.y
+    drag.current = { active: true, sx: e.clientX, sy: e.clientY, ox, oy, hint: dock }
     document.body.style.userSelect = 'none'
   }
 
@@ -100,24 +123,40 @@ export default function BatchCVModal({ jobs = [], onUpdateJob, onClose, t = (k) 
 
   if (!pos) return null
 
-  return (
-    <div
-      className="fixed z-50 bg-white rounded-xl shadow-2xl ring-1 ring-black/5 border border-gray-100 flex flex-col max-h-[88vh]"
-      style={{ left: pos.x, top: pos.y, width: pos.w }}
-    >
-      {/* Header — drag handle */}
-      <div
-        onPointerDown={startDrag}
-        className="px-5 py-4 border-b border-gray-100 flex items-center gap-2 cursor-move select-none touch-none"
-      >
-        <span className="text-base">✨</span>
-        <h3 className="text-sm font-semibold text-gray-800">{t('bulkBar.generateCVsTitle')}</h3>
-        <span className="text-gray-300 text-xs ml-1" title={t('bulkBar.dragHint')}>⠿</span>
-        <span className="text-xs text-gray-400 ml-auto mr-2">{t('bulkBar.selectedCount').replace('{n}', jobs.length)}</span>
-        <button onPointerDown={e => e.stopPropagation()} onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-      </div>
+  const docked = dock === 'left' || dock === 'right'
+  const panelClass = `fixed z-50 bg-white shadow-2xl ring-1 ring-black/5 border border-gray-100 flex flex-col ${
+    docked
+      ? (dock === 'left' ? 'rounded-r-2xl border-l-0' : 'rounded-l-2xl border-r-0')
+      : 'rounded-xl max-h-[88vh]'
+  }`
+  const panelStyle = docked
+    ? { top: 0, height: '100vh', width: pos.w, [dock]: 0 }
+    : { left: pos.x, top: pos.y, width: pos.w }
 
-      <div className="p-5 space-y-4 overflow-y-auto">
+  return (
+    <>
+      {/* Snap preview — ghost panel on the side it will dock to */}
+      {snapHint && (
+        <div
+          className={`fixed top-0 z-40 h-screen pointer-events-none bg-indigo-500/10 border-2 border-dashed border-indigo-400/50 ${snapHint === 'left' ? 'left-0 rounded-r-2xl border-l-0' : 'right-0 rounded-l-2xl border-r-0'}`}
+          style={{ width: pos.w }}
+        />
+      )}
+
+      <div className={panelClass} style={panelStyle}>
+        {/* Header — drag handle */}
+        <div
+          onPointerDown={startDrag}
+          className="px-5 py-4 border-b border-gray-100 flex items-center gap-2 cursor-move select-none touch-none"
+        >
+          <span className="text-base">✨</span>
+          <h3 className="text-sm font-semibold text-gray-800">{t('bulkBar.generateCVsTitle')}</h3>
+          <span className="text-gray-300 text-xs ml-1" title={t('bulkBar.dragHint')}>⠿</span>
+          <span className="text-xs text-gray-400 ml-auto mr-2">{t('bulkBar.selectedCount').replace('{n}', jobs.length)}</span>
+          <button onPointerDown={e => e.stopPropagation()} onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+        </div>
+
+        <div className={`p-5 space-y-4 overflow-y-auto ${docked ? 'flex-1 min-h-0 flex flex-col' : ''}`}>
           {sortedCvs.length === 0 ? (
             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
               {t('batchCV.noBaseCv')}
@@ -192,7 +231,7 @@ export default function BatchCVModal({ jobs = [], onUpdateJob, onClose, t = (k) 
               )}
 
               {/* Candidate list */}
-              <div className="divide-y divide-gray-50 border border-gray-100 rounded-xl overflow-hidden max-h-64 overflow-y-auto">
+              <div className={`divide-y divide-gray-50 border border-gray-100 rounded-xl overflow-y-auto ${docked ? 'flex-1 min-h-0' : 'max-h-64'}`}>
                 {jobs.map(job => (
                   <div key={job.id} className="flex items-center gap-3 px-3 py-2.5">
                     <div className="flex-1 min-w-0">
@@ -213,6 +252,7 @@ export default function BatchCVModal({ jobs = [], onUpdateJob, onClose, t = (k) 
             {finished ? t('common.close') : t('common.cancel')}
           </button>
         </div>
-    </div>
+      </div>
+    </>
   )
 }
