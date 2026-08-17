@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useDragDock } from '../hooks/useDragDock'
 import { connectGmail, disconnectGmail, refreshToken, fetchJobEmails, fetchJobEmailsForAccount, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, getConnectedAccounts } from '../services/gmail'
 import { fetchCalendarEvents } from '../services/calendar'
 import { buildJobsFromEmails } from '../hooks/useAutoRefresh'
@@ -17,6 +18,7 @@ const MONTH_OPTIONS = [
 ]
 
 export default function GmailImport({ onImport, onUpdate, onClose, existingJobs, onUserChange, t = (key) => key }) {
+  const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 576 })
   const [step, setStep] = useState(STEPS.idle)
   const [connectedAccounts, setConnectedAccounts] = useState(() => getConnectedAccounts())
   const [scanAccount, setScanAccount] = useState(null) // null = all accounts
@@ -399,9 +401,10 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={!isLoading ? onClose : undefined} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl z-10 overflow-hidden">
+      {snapPreview}
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl z-10 overflow-hidden" style={panelStyle}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div onPointerDown={startDrag} className="flex items-center justify-between px-6 py-4 border-b border-gray-100 cursor-move select-none">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-lg">📧</div>
             <div>

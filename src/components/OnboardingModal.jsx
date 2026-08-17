@@ -4,7 +4,10 @@
 // and invites the user to add their API key in Settings → API Claude.
 // It intentionally appears BEFORE any Gmail scan so a new user isn't dropped
 // straight into the import flow.
+import { useDragDock } from '../hooks/useDragDock'
+
 export default function OnboardingModal({ onAddKey, onSkip, t = (k) => k }) {
+  const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 512 })
   const features = [
     { title: t('onboarding.featureGmailTitle'), desc: t('onboarding.featureGmailDesc') },
     { title: t('onboarding.featureCVTitle'), desc: t('onboarding.featureCVDesc') },
@@ -15,9 +18,10 @@ export default function OnboardingModal({ onAddKey, onSkip, t = (k) => k }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onSkip} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg z-10 overflow-hidden max-h-[90vh] flex flex-col">
+      {snapPreview}
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg z-10 overflow-hidden max-h-[90vh] flex flex-col" style={panelStyle}>
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 bg-gradient-to-br from-indigo-500 to-violet-600 text-white">
+        <div onPointerDown={startDrag} className="px-6 pt-6 pb-4 bg-gradient-to-br from-indigo-500 to-violet-600 text-white cursor-move select-none">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl shrink-0">✨</div>
             <div>

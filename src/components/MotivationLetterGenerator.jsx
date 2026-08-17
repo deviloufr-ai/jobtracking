@@ -1,9 +1,11 @@
 import { useState, useRef, useMemo } from 'react'
 import { useCVs } from '../hooks/useCVs'
 import { aiFetch } from '../services/apiKey'
+import { useDragDock } from '../hooks/useDragDock'
 
 export default function MotivationLetterGenerator({ job, onClose, cvText, initialContent, onSaveLetter }) {
   const { cvs } = useCVs()
+  const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 896 })
   const [selectedCVId, setSelectedCVId] = useState(null)
   const [letterText, setLetterText] = useState(initialContent || '')
   const [loading, setLoading] = useState(false)
@@ -138,9 +140,10 @@ export default function MotivationLetterGenerator({ job, onClose, cvText, initia
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-2xl w-11/12 max-h-[85vh] flex flex-col max-w-4xl">
+      {snapPreview}
+      <div className="bg-white rounded-2xl shadow-2xl w-11/12 max-h-[85vh] flex flex-col max-w-4xl" style={panelStyle}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <div onPointerDown={startDrag} className="flex items-center justify-between p-4 border-b border-gray-200 cursor-move select-none">
           <div>
             <h2 className="text-lg font-bold text-gray-800">Lettre de motivation</h2>
             <p className="text-xs text-gray-500">{job.company} – {job.position}</p>

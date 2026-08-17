@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { renderCV, TEMPLATES } from './CVGenerator'
+import { useDragDock } from '../hooks/useDragDock'
 
 // View a saved (adapted) CV — and, when onUpdate is provided, edit it in place:
 // switch the design/template live and tweak the Markdown content, then persist
 // back to the candidature (job.cvSaved) with NO AI call. Used both inline inside
 // the candidature CV tab and as a full-screen modal.
 export default function CVViewer({ job, onClose, inline = false, onUpdate = null, t = (key) => key }) {
+  const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 896 })
   const saved = job?.cvSaved
   const [md, setMd] = useState(saved?.markdown || '')
   const [tpl, setTpl] = useState(saved?.template || 'standard')
@@ -194,8 +196,9 @@ export default function CVViewer({ job, onClose, inline = false, onUpdate = null
   // Modal mode — full-screen overlay
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[94vh] sm:max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between gap-2 p-3 sm:p-4 border-b border-gray-200 flex-shrink-0">
+      {snapPreview}
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[94vh] sm:max-h-[90vh] flex flex-col" style={panelStyle}>
+        <div onPointerDown={startDrag} className="flex items-center justify-between gap-2 p-3 sm:p-4 border-b border-gray-200 flex-shrink-0 cursor-move select-none">
           <div className="flex-1 min-w-0">{toolbar}</div>
           <button
             onClick={onClose}

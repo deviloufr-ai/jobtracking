@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { detectLanguage } from '../utils/detectLanguage'
 import { withUserApiKey } from '../services/apiKey'
+import { useDragDock } from '../hooks/useDragDock'
 
 const IS_DEV = import.meta.env.DEV
 
@@ -37,6 +38,7 @@ const MOCK_STARS = [
 ]
 
 export default function STARGenerator({ job, onClose }) {
+  const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 672 })
   const [stars, setStars] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -159,10 +161,11 @@ Réponds UNIQUEMENT en JSON valide (sans backticks) :
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+      {snapPreview}
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden" style={panelStyle}>
 
         {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
+        <div onPointerDown={startDrag} className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 cursor-move select-none">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-base">🎯</div>
           <div>
             <div className="flex items-center gap-2">

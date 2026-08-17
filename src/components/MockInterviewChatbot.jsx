@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { aiFetch } from '../services/apiKey'
 import { transcribeBlob, canRecordAudio } from '../services/localSpeech'
+import { useDragDock } from '../hooks/useDragDock'
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
 const speechSynthesis = window.speechSynthesis
@@ -32,6 +33,7 @@ function stripFormatting(text) {
 }
 
 export default function MockInterviewChatbot({ job, cv, onClose, onInterviewComplete }) {
+  const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 672 })
   const [messages, setMessages] = useState([])
   const [isRecording, setIsRecording] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
@@ -479,9 +481,10 @@ Format as JSON with keys: hire_decision, score, strengths, concerns, weak_exampl
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-2xl w-11/12 max-h-[90vh] flex flex-col max-w-2xl">
+      {snapPreview}
+      <div className="bg-white rounded-2xl shadow-2xl w-11/12 max-h-[90vh] flex flex-col max-w-2xl" style={panelStyle}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <div onPointerDown={startDrag} className="flex items-center justify-between p-4 border-b border-gray-200 cursor-move select-none">
           <div>
             <h2 className="text-lg font-bold text-gray-800">🎤 Mock Interview</h2>
             <p className="text-xs text-gray-500">

@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react'
 import { getStatus, mergeJobsData } from '../hooks/useJobs'
+import { useDragDock } from '../hooks/useDragDock'
 
 export default function MergeModal({ jobs, onConfirm, onCancel, t = (key) => key }) {
+  const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 672 })
   const [primaryJobId, setPrimaryJobId] = useState(jobs[0]?.id)
   const [selectedFields, setSelectedFields] = useState({})
 
@@ -29,8 +31,9 @@ export default function MergeModal({ jobs, onConfirm, onCancel, t = (key) => key
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+      {snapPreview}
+      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" style={panelStyle}>
+        <div onPointerDown={startDrag} className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-4 cursor-move select-none">
           <h2 className="text-xl font-bold text-gray-900">
             🔗 {t('merge.title') || 'Merge Candidatures'}
           </h2>

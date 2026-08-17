@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useCVs } from '../hooks/useCVs'
 import { useBatchCVGeneration } from '../hooks/useBatchCVGeneration'
+import { useDragDock } from '../hooks/useDragDock'
 import { TEMPLATES, LANGUAGES } from './CVGenerator'
 import {
   loadBaseCvId, saveBaseCvId,
@@ -37,62 +38,11 @@ export default function BatchCVModal({ jobs = [], onUpdateJob, onClose, t = (k) 
   const generatable = jobs.filter(hasJd)
   const runBatch = () => run({ targets: jobs, baseCV, language, template })
 
-  // ── Free-drag + edge-snap docking (non-modal floating panel) ──
-  // Drag by the header (pointer events, clamped to the viewport). Drag the panel
-  // within SNAP_PX of the left/right edge to dock it there as a full-height side
-  // panel; drag it back toward the middle to undock. `pos` is null until
-  // measured/centered on first mount. No dimming backdrop, so the list stays
-  // visible/usable behind it.
-  const SNAP_PX = 48
-  const [pos, setPos] = useState(null)
-  const [dock, setDock] = useState(null)       // null | 'left' | 'right'
-  const [snapHint, setSnapHint] = useState(null) // preview side while dragging
-  const drag = useRef({ active: false, sx: 0, sy: 0, ox: 0, oy: 0, hint: null })
-  const clamp = useCallback((x, y, w) => ({
-    x: Math.min(Math.max(8, x), Math.max(8, window.innerWidth - w - 8)),
-    y: Math.min(Math.max(8, y), Math.max(8, window.innerHeight - 48)),
-  }), [])
-  useEffect(() => {
-    const w = Math.min(576, window.innerWidth - 24)
-    setPos({ x: Math.max(12, (window.innerWidth - w) / 2), y: Math.max(12, Math.round(window.innerHeight * 0.08)), w })
-  }, [])
-  useEffect(() => {
-    const move = (e) => {
-      if (!drag.current.active) return
-      const hint = e.clientX <= SNAP_PX ? 'left' : e.clientX >= window.innerWidth - SNAP_PX ? 'right' : null
-      drag.current.hint = hint
-      setSnapHint(hint)
-      if (!hint) {
-        // Away from the edges → floating: undock and follow the cursor.
-        const nx = drag.current.ox + (e.clientX - drag.current.sx)
-        const ny = drag.current.oy + (e.clientY - drag.current.sy)
-        setDock(null)
-        setPos(p => p ? { ...p, ...clamp(nx, ny, p.w) } : p)
-      }
-    }
-    const up = () => {
-      if (drag.current.active && (drag.current.hint === 'left' || drag.current.hint === 'right')) {
-        setDock(drag.current.hint)
-      }
-      drag.current.active = false
-      drag.current.hint = null
-      setSnapHint(null)
-      document.body.style.userSelect = ''
-    }
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', up)
-    return () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
-  }, [clamp])
-  const startDrag = (e) => {
-    if (!pos) return
-    // Start from the panel's current visual top-left so undocking detaches smoothly.
-    const ox = dock === 'left' ? 0 : dock === 'right' ? Math.max(0, window.innerWidth - pos.w) : pos.x
-    const oy = dock ? 0 : pos.y
-    drag.current = { active: true, sx: e.clientX, sy: e.clientY, ox, oy, hint: dock }
-    document.body.style.userSelect = 'none'
-  }
+  // Free-drag + edge-snap docking (non-modal floating panel, no dimming backdrop
+  // so the list stays visible behind it). Shared behaviour via useDragDock.
+  const { docked, startDrag, panelStyle, snapPreview } = useDragDock({ width: 576 })
 
-  const selectCls = 'text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 bg-white'
+  const selectCls ='text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 bg-white'
 
   // ── Per-candidate status chip ──
   const StatusChip = ({ job }) => {
@@ -121,29 +71,14 @@ export default function BatchCVModal({ jobs = [], onUpdateJob, onClose, t = (k) 
     return null
   }
 
-  if (!pos) return null
-
-  const docked = dock === 'left' || dock === 'right'
-  const panelClass = `fixed z-50 bg-white shadow-2xl ring-1 ring-black/5 border border-gray-100 flex flex-col ${
-    docked
-      ? (dock === 'left' ? 'rounded-r-2xl border-l-0' : 'rounded-l-2xl border-r-0')
-      : 'rounded-xl max-h-[88vh]'
-  }`
-  const panelStyle = docked
-    ? { top: 0, height: '100vh', width: pos.w, [dock]: 0 }
-    : { left: pos.x, top: pos.y, width: pos.w }
-
   return (
     <>
-      {/* Snap preview — ghost panel on the side it will dock to */}
-      {snapHint && (
-        <div
-          className={`fixed top-0 z-40 h-screen pointer-events-none bg-indigo-500/10 border-2 border-dashed border-indigo-400/50 ${snapHint === 'left' ? 'left-0 rounded-r-2xl border-l-0' : 'right-0 rounded-l-2xl border-r-0'}`}
-          style={{ width: pos.w }}
-        />
-      )}
+      {snapPreview}
 
-      <div className={panelClass} style={panelStyle}>
+      <div
+        className={`fixed z-50 bg-white shadow-2xl ring-1 ring-black/5 border border-gray-100 flex flex-col rounded-2xl ${docked ? '' : 'max-h-[88vh]'}`}
+        style={panelStyle}
+      >
         {/* Header — drag handle */}
         <div
           onPointerDown={startDrag}

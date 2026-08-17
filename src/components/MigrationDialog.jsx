@@ -1,13 +1,17 @@
+import { useDragDock } from '../hooks/useDragDock'
+
 export function MigrationDialog({ status, progress, message, error }) {
+  const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 448 })
   if (status === 'idle' || status === 'success') {
     return null
   }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
+      {snapPreview}
+      <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full" style={panelStyle}>
         {/* Header */}
-        <h2 className="text-xl font-bold text-gray-900 mb-6">Syncing your data</h2>
+        <h2 onPointerDown={startDrag} className="text-xl font-bold text-gray-900 mb-6 cursor-move select-none">Syncing your data</h2>
 
         {/* Progress Bar */}
         <div className="mb-6">

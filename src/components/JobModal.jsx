@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { STATUSES, getStatusLabel } from '../hooks/useJobs'
+import { useDragDock } from '../hooks/useDragDock'
 import { getCompanyAddress, setCompanyAddress } from '../services/commuteStore'
 import ScoreJob from './ScoreJob'
 
@@ -20,6 +21,7 @@ export default function JobModal({ job, onSave, onClose, findDuplicate, t = (key
   const [duplicate, setDuplicate] = useState(null)
   const [activeTab, setActiveTab] = useState('details')
   const isEdit = !!job
+  const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 512 })
 
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose() }
@@ -60,8 +62,9 @@ export default function JobModal({ job, onSave, onClose, findDuplicate, t = (key
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 z-10">
-        <div className="flex items-center justify-between mb-6">
+      {snapPreview}
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 z-10 flex flex-col" style={panelStyle}>
+        <div onPointerDown={startDrag} className="flex items-center justify-between mb-6 cursor-move select-none">
           <h2 className="text-lg font-semibold text-gray-800">
             {isEdit ? t('jobModal.editTitle') : t('jobModal.newTitle')}
           </h2>

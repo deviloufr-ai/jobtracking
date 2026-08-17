@@ -1,11 +1,17 @@
+import { useDragDock } from '../hooks/useDragDock'
+
 export default function ConfirmDelete({ job, onConfirm, onCancel, t = (key) => key }) {
+  const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 384 })
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 z-10">
+      {snapPreview}
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 z-10" style={panelStyle}>
         <div className="text-center">
-          <div className="text-3xl mb-3">🗑️</div>
-          <h3 className="text-base font-semibold text-gray-800 mb-2">{t('confirmDelete.title')}</h3>
+          <div onPointerDown={startDrag} className="cursor-move select-none">
+            <div className="text-3xl mb-3">🗑️</div>
+            <h3 className="text-base font-semibold text-gray-800 mb-2">{t('confirmDelete.title')}</h3>
+          </div>
           <p className="text-sm text-gray-500 mb-1">
             <span className="font-medium text-gray-700">{job.position}</span> chez <span className="font-medium text-gray-700">{job.company}</span>
           </p>

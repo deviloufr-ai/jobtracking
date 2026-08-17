@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { getStatus } from '../hooks/useJobs'
 import { withUserApiKey } from '../services/apiKey'
+import { useDragDock } from '../hooks/useDragDock'
 
 const IS_DEV = import.meta.env.DEV
 
@@ -69,6 +70,7 @@ Réponds UNIQUEMENT avec un tableau JSON valide, sans texte avant ou après, san
 }
 
 export default function ImageImport({ onImport, onClose, existingJobs }) {
+  const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 576 })
   const [step, setStep] = useState('idle') // idle | analyzing | review
   const [results, setResults] = useState([])
   const [selected, setSelected] = useState(new Set())
@@ -142,10 +144,11 @@ export default function ImageImport({ onImport, onClose, existingJobs }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={step !== 'analyzing' ? onClose : undefined} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl z-10 overflow-hidden">
-        
+      {snapPreview}
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl z-10 overflow-hidden" style={panelStyle}>
+
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div onPointerDown={startDrag} className="flex items-center justify-between px-6 py-4 border-b border-gray-100 cursor-move select-none">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-lg">🖼️</div>
             <div>
