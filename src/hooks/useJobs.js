@@ -305,27 +305,46 @@ export function deduplicateJobs(jobs) {
     // ── Re-application boundary ──────────────────────────────────────────────
     // Two rows for the same company+role are DISTINCT candidatures — not one
     // timeline — when one has already CLOSED (rejected / archived / cancelled) and
-    // the other only BEGINS after that closure: a genuine re-application. Merging
-    // them folds a fresh "à faire" lead into a dead application and shows the whole
-    // thing under the new status (Bug: a new Nextep HR lead swallowed the archived
-    // June candidature). Note 'archived' is NOT in TERMINAL below — the old span
-    // heuristic never treated it as closed and a ~60-day gap slid under the 90-day
-    // threshold, so the two merged. Compare each job's own first/last activity
+    // the other is a genuine RE-APPLICATION that only begins after that closure.
+    // Merging those folds a fresh "à faire" lead into a dead application and shows
+    // the whole thing under the new status (Bug: a new Nextep HR lead swallowed the
+    // archived June candidature). Note 'archived' is NOT in TERMINAL below — the old
+    // span heuristic never treated it as closed and a ~60-day gap slid under the
+    // 90-day threshold, so the two merged. Compare each job's own first/last activity
     // (history dates, falling back to job.date) so the split is exact rather than
-    // relying on a fixed day count. Keep every row separate when a boundary exists.
+    // relying on a fixed day count.
+    //
+    // But timing alone is not enough. A re-application OPENS a new pipeline — it
+    // carries at least one ACTIVE stage (todo / sent / reviewing / interview /
+    // waiting / offer): someone applying again. A row whose ONLY events are terminal
+    // (a lone rejection) is NOT a new application — it's the tail of the SAME cycle
+    // that got split into its own row, e.g. the refusal email that landed a few days
+    // after the confirmation. Folding that back in is the merge the user expects
+    // (Bug: two "Rejetée" rows for one Revolut / Product Owner (Crypto) application,
+    // dates 5 days apart, stayed split because the late rejection looked like a "new
+    // start"). So only treat the later row as a re-application when it actually opens
+    // a new active cycle.
     if (group.length > 1) {
       const CLOSED = new Set(['rejected', 'rejected_ats', 'cancelled', 'archived'])
       const activity = group.map(j => {
         const times = (j.history || []).map(h => new Date(h.date).getTime()).filter(t => !isNaN(t))
         const fallback = new Date(j.date).getTime()
+        const histStatuses = (j.history || []).map(h => h.status)
+        // Does this row represent a real application attempt (an active stage), or
+        // only terminal events? No history → fall back to the job's own status.
+        const hasActiveStage = histStatuses.length
+          ? histStatuses.some(s => !CLOSED.has(s))
+          : !CLOSED.has(j.status)
         return {
           status: j.status,
           first: times.length ? Math.min(...times) : fallback,
           last: times.length ? Math.max(...times) : fallback,
+          hasActiveStage,
         }
       })
       const reapplication = activity.some(a =>
-        CLOSED.has(a.status) && activity.some(b => b !== a && b.first > a.last))
+        CLOSED.has(a.status) &&
+        activity.some(b => b !== a && b.first > a.last && b.hasActiveStage))
       if (reapplication) {
         group.forEach(j => result.push(j))
         continue

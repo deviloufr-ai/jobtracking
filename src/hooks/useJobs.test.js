@@ -210,6 +210,43 @@ describe('deduplicateJobs', () => {
     const result = deduplicateJobs(jobs)
     expect(result.filter(j => j.company === 'Datadog')).toHaveLength(2)
   })
+
+  it('merges a late lone-rejection row back into the same closed candidature (not a re-application)', () => {
+    const jobs = [
+      { id: '1', company: 'Revolut', position: 'Product Owner (Crypto)', status: 'rejected', date: '2026-08-12',
+        history: [
+          { date: '2026-08-10', status: 'sent', note: 'Candidature envoyée' },
+          { date: '2026-08-12', status: 'rejected', note: 'Email de remerciement envoyé' },
+        ] },
+      { id: '2', company: 'Revolut', position: 'Product Owner (Crypto)', status: 'rejected', date: '2026-08-17',
+        history: [
+          { date: '2026-08-17', status: 'rejected', note: 'Refus explicite — won\'t be moving forward' },
+        ] },
+      { id: '3', company: 'Figma', position: 'Designer', status: 'todo', date: '2026-08-01', history: [] },
+    ]
+    const result = deduplicateJobs(jobs)
+    const revolut = result.filter(j => j.company === 'Revolut')
+    expect(revolut).toHaveLength(1)
+    // Both timelines survive on the single merged candidature.
+    expect(revolut[0].history.map(h => h.status)).toEqual(expect.arrayContaining(['sent', 'rejected']))
+  })
+
+  it('keeps a genuine re-application (fresh active lead after a closed cycle) separate', () => {
+    const jobs = [
+      { id: '1', company: 'Nextep HR', position: 'Product Manager', status: 'archived', date: '2026-06-01',
+        history: [
+          { date: '2026-06-01', status: 'sent', note: 'Candidature envoyée' },
+          { date: '2026-06-10', status: 'reviewing', note: 'En cours de revue' },
+        ] },
+      { id: '2', company: 'Nextep HR', position: 'Product Manager', status: 'todo', date: '2026-08-15',
+        history: [
+          { date: '2026-08-15', status: 'todo', note: 'Nouvelle offre trouvée' },
+        ] },
+      { id: '3', company: 'Figma', position: 'Designer', status: 'todo', date: '2026-08-01', history: [] },
+    ]
+    const result = deduplicateJobs(jobs)
+    expect(result.filter(j => j.company.startsWith('Nextep'))).toHaveLength(2)
+  })
 })
 
 describe('sortJobHistory', () => {
