@@ -3,6 +3,16 @@ import { useEffect } from 'react'
 export function useExtensionImport(addJob, showToast, findDuplicate) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+
+    // ── Batch import from the extension's listing scan (?addBatch=1&batchKey=…) ──
+    // The extension stored the selected offers in its own storage under batchKey;
+    // it hands them over via the jobtrackr-batch-request/response event bridge
+    // (same mechanism as the single-job jdKey bridge below).
+    if (params.get('addBatch') === '1') {
+      handleBatchImport(params.get('batchKey'))
+      return
+    }
+
     if (params.get('add') !== '1') return
     const company = params.get('company') || ''
     const position = params.get('position') || ''
@@ -43,6 +53,65 @@ export function useExtensionImport(addJob, showToast, findDuplicate) {
     } else {
       // Use JD from URL param if no jdKey (backward compatibility)
       createJob(jdFromUrl)
+    }
+
+    function handleBatchImport(batchKey) {
+      if (!batchKey) return
+      let responseReceived = false
+
+      const handleBatchResponse = (e) => {
+        let data = {}
+        try {
+          data = typeof e.detail === 'string' ? JSON.parse(e.detail) : e.detail
+        } catch (err) {
+          return
+        }
+        if (data.batchKey !== batchKey) return
+        responseReceived = true
+        window.removeEventListener('jobtrackr-batch-response', handleBatchResponse)
+        importBatch(Array.isArray(data.jobs) ? data.jobs : [])
+      }
+
+      window.addEventListener('jobtrackr-batch-response', handleBatchResponse)
+      window.dispatchEvent(new CustomEvent('jobtrackr-batch-request', { detail: { batchKey } }))
+
+      // Timeout fallback: if the extension doesn't answer, just clear the URL.
+      setTimeout(() => {
+        if (!responseReceived) {
+          window.removeEventListener('jobtrackr-batch-response', handleBatchResponse)
+          window.history.replaceState({}, '', window.location.pathname)
+        }
+      }, 4000)
+
+      function importBatch(jobs) {
+        let added = 0
+        let skipped = 0
+        for (const j of jobs) {
+          const c = (j.company || '').trim()
+          const pos = (j.position || j.title || '').trim()
+          if (!c && !pos) continue
+          if (findDuplicate && findDuplicate(c, pos)) { skipped++; continue }
+          addJob({
+            company: c,
+            position: pos,
+            url: j.url || '',
+            status: j.status || 'todo',
+            date: j.date || new Date().toISOString(),
+            notes: '',
+            jobDescription: j.description || j.snippet || '',
+          })
+          added++
+        }
+        if (showToast) {
+          if (added) {
+            const dup = skipped ? ` · ${skipped} doublon${skipped > 1 ? 's' : ''} ignoré${skipped > 1 ? 's' : ''}` : ''
+            showToast(`✅ ${added} offre${added > 1 ? 's' : ''} ajoutée${added > 1 ? 's' : ''} depuis l'extension${dup}`)
+          } else if (skipped) {
+            showToast(`ℹ️ ${skipped} offre${skipped > 1 ? 's' : ''} déjà dans JobTrackr`)
+          }
+        }
+        window.history.replaceState({}, '', window.location.pathname)
+      }
     }
 
     function createJob(jobDescription) {
