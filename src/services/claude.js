@@ -588,9 +588,20 @@ OUTPUT JSON FORMAT
       const idx = parseInt(String(j.emailId).replace(/\D/g, ''), 10) - 1
       const e = uncached[idx]
       if (e && isAtsConfirmationEmail(e)) {
+        console.log(`🅰️  ATS-confirmation floor: "${e.subject}" → ${j.company}/${j.position} conf ${j.confidence}→45`)
         j.confidence = 45
         if (!j.status || j.status === 'todo') j.status = 'reviewing'
       }
+    }
+    // Diagnostic: surface any ATS-confirmation email Claude dropped ENTIRELY or gave
+    // no usable company/position, so we can tell "Claude omitted it" apart from
+    // "never reached Claude" (pre-parse skip).
+    for (let k = 0; k < uncached.length; k++) {
+      const e = uncached[k]
+      if (!isAtsConfirmationEmail(e)) continue
+      const obj = rawParsed.find(j => parseInt(String(j.emailId).replace(/\D/g, ''), 10) - 1 === k)
+      if (!obj) console.log(`🅰️  ATS-confirmation OMITTED by Claude: "${e.subject}" from ${e.from}`)
+      else if ((obj.confidence || 0) < 35) console.log(`🅰️  ATS-confirmation kept <35: "${e.subject}" → co="${obj.company}" pos="${obj.position}" conf ${obj.confidence}`)
     }
     const parsed = rawParsed.filter(j => (j.confidence || 0) >= 35).map(j => {
       // Normalize emailId: Claude sometimes returns "[1]", "1", or 1 — strip brackets and coerce

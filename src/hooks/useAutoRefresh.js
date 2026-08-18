@@ -253,8 +253,8 @@ export function filterEmailsBeforeParse(emails, jobs) {
   const reasons = { alreadyImported: 0, closed: 0, older: 0 }
   if (!Array.isArray(jobs) || jobs.length === 0) return { kept: emails, reasons }
 
-  // Layer 0 index: every gmailId we've already imported.
-  const importedGmailIds = new Set()
+  // Layer 0 index: every gmailId we've already imported → the job that owns it.
+  const importedGmailIds = new Map()
   // Layers 1 & 2 index: sender → { jobs:Set, status, lastEmailMs }.
   // Ambiguous senders (mapped to >1 job) are flagged and never used to skip.
   const senderMap = new Map()
@@ -263,7 +263,9 @@ export function filterEmailsBeforeParse(emails, jobs) {
     const sendersForJob = new Set()
     let lastEmailMs = 0
     for (const h of job.history || []) {
-      if (h.gmailId) importedGmailIds.add(h.gmailId)
+      if (h.gmailId && !importedGmailIds.has(h.gmailId)) {
+        importedGmailIds.set(h.gmailId, `${job.company}/${job.position} [${job.status}]`)
+      }
       // Anchor the date rule on real inbound emails only — an upcoming calendar
       // interview can be future-dated and would wrongly suppress every email.
       const isEmailEntry = !h.source || h.source === 'email'
@@ -291,17 +293,29 @@ export function filterEmailsBeforeParse(emails, jobs) {
   const kept = []
   for (const e of emails) {
     // Layer 0 — already imported.
-    if (e.id && importedGmailIds.has(e.id)) { reasons.alreadyImported++; continue }
+    if (e.id && importedGmailIds.has(e.id)) {
+      reasons.alreadyImported++
+      log(`   ⏭️  pre-parse skip [already-imported]: "${e.subject}" — owned by ${importedGmailIds.get(e.id)}`)
+      continue
+    }
 
     const entry = senderMap.get(bareAddr(e.from))
 
     if (entry && !entry.ambiguous) {
       // Layer 1 — sender's only job is archived. Allow rejection/rejection_ats to pass through so
       // refusal mail can be added as history entries to rejected (non-archived) jobs.
-      if (entry.status === 'archived') { reasons.closed++; continue }
+      if (entry.status === 'archived') {
+        reasons.closed++
+        log(`   ⏭️  pre-parse skip [closed]: "${e.subject}" from ${bareAddr(e.from)}`)
+        continue
+      }
       // Layer 2 — email is older than that job's last inbound event.
       const ms = e.date ? new Date(e.date).getTime() : NaN
-      if (!isNaN(ms) && entry.lastEmailMs && ms < entry.lastEmailMs) { reasons.older++; continue }
+      if (!isNaN(ms) && entry.lastEmailMs && ms < entry.lastEmailMs) {
+        reasons.older++
+        log(`   ⏭️  pre-parse skip [older-than-last]: "${e.subject}" from ${bareAddr(e.from)}`)
+        continue
+      }
     }
 
     kept.push(e)
