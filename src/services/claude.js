@@ -61,6 +61,33 @@ export function clearEmailCache() {
   localStorage.removeItem(EMAIL_CACHE_KEY)
 }
 
+// ─── ATS application-confirmation rescue ────────────────────────────────────────
+// A confirmation from a recognized ATS (ashbyhq/greenhouse/lever…) or one carrying
+// an unambiguous "thank you for applying / application received" phrase is a REAL
+// candidature. Haiku sometimes under-scores these generic mass acknowledgements
+// below the 35-confidence cutoff, so the matching "À faire" job never advances
+// (Bug: a Lazer Ashby confirmation left the candidature stuck in todo forever).
+// Mirrors gmail.js's fetch-time ATS detection so we can rescue at parse time.
+const ATS_SENDER_DOMAINS = [
+  'ashbyhq.com', 'greenhouse.io', 'lever.co', 'workable.com', 'teamtailor.com',
+  'teamtailor-mail.com', 'recruitee.com', 'bamboohr.com', 'smartrecruiters.com',
+  'jobvite.com', 'icims.com', 'myworkdayjobs.com', 'taleo.net', 'breezy.hr',
+]
+const CONFIRMATION_PHRASES = [
+  'thank you for applying', 'thanks for applying', 'thank you for your application',
+  'we have received your application', 'we received your application',
+  "we've received your application", 'your application has been received',
+  'application received', 'merci de votre candidature',
+  'nous avons bien reçu votre candidature', 'bien reçu votre candidature',
+  'candidature bien reçue', 'candidature enregistrée', 'candidature a bien été',
+]
+function isAtsConfirmationEmail(e) {
+  const from = (e.from || '').toLowerCase()
+  if (ATS_SENDER_DOMAINS.some(d => from.includes(d))) return true
+  const hay = `${e.subject || ''} ${e.snippet || ''} ${e.body || ''}`.toLowerCase()
+  return CONFIRMATION_PHRASES.some(p => hay.includes(p))
+}
+
 export function getEmailCacheStats() {
   const cache = loadEmailCache()
   const keys = Object.keys(cache)
@@ -446,6 +473,16 @@ DÉTECTION STATUS (PRIORISER LA RÉALITÉ)
 📨 SENT (candidature envoyée par vous) :
   Emails du dossier SENT, ou "I am applying", "Please find my CV", "Je vous contacte"
 
+⚠️ CONFIRMATION ATS / ACCUSÉ DE RÉCEPTION (RÈGLE PRIORITAIRE — override le scoring) :
+Un accusé de réception de candidature est TOUJOURS une VRAIE candidature, jamais du bruit.
+Déclencheurs : expéditeur ATS reconnu (ashbyhq, greenhouse, lever, workable, teamtailor,
+smartrecruiters, recruitee, bamboohr, jobvite, icims, workday…) OU le texte contient
+"thank you for applying", "thank you for your application", "we've received your application",
+"application received", "merci de votre candidature", "nous avons bien reçu votre candidature".
+  → status = "reviewing" (ou "sent" si l'email confirme seulement l'envoi), confidence >= 70.
+  → NE JAMAIS descendre sous 35 sous prétexte que c'est un message automatique / de masse.
+  → Extraire company + position du corps : "apply for <POSTE> at <ENTREPRISE>" / "candidature <POSTE> chez <ENTREPRISE>".
+
 ═══════════════════════════════════════════════════════════════════════════
 SCORING CONFIDENCE
 ═══════════════════════════════════════════════════════════════════════════
@@ -541,7 +578,21 @@ OUTPUT JSON FORMAT
 
     const userContent = `EMAILS À TRAITER :\n${emailsText}`
     const raw = await callClaude(cachedSystem(`${system}\n\n${parseInstructions}`, useCache), userContent)
-    const parsed = parseJSON(raw).filter(j => (j.confidence || 0) >= 35).map(j => {
+    const rawParsed = parseJSON(raw)
+    // Rescue recognized ATS confirmations Haiku under-scored: when it DID extract a
+    // company + position but low-confidenced the acknowledgement, floor the score so
+    // the signal survives the cutoff (as _updateOnly, confidence < 55) and can advance
+    // the matching job. Gated on a provable confirmation so noise never gets floored.
+    for (const j of rawParsed) {
+      if ((j.confidence || 0) >= 35 || !j.company || !j.position) continue
+      const idx = parseInt(String(j.emailId).replace(/\D/g, ''), 10) - 1
+      const e = uncached[idx]
+      if (e && isAtsConfirmationEmail(e)) {
+        j.confidence = 45
+        if (!j.status || j.status === 'todo') j.status = 'reviewing'
+      }
+    }
+    const parsed = rawParsed.filter(j => (j.confidence || 0) >= 35).map(j => {
       // Normalize emailId: Claude sometimes returns "[1]", "1", or 1 — strip brackets and coerce
       const emailIdx = parseInt(String(j.emailId).replace(/\D/g, ''), 10) - 1
       const originalEmail = uncached[emailIdx]
