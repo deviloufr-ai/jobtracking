@@ -1,5 +1,34 @@
 import { applyCors, getClientIp, rateLimit, enforceSharedKeyQuota } from './_lib/http.js'
 
+// Detect when Haiku returned a refusal / meta-commentary instead of an actual
+// letter — it does this when the "job description" it was handed is unusable
+// (a scraped JS-shell, an error page, an empty blob). A real cover letter opens
+// with a city/date and a salutation; it never opens by commenting on the task or
+// the readability of the input. We only inspect the opening so a legitimate
+// letter that happens to quote a phrase later can't trip this.
+function looksLikeRefusal(text) {
+  const t = (text || '').trim()
+  if (!t) return true
+  const head = t.slice(0, 500).toLowerCase()
+  const signals = [
+    'unable to complete',
+    "i'm unable to",
+    'i am unable to',
+    "i can't complete",
+    'cannot complete this',
+    'not accessible to me',
+    'javascript error',
+    'please paste',
+    'paste the full text',
+    'provide the job description',
+    'provide the actual job',
+    'as an ai',
+    "i can't write",
+    'i cannot write',
+  ]
+  return signals.some(s => head.includes(s))
+}
+
 export default async function handler(req, res) {
   if (applyCors(req, res, 'POST, OPTIONS')) return
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return }
@@ -99,6 +128,18 @@ Return ONLY the motivation letter text (no preamble, no metadata). Include the d
 
     const data = await response.json()
     const generatedLetter = data.content?.[0]?.text || ''
+
+    // Guard against storing a refusal as the letter (see looksLikeRefusal). This
+    // happens when the job description is unusable — surface an actionable error
+    // instead of a meta-message the user would have to notice and delete.
+    if (looksLikeRefusal(generatedLetter)) {
+      res.status(422).json({
+        error: "La description du poste fournie n'est pas exploitable. Ajoutez ou collez une vraie description du poste (via ✏️ Modifier la fiche), puis relancez la génération.",
+        code: 'JD_UNREADABLE',
+      })
+      return
+    }
+
     res.status(200).json({ letter: generatedLetter })
   } catch (err) {
     res.status(500).json({ error: err.message })

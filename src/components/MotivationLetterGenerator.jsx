@@ -43,6 +43,7 @@ export default function MotivationLetterGenerator({ job, onClose, cvText, initia
     try {
       // Try to fetch job description if only URL is available
       let jobDesc = job.jobDescription || job.description || job.notes || ''
+      let scrapeError = null
       if (!jobDesc && job.url) {
         try {
           const response = await fetch('/api/fetch-jd', {
@@ -50,15 +51,23 @@ export default function MotivationLetterGenerator({ job, onClose, cvText, initia
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url: job.url })
           })
-          const data = await response.json()
-          jobDesc = data.text || ''
+          const data = await response.json().catch(() => ({}))
+          // The scrape can 200 with real text, or fail (incl. 422 for a JS-shell
+          // page like Welcome to the Jungle / LinkedIn). Only use genuine text;
+          // otherwise keep the scraper's message so the user knows what to do.
+          if (response.ok && data.text) {
+            jobDesc = data.text
+          } else {
+            scrapeError = data.error || null
+          }
         } catch (e) {
           console.warn('Could not fetch job description from URL')
         }
       }
 
       if (!jobDesc) {
-        setError('Aucune description du poste disponible. Veuillez en ajouter une manuellement ou fournir une URL.')
+        setError(scrapeError
+          || 'Aucune description du poste disponible. Veuillez en ajouter une manuellement ou fournir une URL.')
         setLoading(false)
         return
       }
