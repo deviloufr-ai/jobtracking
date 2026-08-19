@@ -593,16 +593,6 @@ OUTPUT JSON FORMAT
         if (!j.status || j.status === 'todo') j.status = 'reviewing'
       }
     }
-    // Diagnostic: surface any ATS-confirmation email Claude dropped ENTIRELY or gave
-    // no usable company/position, so we can tell "Claude omitted it" apart from
-    // "never reached Claude" (pre-parse skip).
-    for (let k = 0; k < uncached.length; k++) {
-      const e = uncached[k]
-      if (!isAtsConfirmationEmail(e)) continue
-      const obj = rawParsed.find(j => parseInt(String(j.emailId).replace(/\D/g, ''), 10) - 1 === k)
-      if (!obj) console.log(`🅰️  ATS-confirmation OMITTED by Claude: "${e.subject}" from ${e.from}`)
-      else if ((obj.confidence || 0) < 35) console.log(`🅰️  ATS-confirmation kept <35: "${e.subject}" → co="${obj.company}" pos="${obj.position}" conf ${obj.confidence}`)
-    }
     const parsed = rawParsed.filter(j => (j.confidence || 0) >= 35).map(j => {
       // Normalize emailId: Claude sometimes returns "[1]", "1", or 1 — strip brackets and coerce
       const emailIdx = parseInt(String(j.emailId).replace(/\D/g, ''), 10) - 1
@@ -626,6 +616,49 @@ OUTPUT JSON FORMAT
     })
 
     all.push(...parsed)
+  }
+
+  // ── Deterministic ATS-confirmation recovery ──────────────────────────────────
+  // Haiku systematically OMITS generic ATS application-confirmations ("thank you
+  // for applying", "we have received your application") from its parse — even with
+  // an explicit prompt rule and full body — so the matching job never advances
+  // (Bug: Lazer/Ashby + Botify/Teamtailor confirmations stayed stuck in "À faire").
+  // These are unambiguous real candidatures. For any recognized ATS confirmation the
+  // main parse produced no signal for, re-derive employer + position with the focused
+  // recoverAtsEmployers extractor and synthesize a "reviewing" signal tagged
+  // _atsConfirmed so it bypasses the Haiku validation pass (which drops them too).
+  const signaledIds = new Set(all.map(j => j.gmailId).filter(Boolean))
+  const missedConfirmations = emails.filter(
+    e => e.id && !e.fromMe && !signaledIds.has(e.id) && isAtsConfirmationEmail(e)
+  )
+  if (missedConfirmations.length) {
+    console.log(`🅰️  Recovering ${missedConfirmations.length} ATS confirmation(s) Claude omitted`)
+    let recovered = {}
+    try {
+      recovered = await recoverAtsEmployers(missedConfirmations)
+    } catch (e) {
+      console.warn('ATS-confirmation recovery failed:', e.message)
+    }
+    for (const e of missedConfirmations) {
+      const r = recovered[e.id]
+      if (!r || !r.position || !r.company) continue
+      const signal = {
+        company: r.company,
+        companyFromAts: r.companyFromAts === true,
+        position: r.position,
+        status: 'reviewing',
+        date: e.date || new Date().toISOString().split('T')[0],
+        notes: 'Candidature reçue — accusé de réception',
+        confidence: Math.max(r.confidence || 0, 60),
+        gmailId: e.id,
+        fromEmail: e.from,
+        fromMe: false,
+        _atsConfirmed: true,
+      }
+      console.log(`🅰️  Recovered: ${signal.company}/${signal.position} → reviewing`)
+      all.push(signal)
+      cache[emailCacheKey(e)] = { result: signal, ts: Date.now() }
+    }
   }
 
   saveEmailCache(cache)
@@ -939,10 +972,18 @@ RETOURNER UN JSON VALIDE UNIQUEMENT :
       summary: result.summary || ''
     }
 
-    console.log(`✓ Validation complete: ${cleaned.length} jobs retained`)
+    // Deterministically recovered ATS confirmations must never be dropped by this
+    // Haiku pass (it already omitted them once in the main parse). Re-append any
+    // whose gmailId is missing from the validated set.
+    const keptIds = new Set(cleaned.flatMap(j => j.gmailIds || (j.gmailId ? [j.gmailId] : [])))
+    const rescued = parsedJobs.filter(j => j._atsConfirmed && j.gmailId && !keptIds.has(j.gmailId))
+    if (rescued.length) console.log(`🅰️  Preserved ${rescued.length} recovered ATS confirmation(s) through validation`)
+    const finalJobs = [...cleaned, ...rescued]
+
+    console.log(`✓ Validation complete: ${finalJobs.length} jobs retained`)
     console.log(`  Merged: ${changelog.merged.length}, Removed: ${changelog.removed.length}, Flagged: ${changelog.flagged.length}`)
 
-    return { jobs: cleaned, changelog }
+    return { jobs: finalJobs, changelog }
   } catch (e) {
     console.error('Validation parse error, returning unvalidated jobs:', e.message)
     console.error('Raw response preview:', raw.slice(0, 200))
