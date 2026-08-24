@@ -110,7 +110,7 @@ function JobTableColgroup() {
 }
 
 
-// Detect if JobTrackerAI Firefox extension is installed
+// Detect if SmartJobTracker Firefox extension is installed
 // The extension injects a custom attribute on <html> or responds to a postMessage
 function ExtensionButton({ t }) {
   const [installed, setInstalled] = useState(null) // null = checking
@@ -905,7 +905,7 @@ export default function App() {
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
                 <span className="text-white font-bold text-sm">J</span>
               </div>
-              <span className="font-bold text-gray-900 text-[15px] tracking-tight hidden sm:block">JobTrackerAI</span>
+              <span className="font-bold text-gray-900 text-[15px] tracking-tight hidden sm:block">SmartJobTracker</span>
             </div>
 
             {/* Divider — desktop only */}
@@ -1280,7 +1280,7 @@ export default function App() {
         )}
 
         <div className="flex items-center justify-between mt-6">
-          <p className="text-xs text-gray-300">JobTrackerAI v0.4 <span title={`commit ${__COMMIT_HASH__}`}>· #{__COMMIT_COUNT__}</span></p>
+          <p className="text-xs text-gray-300">SmartJobTracker v0.4 <span title={`commit ${__COMMIT_HASH__}`}>· #{__COMMIT_COUNT__}</span></p>
           {jobs.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap justify-end">
               <button onClick={mergeDuplicates}

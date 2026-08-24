@@ -80,7 +80,7 @@ export const en = {
 
   // Extension
   extension: {
-    title: 'JobTrackr Firefox Extension active',
+    title: 'SmartJobTracker Firefox Extension active',
     label: 'Extension ✓',
   },
 
@@ -776,7 +776,7 @@ export const en = {
   settingsAPI: {
     subtitle: 'Use your own Claude API key to avoid rate limits',
     privateKeyInfo: 'Your API key remains private and stored locally',
-    neverSentToServer: 'It is never sent to JobTrackerAI server',
+    neverSentToServer: 'It is never sent to SmartJobTracker server',
     claudeAPIKey: 'Claude API key',
     yourAPIKey: 'Your API key',
     yourAPIKeyHint: 'Create a key at https://console.anthropic.com/api/keys',
@@ -795,7 +795,7 @@ export const en = {
     about: 'About',
     aboutSubtitle: 'Understanding the configuration',
     whereStored: '📍 Where is my key stored?',
-    whereStoredAnswer: 'Your API key is saved locally in the browser storage (localStorage). It is never sent to JobTrackerAI servers.',
+    whereStoredAnswer: 'Your API key is saved locally in the browser storage (localStorage). It is never sent to SmartJobTracker servers.',
     howCommunication: '🔄 How does communication work?',
     howCommunicationAnswer: 'Your requests are sent directly to the Claude API with your personal key. Each call uses your API quota.',
     costs: '💰 Costs',
@@ -807,8 +807,8 @@ export const en = {
 
   // First-time user onboarding
   onboarding: {
-    welcome: 'Welcome to JobTrackerAI 👋',
-    intro: 'JobTrackerAI is powered by Claude AI. You can try the smart features right away with a small free trial — then add your own Claude API key to keep going. Your key stays in your browser and is never sent to our servers.',
+    welcome: 'Welcome to SmartJobTracker 👋',
+    intro: 'SmartJobTracker is powered by Claude AI. You can try the smart features right away with a small free trial — then add your own Claude API key to keep going. Your key stays in your browser and is never sent to our servers.',
     featuresTitle: 'What the AI does for you',
     featureGmailTitle: '📧 Automatic Gmail import',
     featureGmailDesc: 'Claude reads your inbox and turns recruiter emails into tracked applications.',

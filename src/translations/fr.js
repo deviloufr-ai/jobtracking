@@ -80,7 +80,7 @@ export const fr = {
 
   // Extension
   extension: {
-    title: 'Extension Firefox JobTrackr active',
+    title: 'Extension Firefox SmartJobTracker active',
     label: 'Extension ✓',
   },
 
@@ -158,8 +158,8 @@ export const fr = {
 
   // Onboarding nouvel utilisateur
   onboarding: {
-    welcome: 'Bienvenue sur JobTrackerAI 👋',
-    intro: "JobTrackerAI est propulsé par Claude AI. Essayez ses fonctions intelligentes dès maintenant avec un petit essai gratuit — ajoutez ensuite votre propre clé API Claude pour continuer. Votre clé reste dans votre navigateur et n'est jamais envoyée à nos serveurs.",
+    welcome: 'Bienvenue sur SmartJobTracker 👋',
+    intro: "SmartJobTracker est propulsé par Claude AI. Essayez ses fonctions intelligentes dès maintenant avec un petit essai gratuit — ajoutez ensuite votre propre clé API Claude pour continuer. Votre clé reste dans votre navigateur et n'est jamais envoyée à nos serveurs.",
     featuresTitle: "Ce que l'IA fait pour vous",
     featureGmailTitle: '📧 Import Gmail automatique',
     featureGmailDesc: 'Claude lit votre boîte mail et transforme les emails de recruteurs en candidatures suivies.',
@@ -395,7 +395,7 @@ export const fr = {
   settingsAPI: {
     subtitle: 'Utilisez votre propre clé API Claude pour éviter les limites de débit',
     privateKeyInfo: 'Votre clé API reste privée et stockée localement',
-    neverSentToServer: 'Elle n\'est jamais envoyée aux serveurs de JobTrackerAI',
+    neverSentToServer: 'Elle n\'est jamais envoyée aux serveurs de SmartJobTracker',
     claudeAPIKey: 'Clé API Claude',
     yourAPIKey: 'Votre clé API',
     yourAPIKeyHint: 'Créez une clé sur https://console.anthropic.com/api/keys',
@@ -414,7 +414,7 @@ export const fr = {
     about: 'À propos',
     aboutSubtitle: 'Comprendre la configuration',
     whereStored: '📍 Où est stockée ma clé ?',
-    whereStoredAnswer: 'Votre clé API est sauvegardée localement dans le stockage du navigateur (localStorage). Elle n\'est jamais envoyée aux serveurs de JobTrackerAI.',
+    whereStoredAnswer: 'Votre clé API est sauvegardée localement dans le stockage du navigateur (localStorage). Elle n\'est jamais envoyée aux serveurs de SmartJobTracker.',
     howCommunication: '🔄 Comment fonctionne la communication ?',
     howCommunicationAnswer: 'Vos demandes sont envoyées directement à l\'API Claude avec votre clé personnelle. Chaque appel utilise votre quota API.',
     costs: '💰 Coûts',
