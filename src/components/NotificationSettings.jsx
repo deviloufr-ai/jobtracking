@@ -51,7 +51,7 @@ export default function NotificationSettings() {
       return
     }
 
-    sendBrowserNotification('Test — JobTrackerAI', {
+    sendBrowserNotification('Test — SmartJobTracker', {
       body: 'This is a test notification',
       tag: 'test-notification',
     })

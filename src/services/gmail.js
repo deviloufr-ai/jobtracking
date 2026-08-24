@@ -47,7 +47,7 @@ function normalizeCachedSyncId() {
 
 // Resolve ALL logged-in Gmail emails, falling back to localStorage in case the
 // in-memory module state is stale on a fresh page load. A user can connect
-// several Gmail accounts that all feed one JobTrackr identity, so we must
+// several Gmail accounts that all feed one SmartJobTracker identity, so we must
 // consider every connected email — not just whichever one is "first".
 function currentGmailEmails() {
   let list = Object.values(accounts).map(a => a?.user?.email).filter(Boolean)
@@ -82,7 +82,7 @@ async function countSupabaseJobs(uuid) {
 
 // Make Supabase the authoritative source for this user's sync UUID and return
 // the canonical value. The user may have SEVERAL Gmail accounts connected; they
-// all belong to one JobTrackr identity, so every connected email must resolve to
+// all belong to one SmartJobTracker identity, so every connected email must resolve to
 // the SAME UUID regardless of which account is "first" in a given session (the
 // order-dependent bug that split data across multiple UUIDs).
 //   • No email mapped yet  → claim `localUuid` for all of them.

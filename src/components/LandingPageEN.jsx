@@ -459,7 +459,7 @@ export default function LandingPageEN({ onLogin }) {
         <div className="nav">
           <div className="wordmark">
             <span className="dot"></span>
-            JobTrackerAI
+            SmartJobTracker
           </div>
           <button onClick={onLogin} className="btn btn-primary">
             Sign in with Google
@@ -470,7 +470,7 @@ export default function LandingPageEN({ onLogin }) {
         <section className="hero">
           <div className="eyebrow">AI copilot for job search</div>
           <h1>Manage 50 applications in parallel without burning out.</h1>
-          <p className="lede">JobTrackerAI syncs your emails, detects statuses, tailors your CVs, drafts your follow-ups, and rehearses your interviews — so you stay in control of 15-50 applications at once, without sacrificing your evenings.</p>
+          <p className="lede">SmartJobTracker syncs your emails, detects statuses, tailors your CVs, drafts your follow-ups, and rehearses your interviews — so you stay in control of 15-50 applications at once, without sacrificing your evenings.</p>
           <p style={{ marginTop: '12px', fontSize: '14px', color: '#7b7bf7' }}>💡 Start free — 15 AI actions included. After that, add your own Anthropic API key (free) to keep going.</p>
           <div className="ctas">
             <button className="btn btn-primary" onClick={onLogin}>
@@ -544,7 +544,7 @@ export default function LandingPageEN({ onLogin }) {
           <div className="section-head">
             <div className="kicker">What's New</div>
             <h2>Four new modules that do the heavy lifting for you.</h2>
-            <p>Since v0.5, JobTrackerAI no longer just tracks — it writes, tailors, rehearses, and syncs.</p>
+            <p>Since v0.5, SmartJobTracker no longer just tracks — it writes, tailors, rehearses, and syncs.</p>
           </div>
           <div className="spotlight-grid">
             {[
@@ -762,7 +762,7 @@ export default function LandingPageEN({ onLogin }) {
           <div className="section-head">
             <div className="kicker">Built for Reality</div>
             <h2>The numbers behind intense job search.</h2>
-            <p>JobTrackerAI doesn't hold you back — it's designed for the real load of managing massive parallel applications.</p>
+            <p>SmartJobTracker doesn't hold you back — it's designed for the real load of managing massive parallel applications.</p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
             {[
@@ -836,8 +836,8 @@ export default function LandingPageEN({ onLogin }) {
         <footer>
           <div className="footer-grid">
             <div>
-              <h4>About JobTrackerAI</h4>
-              <p className="origin">Built by <b>Alexandre Leblanc</b> — Senior PM, 18 years experience (gaming, AdTech, Web3, mobile), trilingual FR/EN/JP. JobTrackerAI grew from personal frustration during active job search, and became the best proof that a PM alone can ship something great at the intersection of product thinking, no-code/low-code, and generative AI. Personal project, continuous development since April 2026, production since v0.5.</p>
+              <h4>About SmartJobTracker</h4>
+              <p className="origin">Built by <b>Alexandre Leblanc</b> — Senior PM, 18 years experience (gaming, AdTech, Web3, mobile), trilingual FR/EN/JP. SmartJobTracker grew from personal frustration during active job search, and became the best proof that a PM alone can ship something great at the intersection of product thinking, no-code/low-code, and generative AI. Personal project, continuous development since April 2026, production since v0.5.</p>
             </div>
             <div>
               <h4>Tech Stack</h4>

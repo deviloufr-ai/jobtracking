@@ -1,4 +1,4 @@
-// JobTrackr Content Script
+// SmartJobTracker Content Script
 // v1.3 — + Autofill formulaires de candidature via Claude AI
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -557,7 +557,7 @@ function placeFieldButton(field) {
   const btn = document.createElement('button')
   btn.className = 'jt-field-btn'
   btn.textContent = '✦'
-  btn.title = 'JobTrackr Autofill'
+  btn.title = 'SmartJobTracker Autofill'
   getOverlay().appendChild(btn)
 
   fieldState.set(field.el, { btn, answer: null })
@@ -661,7 +661,7 @@ if (document.readyState === 'loading') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SECTION 6 : Auto-detect apply button clicks → confirm + add to JobTrackr
+// SECTION 6 : Auto-detect apply button clicks → confirm + add to SmartJobTracker
 // ─────────────────────────────────────────────────────────────────────────────
 
 const APPLY_PATTERNS = /^(apply|postuler|j'envoie|envoyer ma candidature|submit.*application|send.*application|submit|envoyer|candidater|je postule|i'm in|apply now|soumettre)/i
@@ -697,7 +697,7 @@ function showApplyConfirmation(jobInfo) {
     <div id="jt-apply-modal">
       <div class="jt-apply-header">
         <span class="jt-apply-icon">✦</span>
-        <span class="jt-apply-title">Ajouter à JobTrackr ?</span>
+        <span class="jt-apply-title">Ajouter à SmartJobTracker ?</span>
         <button class="jt-apply-close" id="jt-apply-dismiss">✕</button>
       </div>
       <div class="jt-apply-body">
@@ -842,7 +842,7 @@ document.addEventListener('click', e => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION 5 : Extension detection ping/pong
-// JobTrackr web app sends 'jobtrackr-ext-ping', we respond with 'jobtrackr-ext-pong'
+// SmartJobTracker web app sends 'jobtrackr-ext-ping', we respond with 'jobtrackr-ext-pong'
 // ─────────────────────────────────────────────────────────────────────────────
 window.addEventListener('jobtrackr-ext-ping', () => {
   window.dispatchEvent(new CustomEvent('jobtrackr-ext-pong'))

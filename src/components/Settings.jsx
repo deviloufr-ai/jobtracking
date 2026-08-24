@@ -545,7 +545,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                     <TextInput multiline rows={2} value={profile.skills} onChange={v => updateProfile('skills', v)} placeholder="Product strategy, OKR, Agile, Data analytics..." />
                   </Row>
                   <Row label={t('settingsProfile.aiExperience')} wide>
-                    <TextInput multiline rows={2} value={profile.ai_experience} onChange={v => updateProfile('ai_experience', v)} placeholder="Claude API, ComfyUI, JobTrackerAI..." />
+                    <TextInput multiline rows={2} value={profile.ai_experience} onChange={v => updateProfile('ai_experience', v)} placeholder="Claude API, ComfyUI, SmartJobTracker..." />
                   </Row>
                   <Row label={t('settingsProfile.motivation')} wide>
                     <TextInput multiline rows={2} value={profile.motivation} onChange={v => updateProfile('motivation', v)} placeholder="Passionate about products that solve real problems..." />

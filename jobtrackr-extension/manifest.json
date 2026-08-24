@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
-  "name": "JobTrackr",
+  "name": "SmartJobTracker",
   "version": "1.5.0",
-  "description": "Ajoute une offre d'emploi à JobTrackr en 1 clic + Autofill IA des formulaires de candidature",
+  "description": "Ajoute une offre d'emploi à SmartJobTracker en 1 clic + Autofill IA des formulaires de candidature",
   "icons": {
     "48": "icons/icon48.png",
     "96": "icons/icon96.png"
@@ -23,7 +23,7 @@
       "48": "icons/icon48.png",
       "96": "icons/icon96.png"
     },
-    "default_title": "JobTrackr"
+    "default_title": "SmartJobTracker"
   },
   "content_scripts": [{
     "matches": ["<all_urls>"],

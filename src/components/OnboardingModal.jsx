@@ -1,6 +1,6 @@
 // First-time user onboarding modal.
 // Shown once after a brand-new user logs in (no Claude API key configured yet).
-// Explains that JobTrackerAI is powered by Claude, enumerates the AI features,
+// Explains that SmartJobTracker is powered by Claude, enumerates the AI features,
 // and invites the user to add their API key in Settings → API Claude.
 // It intentionally appears BEFORE any Gmail scan so a new user isn't dropped
 // straight into the import flow.

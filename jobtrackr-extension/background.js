@@ -1,4 +1,4 @@
-// JobTrackr Background Script
+// SmartJobTracker Background Script
 // v1.3.2 — Fix icon disappearing + async listener
 
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages'
@@ -6,7 +6,7 @@ const CLAUDE_MODEL = 'claude-haiku-4-5-20251001'
 
 // Re-set icon on startup — Firefox MV2 persistent background can lose it
 browser.browserAction.setIcon({ path: { 48: 'icons/icon48.png' } })
-browser.browserAction.setTitle({ title: 'JobTrackr' })
+browser.browserAction.setTitle({ title: 'SmartJobTracker' })
 
 const DEFAULT_PROFILE = {
   name: 'Alexandre Leblanc',
@@ -23,8 +23,8 @@ const DEFAULT_PROFILE = {
   ],
   languages: 'Trilingue : Français (natif), Anglais (courant), Japonais (JLPT N1)',
   education: 'Ingénieur Arts & Métiers ParisTech',
-  ai_experience: 'Utilisateur avancé de l\'IA : ComfyUI/Wan pour la génération vidéo, Claude API pour construire JobTrackr (app React+Vercel+Claude en production). Prompt engineering avancé, intégration d\'agents IA dans les workflows produit.',
-  recent_project: 'JobTrackr — app de suivi de candidatures full-stack (React, Tailwind, Vercel serverless, Claude Haiku, extension Firefox). Déployée en production.',
+  ai_experience: 'Utilisateur avancé de l\'IA : ComfyUI/Wan pour la génération vidéo, Claude API pour construire SmartJobTracker (app React+Vercel+Claude en production). Prompt engineering avancé, intégration d\'agents IA dans les workflows produit.',
+  recent_project: 'SmartJobTracker — app de suivi de candidatures full-stack (React, Tailwind, Vercel serverless, Claude Haiku, extension Firefox). Déployée en production.',
   motivation_default: 'Passionné par les produits qui résolvent des vrais problèmes utilisateurs avec une exécution rigoureuse. Fort intérêt pour l\'IA appliquée au produit et l\'international.'
 }
 
@@ -77,7 +77,7 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true
   }
 
-  // ── Sync from JobTrackr app ──
+  // ── Sync from SmartJobTracker app ──
   if (msg.type === 'SYNC_FROM_APP') {
     syncFromApp()
       .then(result => sendResponse(result))
@@ -101,12 +101,12 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 })
 
-// ─── Sync from JobTrackr app ─────────────────────────────────────────────────
+// ─── Sync from SmartJobTracker app ─────────────────────────────────────────────────
 async function syncFromApp() {
   const { appUrl } = await browser.storage.local.get('appUrl')
   const targetUrl = appUrl || 'https://jobtracking-three.vercel.app'
 
-  // Find an open tab on the JobTrackr app
+  // Find an open tab on the SmartJobTracker app
   const tabs = await browser.tabs.query({})
   let appTab = tabs.find(t => t.url && t.url.startsWith(targetUrl))
 
@@ -148,7 +148,7 @@ async function syncFromApp() {
     return { success: true, hasProfile: !!result.profile, hasCv: !!result.cvText, cvName: result.cvName }
   }
 
-  return { success: false, error: result.error || 'Aucune donnée trouvée dans JobTrackr' }
+  return { success: false, error: result.error || 'Aucune donnée trouvée dans SmartJobTracker' }
 }
 
 // ─── Autofill handler ────────────────────────────────────────────────────────
@@ -252,7 +252,7 @@ ${motivationGuidance}
 - For "Full Name" / "Email" / "LinkedIn": copy exactly from the profile
 - For "what makes X special": show real product/company knowledge, be specific
 - For "why join": connect the role to the candidate's concrete experience
-- For "AI experience": use the candidate's AI profile (JobTrackr, Claude API, ComfyUI)
+- For "AI experience": use the candidate's AI profile (SmartJobTracker, Claude API, ComfyUI)
 
 ## Style rules — MANDATORY, NO EXCEPTIONS
 - ABSOLUTELY FORBIDDEN: em dash character (—). Replace with a comma, period, or rephrase.
@@ -284,7 +284,7 @@ ${motivationGuidance}
 - Pour "Full Name" / "Email" / "LinkedIn" : copie exactement la valeur du profil
 - Pour "what makes X special" : montre une vraie connaissance produit/entreprise, sois précis
 - Pour "why join" : relie l'offre à l'expérience concrète du candidat
-- Pour "AI experience" : utilise le profil IA du candidat (JobTrackr, Claude API, ComfyUI)
+- Pour "AI experience" : utilise le profil IA du candidat (SmartJobTracker, Claude API, ComfyUI)
 
 ## Règles de style — OBLIGATOIRES, SANS EXCEPTION
 - INTERDIT ABSOLU : le caractère — (tiret long, em dash U+2014). Remplace-le par une virgule, un point, ou reformule.

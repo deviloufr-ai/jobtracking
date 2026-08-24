@@ -107,7 +107,7 @@ export function useExtensionImport(addJob, showToast, findDuplicate) {
             const dup = skipped ? ` · ${skipped} doublon${skipped > 1 ? 's' : ''} ignoré${skipped > 1 ? 's' : ''}` : ''
             showToast(`✅ ${added} offre${added > 1 ? 's' : ''} ajoutée${added > 1 ? 's' : ''} depuis l'extension${dup}`)
           } else if (skipped) {
-            showToast(`ℹ️ ${skipped} offre${skipped > 1 ? 's' : ''} déjà dans JobTrackr`)
+            showToast(`ℹ️ ${skipped} offre${skipped > 1 ? 's' : ''} déjà dans SmartJobTracker`)
           }
         }
         window.history.replaceState({}, '', window.location.pathname)
@@ -121,7 +121,7 @@ export function useExtensionImport(addJob, showToast, findDuplicate) {
       if (findDuplicate) {
         const existing = findDuplicate(company, position)
         if (existing) {
-          if (showToast) showToast(`ℹ️ ${company} est déjà dans JobTrackr`)
+          if (showToast) showToast(`ℹ️ ${company} est déjà dans SmartJobTracker`)
           window.history.replaceState({}, '', window.location.pathname)
           return
         }

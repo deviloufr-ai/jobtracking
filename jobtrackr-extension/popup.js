@@ -285,7 +285,7 @@ function showToast(msg) {
 
 init()
 
-// ── Sync from JobTrackr ───────────────────────────────────────────────────────
+// ── Sync from SmartJobTracker ───────────────────────────────────────────────────────
 const syncBtn = document.getElementById('sync-btn')
 const syncStatus = document.getElementById('sync-status')
 const syncInfo = document.getElementById('sync-info')

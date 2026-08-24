@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-// Custom hook to detect if JobTrackr Firefox extension is installed
+// Custom hook to detect if SmartJobTracker Firefox extension is installed
 export function useExtensionDetect() {
   const [installed, setInstalled] = useState(null) // null = checking, true/false = result
 
