@@ -1,4 +1,4 @@
-# Supabase Setup Guide - JobTrackr v1.0
+# Supabase Setup Guide - SmartJobTracker v1.0
 
 This guide walks through setting up Supabase for multi-device sync with offline-first architecture.
 
@@ -74,7 +74,7 @@ supabase migration up
 5. Choose "Web application"
 6. Add authorized redirect URIs:
    - `http://localhost:5173/auth/callback` (development)
-   - `https://jobtracking-three.vercel.app/auth/callback` (production)
+   - `https://smartjobtracker.com/auth/callback` (production)
    - `https://your-project.supabase.co/auth/v1/callback` (Supabase)
 7. Copy Client ID and Secret to Supabase dashboard
 

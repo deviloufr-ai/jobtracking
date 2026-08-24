@@ -1,16 +1,16 @@
-# JobTrackerAI — LinkedIn Post
+# SmartJobTracker — LinkedIn Post
 
 ## 📌 Option 1: Personal Story (Recommended)
 
 ---
 
-**Why I Built JobTrackerAI**
+**Why I Built SmartJobTracker**
 
 I was managing 50+ job applications in parallel. Excel was dying. Gmail was a black hole. And I was losing sleep over who to follow up with.
 
 That's when I realized: job search isn't a hobby. It's a *campaign*. And campaigns need a proper *pipeline*.
 
-So I built **JobTrackerAI** — an AI copilot that does the grunt work:
+So I built **SmartJobTracker** — an AI copilot that does the grunt work:
 
 ✅ Syncs Gmail automatically (no manual data entry)
 ✅ Detects rejections, follow-ups, interview dates in real-time
@@ -28,11 +28,11 @@ It's built for the reality of active job search: 15-50 applications in parallel,
 
 This wasn't supposed to be a product. It was supposed to be a side project. But after using it myself, I realized: if I'm struggling with this, thousands of job seekers are too.
 
-**JobTrackerAI is live.** Built by someone who's been in the trenches.
+**SmartJobTracker is live.** Built by someone who's been in the trenches.
 
 Whether you're actively job hunting, transitioning careers, or just want a better way to manage applications — give it a try.
 
-Link: https://jobtracking-three.vercel.app
+Link: https://smartjobtracker.com
 GitHub: https://github.com/deviloufr-ai/jobtracking
 
 ---
@@ -41,13 +41,13 @@ GitHub: https://github.com/deviloufr-ai/jobtracking
 
 ---
 
-**Introducing JobTrackerAI: The AI Pipeline for Job Search**
+**Introducing SmartJobTracker: The AI Pipeline for Job Search**
 
 Managing 40+ job applications shouldn't feel like a second job.
 
 Yet here we are: Excel spreadsheets. Lost emails. Forgotten follow-ups. Generic CVs sent to everyone.
 
-**JobTrackerAI changes that.**
+**SmartJobTracker changes that.**
 
 Think of it as your personal assistant for job search. One place where:
 - Every application auto-flows through a smart pipeline
@@ -65,7 +65,7 @@ Built by a PM who got tired of losing sleep over job search logistics.
 💾 Multi-device sync
 🎯 Smart recommendations on what to do next
 
-**Try it free:** https://jobtracking-three.vercel.app
+**Try it free:** https://smartjobtracker.com
 
 ---
 
@@ -75,7 +75,7 @@ Built by a PM who got tired of losing sleep over job search logistics.
 
 After 50+ job applications, I realized we needed better tools.
 
-**I built JobTrackerAI.**
+**I built SmartJobTracker.**
 
 Gmail sync. AI-powered follow-ups. Tailored CVs. Interview prep. One dashboard.
 
@@ -83,7 +83,7 @@ No more Excel. No more lost emails. No more guessing who to follow up with.
 
 Built for people who take job search seriously.
 
-Try it: https://jobtracking-three.vercel.app
+Try it: https://smartjobtracker.com
 
 ---
 

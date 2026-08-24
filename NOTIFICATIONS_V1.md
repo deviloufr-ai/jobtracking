@@ -1,4 +1,4 @@
-# JobTrackr — Notification System V1 Implementation
+# SmartJobTracker — Notification System V1 Implementation
 
 **Status**: ✅ Complete — Ready for testing  
 **Date**: June 10, 2026  

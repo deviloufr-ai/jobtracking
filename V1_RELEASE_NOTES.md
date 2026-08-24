@@ -1,4 +1,4 @@
-# JobTrackr v1.0 Release Notes
+# SmartJobTracker v1.0 Release Notes
 
 ## 🎉 Major Features
 

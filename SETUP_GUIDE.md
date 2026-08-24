@@ -1,11 +1,11 @@
-# JobTrackerAI — Setup Guide
+# SmartJobTracker — Setup Guide
 
 ## Prerequisites
 
-Before using JobTrackerAI, you'll need:
+Before using SmartJobTracker, you'll need:
 
 ### 1. **Anthropic API Key** (Required for AI features)
-JobTrackerAI uses Claude AI to power features like:
+SmartJobTracker uses Claude AI to power features like:
 - Email parsing & status detection
 - CV generation & tailoring
 - Interview prep (STAR answers)
@@ -18,10 +18,10 @@ JobTrackerAI uses Claude AI to power features like:
 4. Create a new API key
 5. Copy it (you'll need it in the app)
 
-> Free tier includes $5 credits/month — enough for testing JobTrackerAI
+> Free tier includes $5 credits/month — enough for testing SmartJobTracker
 
 ### 2. **Google Account** (For Gmail sync)
-JobTrackerAI connects to your Gmail to:
+SmartJobTracker connects to your Gmail to:
 - Auto-import job offers
 - Detect rejection emails & ATS responses
 - Track interview confirmations
@@ -31,10 +31,10 @@ JobTrackerAI connects to your Gmail to:
 
 ---
 
-## Using JobTrackerAI
+## Using SmartJobTracker
 
 ### Step 1: Sign In
-1. Go to [jobtracking-three.vercel.app](https://jobtracking-three.vercel.app)
+1. Go to [smartjobtracker.com](https://smartjobtracker.com)
 2. Click **"Sign in with Google"**
 3. Grant permission to access Gmail
 
@@ -92,7 +92,7 @@ Yes:
 Not recommended. Each person should:
 1. Create their own Anthropic account
 2. Generate their own API key
-3. Use JobTrackerAI separately
+3. Use SmartJobTracker separately
 
 ---
 
@@ -104,4 +104,4 @@ Not recommended. Each person should:
 
 ---
 
-**Ready?** [Start using JobTrackerAI](https://jobtracking-three.vercel.app) →
+**Ready?** [Start using SmartJobTracker](https://smartjobtracker.com) →

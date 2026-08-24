@@ -12,14 +12,17 @@ import dns from 'node:dns/promises'
 import net from 'node:net'
 
 // Origins allowed to call the API. Configure ALLOWED_ORIGINS in Vercel as a
-// comma-separated list (e.g. "https://jobtracking-three.vercel.app").
-// Falls back to the known production domain + local dev ports.
+// comma-separated list (e.g. "https://smartjobtracker.com").
+// Falls back to the known production domains + local dev ports.
 function allowedOrigins() {
   const fromEnv = (process.env.ALLOWED_ORIGINS || '')
     .split(',')
     .map(o => o.trim())
     .filter(Boolean)
   const defaults = [
+    'https://smartjobtracker.com',
+    'https://www.smartjobtracker.com',
+    // Legacy Vercel host — kept during the domain transition, remove once fully moved.
     'https://jobtracking-three.vercel.app',
     'http://localhost:5173',
     'http://localhost:3000',

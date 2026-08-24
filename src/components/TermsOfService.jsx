@@ -192,7 +192,7 @@ export default function TermsOfService({ onClose }) {
                 Pour toute question sur ces Conditions:
               </p>
               <p className="mt-2">
-                <strong>Email:</strong> deviloufr@gmail.com<br/>
+                <strong>Email:</strong> contact@smartjobtracker.com<br/>
                 <strong>Projet:</strong> <a href="https://github.com/deviloufr-ai/jobtracking" className="text-indigo-600 hover:underline" target="_blank" rel="noreferrer">GitHub SmartJobTracker</a>
               </p>
             </section>

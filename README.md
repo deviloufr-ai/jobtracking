@@ -1,4 +1,4 @@
-## Ce que JobTrackr fait
+## Ce que SmartJobTracker fait
 
 ### 🎯 Fonctionnalités principales
 

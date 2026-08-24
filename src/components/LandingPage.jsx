@@ -853,7 +853,7 @@ export default function LandingPage({ onLogin }) {
             <div>
               <h4>Légal & Accès</h4>
               <div className="footer-links">
-                <a href="https://jobtracking-three.vercel.app" target="_blank" rel="noreferrer">→ jobtracking-three.vercel.app</a>
+                <a href="https://smartjobtracker.com" target="_blank" rel="noreferrer">→ smartjobtracker.com</a>
                 <a href="https://github.com/deviloufr-ai/jobtracking" target="_blank" rel="noreferrer">→ github.com/deviloufr-ai/jobtracking</a>
                 <a href="/privacy-policy.html" target="_blank" rel="noreferrer">→ Politique de confidentialité</a>
                 <a href="/terms-of-service.html" target="_blank" rel="noreferrer">→ Conditions d'utilisation</a>

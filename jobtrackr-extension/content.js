@@ -803,7 +803,7 @@ function showApplyConfirmation(jobInfo) {
 
     try {
       const r = await browser.runtime.sendMessage({ type: 'GET_APP_URL' })
-      const appUrl = r?.appUrl || 'https://jobtracking-three.vercel.app'
+      const appUrl = r?.appUrl || 'https://smartjobtracker.com'
 
       // Store full JD in extension storage instead of URL
       const jdKey = `jd-${Date.now()}`

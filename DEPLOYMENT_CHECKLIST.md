@@ -1,4 +1,4 @@
-# JobTrackr v1.0 Deployment Checklist
+# SmartJobTracker v1.0 Deployment Checklist
 
 ## Pre-Deployment (One-time Setup)
 
@@ -15,7 +15,7 @@
   - Type: Web application
 - [ ] Add authorized redirect URIs:
   - `https://your-project.supabase.co/auth/v1/callback`
-  - `https://jobtracking-three.vercel.app/auth/callback` (production)
+  - `https://smartjobtracker.com/auth/callback` (production)
   - `http://localhost:5173/auth/callback` (local dev)
 - [ ] Copy Client ID and Secret to Supabase Dashboard
   - Authentication > Providers > Google > Enable
@@ -53,7 +53,7 @@ git push origin main
 - Check build logs if deployment fails
 
 ### Step 3: Test in Production
-1. **Navigate to**: https://jobtracking-three.vercel.app
+1. **Navigate to**: https://smartjobtracker.com
 2. **Test Auth Flow**:
    - Click "Sign in with Google"
    - Authorize app

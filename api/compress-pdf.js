@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     const pdfDoc = await PDFDocument.load(pdfBytes)
 
     // Compress: remove unnecessary metadata and optimize
-    pdfDoc.setProducer('JobTrackr')
+    pdfDoc.setProducer('SmartJobTracker')
     pdfDoc.setCreationDate(new Date())
 
     // Get all pages and re-encode to reduce size

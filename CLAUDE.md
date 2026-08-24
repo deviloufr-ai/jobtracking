@@ -1,10 +1,10 @@
-# JobTrackr — Claude Code Context
+# SmartJobTracker — Claude Code Context
 
 ## Project Overview
 
 Job application tracker with AI features. Built as a technical test for Publidata (recruiter: Rémi Wetteren).
 
-- **Production**: https://jobtracking-three.vercel.app
+- **Production**: https://smartjobtracker.com
 - **GitHub**: https://github.com/deviloufr-ai/jobtracking (private, deviloufr@gmail.com)
 - **Notion**: https://www.notion.so/373cc77e6ec181219e83f3eb51390690
 

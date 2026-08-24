@@ -1,4 +1,4 @@
-const DEFAULT_APP_URL = 'https://jobtracking-three.vercel.app'
+const DEFAULT_APP_URL = 'https://smartjobtracker.com'
 let appUrl = DEFAULT_APP_URL
 let jobDescription = ''
 

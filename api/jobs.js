@@ -250,7 +250,7 @@ export default async function handler(req, res) {
   try {
     let url, headers = {
       'Accept': 'application/json',
-      'User-Agent': 'JobTrackr/1.0'
+      'User-Agent': 'SmartJobTracker/1.0'
     }
 
     if (provider === 'francetravail') {

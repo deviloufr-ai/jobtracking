@@ -30,10 +30,10 @@
     "js": ["content.js"],
     "run_at": "document_idle"
   }],
-  "homepage_url": "https://jobtracking-three.vercel.app",
+  "homepage_url": "https://smartjobtracker.com",
   "developer": {
     "name": "Alexandre Leblanc",
-    "url": "https://jobtracking-three.vercel.app"
+    "url": "https://smartjobtracker.com"
   },
   "browser_specific_settings": {
     "gecko": {

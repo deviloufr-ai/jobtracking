@@ -111,7 +111,7 @@ export default function PrivacyPolicy({ onClose }) {
                 <li><strong>Retirer le consentement:</strong> Déconnecter votre compte Google</li>
               </ul>
 
-              <p className="font-semibold mt-4">Pour exercer ces droits, contactez: deviloufr@gmail.com</p>
+              <p className="font-semibold mt-4">Pour exercer ces droits, contactez: contact@smartjobtracker.com</p>
             </section>
 
             <section>
@@ -147,7 +147,7 @@ export default function PrivacyPolicy({ onClose }) {
                 Pour toute question sur cette Politique de Confidentialité:
               </p>
               <p className="mt-2">
-                <strong>Email:</strong> deviloufr@gmail.com<br/>
+                <strong>Email:</strong> contact@smartjobtracker.com<br/>
                 <strong>Projet:</strong> <a href="https://github.com/deviloufr-ai/jobtracking" className="text-indigo-600 hover:underline" target="_blank" rel="noreferrer">GitHub SmartJobTracker</a>
               </p>
             </section>

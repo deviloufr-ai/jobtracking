@@ -44,7 +44,7 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg.type === 'GET_APP_URL') {
     browser.storage.local.get('appUrl').then(data => {
-      sendResponse({ appUrl: data.appUrl || 'https://jobtracking-three.vercel.app' })
+      sendResponse({ appUrl: data.appUrl || 'https://smartjobtracker.com' })
     })
     return true
   }
@@ -104,7 +104,7 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // ─── Sync from SmartJobTracker app ─────────────────────────────────────────────────
 async function syncFromApp() {
   const { appUrl } = await browser.storage.local.get('appUrl')
-  const targetUrl = appUrl || 'https://jobtracking-three.vercel.app'
+  const targetUrl = appUrl || 'https://smartjobtracker.com'
 
   // Find an open tab on the SmartJobTracker app
   const tabs = await browser.tabs.query({})
