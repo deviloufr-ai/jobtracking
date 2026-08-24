@@ -1,44 +1,59 @@
 {
   "manifest_version": 2,
-  "name": "SmartJobTracker",
-  "version": "1.5.0",
-  "description": "Ajoute une offre d'emploi à SmartJobTracker en 1 clic + Autofill IA des formulaires de candidature",
+  "name": "JobTrackr",
+  "version": "1.6.0",
+  "description": "Ajoute une offre d'emploi \u00e0 JobTrackr en 1 clic + Autofill IA des formulaires de candidature",
   "icons": {
-    "48": "icons/icon48.png",
-    "96": "icons/icon96.png"
+    "48": "icon48.png",
+    "96": "icon96.png"
   },
   "permissions": [
     "activeTab",
     "tabs",
     "storage",
+    "contextMenus",
     "<all_urls>"
   ],
   "background": {
-    "scripts": ["background.js"],
+    "scripts": [
+      "background.js"
+    ],
     "persistent": true
   },
   "browser_action": {
     "default_popup": "popup.html",
     "default_icon": {
-      "48": "icons/icon48.png",
-      "96": "icons/icon96.png"
+      "48": "icon48.png",
+      "96": "icon96.png"
     },
-    "default_title": "SmartJobTracker"
+    "default_title": "JobTrackr"
   },
-  "content_scripts": [{
-    "matches": ["<all_urls>"],
-    "js": ["content.js"],
-    "run_at": "document_idle"
-  }],
-  "homepage_url": "https://smartjobtracker.com",
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "homepage_url": "https://jobtracking-three.vercel.app",
   "developer": {
-    "name": "Alexandre Leblanc",
-    "url": "https://smartjobtracker.com"
+    "name": "JobTrackr Team",
+    "url": "https://jobtracking-three.vercel.app"
   },
   "browser_specific_settings": {
     "gecko": {
       "id": "jobtrackr@deviloufr.dev",
-      "strict_min_version": "109.0"
+      "data_collection_permissions": {
+        "required": [
+          "websiteContent",
+          "personallyIdentifyingInfo"
+        ]
+      }
     }
   }
 }

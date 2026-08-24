@@ -2,66 +2,581 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>SmartJobTracker</title>
+  <title>JobTrackr</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Inter', system-ui, sans-serif; width: 360px; background: #f8fafc; color: #1e293b; }
-    .header { background: #4f46e5; color: white; padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
-    .logo { width: 28px; height: 28px; background: rgba(255,255,255,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
-    .header-text h1 { font-size: 14px; font-weight: 700; }
-    .header-text p { font-size: 11px; opacity: 0.7; margin-top: 1px; }
-    .content { padding: 12px 14px; }
-    .source-badge { display: inline-flex; align-items: center; gap: 5px; background: #e0e7ff; color: #4338ca; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 20px; margin-bottom: 10px; }
-    .field { margin-bottom: 9px; }
-    .field label { display: block; font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
-    .field input, .field select { width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 9px; font-size: 12px; color: #1e293b; background: white; outline: none; font-family: inherit; }
-    .field input:focus, .field select:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,0.15); }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .jd-section { margin-bottom: 9px; }
-    .jd-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-    .jd-label { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
-    .jd-status { font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
-    .jd-status.found { background: #dcfce7; color: #16a34a; }
-    .jd-status.not-found { background: #fef3c7; color: #92400e; }
-    .jd-status.analyzing { background: #e0e7ff; color: #4338ca; }
-    .jd-preview { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 7px 9px; font-size: 11px; color: #475569; max-height: 70px; overflow-y: auto; line-height: 1.4; }
-    .screenshot-btn { width: 100%; padding: 7px; border: 1px dashed #c7d2fe; border-radius: 8px; background: #f5f3ff; color: #6366f1; font-size: 11px; font-weight: 500; cursor: pointer; margin-bottom: 9px; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s; }
-    .screenshot-btn:hover { background: #ede9fe; border-color: #a5b4fc; }
-    .screenshot-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn { width: 100%; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; margin-top: 3px; }
-    .btn-primary { background: #4f46e5; color: white; }
-    .btn-primary:hover { background: #4338ca; }
-    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-    .loading { text-align: center; padding: 20px 16px; color: #94a3b8; font-size: 13px; }
-    .spinner { width: 22px; height: 22px; border: 2px solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 8px; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      width: 380px;
+      background: #f8fafc;
+      color: #1e293b;
+      scroll-behavior: smooth;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+    html {
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      color: white;
+      padding: 20px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      width: 40px;
+      height: 40px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 16px;
+      backdrop-filter: blur(10px);
+    }
+    .header-text h1 { font-size: 16px; font-weight: 700; }
+    .header-text p { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+
+    /* Content */
+    .content { padding: 16px; }
+
+    /* Top bar with source and toggle */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding: 12px 12px;
+      background: white;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+    }
+    .source-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, #e0e7ff 0%, #dbeafe 100%);
+      color: #4338ca;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 20px;
+    }
+
+    /* Toggle switch styling */
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toggle-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      white-space: nowrap;
+    }
+
+    /* Form Section */
+    .form-section {
+      background: white;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .field { margin-bottom: 10px; }
+    .field:last-child { margin-bottom: 0; }
+
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 4px;
+      text-transform: capitalize;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      color: #1e293b;
+      background: #f8fafc;
+      outline: none;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: #6366f1;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+    }
+
+    .field input::placeholder {
+      color: #cbd5e1;
+    }
+
+    /* Grid for Status/Date */
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* Description Section */
+    .jd-section {
+      background: white;
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid #e2e8f0;
+      margin-bottom: 12px;
+    }
+
+    .jd-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .jd-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: capitalize;
+    }
+
+    .jd-status {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+
+    .jd-status.found {
+      background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+      color: #15803d;
+    }
+
+    .jd-status.not-found {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      color: #92400e;
+    }
+
+    #jd-preview {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 12px;
+      color: #475569;
+      min-height: 150px;
+      max-height: 300px;
+      overflow-y: auto;
+      line-height: 1.5;
+      font-family: 'Monaco', 'Courier New', monospace;
+      resize: vertical;
+      width: 100%;
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .btn {
+      padding: 10px 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      color: #16a34a;
+      border: 1px solid #86efac;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+      transform: translateY(-2px);
+    }
+
+    .btn-ai {
+      background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+      color: #7c3aed;
+      border: 1px solid #c4b5fd;
+    }
+
+    .btn-ai:hover:not(:disabled) {
+      background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+      transform: translateY(-2px);
+    }
+
+    /* Settings */
+    .settings-section {
+      background: white;
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid #e2e8f0;
+      margin-top: 12px;
+    }
+
+    .settings-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px;
+      margin: -8px -8px 0 -8px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    .settings-title:hover {
+      background: #f8fafc;
+    }
+
+    .settings-icon {
+      display: inline-block;
+      transition: transform 0.2s;
+    }
+
+    .settings-panel {
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
+      margin-top: 12px;
+    }
+
+    .settings-panel label {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .settings-panel input {
+      width: 100%;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 11px;
+      outline: none;
+      background: #f8fafc;
+      margin-bottom: 8px;
+      transition: all 0.2s;
+    }
+
+    .settings-panel input:focus {
+      border-color: #6366f1;
+      background: white;
+    }
+
+    .toggle-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .toggle-item:last-child {
+      border-bottom: none;
+    }
+
+    .toggle-item-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .toggle-item-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .toggle-item-desc {
+      font-size: 10px;
+      color: #94a3b8;
+    }
+
+    .save-btn {
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .save-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+    }
+
+    /* Sync section */
+    .sync-section {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border: 1px solid #86efac;
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+
+    .sync-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .sync-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #15803d;
+    }
+
+    .sync-info {
+      font-size: 10px;
+      color: #166534;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .sync-btn {
+      width: 100%;
+      padding: 8px;
+      background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .sync-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
+    }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 24px 16px;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid #e2e8f0;
+      border-top-color: #6366f1;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 8px;
+    }
+
     @keyframes spin { to { transform: rotate(360deg); } }
-    .toast { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; font-size: 11px; padding: 6px 12px; border-radius: 20px; white-space: nowrap; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e293b;
+      color: white;
+      font-size: 11px;
+      padding: 8px 14px;
+      border-radius: 20px;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
     .toast.show { opacity: 1; }
-    .settings-link { display: block; text-align: center; font-size: 10px; color: #94a3b8; margin-top: 8px; cursor: pointer; text-decoration: underline; }
-    .settings-panel { background: #f1f5f9; border-radius: 8px; padding: 9px; margin-top: 6px; }
-    .settings-panel label { font-size: 11px; color: #64748b; font-weight: 600; display: block; margin-bottom: 3px; }
-    .settings-panel input { width: 100%; border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px 8px; font-size: 11px; outline: none; background: white; }
-    .save-btn { margin-top: 5px; background: #6366f1; color: white; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; cursor: pointer; font-weight: 600; }
-    .divider { display: flex; align-items: center; gap: 8px; margin: 8px 0; color: #cbd5e1; font-size: 10px; }
-    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #e2e8f0; }
-    /* Autofill button */
-    .autofill-btn { width: 100%; padding: 7px; border: 1px dashed #86efac; border-radius: 8px; background: #f0fdf4; color: #16a34a; font-size: 11px; font-weight: 500; cursor: pointer; margin-bottom: 6px; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s; }
-    .autofill-btn:hover { background: #dcfce7; border-color: #4ade80; }
-    .autofill-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    /* API key panel — same style as settings-panel */
-    .apikey-panel { background: #f1f5f9; border-radius: 8px; padding: 9px; margin-top: 4px; }
-    .apikey-panel label { font-size: 11px; color: #64748b; font-weight: 600; display: block; margin-bottom: 3px; }
-    .apikey-panel input { width: 100%; border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px 8px; font-size: 11px; outline: none; background: white; font-family: monospace; }
-    .apikey-panel .hint { font-size: 10px; color: #94a3b8; margin-top: 4px; }
-    .apikey-saved { font-size: 10px; color: #16a34a; font-weight: 600; margin-left: 6px; display: none; }
+
+    /* Divider */
+    .divider {
+      text-align: center;
+      color: #cbd5e1;
+      font-size: 11px;
+      margin: 12px 0;
+      font-weight: 500;
+    }
+
+    /* Modal */
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+      position: relative;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+      width: 90%;
+      max-width: 400px;
+      max-height: 80vh;
+      overflow-y: auto;
+      z-index: 10001;
+    }
+
+    .modal-header {
+      padding: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-header h2 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1e293b;
+      margin: 0;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: #64748b;
+      cursor: pointer;
+      padding: 0;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-close:hover {
+      color: #1e293b;
+    }
+
+    .modal-body {
+      padding: 16px;
+    }
+
+    .modal-body label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    .context-textarea {
+      width: 100%;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 12px;
+      color: #1e293b;
+      background: #f8fafc;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 100px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .context-textarea:focus {
+      border-color: #6366f1;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+    }
+
+    .modal-body small {
+      display: block;
+      font-size: 10px;
+      color: #94a3b8;
+      margin-top: 6px;
+    }
+
+    .modal-footer {
+      padding: 12px 16px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <div class="logo">J</div>
     <div class="header-text">
-      <h1>SmartJobTracker</h1>
-      <p>Ajouter cette offre</p>
+      <h1>JobTrackr</h1>
+      <p>Suivi de candidatures</p>
     </div>
   </div>
 
@@ -71,88 +586,205 @@
   </div>
 
   <div id="main" class="content" style="display:none">
-    <div id="source-badge" class="source-badge">
-      <span>🌐</span>
-      <span id="source-name">Page web</span>
-    </div>
-
-    <div class="field">
-      <label>Entreprise *</label>
-      <input type="text" id="company" placeholder="ex: Pennylane" />
-    </div>
-    <div class="field">
-      <label>Poste *</label>
-      <input type="text" id="position" placeholder="ex: Senior Product Manager" />
-    </div>
-    <div class="row">
-      <div class="field">
-        <label>Statut</label>
-        <select id="status">
-          <option value="todo">📌 À postuler</option>
-          <option value="sent">📤 Envoyée</option>
-          <option value="interview">📞 Entretien</option>
-        </select>
+    <!-- Top bar -->
+    <div class="top-bar">
+      <div id="source-badge" class="source-badge">
+        <span>🌐</span>
+        <span id="source-name">Page web</span>
       </div>
-      <div class="field">
-        <label>Date</label>
-        <input type="date" id="date" />
+      <div class="toggle-group">
+        <span class="toggle-label">✦ Autofill</span>
+        <input type="checkbox" id="toggle-autofill-main" checked />
       </div>
     </div>
 
+    <!-- Form Section -->
+    <div class="form-section">
+      <div class="field">
+        <label>Entreprise *</label>
+        <input type="text" id="company" placeholder="Nom de l'entreprise" />
+      </div>
+      <div class="field">
+        <label>Poste *</label>
+        <input type="text" id="position" placeholder="Titre du poste" />
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Statut</label>
+          <select id="status">
+            <option value="todo">📌 À postuler</option>
+            <option value="sent">📤 Envoyée</option>
+            <option value="interview">📞 Entretien</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="date" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Description Section -->
     <div class="jd-section">
       <div class="jd-header">
         <span class="jd-label">Description du poste</span>
         <span id="jd-status" class="jd-status not-found">Non détectée</span>
       </div>
-      <div id="jd-preview" class="jd-preview" style="display:none"></div>
+      <textarea id="jd-preview" placeholder="Aucune description détectée" style="display:none;"></textarea>
     </div>
 
-    <div class="divider">ou</div>
-    <button class="screenshot-btn" id="screenshot-btn">
-      <span id="screenshot-icon">🔍</span>
-      <span id="screenshot-text">Analyser toute la page avec l'IA</span>
-    </button>
-
-    <button class="btn btn-primary" id="add-btn" disabled>+ Ajouter à SmartJobTracker</button>
-
-    <!-- Autofill button -->
-    <div class="divider">ou</div>
-    <button class="autofill-btn" id="autofill-btn">
-      <span>✦</span>
-      <span id="autofill-text">Autofill le formulaire de candidature</span>
-    </button>
-
-    <!-- Settings -->
-    <span class="settings-link" id="toggle-settings">⚙️ Configurer l'URL de l'app</span>
-    <div id="settings-panel" class="settings-panel" style="display:none">
-      <label>URL de votre SmartJobTracker</label>
-      <input type="text" id="app-url" placeholder="https://smartjobtracker.com" />
-      <button class="save-btn" id="save-settings">Sauvegarder</button>
-    </div>
-
-    <!-- API Key -->
-    <span class="settings-link" id="toggle-apikey" style="margin-top:4px">🔑 Clé API Claude (Autofill)</span>
-    <div id="apikey-panel" class="apikey-panel" style="display:none">
-      <label>Clé Anthropic <span id="apikey-saved" class="apikey-saved">✓ Sauvegardée</span></label>
-      <input type="password" id="apikey-input" placeholder="sk-ant-api03-…" autocomplete="off" />
-      <div class="hint">Stockée localement dans Firefox uniquement.</div>
-      <button class="save-btn" id="save-apikey" style="margin-top:5px">Sauvegarder la clé</button>
-    </div>
-
-    <!-- Sync from SmartJobTracker -->
-    <div style="margin-top:8px; padding:8px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
-        <span style="font-size:11px; font-weight:600; color:#15803d;">📥 Données SmartJobTracker</span>
-        <span id="sync-status" style="font-size:10px; color:#6b7280;"></span>
+    <!-- Score Section -->
+    <div class="jd-section" id="score-section" style="display:none;">
+      <div class="jd-header">
+        <span class="jd-label">📊 Score Match</span>
+        <button class="btn btn-ai" id="score-btn" style="padding: 4px 8px; font-size: 11px; margin: 0; display:none;">
+          Recalculer
+        </button>
       </div>
-      <div id="sync-info" style="font-size:10px; color:#374151; margin-bottom:6px; line-height:1.4; display:none;"></div>
-      <button id="sync-btn" style="width:100%; padding:5px 8px; background:#16a34a; color:white; border:none; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">
-        🔄 Sync CV + Profil depuis l'app
+      <div id="score-display" style="display:none;">
+        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 12px;">
+          <div id="score-badge" style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 50%; font-weight: bold; font-size: 24px; border: 2px solid #e2e8f0;"></div>
+          <div>
+            <p id="score-summary" style="font-size: 12px; color: #475569; margin: 0 0 6px 0;"></p>
+            <p id="score-verdict" style="font-size: 11px; color: #64748b; margin: 0;"></p>
+          </div>
+        </div>
+        <div id="score-details" style="display:none; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-top: 8px;">
+          <div id="score-strengths" style="margin-bottom: 8px; display:none;">
+            <p style="font-size: 11px; font-weight: 600; color: #15803d; margin: 0 0 6px 0;">✓ Points forts</p>
+            <ul id="strengths-list" style="list-style: none; padding: 0; margin: 0;"></ul>
+          </div>
+          <div id="score-gaps" style="display:none;">
+            <p style="font-size: 11px; font-weight: 600; color: #b45309; margin: 0 0 6px 0;">⚠ Lacunes</p>
+            <ul id="gaps-list" style="list-style: none; padding: 0; margin: 0;"></ul>
+          </div>
+        </div>
+      </div>
+      <div id="score-loading" style="display:none; text-align: center; padding: 12px;">
+        <div style="width: 20px; height: 20px; border: 2px solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 8px;"></div>
+        <p style="font-size: 11px; color: #64748b; margin: 0;">Calcul du score…</p>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+      <button class="btn btn-primary" id="add-btn" disabled>
+        <span>➕</span>
+        <span>Ajouter à JobTrackr</span>
       </button>
+      <button class="btn btn-ai" id="screenshot-btn">
+        <span id="screenshot-icon">🔍</span>
+        <span id="screenshot-text">Analyser avec l'IA</span>
+      </button>
+      <button class="btn btn-secondary" id="autofill-btn">
+        <span>✦</span>
+        <span id="autofill-text">Autofill formulaire</span>
+      </button>
+      <button class="btn btn-ai" id="scan-listing-btn">
+        <span>🔎</span>
+        <span id="scan-listing-text">Scanner les offres de la page</span>
+      </button>
+    </div>
+
+    <!-- Context Modal -->
+    <div id="context-modal" class="modal" style="display:none;">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Ajouter du contexte</h2>
+          <button class="modal-close" id="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <label>Notes personnelles (optionnel)</label>
+          <textarea id="context-input" placeholder="Ajoutez des notes, votre intérêt pour ce poste, points importants..." class="context-textarea"></textarea>
+          <small>Ces notes aideront à la génération de contenu pour votre application</small>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="modal-cancel">Annuler</button>
+          <button class="btn btn-primary" id="modal-confirm">Ajouter</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Text Review Modal -->
+    <div id="review-modal" class="modal" style="display:none;">
+      <div class="modal-overlay"></div>
+      <div class="modal-content" style="max-height: 90vh;">
+        <div class="modal-header">
+          <h2>📋 Texte extrait de la page</h2>
+          <button class="modal-close" id="review-modal-close">&times;</button>
+        </div>
+        <div class="modal-body" style="display: flex; flex-direction: column;">
+          <label>Contenu détecté — Modifiez ou supprimez ce qui n'est pas pertinent</label>
+          <textarea id="review-textarea" class="context-textarea" style="flex: 1; min-height: 300px; resize: vertical;"></textarea>
+          <small style="margin-top: 8px; color: #94a3b8;">💡 Supprimez les sections de navigation, publicités ou contenu non pertinent. Ce texte sera utilisé pour analyser le poste.</small>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="review-cancel">Ignorer</button>
+          <button class="btn btn-primary" id="review-confirm">✓ Utiliser ce texte</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Section -->
+    <div class="settings-section">
+      <div class="settings-title" id="toggle-settings">
+        <span>⚙️ Paramètres</span>
+        <span class="settings-icon">▼</span>
+      </div>
+      <div id="settings-panel" class="settings-panel" style="display:none">
+        <label>URL de votre JobTrackr</label>
+        <input type="text" id="app-url" placeholder="https://jobtracking-three.vercel.app" />
+        <button class="save-btn" id="save-settings">Sauvegarder</button>
+
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0;">
+          <div class="toggle-item">
+            <div class="toggle-item-text">
+              <span class="toggle-item-label">✦ Boutons autofill</span>
+              <span class="toggle-item-desc">Sur les formulaires</span>
+            </div>
+            <input type="checkbox" id="toggle-autofill-buttons" />
+          </div>
+          <div class="toggle-item">
+            <div class="toggle-item-text">
+              <span class="toggle-item-label">👆 Clic droit</span>
+              <span class="toggle-item-desc">Détection des boutons</span>
+            </div>
+            <input type="checkbox" id="toggle-rightclick" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- API Key Section (optional — unlimited use beyond the free trial) -->
+    <div class="settings-section">
+      <div class="settings-title" id="toggle-apikey">
+        <span>🔑 Clé API Claude (optionnel)</span>
+        <span class="settings-icon">▼</span>
+      </div>
+      <div id="apikey-panel" class="settings-panel" style="display:none">
+        <div style="font-size: 10px; color: #94a3b8; margin-bottom: 8px;">Laisse vide pour utiliser l'essai gratuit JobTrackr. Ajoute ta clé Anthropic seulement si l'essai est épuisé — usage illimité, stockée localement dans Firefox.</div>
+        <label>Clé Anthropic <span style="color: #16a34a; font-weight: 600; display: none;" id="apikey-saved">✓ Sauvegardée</span></label>
+        <input type="password" id="apikey-input" placeholder="sk-ant-api03-…" autocomplete="off" />
+        <button class="save-btn" id="save-apikey">Sauvegarder la clé</button>
+      </div>
+    </div>
+
+    <!-- Sync from JobTrackr -->
+    <div class="sync-section">
+      <div class="sync-header">
+        <span class="sync-title">📥 Données JobTrackr</span>
+        <span id="sync-status" style="font-size:10px; color:#166534;"></span>
+      </div>
+      <div id="sync-info" class="sync-info" style="display:none;"></div>
+      <button id="sync-btn" class="sync-btn">🔄 Sync CV + Profil</button>
     </div>
   </div>
 
   <div id="toast" class="toast"></div>
+
+  <script src="browser-polyfill.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
