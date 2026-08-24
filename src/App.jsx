@@ -844,7 +844,7 @@ export default function App() {
             </button>
           ))}
           {extensionInstalled === false && (
-            <a href="/jobtracker-addon-1.5.0.xpi" onClick={() => setAddSheet(false)}
+            <a href="/jobtracker-addon-1.6.0.xpi" onClick={() => setAddSheet(false)}
               className="w-full flex items-center gap-3.5 p-3 rounded-2xl hover:bg-orange-50 active:scale-[0.98] transition-all text-left">
               <span className="w-11 h-11 rounded-xl flex items-center justify-center text-xl bg-orange-50">🦊</span>
               <div className="min-w-0">
@@ -995,7 +995,7 @@ export default function App() {
                     </button>
                     {extensionInstalled === false && (
                       <>
-                        <a href="/jobtracker-addon-1.5.0.xpi"
+                        <a href="/jobtracker-addon-1.6.0.xpi"
                           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-orange-700 hover:bg-orange-50 transition-colors">
                           <span className="text-base">🦊</span>
                           <div className="text-left"><div className="font-medium">{t('addMenu.installExt')}</div><div className="text-[11px] text-gray-400">{t('addMenu.installExtDesc')}</div></div>
