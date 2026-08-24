@@ -1,0 +1,6 @@
+# SmartJobTracker — https://smartjobtracker.com
+User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: https://smartjobtracker.com/sitemap.xml

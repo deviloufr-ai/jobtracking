@@ -1,0 +1,17 @@
+{
+  "name": "SmartJobTracker — Suivi de candidatures & copilote IA",
+  "short_name": "SmartJobTracker",
+  "description": "Le copilote IA pour votre recherche d'emploi : synchro Gmail, suivi des candidatures, CV adaptés par IA et entretien blanc.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0F1020",
+  "theme_color": "#6366F1",
+  "lang": "fr",
+  "categories": ["productivity", "business"],
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
+    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }
+  ]
+}

@@ -3,15 +3,126 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Primary meta -->
+    <title>SmartJobTracker — Suivi de candidatures & copilote IA de recherche d'emploi</title>
+    <meta name="description" content="SmartJobTracker : le copilote IA pour votre recherche d'emploi. Synchronise vos emails, suit vos candidatures, adapte vos CV et prépare vos entretiens. Gérez 50 candidatures sans effort." />
+    <meta name="keywords" content="suivi de candidatures, tracker candidatures, recherche d'emploi, CV adapté IA, copilote emploi, job application tracker, gestion candidatures, entretien blanc IA, relances recruteurs" />
+    <meta name="author" content="Alexandre Leblanc" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="theme-color" content="#6366F1" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="canonical" href="https://smartjobtracker.com/" />
+
+    <!-- Icons & manifest -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>SmartJobTracker — Suivi de candidatures</title>
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SmartJobTracker" />
+    <meta property="og:title" content="SmartJobTracker — Gérez 50 candidatures en parallèle, sans effort." />
+    <meta property="og:description" content="Le copilote IA pour votre recherche d'emploi : synchronise vos emails, suit vos candidatures, adapte vos CV et prépare vos entretiens." />
+    <meta property="og:url" content="https://smartjobtracker.com/" />
+    <meta property="og:image" content="https://smartjobtracker.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="SmartJobTracker — copilote IA pour la recherche d'emploi" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:locale:alternate" content="en_US" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SmartJobTracker — Gérez 50 candidatures en parallèle, sans effort." />
+    <meta name="twitter:description" content="Le copilote IA pour votre recherche d'emploi : synchro Gmail, suivi des candidatures, CV adaptés par IA et entretien blanc." />
+    <meta name="twitter:image" content="https://smartjobtracker.com/og-image.png" />
+    <meta name="twitter:image:alt" content="SmartJobTracker — copilote IA pour la recherche d'emploi" />
+
+    <!-- Structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://smartjobtracker.com/#website",
+          "url": "https://smartjobtracker.com/",
+          "name": "SmartJobTracker",
+          "description": "Copilote IA pour la recherche d'emploi et le suivi de candidatures.",
+          "inLanguage": ["fr", "en"],
+          "publisher": { "@id": "https://smartjobtracker.com/#organization" }
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://smartjobtracker.com/#organization",
+          "name": "SmartJobTracker",
+          "url": "https://smartjobtracker.com/",
+          "logo": "https://smartjobtracker.com/icon-512.png",
+          "founder": { "@type": "Person", "name": "Alexandre Leblanc" }
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://smartjobtracker.com/#app",
+          "name": "SmartJobTracker",
+          "url": "https://smartjobtracker.com/",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web",
+          "browserRequirements": "Requires JavaScript. Requires HTML5.",
+          "inLanguage": ["fr", "en"],
+          "description": "SmartJobTracker synchronise vos emails, détecte les statuts, adapte vos CV, rédige vos relances et vous entraîne à l'oral — pour garder le contrôle sur 15 à 50 candidatures en parallèle.",
+          "image": "https://smartjobtracker.com/og-image.png",
+          "creator": { "@id": "https://smartjobtracker.com/#organization" },
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "EUR",
+            "description": "Démarrez gratuitement — 15 actions IA offertes, puis apportez votre propre clé API Anthropic."
+          },
+          "featureList": [
+            "Synchronisation automatique des candidatures depuis Gmail",
+            "Détection et mise à jour des statuts (envoyée, entretien, refus ATS, offre)",
+            "Génération de CV adaptés à chaque offre par IA",
+            "Rédaction de relances et d'emails de suivi",
+            "Entretien blanc vocal avec feedback",
+            "Recherche d'offres et synchronisation multi-appareils"
+          ]
+        }
+      ]
+    }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Google Identity Services SDK (pour OAuth Gmail) -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
   <body>
     <div id="root"></div>
+
+    <!-- Contenu de repli pour les moteurs de recherche et les visiteurs sans JavaScript -->
+    <noscript>
+      <main style="max-width:760px;margin:0 auto;padding:40px 20px;font-family:Inter,system-ui,sans-serif;line-height:1.6;color:#1f2937">
+        <h1>SmartJobTracker — copilote IA pour la recherche d'emploi</h1>
+        <p>Gérez 50 candidatures en parallèle sans y passer vos soirées. SmartJobTracker synchronise vos emails,
+          détecte les statuts de vos candidatures, adapte vos CV à chaque offre, rédige vos relances et vous
+          entraîne à l'oral.</p>
+        <h2>Fonctionnalités principales</h2>
+        <ul>
+          <li>Suivi automatique des candidatures depuis Gmail</li>
+          <li>Détection des statuts : envoyée, en cours, entretien, refus ATS, offre</li>
+          <li>Génération de CV adaptés à chaque fiche de poste par intelligence artificielle</li>
+          <li>Rédaction de relances et d'emails de suivi aux recruteurs</li>
+          <li>Entretien blanc vocal avec retour personnalisé</li>
+          <li>Recherche d'offres et synchronisation sur tous vos appareils</li>
+        </ul>
+        <p>Cette application nécessite JavaScript pour fonctionner. Activez JavaScript, ou consultez notre
+          <a href="/privacy-policy">politique de confidentialité</a> et nos
+          <a href="/terms-of-service">conditions d'utilisation</a>.</p>
+      </main>
+    </noscript>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
