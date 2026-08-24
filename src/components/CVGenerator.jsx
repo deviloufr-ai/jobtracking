@@ -444,7 +444,13 @@ export const BASE_PRINT_CSS = `
 `
 
 // ─────────────────────────────────────────────────────────────────────────────
-export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (key) => key }) {
+export default function CVGenerator({ cv, cvs = [], job, editSaved = false, onBack, onSaveCV, t = (key) => key }) {
+  // When opened to *edit* an already-generated CV (a candidature's saved CV),
+  // seed straight into the preview with its markdown/template/score instead of
+  // running the fetch→suggest→generate flow. The JD is primed in the background
+  // so "Regénérer" and "Points manquants" still work on demand.
+  const savedCV = editSaved ? job?.cvSaved : null
+
   // Source CV the generator adapts from. Initial pick honors the base CV the
   // user chose in the generation settings (persisted in jobtrackr_cv_base_id),
   // falling back to the CV passed in (the most recent). The user can still
@@ -458,15 +464,15 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
   })
   const [showCvPicker, setShowCvPicker] = useState(false)
   const activeCV = cvList.find(c => c.id === selectedCvId) || cv || cvList[0]
-  const [step, setStep]             = useState('fetching_jd')
+  const [step, setStep]             = useState(savedCV ? 'preview' : 'fetching_jd')
   const [jdText, setJdText]         = useState('')
   const [jdError, setJdError]       = useState(null)
-  const [generatedCV, setGeneratedCV] = useState('')
-  const [editableCV, setEditableCV] = useState('')
-  const [atsScore, setAtsScore]     = useState(null)
+  const [generatedCV, setGeneratedCV] = useState(savedCV?.markdown || '')
+  const [editableCV, setEditableCV] = useState(savedCV?.markdown || '')
+  const [atsScore, setAtsScore]     = useState(savedCV?.atsScore ?? null)
   const [isEditing, setIsEditing]   = useState(false)
   const [viewMode, setViewMode]     = useState('split')
-  const [template, setTemplate]     = useState('standard')
+  const [template, setTemplate]     = useState(savedCV?.template || 'standard')
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const [showLangPicker, setShowLangPicker] = useState(false)
   const [profilePic, setProfilePic] = useState(() => localStorage.getItem('cv_profile_picture') || null)
@@ -484,7 +490,9 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
   const [showPointsPanel, setShowPointsPanel] = useState(false)
   const [suggestLoading, setSuggestLoading]   = useState(false)
 
-  useEffect(() => { fetchJobDescription() }, [])
+  // Edit-saved mode shows the CV immediately and primes the JD silently; the
+  // normal flow fetches the JD and proceeds to generate.
+  useEffect(() => { savedCV ? primeJobDescription() : fetchJobDescription() }, [])
 
   // Confirmed additions (checked points) → { role, company, bullet } for the API.
   const buildAdditions = () => suggestions
@@ -556,7 +564,10 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
     })
   }
 
-  // Pre-generation gate: analyse gaps → show the review panel. Never blocks — an
+  // Pre-generation: analyse gaps and AUTO-FOLD the skills that are grounded in the
+  // CV — no manual review step. The (unverified) "to verify" points are NOT added
+  // automatically; they stay available on demand via the "Points manquants"
+  // toolbar button, where the user can opt in and regenerate. Never blocks — an
   // empty list or any failure falls straight through to generation.
   const startSuggestFlow = async (jdOverride, cvOverride) => {
     const src = cvOverride ?? activeCV
@@ -566,9 +577,11 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
     try {
       const list = await loadSuggestions(jd, src, lang)
       setSuggestions(list)
-      setSelectedPointIds(new Set(list.map(s => s.id)))
-      if (!list.length) { generateCV(jd, lang, src, []); return }
-      setStep('review_points')
+      // Only points grounded in the CV are auto-added; pre-check just those so the
+      // reopened panel reflects what was actually folded in.
+      const grounded = list.filter(s => s.confidence === 'grounded')
+      setSelectedPointIds(new Set(grounded.map(s => s.id)))
+      generateCV(jd, lang, src, grounded.map(s => ({ role: s.role, company: s.company, bullet: s.bullet })))
     } catch (e) {
       // Suggest failed (incl. trial wall already signalled) — don't block.
       setJdError(e.message)
@@ -593,20 +606,35 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
     }
   }
 
-  const fetchJobDescription = async () => {
-    setStep('fetching_jd'); setJdError(null)
-    if (job.jobDescription) { return proceedWithJd(job.jobDescription) }
-    if (!job.url) { return proceedWithJd(job.notes || '') }
+  // Resolve the job-description text (job field → scrape via /api/fetch-jd →
+  // notes fallback) WITHOUT touching the step or triggering generation. Shared by
+  // the normal fetch-then-generate flow and the silent priming used to edit a
+  // saved CV.
+  const resolveJdText = async () => {
+    if (job.jobDescription) return job.jobDescription
+    if (!job.url) return job.notes || ''
     if (IS_DEV) {
-      return proceedWithJd(`Product Manager chez ${job.company}\n\nNous recherchons un PM expérimenté pour piloter notre roadmap B2B SaaS. Compétences requises : OKR, A/B testing, SQL, Figma, Jira, métriques produit (DAU, NPS, rétention).`)
+      return `Product Manager chez ${job.company}\n\nNous recherchons un PM expérimenté pour piloter notre roadmap B2B SaaS. Compétences requises : OKR, A/B testing, SQL, Figma, Jira, métriques produit (DAU, NPS, rétention).`
     }
     try {
       const res  = await fetch('/api/fetch-jd', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({url:job.url}) })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       // Fetch may succeed but return nothing usable — fall back to notes.
-      proceedWithJd(data.text || job.notes || '')
-    } catch(e) { setJdError(e.message); proceedWithJd(job.notes || '') }
+      return data.text || job.notes || ''
+    } catch(e) { setJdError(e.message); return job.notes || '' }
+  }
+
+  const fetchJobDescription = async () => {
+    setStep('fetching_jd'); setJdError(null)
+    proceedWithJd(await resolveJdText())
+  }
+
+  // Edit-saved mode: fetch the JD in the background so "Regénérer" and "Points
+  // manquants" are ready, while the already-shown saved CV stays in place.
+  const primeJobDescription = async () => {
+    setJdError(null)
+    setJdText(await resolveJdText())
   }
 
   // ── Generate ──────────────────────────────────────────────────────────────
@@ -614,6 +642,9 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
   // "Points manquants". These flow into the prompt as REQUIRED ADDITIONS.
   const generateCV = async (jdOverride, langOverride, cvOverride, additionsOverride) => {
     const srcCV = cvOverride ?? activeCV
+    // Editing a saved CV with no base CV imported: nothing to (re)generate from —
+    // keep the current preview instead of crashing on srcCV.text.
+    if (!srcCV?.text) return
     const jd   = (jdOverride ?? jdText)
     let   lang = (langOverride ?? selectedLanguage)
     // Resolve "Auto" to an explicit language client-side so the server gets a
@@ -883,16 +914,22 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${isEditing ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
               {isEditing ? t('cvGeneratorUI.preview') : t('cvGeneratorUI.edit')}
             </button>
-            {/* Reopen the "Points manquants" panel to fold different points in and regenerate */}
-            <button onClick={reopenPointsPanel}
-              title={t('cvSuggestions.subtitle')}
-              className="text-xs font-medium border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors flex items-center gap-1.5">
-              ➕ {t('cvGeneratorUI.missingPoints')}
-              {suggestions.length > 0 && (
-                <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-indigo-600 text-white text-[10px] font-bold">{suggestions.length}</span>
-              )}
-            </button>
-            <button onClick={() => generateCV()} className="text-xs font-medium border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50">{t('cvGeneratorUI.regenerate')}</button>
+            {/* Reopen the "Points manquants" panel to fold different points in and
+                regenerate. Both this and "Regénérer" need a source CV to adapt
+                from, so hide them when editing a saved CV with no base CV. */}
+            {activeCV && (
+              <button onClick={reopenPointsPanel}
+                title={t('cvSuggestions.subtitle')}
+                className="text-xs font-medium border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors flex items-center gap-1.5">
+                ➕ {t('cvGeneratorUI.missingPoints')}
+                {suggestions.length > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-indigo-600 text-white text-[10px] font-bold">{suggestions.length}</span>
+                )}
+              </button>
+            )}
+            {activeCV && (
+              <button onClick={() => generateCV()} className="text-xs font-medium border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50">{t('cvGeneratorUI.regenerate')}</button>
+            )}
             <button onClick={handleExportPDF}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${saved ? 'bg-indigo-600 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}`}>
               {saved ? t('cvGeneratorUI.saved') : t('cvGeneratorUI.exportPDF')}
@@ -916,20 +953,6 @@ export default function CVGenerator({ cv, cvs = [], job, onBack, onSaveCV, t = (
           {step === 'suggesting' && <p className="text-xs text-gray-400 mt-1">Comparaison de votre CV avec l'offre pour repérer les points à ajouter</p>}
           {step === 'generating' && <p className="text-xs text-gray-400 mt-1">Claude reformule vos expériences pour matcher l'offre</p>}
         </div>
-      )}
-
-      {/* Review "Points manquants" before generating */}
-      {step === 'review_points' && (
-        <CVSuggestions
-          suggestions={suggestions}
-          selectedIds={selectedPointIds}
-          onToggle={togglePoint}
-          onToggleAll={toggleAllPoints}
-          onEditBullet={editPointBullet}
-          onGenerate={() => generateCV()}
-          onSkip={() => generateCV(undefined, undefined, undefined, [])}
-          t={t}
-        />
       )}
 
       {/* JD input — shown only when there's no job description to generate from.

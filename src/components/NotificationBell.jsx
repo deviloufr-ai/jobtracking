@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
+import { getStatus, getStatusLabel } from '../hooks/useJobs'
 
 const TYPE_CONFIG = {
-  new_job:  { icon: '✨', color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  update:   { icon: '↻',  color: 'text-blue-600',   bg: 'bg-blue-50' },
-  archive:  { icon: '📦', color: 'text-gray-500',   bg: 'bg-gray-50' },
-  meeting:  { icon: '📅', color: 'text-orange-600', bg: 'bg-orange-50' },
-  info:     { icon: 'ℹ️', color: 'text-gray-500',   bg: 'bg-gray-50' },
+  new_job:  { icon: '✨', label: 'Nouvelle candidature', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  update:   { icon: '↻',  label: 'Mise à jour',          color: 'text-blue-600',   bg: 'bg-blue-50' },
+  archive:  { icon: '📦', label: 'Archivage',            color: 'text-gray-500',   bg: 'bg-gray-50' },
+  meeting:  { icon: '📅', label: 'Rendez-vous',          color: 'text-orange-600', bg: 'bg-orange-50' },
+  info:     { icon: 'ℹ️', label: 'Info',                 color: 'text-gray-500',   bg: 'bg-gray-50' },
 }
 
 function timeAgo(dateStr) {
@@ -16,7 +17,16 @@ function timeAgo(dateStr) {
   return `il y a ${Math.round(diff / 86400)}j`
 }
 
-export default function NotificationBell({ notifications, unreadCount, onMarkAllRead, onClear, onNavigate }) {
+// Absolute date shown on hover over the relative timestamp
+function fullDate(dateStr) {
+  try {
+    return new Date(dateStr).toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' })
+  } catch {
+    return ''
+  }
+}
+
+export default function NotificationBell({ notifications, unreadCount, onMarkAllRead, onClear, onNavigate, t = (k) => k }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -92,11 +102,23 @@ export default function NotificationBell({ notifications, unreadCount, onMarkAll
                       {cfg.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-gray-700 leading-snug">{n.message}</p>
-                      {n.meta?.company && (
-                        <p className="text-xs text-gray-400 mt-0.5 truncate">{n.meta.company}</p>
+                      {cfg.label && (
+                        <p className={`text-[10px] font-semibold uppercase tracking-wide ${cfg.color}`}>{cfg.label}</p>
                       )}
-                      <p className="text-[10px] text-gray-300 mt-1">{timeAgo(n.date)}</p>
+                      <p className="text-xs text-gray-700 leading-snug">{n.message}</p>
+                      {(n.meta?.position || n.meta?.company) && (
+                        <p className="text-xs text-gray-400 mt-0.5 truncate">
+                          {[n.meta.position, n.meta.company].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                        {n.meta?.status && (
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getStatus(n.meta.status).color}`}>
+                            {getStatusLabel(n.meta.status, t)}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-gray-300" title={fullDate(n.date)}>{timeAgo(n.date)}</span>
+                      </div>
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       {!n.read && <span className="w-2 h-2 rounded-full bg-blue-500 mt-1" />}

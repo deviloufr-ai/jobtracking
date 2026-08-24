@@ -2,10 +2,11 @@ import { useState } from 'react'
 
 // ── "Points manquants" selection panel ────────────────────────────────────────
 // Shows the missing points (from cvSuggest) grouped by experience/company, each
-// pre-checked, with an editable bullet, the JD gap it closes, and a confidence
-// badge. The candidate toggles which to fold into the CV, then generates.
-// Rendered inline in the review_points step AND as an overlay reopened from the
-// preview toolbar (see CVGenerator).
+// with an editable bullet, the JD gap it closes, and a confidence badge. The
+// candidate toggles which to fold into the CV, then regenerates.
+// Generation auto-adds the CV-grounded points without review; this panel is the
+// opt-in overlay reopened from the preview toolbar (see CVGenerator) to add the
+// remaining "to verify" points on demand.
 
 function ConfidenceBadge({ confidence, t }) {
   const grounded = confidence === 'grounded'

@@ -36,6 +36,33 @@ function recordPreviousJobs(jobs) {
   } catch {}
 }
 
+// Format a date as a short local time (e.g. "14:30"), empty string if invalid
+function formatTime(dateStr) {
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return ''
+    return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return ''
+  }
+}
+
+// Format a date as a short local day + month (e.g. "12 août"), empty if invalid
+function formatDay(dateStr) {
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return ''
+    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+  } catch {
+    return ''
+  }
+}
+
+// Join non-empty body fragments with " · " so a missing position/time collapses cleanly
+function buildBody(...parts) {
+  return parts.filter(Boolean).join(' · ')
+}
+
 export function useNotificationScenarios(jobs, permission) {
   const checkScenarios = useCallback(() => {
     if (permission !== 'granted') return
@@ -50,6 +77,7 @@ export function useNotificationScenarios(jobs, permission) {
       const {
         id: jobId,
         company,
+        position = '',
         status,
         date: jobDate,
         history = [],
@@ -70,10 +98,13 @@ export function useNotificationScenarios(jobs, permission) {
           if (check.allowed && isScenarioStillTriggered('n01_no_response_14d', job)) {
             sendBrowserNotification(`Relancer ${company}`, {
               tag: `n01-${jobId}`,
-              body: `Aucune réponse depuis 14 jours`,
-              data: { jobId, company, scenario: 'n01_no_response_14d' },
+              body: buildBody(
+                position,
+                `Sans réponse depuis ${daysSinceApplication} jours — un mail de relance peut débloquer la situation`,
+              ),
+              data: { jobId, company, position, scenario: 'n01_no_response_14d' },
             })
-            recordNotificationSent('n01_no_response_14d', jobId, { company, daysWaiting: daysSinceApplication })
+            recordNotificationSent('n01_no_response_14d', jobId, { company, position, daysWaiting: daysSinceApplication })
           }
         }
       }
@@ -92,12 +123,18 @@ export function useNotificationScenarios(jobs, permission) {
               if (hoursUntilInterview <= 24 && hoursUntilInterview > 0) {
                 const check = canSendNotification('n02_interview_24h', jobId, job)
                 if (check.allowed && isScenarioStillTriggered('n02_interview_24h', job)) {
+                  const interviewTime = formatTime(interviewDateStr)
+                  const hoursLabel = Math.max(1, Math.round(hoursUntilInterview))
                   sendBrowserNotification(`Entretien demain — ${company}`, {
                     tag: `n02-${jobId}`,
-                    body: 'Préparation requise',
-                    data: { jobId, company, scenario: 'n02_interview_24h' },
+                    body: buildBody(
+                      position,
+                      interviewTime ? `à ${interviewTime} (dans ${hoursLabel}h)` : `dans ${hoursLabel}h`,
+                      'Relisez la fiche de poste et vos notes',
+                    ),
+                    data: { jobId, company, position, scenario: 'n02_interview_24h' },
                   })
-                  recordNotificationSent('n02_interview_24h', jobId, { company })
+                  recordNotificationSent('n02_interview_24h', jobId, { company, position, interviewTime })
                 }
               }
             }
@@ -112,10 +149,12 @@ export function useNotificationScenarios(jobs, permission) {
           if (check.allowed && isScenarioStillTriggered('n03_offer_received', job)) {
             sendBrowserNotification(`Offre reçue ! 🎉`, {
               tag: `n03-${jobId}`,
-              body: `${company} vous propose une offre`,
-              data: { jobId, company, scenario: 'n03_offer_received' },
+              body: position
+                ? `${company} vous propose le poste de ${position} — pensez à répondre`
+                : `${company} vous propose une offre — pensez à répondre`,
+              data: { jobId, company, position, scenario: 'n03_offer_received' },
             })
-            recordNotificationSent('n03_offer_received', jobId, { company })
+            recordNotificationSent('n03_offer_received', jobId, { company, position })
           }
         }
       }
@@ -125,12 +164,16 @@ export function useNotificationScenarios(jobs, permission) {
         if (['rejected', 'rejected_ats'].includes(status)) {
           const check = canSendNotification('n04_rejection', jobId, job)
           if (check.allowed && isScenarioStillTriggered('n04_rejection', job)) {
+            const isAts = status === 'rejected_ats'
             sendBrowserNotification(`Refus — ${company}`, {
               tag: `n04-${jobId}`,
-              body: 'Candidature refusée',
-              data: { jobId, company, scenario: 'n04_rejection' },
+              body: buildBody(
+                position,
+                isAts ? 'Candidature écartée au filtrage ATS' : 'Candidature non retenue',
+              ),
+              data: { jobId, company, position, scenario: 'n04_rejection' },
             })
-            recordNotificationSent('n04_rejection', jobId, { company })
+            recordNotificationSent('n04_rejection', jobId, { company, position, ats: isAts })
           }
         }
       }
@@ -148,10 +191,13 @@ export function useNotificationScenarios(jobs, permission) {
               if (check.allowed && isScenarioStillTriggered('n05_reviewing_7d', job)) {
                 sendBrowserNotification(`Profil en attente — ${company}`, {
                   tag: `n05-${jobId}`,
-                  body: `En examen depuis ${daysSinceReviewStart} jours`,
-                  data: { jobId, company, scenario: 'n05_reviewing_7d' },
+                  body: buildBody(
+                    position,
+                    `En examen depuis ${daysSinceReviewStart} jours — vous pouvez relancer pour marquer votre intérêt`,
+                  ),
+                  data: { jobId, company, position, scenario: 'n05_reviewing_7d' },
                 })
-                recordNotificationSent('n05_reviewing_7d', jobId, { company, daysReviewing: daysSinceReviewStart })
+                recordNotificationSent('n05_reviewing_7d', jobId, { company, position, daysReviewing: daysSinceReviewStart })
               }
             }
           }
@@ -170,10 +216,13 @@ export function useNotificationScenarios(jobs, permission) {
           if (check.allowed) {
             sendBrowserNotification(`Archivée — ${company}`, {
               tag: `n07-${jobId}`,
-              body: 'Candidature archivée automatiquement',
-              data: { jobId, company, scenario: 'n07_auto_archived' },
+              body: buildBody(
+                position,
+                'Archivée automatiquement après 60 jours sans réponse',
+              ),
+              data: { jobId, company, position, scenario: 'n07_auto_archived' },
             })
-            recordNotificationSent('n07_auto_archived', jobId, { company })
+            recordNotificationSent('n07_auto_archived', jobId, { company, position })
           }
         }
       }
@@ -194,12 +243,19 @@ export function useNotificationScenarios(jobs, permission) {
             if (daysTilDeadline <= 2 && daysTilDeadline > 0) {
               const check = canSendNotification('n08_deadline_reminder', jobId, job)
               if (check.allowed && isScenarioStillTriggered('n08_deadline_reminder', job)) {
+                const deadlineDay = formatDay(deadlineStr)
+                const daysLeft = Math.ceil(daysTilDeadline)
                 sendBrowserNotification(`Rappel deadline — ${company}`, {
                   tag: `n08-${jobId}`,
-                  body: `Deadline dans ${Math.ceil(daysTilDeadline)} jour(s)`,
-                  data: { jobId, company, scenario: 'n08_deadline_reminder' },
+                  body: buildBody(
+                    position,
+                    deadlineDay
+                      ? `Échéance le ${deadlineDay} — dans ${daysLeft} jour(s)`
+                      : `Échéance dans ${daysLeft} jour(s)`,
+                  ),
+                  data: { jobId, company, position, scenario: 'n08_deadline_reminder' },
                 })
-                recordNotificationSent('n08_deadline_reminder', jobId, { company, daysRemaining: daysTilDeadline })
+                recordNotificationSent('n08_deadline_reminder', jobId, { company, position, daysRemaining: daysTilDeadline })
               }
             }
           } catch (e) {

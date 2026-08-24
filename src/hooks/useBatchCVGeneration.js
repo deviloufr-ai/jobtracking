@@ -17,7 +17,7 @@ export function useBatchCVGeneration({ onUpdateJob, t = (k) => k }) {
   const [batchError, setBatchError] = useState(null)
   const cancelRef = useRef(false)
 
-  const run = async ({ targets = [], baseCV, language = 'auto', template = 'standard' }) => {
+  const run = async ({ targets = [], baseCV, language = 'auto', template = 'standard', skillsMode = 'none' }) => {
     if (!baseCV || targets.length === 0) return
 
     setRunning(true)
@@ -31,7 +31,7 @@ export function useBatchCVGeneration({ onUpdateJob, t = (k) => k }) {
       setResults(prev => ({ ...prev, [job.id]: { status: 'running' } }))
       try {
         const { markdown, atsScore, filename } = await generateCVForJob({
-          job, cvText: baseCV.text, language, template,
+          job, cvText: baseCV.text, language, template, skillsMode,
         })
         onUpdateJob(job.id, {
           cvSaved: { markdown, template, filename, savedAt: new Date().toISOString(), atsScore: atsScore ?? null },

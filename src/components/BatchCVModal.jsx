@@ -7,6 +7,7 @@ import {
   loadBaseCvId, saveBaseCvId,
   loadTemplate, saveTemplate,
   loadBatchLang, saveBatchLang,
+  loadSkillsMode, saveSkillsMode,
 } from '../services/cvGeneration'
 
 const hasJd = (j) => !!(j.jobDescription || j.url || j.notes)
@@ -27,16 +28,18 @@ export default function BatchCVModal({ jobs = [], onUpdateJob, onClose, t = (k) 
   const baseCV = sortedCvs.find(c => c.id === effectiveBaseId) || null
   const [template, setTemplate] = useState(loadTemplate)
   const [language, setLanguage] = useState(loadBatchLang)
+  const [skillsMode, setSkillsMode] = useState(loadSkillsMode)
 
   const handleBaseChange = (id) => { setBaseId(id); saveBaseCvId(id) }
   const handleTemplateChange = (id) => { setTemplate(id); saveTemplate(id) }
   const handleLanguageChange = (id) => { setLanguage(id); saveBatchLang(id) }
+  const handleSkillsModeChange = (v) => { setSkillsMode(v); saveSkillsMode(v) }
 
   const { run, stop, running, progress, results, batchError, finished, anyResult, resultCounts } =
     useBatchCVGeneration({ onUpdateJob, t })
 
   const generatable = jobs.filter(hasJd)
-  const runBatch = () => run({ targets: jobs, baseCV, language, template })
+  const runBatch = () => run({ targets: jobs, baseCV, language, template, skillsMode })
 
   // Free-drag + edge-snap docking (non-modal floating panel, no dimming backdrop
   // so the list stays visible behind it). Shared behaviour via useDragDock.
@@ -118,6 +121,14 @@ export default function BatchCVModal({ jobs = [], onUpdateJob, onClose, t = (k) 
                   <label className="block text-xs font-medium text-gray-500 mb-1">{t('batchCV.language')}</label>
                   <select value={language} onChange={e => handleLanguageChange(e.target.value)} className={`${selectCls} w-full`}>
                     {LANGUAGES.map(l => <option key={l.id} value={l.id}>{l.flag} {l.label}</option>)}
+                  </select>
+                </div>
+                <div className="min-w-[160px]">
+                  <label className="block text-xs font-medium text-gray-500 mb-1" title={t('batchCV.skillsHint')}>{t('batchCV.skills')}</label>
+                  <select value={skillsMode} onChange={e => handleSkillsModeChange(e.target.value)} className={`${selectCls} w-full`}>
+                    <option value="none">{t('batchCV.skillsNone')}</option>
+                    <option value="grounded">{t('batchCV.skillsGrounded')}</option>
+                    <option value="all">{t('batchCV.skillsAll')}</option>
                   </select>
                 </div>
               </div>

@@ -101,6 +101,19 @@ export function saveBatchLang(v) {
   try { localStorage.setItem(BATCH_LANG_KEY, v) } catch { /* ignore */ }
 }
 
+// Missing-skills mode for batch generation: 'none' (add nothing), 'grounded'
+// (only the points backed by the CV) or 'all' (every suggested point, incl. the
+// "to verify" ones that extend beyond the CV). Mirrors the one-job generator's
+// auto-fold; default 'grounded' matches that behaviour.
+const SKILLS_MODE_KEY = 'jobtrackr_cv_batch_skills'
+const SKILLS_MODES = ['none', 'grounded', 'all']
+export function loadSkillsMode() {
+  try { const v = localStorage.getItem(SKILLS_MODE_KEY); return SKILLS_MODES.includes(v) ? v : 'grounded' } catch { return 'grounded' }
+}
+export function saveSkillsMode(v) {
+  try { localStorage.setItem(SKILLS_MODE_KEY, v) } catch { /* ignore */ }
+}
+
 // The candidate name is the CV's "# Name" heading — used to build the filename.
 export function cvCandidateName(markdown) {
   const m = (markdown || '').match(/^#\s+(.+)$/m)
@@ -178,7 +191,7 @@ export async function suggestCvPoints({ cvText, jobDescription, company, positio
 // language → generate → package a ready-to-save result. Throws an error with
 // `code === 'NO_JD'` when the candidature has no description to generate from, so
 // the batch can mark it "skipped" rather than "failed".
-export async function generateCVForJob({ job, cvText, language = 'auto', template = 'standard' }) {
+export async function generateCVForJob({ job, cvText, language = 'auto', template = 'standard', skillsMode = 'none' }) {
   const jd = (await fetchJobDescription(job) || '').trim()
   if (!jd) {
     const err = new Error('No job description available for this application')
@@ -194,12 +207,35 @@ export async function generateCVForJob({ job, cvText, language = 'auto', templat
     return { markdown: mock, atsScore: 92, template, filename: `${name} - ${job.position}` }
   }
 
+  // Optionally fold in the missing skills. 'grounded' keeps only the points
+  // backed by the CV; 'all' also adds the "to verify" ones. Best-effort: a
+  // suggest failure must never block generation — but a spent free trial still
+  // stops the batch, so let that one bubble up.
+  let additions = []
+  if (skillsMode && skillsMode !== 'none') {
+    try {
+      const list = await suggestCvPoints({
+        cvText,
+        jobDescription: jd,
+        company: job.company,
+        position: job.position,
+        language: lang,
+        knownGaps: job?.scoreDetails?.gaps || [],
+      })
+      const picked = skillsMode === 'all' ? list : list.filter(s => s.confidence === 'grounded')
+      additions = picked.map(s => ({ role: s.role, company: s.company, bullet: s.bullet }))
+    } catch (err) {
+      if (err?.code === 'TRIAL_EXHAUSTED') throw err
+    }
+  }
+
   const { cv, atsScore } = await generateTailoredCV({
     cvText,
     jobDescription: jd,
     company: job.company,
     position: job.position,
     language: lang,
+    additions,
   })
   const name = cvCandidateName(cv) || loadProfileContact()?.name || 'CV'
   return { markdown: cv, atsScore, template, filename: `${name} - ${job.position}` }

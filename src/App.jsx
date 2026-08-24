@@ -34,7 +34,6 @@ import { migrateToAuthIdentity } from './services/authMigration'
 import { initializeSyncCoordinator } from './services/syncCoordinator'
 import JobSearch from './components/JobSearch'
 import { getFlag, FLAGS, FLAGS_EVENT } from './services/featureFlags'
-import CVViewer from './components/CVViewer'
 import CVGenerator from './components/CVGenerator'
 import BatchCVModal from './components/BatchCVModal'
 import BulkActionBar from './components/BulkActionBar'
@@ -412,8 +411,8 @@ export default function App() {
   const [showFavOnly, setShowFavOnly] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [cvGenJob, setCvGenJob] = useState(null) // job whose tailored CV is being generated
+  const [cvGenEdit, setCvGenEdit] = useState(false) // true = open cvGenJob to edit its saved CV (thema/content/skills); false = generate fresh
   const [showImageImport, setShowImageImport] = useState(false)
-  const [viewingCV, setViewingCV] = useState(null) // job with cvSaved to view
 
   const { notifications, push: pushNotif, markAllRead, clear: clearNotifs, unreadCount } = useNotifications()
 
@@ -425,7 +424,7 @@ export default function App() {
   // Wrap addJob/updateJob to emit notifications
   const addJobWithNotif = (data) => {
     const job = addJob(data)
-    pushNotif('new_job', `Nouvelle candidature ajoutée — ${data.company}`, { company: data.company })
+    pushNotif('new_job', `Nouvelle candidature ajoutée — ${data.company}`, { company: data.company, position: data.position, status: data.status, jobId: job?.id })
     return job
   }
 
@@ -434,7 +433,7 @@ export default function App() {
     const job = jobs.find(j => j.id === id)
     if (job && data.history && data.history.length > (job.history?.length || 0)) {
       const newCount = data.history.length - (job.history?.length || 0)
-      pushNotif('update', `${job.company} — ${newCount} nouvelle${newCount > 1 ? 's' : ''} entrée${newCount > 1 ? 's' : ''} dans l'historique`, { company: job.company, jobId: id })
+      pushNotif('update', `${job.company} — ${newCount} nouvelle${newCount > 1 ? 's' : ''} entrée${newCount > 1 ? 's' : ''} dans l'historique`, { company: job.company, position: job.position, status: data.status || job.status, count: newCount, jobId: id })
     }
   }
 
@@ -535,13 +534,13 @@ export default function App() {
       showToast('Candidature ajoutée !')
     } else {
       updateJob(modal.id, form)
-      pushNotif('update', `${form.company} — candidature mise à jour`, { company: form.company, jobId: modal.id })
+      pushNotif('update', `${form.company} — candidature mise à jour`, { company: form.company, position: form.position, status: form.status, jobId: modal.id })
       showToast('Candidature mise à jour')
     }
   }
 
   const handleDelete = () => {
-    pushNotif('info', `Candidature supprimée — ${toDelete.company}`, { company: toDelete.company })
+    pushNotif('info', `Candidature supprimée — ${toDelete.company}`, { company: toDelete.company, position: toDelete.position, status: toDelete.status })
     deleteJob(toDelete.id)
     setToDelete(null)
     showToast('Candidature supprimée')
@@ -563,11 +562,17 @@ export default function App() {
       setActiveTab('settings')
       return
     }
+    setCvGenEdit(false)
     setCvGenJob(job)
   }
 
   const handleViewSavedCV = (job) => {
-    setViewingCV(job)
+    // Open the full generation output preloaded with the saved CV so the user can
+    // edit the template (thema), the content, and the skills (Points manquants)
+    // in one place — instead of the read-only-ish viewer.
+    if (!job?.cvSaved) return
+    setCvGenEdit(true)
+    setCvGenJob(job)
   }
 
   const handleBulkImport = (newJobs) => {
@@ -597,9 +602,9 @@ export default function App() {
       const oldLen = job.history?.length || 0
       const newLen = sorted.length
       if (newLen > oldLen) {
-        pushNotif('update', `${job.company} — historique mis à jour`, { company: job.company, jobId: id })
+        pushNotif('update', `${job.company} — historique mis à jour`, { company: job.company, position: job.position, status: latestStatus, jobId: id })
       } else if (newLen < oldLen) {
-        pushNotif('info', `${job.company} — entrée supprimée`, { company: job.company, jobId: id })
+        pushNotif('info', `${job.company} — entrée supprimée`, { company: job.company, position: job.position, status: latestStatus, jobId: id })
       }
     }
   }
@@ -903,7 +908,10 @@ export default function App() {
             {/* Logo */}
             <div className="flex items-center gap-2 shrink-0">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
-                <span className="text-white font-bold text-sm">J</span>
+                <svg viewBox="0 0 64 64" className="w-5 h-5" fill="none" aria-hidden="true">
+                  <polyline points="16,33 28,45 50,17" stroke="#fff" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
+                  <circle cx="50" cy="17" r="5" fill="#fff" />
+                </svg>
               </div>
               <span className="font-bold text-gray-900 text-[15px] tracking-tight hidden sm:block">SmartJobTracker</span>
             </div>
@@ -955,7 +963,7 @@ export default function App() {
             {/* Notifications */}
             <NotificationBell
               notifications={notifications} unreadCount={unreadCount}
-              onMarkAllRead={markAllRead} onClear={clearNotifs}
+              onMarkAllRead={markAllRead} onClear={clearNotifs} t={t}
               onNavigate={({ jobId, company }) => {
                 setActiveTab('tracker')
                 if (company) setFilters(f => ({ ...f, search: company }))
@@ -1339,13 +1347,20 @@ export default function App() {
       {showImageImport && <ImageImport onImport={handleBulkImport} onClose={() => setShowImageImport(false)} existingJobs={jobs} />}
       {starJob && <STARGenerator job={starJob} onClose={() => setStarJob(null)} />}
       {emailDraft && <EmailDraft job={emailDraft.job} type={emailDraft.type} onClose={() => setEmailDraft(null)} onEmailSent={handleEmailSent} />}
-      {viewingCV && <CVViewer job={jobs.find(j => j.id === viewingCV.id) || viewingCV} onClose={() => setViewingCV(null)} onUpdate={updateJob} t={t} />}
-      {cvGenJob && baseCV && (
+      {cvGenJob && (baseCV || cvGenEdit) && (
         <FloatingWindow
-          title={`✨ ${cvGenJob.company} — ${cvGenJob.position}`}
-          onClose={() => setCvGenJob(null)}
+          title={`${cvGenEdit ? '✏️' : '✨'} ${cvGenJob.company} — ${cvGenJob.position}`}
+          onClose={() => { setCvGenJob(null); setCvGenEdit(false) }}
         >
-          <CVGenerator cv={baseCV} cvs={cvs} job={cvGenJob} onBack={() => setCvGenJob(null)} onSaveCV={updateJob} t={t} />
+          <CVGenerator
+            cv={baseCV}
+            cvs={cvs}
+            job={jobs.find(j => j.id === cvGenJob.id) || cvGenJob}
+            editSaved={cvGenEdit}
+            onBack={() => { setCvGenJob(null); setCvGenEdit(false) }}
+            onSaveCV={updateJob}
+            t={t}
+          />
         </FloatingWindow>
       )}
       {mergeModal && <MergeModal jobs={mergeModal} onConfirm={handleMergeConfirm} onCancel={() => setMergeModal(null)} t={t} />}
