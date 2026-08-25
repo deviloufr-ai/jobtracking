@@ -1027,6 +1027,7 @@ export default function App() {
           onRefresh={() => doRefresh(false)}
           onAccount={() => goTab('settings')}
           onTour={startTour}
+          extensionInstalled={extensionInstalled}
           t={t}
         />
       )}

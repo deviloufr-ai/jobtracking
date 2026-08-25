@@ -5,6 +5,92 @@
 // the FLAGS.LAYOUT_E flag; the current top-header layout stays intact when off.
 // Styling uses the same light utility classes the rest of the app uses, so the
 // existing body.is-dark theme overrides apply here too.
+import { useState } from 'react'
+
+const XPI_HREF = '/jobtracker-addon-1.6.0.xpi'
+
+// Browser-extension affordance for the rail footer.
+//   installed === true  → green "installed" row
+//   installed === false → orange "Install extension" row + ⓘ what-and-why popover
+//   installed === null  → nothing (still detecting)
+function RailExtension({ installed, t }) {
+  const [info, setInfo] = useState(false)
+  const isFirefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent)
+
+  if (installed === null) return null
+
+  if (installed === true) {
+    return (
+      <div className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-green-700 bg-green-50">
+        <span className="text-base leading-none w-5 text-center">🦊</span>
+        <span className="flex-1">{t('extension.installed')}</span>
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+      </div>
+    )
+  }
+
+  const bullets = [
+    { title: t('onboarding.extFeat1Title'), desc: t('onboarding.extFeat1Desc') },
+    { title: t('onboarding.extFeat2Title'), desc: t('onboarding.extFeat2Desc') },
+    { title: t('onboarding.extFeat3Title'), desc: t('onboarding.extFeat3Desc') },
+  ]
+
+  return (
+    <div className="relative flex items-center gap-1">
+      <a
+        href={XPI_HREF}
+        title={t('addMenu.installExt')}
+        className="flex-1 flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 transition-colors"
+      >
+        <span className="text-base leading-none w-5 text-center">🦊</span>
+        <span className="flex-1 text-left">{t('addMenu.installExt')}</span>
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+      </a>
+      <button
+        onClick={() => setInfo(v => !v)}
+        aria-label={t('extension.whatIsIt')}
+        title={t('extension.whatIsIt')}
+        className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors shrink-0"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      </button>
+
+      {info && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setInfo(false)} />
+          <div className="absolute left-full bottom-0 ml-2 z-50 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+            <div className="px-4 pt-4 pb-3 bg-gradient-to-br from-orange-500 to-amber-500 text-white">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🦊</span>
+                <h3 className="font-bold text-sm leading-tight">{t('onboarding.extTitle')}</h3>
+              </div>
+              <p className="text-[11px] text-orange-50 mt-1.5 leading-relaxed">{t('onboarding.extIntro')}</p>
+            </div>
+            <div className="px-4 py-3 space-y-2.5">
+              {bullets.map((b, i) => (
+                <div key={i}>
+                  <p className="text-xs font-semibold text-gray-800">{b.title}</p>
+                  <p className="text-[11px] text-gray-500 leading-snug mt-0.5">{b.desc}</p>
+                </div>
+              ))}
+            </div>
+            <div className="px-4 pb-4">
+              <a
+                href={XPI_HREF}
+                onClick={() => setInfo(false)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold bg-orange-500 text-white rounded-xl hover:bg-orange-600 active:scale-95 transition-all"
+              >
+                <span>🦊</span>{t('onboarding.extDownload')}
+              </a>
+              <p className="text-[10px] text-gray-400 text-center mt-2">{isFirefox ? t('onboarding.extFirefoxReady') : t('onboarding.extFirefoxNote')}</p>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function NavRail({
   items = [],
   activeTab,
@@ -16,6 +102,7 @@ export default function NavRail({
   onRefresh,
   onAccount,
   onTour,
+  extensionInstalled = null,
   t = (k) => k,
 }) {
   return (
@@ -82,6 +169,7 @@ export default function NavRail({
             {refreshing ? t('header.loading') : t('nav.refresh')}
           </button>
         )}
+        <RailExtension installed={extensionInstalled} t={t} />
         {onTour && (
           <button
             onClick={onTour}
