@@ -1101,7 +1101,7 @@ export default function App() {
       </header>
 
       {/* ── Main content ───────────────────────────────────────────────────────── */}
-      <main className="max-w-screen-2xl mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-24 md:pb-6">
+      <main className={`${layoutE ? '' : 'max-w-screen-2xl mx-auto '}px-3 sm:px-6 py-4 sm:py-6 pb-24 md:pb-6`}>
         {activeTab === 'settings' ? (
           <Settings jobs={jobs} syncUserId={syncUserId} onMergeDuplicates={mergeDuplicates} onUpdateJob={updateJob} initialTab={settingsInitialTab} />
         ) : activeTab === 'analytics' ? (

@@ -92,7 +92,7 @@ export default function TrackerHomeE({
   )
 
   return (
-    <div className={`w-full min-w-0 transition-[padding] duration-300 ${openJob ? 'md:pr-[648px] 2xl:pr-[948px]' : ''}`}>
+    <div className={`w-full min-w-0 transition-[padding] duration-300 ${openJob ? 'md:pr-[616px] 2xl:pr-[916px]' : ''}`}>
       <FocusBand
         jobs={jobs}
         userName={userName}

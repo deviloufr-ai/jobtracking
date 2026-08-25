@@ -8,6 +8,7 @@
 // the timeline add-step. Kept self-contained so the classic layout is untouched.
 import { useState } from 'react'
 import { STATUSES, getStatus, getStatusLabel } from '../../hooks/useJobs'
+import { gmailMessageUrl } from '../../services/gmail'
 import { scoreColorClasses } from '../ScoreJob'
 import CVViewer from '../CVViewer'
 import MotivationLetterGenerator from '../MotivationLetterGenerator'
@@ -54,6 +55,7 @@ export default function CandidatureDrawer({
   const history = job.history || []
   const displayStatus = history.length ? (history[history.length - 1].status || job.status) : job.status
   const source = job.source || job.platform || job.site || null
+  const emailCount = history.filter(h => h.source === 'email').length
 
   const [tab, setTab] = useState('overview')
   const [showLetter, setShowLetter] = useState(false)
@@ -95,7 +97,7 @@ export default function CandidatureDrawer({
                 {getStatusLabel(displayStatus, t)}
               </span>
               {source && <span className="text-xs text-gray-400">via {source}</span>}
-              {job.date && <span className="text-xs text-gray-400">· {shortDate(job.date)}</span>}
+              {job.date && <span className="text-xs text-gray-400">{source ? '· ' : ''}{shortDate(job.date)}</span>}
             </div>
           </div>
         </div>
@@ -114,9 +116,10 @@ export default function CandidatureDrawer({
       <div className="px-5 py-5">
         {tab === 'overview' && (
           <>
-            <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
               <Stat label="Match score" value={typeof job.score === 'number' ? `${job.score}%` : '—'} />
-              <Stat label="Source" value={source || '—'} />
+              <Stat label="Applied" value={job.date ? fullDate(job.date) : '—'} />
+              <Stat label="Emails" value={emailCount} />
             </div>
 
             <h3 className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">Timeline</h3>
@@ -135,6 +138,19 @@ export default function CandidatureDrawer({
                       <span className="text-xs text-gray-400">{fullDate(h.date)}</span>
                     </div>
                     {h.note && <p className="text-sm text-gray-600 mt-1.5 whitespace-pre-line leading-relaxed">{h.note}</p>}
+                    {(() => {
+                      const ids = h.gmailIds || (h.gmailId ? [h.gmailId] : [])
+                      if (!ids.length) return null
+                      const { url, account, uncertain } = gmailMessageUrl(ids[0], h.receivedBy)
+                      return (
+                        <a href={url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                          className={`inline-flex items-center gap-1 text-xs mt-1.5 font-medium transition-colors ${uncertain ? 'text-amber-500 hover:text-amber-600' : 'text-gray-400 hover:text-red-500'}`}
+                          title={account ? `Open in ${account}` : 'Open email'}>
+                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.909 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" /></svg>
+                          Open email{ids.length > 1 ? ` (${ids.length})` : ''}
+                        </a>
+                      )
+                    })()}
                   </li>
                 ))}
               </ul>
