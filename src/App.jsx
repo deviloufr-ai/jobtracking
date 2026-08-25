@@ -34,6 +34,8 @@ import { migrateToAuthIdentity } from './services/authMigration'
 import { initializeSyncCoordinator } from './services/syncCoordinator'
 import JobSearch from './components/JobSearch'
 import { getFlag, FLAGS, FLAGS_EVENT } from './services/featureFlags'
+import NavRail from './components/LayoutE/NavRail'
+import TrackerHomeE from './components/LayoutE/TrackerHomeE'
 import CVGenerator from './components/CVGenerator'
 import BatchCVModal from './components/BatchCVModal'
 import BulkActionBar from './components/BulkActionBar'
@@ -203,6 +205,9 @@ export default function App() {
   // Job search is an experimental, hidden-by-default feature (opt-in from
   // Settings → Debug). Track the flag and keep it live across toggles.
   const [searchEnabled, setSearchEnabled] = useState(() => getFlag(FLAGS.JOB_SEARCH))
+  // New "E — Focus + List" layout (nav rail + drawer). Opt-in behind a flag while
+  // it's built in parallel; off = current UI. Desktop (md+) only for now.
+  const [layoutE, setLayoutE] = useState(() => getFlag(FLAGS.LAYOUT_E))
   const [expandedJobId, setExpandedJobId] = useState(null)
   const [detailJob, setDetailJob] = useState(null) // mobile: job open in the full-screen detail sheet
   const [showLandingPage, setShowLandingPage] = useState(true)
@@ -226,6 +231,7 @@ export default function App() {
       setSearchEnabled(enabled)
       // Don't strand the user on a tab that just disappeared.
       if (!enabled) setActiveTab(tab => (tab === 'search' ? 'tracker' : tab))
+      setLayoutE(getFlag(FLAGS.LAYOUT_E))
     }
     window.addEventListener(FLAGS_EVENT, onFlags)
     return () => window.removeEventListener(FLAGS_EVENT, onFlags)
@@ -823,7 +829,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div
-        className="min-h-screen transition-colors duration-300"
+        className={`min-h-screen transition-colors duration-300${layoutE ? ' md:pl-[220px]' : ''}`}
       >
 
       {/* ── Mobile: Add bottom sheet (FAB) ─────────────────────────────────── */}
@@ -898,8 +904,24 @@ export default function App() {
         </div>
       </BottomSheet>
 
+      {/* ── Nav rail (new E layout, desktop) — replaces the top header on md+ ──── */}
+      {layoutE && (
+        <NavRail
+          items={NAV_TABS}
+          activeTab={activeTab}
+          onNav={goTab}
+          onAdd={() => setModal('add')}
+          gmailUser={gmailUser}
+          showRefresh={!!(gmailUser || gmailConnected)}
+          refreshing={refreshing}
+          onRefresh={() => doRefresh(false)}
+          onAccount={() => goTab('settings')}
+          t={t}
+        />
+      )}
+
       {/* ── Header ────────────────────────────────────────────────────────────── */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-30 shadow-[0_1px_8px_0_rgba(0,0,0,0.06)]">
+      <header className={`bg-white border-b border-gray-100 sticky top-0 z-30 shadow-[0_1px_8px_0_rgba(0,0,0,0.06)]${layoutE ? ' md:hidden' : ''}`}>
         <div className="max-w-screen-2xl mx-auto px-3 sm:px-6 flex items-center justify-between gap-2 h-14">
 
           {/* Left: logo + desktop nav + mobile page title */}
@@ -1085,6 +1107,24 @@ export default function App() {
           <Analytics jobs={jobs} t={t} language={language} />
         ) : activeTab === 'search' && searchEnabled ? (
           <JobSearch onAddJob={(job) => { addJob(job); showToast(`${job.company} ajouté !`); setActiveTab('tracker') }} existingJobs={jobs} t={t} />
+        ) : layoutE ? (
+          <TrackerHomeE
+            jobs={jobs}
+            userName={gmailUser?.name}
+            onEdit={(j) => setModal(j)}
+            onDelete={(j) => setToDelete(j)}
+            onStatusChange={handleStatusChange}
+            onAddStep={addHistoryEntry}
+            onUpdateHistory={handleUpdateHistory}
+            onUpdateJob={updateJob}
+            onGenerateCV={handleGenerateCV}
+            onViewSavedCV={handleViewSavedCV}
+            onToggleFavorite={toggleFavorite}
+            checkAllPositions={checkAllPositions}
+            onSTAR={(j) => setStarJob(j)}
+            onDraftEmail={(j, type) => setEmailDraft({ job: j, type })}
+            t={t}
+          />
         ) : (
           <>
         <div className="w-full min-w-0">

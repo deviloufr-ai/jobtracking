@@ -11,6 +11,9 @@ export const FLAGS_EVENT = 'jobtrackr-flags-changed'
 // Flag identifiers. Job search is hidden by default and re-enabled here.
 export const FLAGS = {
   JOB_SEARCH: 'job_search',
+  // New "E — Focus + List" layout (left nav rail + master-detail drawer). Opt-in
+  // while it's built in parallel; absent/false = the current UI, untouched.
+  LAYOUT_E: 'layout_e',
   // Kill-switch for cross-device deletion sync. Stored as a "disable" flag so the
   // feature is ENABLED by default (absent flag = off = feature on); set it true to
   // disable the destructive poll consumer instantly if a false deletion is seen.
