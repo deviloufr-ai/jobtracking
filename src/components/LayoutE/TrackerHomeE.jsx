@@ -56,7 +56,7 @@ export default function TrackerHomeE({
   const sorted = [...jobs].sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0))
 
   return (
-    <div className={`w-full min-w-0 transition-[padding] duration-300 ${openJob ? 'md:pr-[440px]' : ''}`}>
+    <div className={`w-full min-w-0 transition-[padding] duration-300 ${openJob ? 'md:pr-[488px]' : ''}`}>
       <FocusBand
         jobs={jobs}
         userName={userName}
