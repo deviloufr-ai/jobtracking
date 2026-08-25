@@ -1500,7 +1500,7 @@ export default function App() {
         </FloatingWindow>
       )}
       {mergeModal && <MergeModal jobs={mergeModal} onConfirm={handleMergeConfirm} onCancel={() => setMergeModal(null)} t={t} />}
-      {showOnboarding && <OnboardingModal onAddKey={handleOnboardingAddKey} onSkip={dismissOnboarding} t={t} />}
+      {showOnboarding && <OnboardingModal onAddKey={handleOnboardingAddKey} onSkip={dismissOnboarding} extensionInstalled={extensionInstalled} t={t} />}
       {tourActive && <GuidedTour steps={TOUR_STEPS} onFinish={finishTour} t={t} />}
 
       {/* Bulk-action bar — table view of Candidatures, when rows are selected */}

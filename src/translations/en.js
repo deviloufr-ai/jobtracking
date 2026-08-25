@@ -833,6 +833,23 @@ export const en = {
     later: 'Maybe later',
     skipNote: 'You can add it anytime from Settings → API Claude.',
     trialToast: '🔑 Free trial used up — add your Claude API key to keep using the AI features.',
+    // Onboarding wizard nav
+    next: 'Next',
+    back: 'Back',
+    getStarted: 'Get started',
+    // Page 2 — browser extension
+    extTitle: 'Add the browser extension',
+    extIntro: "The free SmartJobTracker extension is the fastest way to capture jobs while you browse — turn any posting into a tracked application without leaving the page.",
+    extWhat: 'What it does',
+    extFeat1Title: '🖱️ One-click capture',
+    extFeat1Desc: "Save any job posting to your tracker straight from the page you're on.",
+    extFeat2Title: '📋 Scan a results page',
+    extFeat2Desc: 'Score a whole list of offers against your CV and add the best matches in bulk.',
+    extFeat3Title: '✍️ AI form autofill',
+    extFeat3Desc: 'Let Claude fill in long application forms for you.',
+    extDownload: 'Download for Firefox',
+    extFirefoxNote: 'Firefox add-on · free. Open this page in Firefox to install.',
+    extFirefoxReady: 'Firefox add-on · free. Click to install — no account needed.',
   },
 
   // Interactive guided tour (coach marks)

@@ -179,6 +179,23 @@ export const fr = {
     later: 'Plus tard',
     skipNote: "Vous pourrez l'ajouter à tout moment depuis Réglages → API Claude.",
     trialToast: "🔑 Essai gratuit épuisé — ajoutez votre clé API Claude pour continuer à utiliser les fonctions IA.",
+    // Navigation de l'assistant d'onboarding
+    next: 'Suivant',
+    back: 'Retour',
+    getStarted: 'Commencer',
+    // Page 2 — extension navigateur
+    extTitle: "Ajoutez l'extension navigateur",
+    extIntro: "L'extension SmartJobTracker (gratuite) est le moyen le plus rapide de capturer des offres pendant que vous naviguez — transformez n'importe quelle annonce en candidature suivie sans quitter la page.",
+    extWhat: 'Ce qu\'elle fait',
+    extFeat1Title: '🖱️ Capture en un clic',
+    extFeat1Desc: "Enregistrez n'importe quelle annonce dans votre suivi directement depuis la page.",
+    extFeat2Title: '📋 Scan d\'une page de résultats',
+    extFeat2Desc: 'Évaluez toute une liste d\'offres par rapport à votre CV et ajoutez les meilleures en lot.',
+    extFeat3Title: '✍️ Autofill IA des formulaires',
+    extFeat3Desc: 'Laissez Claude remplir les longs formulaires de candidature à votre place.',
+    extDownload: 'Télécharger pour Firefox',
+    extFirefoxNote: "Module Firefox · gratuit. Ouvrez cette page dans Firefox pour l'installer.",
+    extFirefoxReady: 'Module Firefox · gratuit. Cliquez pour installer — aucun compte requis.',
   },
 
   // Visite guidée interactive (coach marks)
