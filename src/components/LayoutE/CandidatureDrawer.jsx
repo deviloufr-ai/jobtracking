@@ -6,7 +6,7 @@
 // ATS coverage, applied, emails) + recruiter contact + commute + a timeline with
 // per-step edit/delete + primary actions. CV / Cover letter / Interview keep the
 // real generators. Self-contained (classic JobRow/JobCandidaturePanel untouched).
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { STATUSES, getStatus, getStatusLabel } from '../../hooks/useJobs'
 import { gmailMessageUrl } from '../../services/gmail'
 import { scoreColorClasses, ScoreBreakdown } from '../ScoreJob'
@@ -23,23 +23,11 @@ const colorFor = (s = '') => PALETTE[[...s].reduce((a, c) => a + c.charCodeAt(0)
 const initials = (s = '') => s.replace(/[^A-Za-z0-9 ]/g, '').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?'
 const shortDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '')
 const fullDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) : '—')
-const atsColorClasses = (s) => (s >= 90 ? 'bg-green-100 text-green-700 border-green-300' : s >= 75 ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-amber-100 text-amber-700 border-amber-300')
 const nowStep = (status) => {
   const n = new Date()
   return { status, note: '', date: n.toISOString().split('T')[0], time: `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}` }
 }
 const TABS = [['overview', 'Overview'], ['cv', 'CV'], ['letter', 'Cover letter'], ['interview', 'Interview']]
-
-function Stat({ label, value, badge }) {
-  return (
-    <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 min-w-0">
-      <div className="text-[10px] uppercase tracking-wide text-gray-400">{label}</div>
-      {badge
-        ? <div className="mt-1"><span className={`inline-flex items-center px-2 py-0.5 rounded text-sm font-bold border ${badge}`}>{value}</span></div>
-        : <div className="text-base font-semibold text-gray-900 mt-0.5 truncate">{value}</div>}
-    </div>
-  )
-}
 
 const btn = 'inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-xl border border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50 transition-colors'
 const btnP = 'inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:brightness-105 transition'
@@ -161,42 +149,58 @@ export default function CandidatureDrawer({
       <div className="px-5 py-5">
         {tab === 'overview' && (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-              <Stat label="Match score" value={typeof job.score === 'number' ? `${Math.round(job.score)}` : '—'} badge={typeof job.score === 'number' ? scoreColorClasses(job.score) : null} />
-              {job.cvSaved?.atsScore != null && <Stat label="ATS coverage" value={Math.round(job.cvSaved.atsScore)} badge={atsColorClasses(job.cvSaved.atsScore)} />}
-              <Stat label="Applied" value={appliedDate ? shortDate(appliedDate) : '—'} />
-              <Stat label="Emails" value={emailCount} />
+            {/* inline metric strip — no boxes */}
+            <div className="flex items-center gap-5 mb-5 flex-wrap">
+              {[
+                { label: 'Match', value: typeof job.score === 'number' ? Math.round(job.score) : '—' },
+                ...(job.cvSaved?.atsScore != null ? [{ label: 'ATS', value: Math.round(job.cvSaved.atsScore) }] : []),
+                { label: 'Applied', value: appliedDate ? shortDate(appliedDate) : '—' },
+                { label: 'Emails', value: emailCount },
+              ].map((m, i) => (
+                <Fragment key={m.label}>
+                  {i > 0 && <span className="w-px h-8 hidden sm:block" style={{ background: 'var(--theme-border, #e8ebf1)' }} />}
+                  <div className="min-w-0">
+                    <div className="text-xl font-bold text-gray-900 tabular-nums leading-none">{m.value}</div>
+                    <div className="text-[10px] uppercase tracking-wide text-gray-400 mt-1.5">{m.label}</div>
+                  </div>
+                </Fragment>
+              ))}
+              {job.scoreDetails && (
+                <button onClick={() => setShowScore(v => !v)} className="text-xs font-medium text-indigo-600 hover:underline ml-auto self-center">
+                  {showScore ? 'Hide breakdown' : 'Score breakdown'}
+                </button>
+              )}
             </div>
 
-            {showScore && job.scoreDetails && (
-              <div className="mb-5 bg-gray-50 border border-gray-100 rounded-xl p-3"><ScoreBreakdown job={job} t={t} /></div>
-            )}
+            {showScore && job.scoreDetails && <div className="mb-5"><ScoreBreakdown job={job} t={t} /></div>}
 
-            {(recruiterContact || (companyAddr && homeAddress) || (!companyAddr) ) && (
-              <div className="grid sm:grid-cols-2 gap-3 mb-6">
-                {recruiterContact && (
-                  <div className="bg-gray-50 border border-gray-100 rounded-xl p-3">
-                    <div className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">Contact</div>
-                    <div className="text-sm font-semibold text-gray-900 truncate">{recruiterContact.name}</div>
-                    <a href={`mailto:${recruiterContact.email}`} className="text-xs text-indigo-600 hover:underline break-all">{recruiterContact.email}</a>
+            {/* contact + commute — subtle line under a hairline */}
+            {(recruiterContact || !(companyAddr && homeAddress)) && (
+              <div className="flex items-center justify-between gap-4 flex-wrap mb-6 pt-3 border-t border-gray-100">
+                {recruiterContact ? (
+                  <div className="flex items-center gap-2 text-sm min-w-0">
+                    <span className="text-gray-400 shrink-0">Contact</span>
+                    <span className="font-medium text-gray-800 truncate">{recruiterContact.name}</span>
+                    <a href={`mailto:${recruiterContact.email}`} className="text-xs text-indigo-600 hover:underline truncate">{recruiterContact.email}</a>
                   </div>
-                )}
-                <div className="bg-gray-50 border border-gray-100 rounded-xl p-3">
-                  <div className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">Commute</div>
-                  {companyAddr && homeAddress ? (
-                    <CommuteInfo homeAddress={homeAddress} companyAddress={companyAddr} companyName={job.company} />
-                  ) : companyAddr && !homeAddress ? (
-                    <p className="text-[11px] text-gray-400">🚗 Add your address in Settings → Profile to see commute time.</p>
-                  ) : (
-                    <>
-                      <button onClick={fetchAddress} disabled={fetchingAddr}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 px-2.5 py-1.5 rounded-lg hover:bg-indigo-100 disabled:opacity-50 transition-colors">
+                ) : <span />}
+                {!(companyAddr && homeAddress) && (
+                  <div className="shrink-0">
+                    {companyAddr && !homeAddress ? (
+                      <span className="text-xs text-gray-400">🚗 Add your address in Settings → Profile</span>
+                    ) : (
+                      <button onClick={fetchAddress} disabled={fetchingAddr} className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:underline disabled:opacity-50">
                         {fetchingAddr ? <><span className="w-3 h-3 border border-indigo-300 border-t-indigo-600 rounded-full animate-spin" /> Searching…</> : <>🚗 Calculate commute</>}
                       </button>
-                      {addrError && <p className="text-[11px] text-red-500 mt-1">{addrError}</p>}
-                    </>
-                  )}
-                </div>
+                    )}
+                    {addrError && <p className="text-xs text-red-500 mt-1">{addrError}</p>}
+                  </div>
+                )}
+              </div>
+            )}
+            {companyAddr && homeAddress && (
+              <div className="mb-6 pt-3 border-t border-gray-100">
+                <CommuteInfo homeAddress={homeAddress} companyAddress={companyAddr} companyName={job.company} />
               </div>
             )}
 
