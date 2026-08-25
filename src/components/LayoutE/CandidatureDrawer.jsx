@@ -11,6 +11,7 @@ import { STATUSES, getStatus, getStatusLabel } from '../../hooks/useJobs'
 import { gmailMessageUrl } from '../../services/gmail'
 import { scoreColorClasses, ScoreBreakdown } from '../ScoreJob'
 import CVViewer from '../CVViewer'
+import CVGenerationSettings from '../CVGenerationSettings'
 import CommuteInfo from '../CommuteInfo'
 import MotivationLetterGenerator from '../MotivationLetterGenerator'
 import MockInterviewChatbot from '../MockInterviewChatbot'
@@ -44,6 +45,7 @@ export default function CandidatureDrawer({
   const appliedEntry = history.find(h => h.source === 'email' && !h.fromMe) || history.find(h => h.status === 'sent') || null
   const appliedDate = appliedEntry?.date || job.date
   const jdHref = job.url ? (/^https?:\/\//i.test(job.url) ? job.url : `https://${job.url}`) : null
+  const hasJobDetails = !!(job.jobDescription || job.url || (job.notes && job.notes.trim()))
 
   const recruiterContact = (() => {
     for (const h of history) {
@@ -296,18 +298,33 @@ export default function CandidatureDrawer({
 
         {tab === 'cv' && (
           <div className="space-y-4">
+            {/* Generation options (base CV, ATS level, rules) — read by the generator */}
+            <CVGenerationSettings t={t} defaultOpen={!job.cvSaved} />
             {job.cvSaved ? (
               <>
-                <div className="flex gap-2">
-                  <button className={btnP} onClick={() => onViewSavedCV?.(job)}>View CV</button>
-                  <button className={btn} onClick={() => onGenerateCV?.(job)}>Regenerate</button>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-gray-900">Adapted CV</div>
+                    <div className="text-xs text-gray-400">{job.cvSaved.savedAt ? new Date(job.cvSaved.savedAt).toLocaleDateString() : ''}</div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button className={btnP} onClick={() => onViewSavedCV?.(job)}>✏️ Edit CV</button>
+                    <button className={`${btn} disabled:opacity-40 disabled:cursor-not-allowed`} disabled={!hasJobDetails}
+                      title={hasJobDetails ? '' : 'Add a job description, URL or notes to generate a tailored CV'}
+                      onClick={() => onGenerateCV?.(job)}>Regenerate</button>
+                  </div>
                 </div>
-                <div className="cv-paper rounded-xl border border-gray-200 overflow-hidden"><CVViewer job={job} inline onClose={() => {}} onUpdate={onUpdateJob} t={t} /></div>
+                <div className="cv-paper rounded-xl border border-gray-200 overflow-auto" style={{ height: 700 }}>
+                  <CVViewer job={job} inline onClose={() => {}} onUpdate={onUpdateJob} t={t} />
+                </div>
               </>
             ) : (
               <div className="text-center py-10">
                 <p className="text-sm text-gray-500 mb-4">No tailored CV yet — generate one adapted to this offer.</p>
-                <button className={btnP} onClick={() => onGenerateCV?.(job)}>Generate CV</button>
+                <button className={`${btnP} disabled:opacity-40 disabled:cursor-not-allowed`} disabled={!hasJobDetails}
+                  title={hasJobDetails ? '' : 'Add a job description, URL or notes to generate a tailored CV'}
+                  onClick={() => onGenerateCV?.(job)}>📄 Generate tailored CV</button>
+                {!hasJobDetails && <p className="text-xs text-gray-400 mt-3">Add a job description, URL or notes first to generate a tailored CV.</p>}
               </div>
             )}
           </div>
