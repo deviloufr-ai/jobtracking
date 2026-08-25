@@ -56,6 +56,15 @@ export default function CandidatureDrawer({
   const displayStatus = history.length ? (history[history.length - 1].status || job.status) : job.status
   const source = job.source || job.platform || job.site || null
   const emailCount = history.filter(h => h.source === 'email').length
+  // "Applied" = when the application was actually confirmed (the validation email
+  // from the company / ATS), NOT when the job was added to the app. history is
+  // chronological (oldest first), so the earliest inbound email is the confirmation;
+  // fall back to the first "sent" step, then the stored date.
+  const appliedEntry =
+    history.find(h => h.source === 'email' && !h.fromMe) ||
+    history.find(h => h.status === 'sent') ||
+    null
+  const appliedDate = appliedEntry?.date || job.date
 
   const [tab, setTab] = useState('overview')
   const [showLetter, setShowLetter] = useState(false)
@@ -97,7 +106,7 @@ export default function CandidatureDrawer({
                 {getStatusLabel(displayStatus, t)}
               </span>
               {source && <span className="text-xs text-gray-400">via {source}</span>}
-              {job.date && <span className="text-xs text-gray-400">{source ? '· ' : ''}{shortDate(job.date)}</span>}
+              {appliedDate && <span className="text-xs text-gray-400">{source ? '· ' : ''}{shortDate(appliedDate)}</span>}
             </div>
           </div>
         </div>
@@ -118,7 +127,7 @@ export default function CandidatureDrawer({
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
               <Stat label="Match score" value={typeof job.score === 'number' ? `${job.score}%` : '—'} />
-              <Stat label="Applied" value={job.date ? fullDate(job.date) : '—'} />
+              <Stat label="Applied" value={appliedDate ? fullDate(appliedDate) : '—'} />
               <Stat label="Emails" value={emailCount} />
             </div>
 
