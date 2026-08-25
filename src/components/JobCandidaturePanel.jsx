@@ -717,9 +717,12 @@ export default function JobCandidaturePanel({
             {/* Job URL — "Apply" while still a lead, "See job description" once sent */}
             {job.url && (() => {
               const notSentYet = displayStatus === 'todo'
+              // Some stored URLs have no scheme (extension/manual entry); a
+              // protocol-less href is treated as relative and won't open the JD.
+              const href = /^https?:\/\//i.test(job.url) ? job.url : `https://${job.url}`
               return (
                 <div className="mt-3 pt-3 border-t border-gray-100">
-                  <a href={job.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                  <a href={href} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
                     className={`inline-flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
                       notSentYet
                         ? 'text-white bg-indigo-600 hover:bg-indigo-700'
