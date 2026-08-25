@@ -86,6 +86,9 @@ export const en = {
   extension: {
     title: 'SmartJobTracker Firefox Extension active',
     label: 'Extension ✓',
+    installed: 'Installed',
+    download: 'Install',
+    whatIsIt: 'What is this?',
   },
 
   // Mobile Menu

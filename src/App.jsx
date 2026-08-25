@@ -131,34 +131,87 @@ function JobTableColgroup() {
 }
 
 
-// Detect if SmartJobTracker Firefox extension is installed
-// The extension injects a custom attribute on <html> or responds to a postMessage
-function ExtensionButton({ t }) {
-  const [installed, setInstalled] = useState(null) // null = checking
+// Always-visible extension affordance in the header toolbar.
+// `installed` comes from the shared useExtensionDetect() in App:
+//   true  → green "Installed" pill
+//   false → orange 🦊 download button + an ⓘ info popover explaining what & why
+//   null  → still checking, render nothing
+function ExtensionButton({ installed, t }) {
+  const [info, setInfo] = useState(false)
+  const isFirefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent)
 
-  useEffect(() => {
-    // Method 1: extension sets data-jobtrackr-ext on <html>
-    if (document.documentElement.hasAttribute('data-jobtrackr-ext')) {
-      setInstalled(true)
-      return
-    }
-    // Method 2: ping via custom event
-    const timeout = setTimeout(() => setInstalled(false), 800)
-    const handler = () => { clearTimeout(timeout); setInstalled(true) }
-    window.addEventListener('jobtrackr-ext-pong', handler, { once: true })
-    window.dispatchEvent(new CustomEvent('jobtrackr-ext-ping'))
-    return () => { clearTimeout(timeout); window.removeEventListener('jobtrackr-ext-pong', handler) }
-  }, [])
+  if (installed === null) return null // still checking
 
-  if (!installed) return null // not installed — no badge, download is in the + menu
+  if (installed === true) {
+    return (
+      <div
+        title={t('extension.title')}
+        className="flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg"
+      >
+        <span>🦊</span>
+        <span className="hidden sm:inline">{t('extension.installed')}</span>
+      </div>
+    )
+  }
+
+  const bullets = [
+    { title: t('onboarding.extFeat1Title'), desc: t('onboarding.extFeat1Desc') },
+    { title: t('onboarding.extFeat2Title'), desc: t('onboarding.extFeat2Desc') },
+    { title: t('onboarding.extFeat3Title'), desc: t('onboarding.extFeat3Desc') },
+  ]
 
   return (
-    <div
-      title={t('extension.title')}
-      className="flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg"
-    >
-      <span>🦊</span>
-      <span className="hidden sm:inline">{t('extension.label')}</span>
+    <div className="relative flex items-center gap-0.5">
+      <a
+        href="/jobtracker-addon-1.6.0.xpi"
+        title={t('extension.download')}
+        className="flex items-center gap-1.5 bg-orange-50 border border-orange-200 text-orange-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg hover:bg-orange-100 active:scale-95 transition-all"
+      >
+        <span>🦊</span>
+        <span className="hidden sm:inline">{t('extension.download')}</span>
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+      </a>
+      <button
+        onClick={() => setInfo(v => !v)}
+        aria-label={t('extension.whatIsIt')}
+        title={t('extension.whatIsIt')}
+        className="w-6 h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      </button>
+
+      {info && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setInfo(false)} />
+          <div className="absolute right-0 top-9 z-50 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+            <div className="px-4 pt-4 pb-3 bg-gradient-to-br from-orange-500 to-amber-500 text-white">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🦊</span>
+                <h3 className="font-bold text-sm leading-tight">{t('onboarding.extTitle')}</h3>
+              </div>
+              <p className="text-[11px] text-orange-50 mt-1.5 leading-relaxed">{t('onboarding.extIntro')}</p>
+            </div>
+            <div className="px-4 py-3 space-y-2.5">
+              {bullets.map((b, i) => (
+                <div key={i}>
+                  <p className="text-xs font-semibold text-gray-800">{b.title}</p>
+                  <p className="text-[11px] text-gray-500 leading-snug mt-0.5">{b.desc}</p>
+                </div>
+              ))}
+            </div>
+            <div className="px-4 pb-4">
+              <a
+                href="/jobtracker-addon-1.6.0.xpi"
+                onClick={() => setInfo(false)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold bg-orange-500 text-white rounded-xl hover:bg-orange-600 active:scale-95 transition-all"
+              >
+                <span>🦊</span>{t('onboarding.extDownload')}
+              </a>
+              <p className="text-[10px] text-gray-400 text-center mt-2">{isFirefox ? t('onboarding.extFirefoxReady') : t('onboarding.extFirefoxNote')}</p>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -1028,7 +1081,7 @@ export default function App() {
 
           {/* Right actions */}
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-            <ExtensionButton t={t} />
+            <ExtensionButton installed={extensionInstalled} t={t} />
 
             {/* Replay the interactive tour */}
             <button onClick={startTour} title={t('tour.replay')} aria-label={t('tour.replay')}
