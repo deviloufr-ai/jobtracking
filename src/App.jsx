@@ -1110,7 +1110,29 @@ export default function App() {
         ) : layoutE ? (
           <TrackerHomeE
             jobs={jobs}
+            filtered={filtered}
             userName={gmailUser?.name}
+            filters={filters}
+            onFilterChange={setFilters}
+            onResetFilters={() => setFilters(DEFAULT_FILTERS)}
+            total={jobs.length}
+            showFavOnly={showFavOnly}
+            onToggleFav={() => setShowFavOnly(v => !v)}
+            favCount={favCount}
+            showArchived={showArchived}
+            onToggleArchived={() => setShowArchived(v => !v)}
+            archivedCount={archivedCount}
+            view={trackerView}
+            onViewChange={handleViewChange}
+            language={language}
+            selectedJobIds={selectedJobIds}
+            onToggleSelect={toggleJobSelection}
+            onSelectAll={(ids) => setSelectedJobIds(prev => {
+              const all = ids.length > 0 && ids.every(id => prev.has(id))
+              const next = new Set(prev)
+              ids.forEach(id => (all ? next.delete(id) : next.add(id)))
+              return next
+            })}
             onEdit={(j) => setModal(j)}
             onDelete={(j) => setToDelete(j)}
             onStatusChange={handleStatusChange}
