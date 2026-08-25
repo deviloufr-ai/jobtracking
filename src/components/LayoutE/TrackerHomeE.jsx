@@ -240,8 +240,10 @@ export default function TrackerHomeE({
                           <span className="block text-[12px] text-gray-400 truncate">{job.position}</span>
                         </span>
                         {!compact && <StageBar status={last?.status || job.status} title={lastNote} />}
-                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${getStatus(last?.status || job.status)?.color || 'bg-gray-100 text-gray-500'}`}>
-                          {getStatusLabel(last?.status || job.status, t)}
+                        <span className="w-32 shrink-0">
+                          <span className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full ${getStatus(last?.status || job.status)?.color || 'bg-gray-100 text-gray-500'}`}>
+                            {getStatusLabel(last?.status || job.status, t)}
+                          </span>
                         </span>
                         {!compact && (
                           <span className="hidden md:block flex-1 min-w-0 truncate text-[12.5px] text-gray-400">{lastNote}</span>
