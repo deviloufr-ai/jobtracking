@@ -22,6 +22,7 @@
    setter hasn't run yet. `background-image: none` also clears index.css's light
    body gradient, which the shorthand would otherwise leave covering the page. */
 body.is-dark {
+  color-scheme: dark;
   background-color: var(--theme-bg, #0c0f16) !important;
   background-image: none !important;
   color: var(--theme-text, #f0f4f8);

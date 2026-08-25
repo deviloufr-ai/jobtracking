@@ -5,6 +5,9 @@
 @layer base {
   body {
     @apply font-sans antialiased text-slate-800;
+    /* Native controls (select/textarea/scrollbars) must follow the app theme, not
+       the OS — otherwise light mode renders dark form fields under an OS dark pref. */
+    color-scheme: light;
     background:
       radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.12), transparent),
       linear-gradient(180deg, #f8fafc 0%, #f1f5f9 50%, #eef2ff 100%);
