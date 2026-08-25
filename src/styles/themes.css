@@ -81,6 +81,37 @@ body.is-dark .border-indigo-200 {
   border-color: var(--theme-primary, #8b5cf6) !important;
 }
 
+/* ── Dark themes: semantic status badges ──────────────────────────────────────
+   Status pills use light -100/-700 pastel pairs (bg-blue-100 text-blue-700, …)
+   that the surface/text rules above don't reach, so they'd stay light-on-dark.
+   Retint each family to a translucent fill + a lighter, readable label. The dots
+   (bg-*-400/500) already read fine on dark and are left alone. Also covers the
+   same families used by score badges, focus-band icons and the toolbar chips. */
+body.is-dark .bg-blue-100    { background-color: rgba(59, 130, 246, 0.18) !important; }
+body.is-dark .text-blue-700  { color: #93b4ff !important; }
+body.is-dark .bg-yellow-100  { background-color: rgba(234, 179, 8, 0.18)  !important; }
+body.is-dark .text-yellow-700{ color: #fbd25f !important; }
+body.is-dark .bg-amber-100   { background-color: rgba(245, 158, 11, 0.18) !important; }
+body.is-dark .text-amber-700 { color: #f6c561 !important; }
+body.is-dark .bg-purple-100  { background-color: rgba(168, 85, 247, 0.20) !important; }
+body.is-dark .text-purple-700{ color: #c9b0ff !important; }
+body.is-dark .bg-violet-100  { background-color: rgba(139, 92, 246, 0.20) !important; }
+body.is-dark .text-violet-700{ color: #c4b1ff !important; }
+body.is-dark .bg-teal-100    { background-color: rgba(20, 184, 166, 0.18) !important; }
+body.is-dark .text-teal-700  { color: #6fe0cf !important; }
+body.is-dark .bg-orange-100  { background-color: rgba(249, 115, 22, 0.18) !important; }
+body.is-dark .text-orange-700{ color: #ffb27a !important; }
+body.is-dark .bg-green-100   { background-color: rgba(34, 197, 94, 0.18)  !important; }
+body.is-dark .text-green-700 { color: #74e39b !important; }
+body.is-dark .bg-red-100     { background-color: rgba(239, 68, 68, 0.18)  !important; }
+body.is-dark .text-red-700,
+body.is-dark .text-red-600   { color: #ff9a9a !important; }
+body.is-dark .bg-rose-100    { background-color: rgba(244, 63, 94, 0.18)  !important; }
+body.is-dark .text-rose-600  { color: #ff9ab4 !important; }
+body.is-dark .bg-slate-100   { background-color: rgba(148, 163, 184, 0.16) !important; }
+body.is-dark .text-slate-600 { color: #b6bfd4 !important; }
+body.is-dark .text-slate-400 { color: #8b93a7 !important; }
+
 /* ── Dark themes: native form controls ──────────────────────────────────────
    Inputs/selects/textareas have no bg-white class, so the surface rule can't
    reach them and they render bright white on dark grounds. A translucent fill +

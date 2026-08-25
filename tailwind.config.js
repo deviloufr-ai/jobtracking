@@ -17,6 +17,11 @@ export default {
           900: '#312e81',
         }
       },
+      fontFamily: {
+        // Inter is loaded in index.html but was never wired into Tailwind, so the
+        // app fell back to system fonts. Make `font-sans` (applied on <body>) Inter.
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
+      },
       boxShadow: {
         'card':    '0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.08)',
         'card-lg': '0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08)',
