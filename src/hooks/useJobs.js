@@ -24,7 +24,15 @@ export function needsEnrichment(job) {
 }
 
 export const ATS_DOMAINS = [
-  'ashbyhq.com', 'greenhouse.io', 'lever.co', 'workable.com',
+  // Greenhouse sends every customer's candidate mail from a regional
+  // <region>.greenhouse-mail.io address (e.g. no-reply@us.greenhouse-mail.io),
+  // NOT greenhouse.io. Listing only greenhouse.io made isSharedSenderDomain treat
+  // that shared per-tenant address as company-specific, so ONE archived Greenhouse
+  // application anchored the sender and a fresh confirmation from a DIFFERENT
+  // employer (Mozilla "Thank you for applying") was skipped as "closed-candidature"
+  // and never reached the parser. Same multi-tenant class as Teamtailor/Oracle —
+  // the shared mail infra must be recognized.
+  'ashbyhq.com', 'greenhouse.io', 'greenhouse-mail.io', 'lever.co', 'workable.com',
   'recruitee.com', 'bamboohr.com', 'smartrecruiters.com', 'taleo.net',
   'successfactors.com', 'jobvite.com', 'icims.com', 'myworkdayjobs.com',
   // Teamtailor sends every customer's candidate mail from <tenant>.teamtailor-mail.com

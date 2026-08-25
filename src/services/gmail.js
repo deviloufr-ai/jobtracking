@@ -865,7 +865,7 @@ async function fetchEmailDetail(id, token) {
 
     // Known ATS domains — their no-reply addresses are legit AND their text/plain
     // part is typically gutted (only the HTML carries the employer/position/decision).
-    const ATS_DOMAINS = ['greenhouse.io','lever.co','ashbyhq.com','workable.com','teamtailor.com','teamtailor-mail.com',
+    const ATS_DOMAINS = ['greenhouse.io','greenhouse-mail.io','lever.co','ashbyhq.com','workable.com','teamtailor.com','teamtailor-mail.com',
       'recruitee.com','bamboohr.com','smartrecruiters.com','jobvite.com','icims.com',
       'myworkdayjobs.com','taleo.net','jobgether.com','welcomekit.co']
 
