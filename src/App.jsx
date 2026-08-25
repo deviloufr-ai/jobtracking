@@ -55,10 +55,29 @@ import { useDebugLogs } from './hooks/useDebugLogs'
 import LandingPage from './components/LandingPage'
 import LandingPageEN from './components/LandingPageEN'
 import OnboardingModal from './components/OnboardingModal'
+import GuidedTour from './components/GuidedTour'
 import BottomSheet from './components/BottomSheet'
 
 const ONBOARDED_KEY = 'jobtrackr_onboarded'
+const TOUR_DONE_KEY = 'jobtrackr_tour_done'
 const API_KEY_STORAGE = 'jobtrackr_claude_api_key'
+
+// Interactive product tour steps. Each points at a DOM element via a
+// `[data-tour="…"]` anchor (see the JSX below); steps whose target isn't
+// visible in the user's current state are skipped automatically, so a brand-new
+// user with no jobs still gets a coherent, shorter walkthrough. Steps with no
+// selector render as a centered card (intro + outro). Title/body are i18n keys.
+const TOUR_STEPS = [
+  { title: 'tour.welcomeTitle', body: 'tour.welcomeBody', icon: '👋' },
+  { selector: '[data-tour="add"]', title: 'tour.addTitle', body: 'tour.addBody', icon: '➕' },
+  { selector: '[data-tour="gmail"]', title: 'tour.gmailTitle', body: 'tour.gmailBody', icon: '📧' },
+  { selector: '[data-tour="nav"]', title: 'tour.navTitle', body: 'tour.navBody', icon: '🧭' },
+  { selector: '[data-tour="views"]', title: 'tour.viewsTitle', body: 'tour.viewsBody', icon: '🗂️' },
+  { selector: '[data-tour="focus"]', title: 'tour.focusTitle', body: 'tour.focusBody', icon: '⚡' },
+  { selector: '[data-tour="refresh"]', title: 'tour.refreshTitle', body: 'tour.refreshBody', icon: '🔄' },
+  { selector: '[data-tour="settings"]', title: 'tour.settingsTitle', body: 'tour.settingsBody', icon: '⚙️' },
+  { title: 'tour.doneTitle', body: 'tour.doneBody', icon: '🎉' },
+]
 
 const DEFAULT_FILTERS = { search: '', statuses: {}, period: 'all' }
 const DEFAULT_SORT = { col: 'date', dir: 'desc' }
@@ -224,6 +243,8 @@ export default function App() {
   const [mergeModal, setMergeModal] = useState(null)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [settingsInitialTab, setSettingsInitialTab] = useState(null)
+  const [tourActive, setTourActive] = useState(false)
+  const tourAutoStartedRef = useRef(false)
 
   // Keep the experimental job-search flag live when toggled from Settings.
   useEffect(() => {
@@ -256,10 +277,40 @@ export default function App() {
     setShowOnboarding(false)
   }
 
+  // Auto-launch the interactive tour once, for users who haven't taken it. It
+  // waits until the main app is on screen (past the landing / loading screens)
+  // and the first-time API-key modal is dismissed, so the two never overlap.
+  // The short delay lets the header / nav finish mounting before the tour
+  // measures its first target.
+  const appVisible =
+    !(isSupabaseConfigured() && authLoading) &&
+    !(isSupabaseConfigured() && !session) &&
+    !showLandingPage &&
+    !(gmailUser && jobs.length === 0 && !initialSyncDone)
+  useEffect(() => {
+    if (!appVisible || showOnboarding || tourAutoStartedRef.current) return
+    if (localStorage.getItem(TOUR_DONE_KEY)) return
+    tourAutoStartedRef.current = true
+    const id = setTimeout(() => setTourActive(true), 700)
+    return () => clearTimeout(id)
+  }, [appVisible, showOnboarding])
+
   const handleOnboardingAddKey = () => {
     dismissOnboarding()
     setSettingsInitialTab('api')
     setActiveTab('settings')
+  }
+
+  // Interactive guided tour controls.
+  const finishTour = () => {
+    localStorage.setItem(TOUR_DONE_KEY, '1')
+    setTourActive(false)
+  }
+  const startTour = () => {
+    // Replay always begins on the Tracker home where the anchors live.
+    setActiveTab('tracker')
+    setAccountSheet(false)
+    setTourActive(true)
   }
 
   // When the shared-key free trial runs out, AI endpoints reply 402; the client
@@ -895,6 +946,11 @@ export default function App() {
             <span className="w-5 h-5 flex items-center justify-center">⚙️</span>
             {t('nav.tabs.settings')}
           </button>
+          <button onClick={startTour}
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+            <span className="w-5 h-5 flex items-center justify-center">🧭</span>
+            {t('tour.replay')}
+          </button>
           {session && (
             <button onClick={() => { setAccountSheet(false); supabase.auth.signOut() }}
               className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
@@ -917,6 +973,7 @@ export default function App() {
           refreshing={refreshing}
           onRefresh={() => doRefresh(false)}
           onAccount={() => goTab('settings')}
+          onTour={startTour}
           t={t}
         />
       )}
@@ -943,9 +1000,10 @@ export default function App() {
             <div className="h-5 w-px bg-gray-200 shrink-0 hidden md:block" />
 
             {/* Desktop nav tabs */}
-            <nav className="hidden md:flex items-center gap-0.5 h-full">
+            <nav data-tour="nav" className="hidden md:flex items-center gap-0.5 h-full">
               {NAV_TABS.map(tab => (
                 <button key={tab.id} onClick={() => goTab(tab.id)}
+                  data-tour={tab.id === 'settings' ? 'settings' : undefined}
                   className={`relative flex items-center gap-1.5 px-3 h-full text-sm font-medium transition-colors ${
                     activeTab === tab.id ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-800'
                   }`}
@@ -972,9 +1030,17 @@ export default function App() {
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             <ExtensionButton t={t} />
 
+            {/* Replay the interactive tour */}
+            <button onClick={startTour} title={t('tour.replay')} aria-label={t('tour.replay')}
+              className="hidden sm:flex items-center justify-center w-8 h-8 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+
             {/* Refresh — desktop only (mobile is in drawer) */}
             {(gmailUser || gmailConnected) && (
-              <button onClick={() => doRefresh(false)} disabled={refreshing}
+              <button data-tour="refresh" onClick={() => doRefresh(false)} disabled={refreshing}
                 title={lastRefresh ? `${t('nav.lastSync')}: ${lastRefresh}` : t('nav.refresh')}
                 className="hidden sm:flex items-center justify-center w-8 h-8 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-30">
                 <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -997,7 +1063,7 @@ export default function App() {
 
             {/* + Add dropdown — desktop only (mobile uses the bottom FAB) */}
             <div className="relative hidden sm:block">
-              <button onClick={() => setShowAddMenu(v => !v)} title={t('nav.add')}
+              <button data-tour="add" onClick={() => setShowAddMenu(v => !v)} title={t('nav.add')}
                 className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:opacity-90 active:scale-95 transition-all shadow-sm shadow-indigo-200">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
               </button>
@@ -1048,7 +1114,7 @@ export default function App() {
 
             {/* Account — desktop */}
             {gmailUser ? (
-              <button onClick={() => setShowGmail(true)} title={gmailUser.email}
+              <button data-tour="gmail" onClick={() => setShowGmail(true)} title={gmailUser.email}
                 className="hidden sm:flex items-center gap-2 bg-gray-50 border border-gray-200 text-gray-700 text-sm font-medium pl-1 pr-3 py-1 rounded-full hover:bg-gray-100 hover:border-gray-300 transition-all">
                 {gmailUser.picture
                   ? <img src={gmailUser.picture} alt="" className="w-7 h-7 rounded-full" />
@@ -1060,13 +1126,13 @@ export default function App() {
                 </div>
               </button>
             ) : gmailConnected ? (
-              <button onClick={() => setShowGmail(true)}
+              <button data-tour="gmail" onClick={() => setShowGmail(true)}
                 className="hidden sm:flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-100 transition-all">
                 <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
                 <span>{t('nav.connected')}</span>
               </button>
             ) : (
-              <button onClick={() => setShowGmail(true)}
+              <button data-tour="gmail" onClick={() => setShowGmail(true)}
                 className="hidden sm:flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 text-sm font-medium px-3 py-2 rounded-lg hover:bg-indigo-100 transition-all">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
@@ -1086,7 +1152,7 @@ export default function App() {
             )}
 
             {/* Account avatar — mobile only (tappable, opens account sheet) */}
-            <button onClick={() => setAccountSheet(true)} className="sm:hidden flex items-center justify-center" aria-label={t('nav.tabs.settings')}>
+            <button data-tour="gmail" onClick={() => setAccountSheet(true)} className="sm:hidden flex items-center justify-center" aria-label={t('nav.tabs.settings')}>
               {gmailUser?.picture
                 ? <img src={gmailUser.picture} alt="" className="w-8 h-8 rounded-full border-2 border-white shadow-sm" />
                 : gmailUser
@@ -1183,14 +1249,16 @@ export default function App() {
         )}
         {jobs.length > 0 && (
           <div className="hidden md:grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4 mb-4 items-start">
-            <NextAction
-              jobs={jobs}
-              onGenerateCV={handleGenerateCV}
-              onOpenJob={(job) => { setActiveTab('tracker'); setFilters(DEFAULT_FILTERS); setExpandedJobId(job.id) }}
-              onSTAR={(job) => setStarJob(job)}
-              onDraftEmail={(job, type) => setEmailDraft({ job, type })}
-              t={t}
-            />
+            <div data-tour="focus">
+              <NextAction
+                jobs={jobs}
+                onGenerateCV={handleGenerateCV}
+                onOpenJob={(job) => { setActiveTab('tracker'); setFilters(DEFAULT_FILTERS); setExpandedJobId(job.id) }}
+                onSTAR={(job) => setStarJob(job)}
+                onDraftEmail={(job, type) => setEmailDraft({ job, type })}
+                t={t}
+              />
+            </div>
             {/* Cette semaine — meetings + goals unified into one rail */}
             <div>
               <UpcomingMeetings jobs={jobs} t={t} />
@@ -1198,14 +1266,16 @@ export default function App() {
             </div>
           </div>
         )}
-        <Filters
-          filters={filters} onChange={setFilters} onReset={() => setFilters(DEFAULT_FILTERS)}
-          total={jobs.length} filtered={filtered.length}
-          showFavOnly={showFavOnly} onToggleFav={() => setShowFavOnly(v => !v)} favCount={favCount}
-          showArchived={showArchived} onToggleArchived={() => setShowArchived(v => !v)} archivedCount={archivedCount}
-          view={trackerView} onViewChange={handleViewChange}
-          t={t}
-        />
+        <div data-tour="views">
+          <Filters
+            filters={filters} onChange={setFilters} onReset={() => setFilters(DEFAULT_FILTERS)}
+            total={jobs.length} filtered={filtered.length}
+            showFavOnly={showFavOnly} onToggleFav={() => setShowFavOnly(v => !v)} favCount={favCount}
+            showArchived={showArchived} onToggleArchived={() => setShowArchived(v => !v)} archivedCount={archivedCount}
+            view={trackerView} onViewChange={handleViewChange}
+            t={t}
+          />
+        </div>
 
         {trackerView === 'platforms' ? (
           <PlatformView jobs={filtered} onOpen={openJob} language={language} t={t} />
@@ -1376,20 +1446,21 @@ export default function App() {
       <NotificationPermissionBanner />
 
       {/* ── Mobile bottom nav bar (4 tabs + raised center FAB) ────────────────── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-white/95 backdrop-blur-lg border-t border-gray-100 shadow-[0_-2px_16px_0_rgba(0,0,0,0.08)]">
+      <nav data-tour="nav" className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-white/95 backdrop-blur-lg border-t border-gray-100 shadow-[0_-2px_16px_0_rgba(0,0,0,0.08)]">
         <div className="flex items-stretch justify-around px-1 pt-1.5 pb-1 safe-area-bottom">
           {NAV_TABS.map((tab, i) => (
             <Fragment key={tab.id}>
               {/* Raised FAB injected in the middle (after the 2nd tab) */}
               {i === 2 && (
                 <div className="flex-1 flex justify-center">
-                  <button onClick={() => setAddSheet(true)} aria-label={t('nav.add')}
+                  <button data-tour="add" onClick={() => setAddSheet(true)} aria-label={t('nav.add')}
                     className="-mt-6 w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-300/50 ring-4 ring-white active:scale-90 transition-transform">
                     <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
                   </button>
                 </div>
               )}
               <button onClick={() => goTab(tab.id)}
+                data-tour={tab.id === 'settings' ? 'settings' : undefined}
                 className={`relative flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition-colors min-w-0 flex-1 ${
                   activeTab === tab.id ? 'text-indigo-600' : 'text-gray-400'
                 }`}
@@ -1430,6 +1501,7 @@ export default function App() {
       )}
       {mergeModal && <MergeModal jobs={mergeModal} onConfirm={handleMergeConfirm} onCancel={() => setMergeModal(null)} t={t} />}
       {showOnboarding && <OnboardingModal onAddKey={handleOnboardingAddKey} onSkip={dismissOnboarding} t={t} />}
+      {tourActive && <GuidedTour steps={TOUR_STEPS} onFinish={finishTour} t={t} />}
 
       {/* Bulk-action bar — table view of Candidatures, when rows are selected */}
       {activeTab === 'tracker' && trackerView === 'table' && (

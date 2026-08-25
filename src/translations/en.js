@@ -835,6 +835,34 @@ export const en = {
     trialToast: '🔑 Free trial used up — add your Claude API key to keep using the AI features.',
   },
 
+  // Interactive guided tour (coach marks)
+  tour: {
+    aria: 'Product tour',
+    replay: 'Take the tour',
+    skip: 'Skip',
+    back: 'Back',
+    next: 'Next',
+    finish: 'Done',
+    welcomeTitle: "Welcome — let's take a quick tour",
+    welcomeBody: 'A 30-second walkthrough of how SmartJobTracker keeps your job search organized. You can skip anytime.',
+    addTitle: 'Add applications',
+    addBody: 'Add a job manually, from a screenshot, or import a batch — this is your starting point.',
+    gmailTitle: 'Connect Gmail',
+    gmailBody: 'Connect your inbox and Claude turns recruiter emails into tracked applications automatically.',
+    navTitle: 'Move around',
+    navBody: 'Switch between your Tracker, Analytics, and Settings from here.',
+    viewsTitle: 'View & filter',
+    viewsBody: 'See your applications as a table, a kanban board, or grouped by platform — and filter by status or period.',
+    focusTitle: 'Your daily focus',
+    focusBody: 'The next actions that matter today: who to follow up with, offers to answer, interviews to prep.',
+    refreshTitle: 'Stay in sync',
+    refreshBody: 'Pull in new recruiter emails anytime with a single click.',
+    settingsTitle: 'Make it yours',
+    settingsBody: 'Add your Claude API key, pick a theme, set follow-up reminders, and manage your CV.',
+    doneTitle: "You're all set 🎉",
+    doneBody: 'Replay this tour anytime from the ? button in the top bar. Good luck with your search!',
+  },
+
   // Settings - Followups Tab
   settingsFollowups: {
     title: 'Action deadline',

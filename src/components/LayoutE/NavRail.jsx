@@ -15,6 +15,7 @@ export default function NavRail({
   refreshing,
   onRefresh,
   onAccount,
+  onTour,
   t = (k) => k,
 }) {
   return (
@@ -33,6 +34,7 @@ export default function NavRail({
       {/* Primary action */}
       <div className="px-3 pt-3">
         <button
+          data-tour="add"
           onClick={onAdd}
           className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-sm font-semibold shadow-sm hover:brightness-105 active:scale-[0.98] transition"
         >
@@ -42,13 +44,14 @@ export default function NavRail({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-1">
+      <nav data-tour="nav" className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-1">
         {items.map(tab => {
           const active = activeTab === tab.id
           return (
             <button
               key={tab.id}
               onClick={() => onNav(tab.id)}
+              data-tour={tab.id === 'settings' ? 'settings' : undefined}
               aria-current={active ? 'page' : undefined}
               className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
                 active ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
@@ -70,6 +73,7 @@ export default function NavRail({
       <div className="px-3 py-3 border-t border-gray-100 flex flex-col gap-1 shrink-0">
         {showRefresh && (
           <button
+            data-tour="refresh"
             onClick={onRefresh}
             disabled={refreshing}
             className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-40"
@@ -78,7 +82,17 @@ export default function NavRail({
             {refreshing ? t('header.loading') : t('nav.refresh')}
           </button>
         )}
+        {onTour && (
+          <button
+            onClick={onTour}
+            className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            {t('tour.replay')}
+          </button>
+        )}
         <button
+          data-tour="gmail"
           onClick={onAccount}
           className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50 transition-colors text-left"
         >

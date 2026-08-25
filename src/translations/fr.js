@@ -181,6 +181,34 @@ export const fr = {
     trialToast: "🔑 Essai gratuit épuisé — ajoutez votre clé API Claude pour continuer à utiliser les fonctions IA.",
   },
 
+  // Visite guidée interactive (coach marks)
+  tour: {
+    aria: 'Visite guidée',
+    replay: 'Faire la visite',
+    skip: 'Passer',
+    back: 'Retour',
+    next: 'Suivant',
+    finish: 'Terminé',
+    welcomeTitle: 'Bienvenue — faisons un rapide tour',
+    welcomeBody: "Une visite de 30 secondes pour découvrir comment SmartJobTracker organise votre recherche d'emploi. Vous pouvez passer à tout moment.",
+    addTitle: 'Ajouter des candidatures',
+    addBody: "Ajoutez une offre manuellement, depuis une capture d'écran, ou importez un lot — c'est votre point de départ.",
+    gmailTitle: 'Connecter Gmail',
+    gmailBody: 'Connectez votre boîte mail et Claude transforme les emails de recruteurs en candidatures suivies automatiquement.',
+    navTitle: 'Naviguer',
+    navBody: 'Basculez entre votre Suivi, les Statistiques et les Réglages depuis ici.',
+    viewsTitle: 'Afficher & filtrer',
+    viewsBody: 'Visualisez vos candidatures en tableau, en kanban ou par plateforme — et filtrez par statut ou période.',
+    focusTitle: 'Votre focus du jour',
+    focusBody: 'Les prochaines actions qui comptent aujourd’hui : qui relancer, à quelles offres répondre, quels entretiens préparer.',
+    refreshTitle: 'Rester synchronisé',
+    refreshBody: 'Récupérez les nouveaux emails de recruteurs à tout moment en un clic.',
+    settingsTitle: 'Personnaliser',
+    settingsBody: 'Ajoutez votre clé API Claude, choisissez un thème, réglez les rappels de relance et gérez votre CV.',
+    doneTitle: 'Tout est prêt 🎉',
+    doneBody: 'Rejouez cette visite à tout moment via le bouton ? de la barre du haut. Bonne chance dans votre recherche !',
+  },
+
   // Footer Actions
   footer: {
     mergeDuplicates: '🔀 Fusionner les doublons',
