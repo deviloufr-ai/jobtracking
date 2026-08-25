@@ -61,6 +61,10 @@ export const fr = {
     noCVSelected: 'Aucun CV sélectionné',
     incompleteJob: 'Informations incomplètes',
   },
+  candidature: {
+    apply: 'Postuler',
+    viewOffer: 'Voir la description du poste',
+  },
   // Navigation & Tabs
   nav: {
     tabs: {

@@ -61,6 +61,10 @@ export const en = {
     noCVSelected: 'No CV selected',
     incompleteJob: 'Job details incomplete',
   },
+  candidature: {
+    apply: 'Apply',
+    viewOffer: 'See job description',
+  },
   // Navigation & Tabs
   nav: {
     tabs: {

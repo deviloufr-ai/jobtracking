@@ -714,16 +714,23 @@ export default function JobCandidaturePanel({
               )}
             </div>
 
-            {/* Job URL */}
-            {job.url && (
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <a href={job.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                  className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1.5 truncate">
-                  <span>🔗</span>
-                  <span className="truncate">{(() => { try { return new URL(job.url).hostname.replace('www.', '') } catch { return job.url } })()}</span>
-                </a>
-              </div>
-            )}
+            {/* Job URL — "Apply" while still a lead, "See job description" once sent */}
+            {job.url && (() => {
+              const notSentYet = displayStatus === 'todo'
+              return (
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <a href={job.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                    className={`inline-flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                      notSentYet
+                        ? 'text-white bg-indigo-600 hover:bg-indigo-700'
+                        : 'text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200'
+                    }`}>
+                    <span>{notSentYet ? t('candidature.apply') : t('candidature.viewOffer')}</span>
+                    <span>↗</span>
+                  </a>
+                </div>
+              )
+            })()}
 
             {/* Commute Time */}
             {companyAddr && homeAddress ? (
