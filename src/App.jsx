@@ -83,6 +83,7 @@ function sortJobs(jobs, sort) {
     if (col === 'company') { va = a.company.toLowerCase(); vb = b.company.toLowerCase() }
     if (col === 'status')  { va = a.status; vb = b.status }
     if (col === 'position'){ va = a.position.toLowerCase(); vb = b.position.toLowerCase() }
+    if (col === 'score')   { va = a.score ?? -1; vb = b.score ?? -1 }
     if (va < vb) return dir === 'asc' ? -1 : 1
     if (va > vb) return dir === 'asc' ? 1 : -1
     return 0
@@ -1125,6 +1126,8 @@ export default function App() {
             view={trackerView}
             onViewChange={handleViewChange}
             language={language}
+            sort={sort}
+            onSort={setSort}
             selectedJobIds={selectedJobIds}
             onToggleSelect={toggleJobSelection}
             onSelectAll={(ids) => setSelectedJobIds(prev => {

@@ -11,12 +11,13 @@
 // the open row. Every view opens the same drawer, whose body reuses JobCard.
 import { useState, useEffect } from 'react'
 import { getStatus, getStatusLabel } from '../../hooks/useJobs'
+import { ScoreBadge } from '../ScoreJob'
 import JobCard from '../JobCard'
-import Filters from '../Filters'
 import KanbanBoard from '../KanbanBoard'
 import MobilePipeline from '../MobilePipeline'
 import PlatformView from '../PlatformView'
 import FocusBand from './FocusBand'
+import ListToolbar from './ListToolbar'
 
 const PALETTE = ['#4f46e5', '#2563eb', '#0d9488', '#d97706', '#db2777', '#7c3aed', '#dc2626', '#059669']
 const colorFor = (s = '') => PALETTE[[...s].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETTE.length]
@@ -40,6 +41,8 @@ export default function TrackerHomeE({
   archivedCount,
   view = 'table',
   onViewChange,
+  sort,
+  onSort,
   language = 'en',
   // multi-select (bulk actions)
   selectedJobIds = new Set(),
@@ -99,20 +102,22 @@ export default function TrackerHomeE({
         t={t}
       />
 
-      <Filters
+      <ListToolbar
         filters={filters}
         onChange={onFilterChange}
-        onReset={onResetFilters}
-        total={total}
-        filtered={filtered.length}
+        sort={sort}
+        onSort={onSort}
+        view={view}
+        onViewChange={onViewChange}
         showFavOnly={showFavOnly}
         onToggleFav={onToggleFav}
         favCount={favCount}
         showArchived={showArchived}
         onToggleArchived={onToggleArchived}
         archivedCount={archivedCount}
-        view={view}
-        onViewChange={onViewChange}
+        total={total}
+        filteredCount={filtered.length}
+        onReset={onResetFilters}
         t={t}
       />
 
@@ -192,6 +197,9 @@ export default function TrackerHomeE({
                         aria-current={active ? 'true' : undefined}
                         className="flex-1 min-w-0 flex items-center gap-3 text-left"
                       >
+                        <span className="w-9 flex justify-center shrink-0">
+                          <ScoreBadge job={job} t={t} />
+                        </span>
                         <span
                           className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0"
                           style={{ background: colorFor(job.company) }}
@@ -199,17 +207,22 @@ export default function TrackerHomeE({
                           {initials(job.company)}
                         </span>
                         <span className="flex-1 min-w-0">
-                          <span className="block text-sm font-semibold text-gray-900 truncate">
-                            {job.favorite && <span className="text-amber-400">★ </span>}{job.company}
-                          </span>
+                          <span className="block text-sm font-semibold text-gray-900 truncate">{job.company}</span>
                           <span className="block text-xs text-gray-400 truncate">{job.position}</span>
                         </span>
-                        {typeof job.score === 'number' && (
-                          <span className="text-xs font-bold text-gray-500 tabular-nums shrink-0">{job.score}</span>
-                        )}
                         <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${status?.color || 'bg-gray-100 text-gray-500'}`}>
                           {getStatusLabel(job.status, t)}
                         </span>
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onToggleFavorite?.(job.id) }}
+                        aria-label="favorite"
+                        aria-pressed={!!job.favorite}
+                        className={`shrink-0 text-base leading-none transition-transform hover:scale-110 ${
+                          job.favorite ? 'text-amber-400' : 'text-gray-300 hover:text-amber-300'
+                        }`}
+                      >
+                        ★
                       </button>
                     </div>
                   )
