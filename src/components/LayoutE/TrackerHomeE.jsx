@@ -92,7 +92,7 @@ export default function TrackerHomeE({
   )
 
   return (
-    <div className={`w-full min-w-0 transition-[padding] duration-300 ${openJob ? 'md:pr-[608px]' : ''}`}>
+    <div className={`w-full min-w-0 transition-[padding] duration-300 ${openJob ? 'md:pr-[648px] 2xl:pr-[948px]' : ''}`}>
       <FocusBand
         jobs={jobs}
         userName={userName}
@@ -241,27 +241,19 @@ export default function TrackerHomeE({
       {openJob && (
         <>
           <div className="fixed inset-0 bg-black/30 z-40 md:hidden" onClick={close} />
-          <aside className="fixed top-0 right-0 bottom-0 z-40 w-full md:w-[560px] bg-white border-l border-gray-100 shadow-2xl flex flex-col animate-slide-up md:animate-none">
-            <div className="flex items-center justify-between px-4 h-14 border-b border-gray-100 shrink-0">
-              <span className="text-sm font-semibold text-gray-800 truncate">{openJob.company}</span>
-              <button
-                onClick={close}
-                aria-label={t('common.close') || 'Fermer'}
-                className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-3 py-3">
+          <aside className="fixed top-0 right-0 bottom-0 z-40 w-full md:w-[600px] 2xl:w-[900px] bg-white border-l border-gray-100 shadow-2xl flex flex-col animate-slide-up md:animate-none">
+            <div className="flex-1 overflow-y-auto">
               <CandidatureDrawer
                 job={openJob}
+                onClose={close}
                 onEdit={onEdit}
                 onDelete={(j) => { close(); onDelete?.(j) }}
                 onUpdateJob={onUpdateJob}
                 onAddStep={onAddStep}
-                onUpdateHistory={onUpdateHistory}
                 onGenerateCV={onGenerateCV}
                 onViewSavedCV={onViewSavedCV}
+                onSTAR={onSTAR}
+                onDraftEmail={onDraftEmail}
                 t={t}
               />
             </div>
