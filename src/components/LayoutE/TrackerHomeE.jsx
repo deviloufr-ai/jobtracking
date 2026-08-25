@@ -281,6 +281,7 @@ export default function TrackerHomeE({
                 onDelete={(j) => { close(); onDelete?.(j) }}
                 onUpdateJob={onUpdateJob}
                 onAddStep={onAddStep}
+                onUpdateHistory={onUpdateHistory}
                 onGenerateCV={onGenerateCV}
                 onViewSavedCV={onViewSavedCV}
                 onSTAR={onSTAR}
