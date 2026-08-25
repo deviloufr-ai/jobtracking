@@ -72,7 +72,7 @@ export default function FloatingWindow({ title, onClose, children, width = 1120 
 
   return (
     <div
-      className={`fixed z-[60] flex flex-col bg-slate-100 rounded-xl shadow-2xl border border-gray-300 overflow-hidden ${minimized ? 'left-auto top-auto' : ''}`}
+      className={`fixed z-[60] flex flex-col bg-white rounded-xl shadow-2xl border border-gray-300 overflow-hidden ${minimized ? 'left-auto top-auto' : ''}`}
       style={style}
     >
       <div
