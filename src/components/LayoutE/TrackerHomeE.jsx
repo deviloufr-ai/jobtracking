@@ -235,7 +235,7 @@ export default function TrackerHomeE({
                         >
                           {initials(job.company)}
                         </span>
-                        <span className={`min-w-0 ${compact ? 'flex-1' : 'w-[240px] shrink-0'}`}>
+                        <span className={`min-w-0 ${compact ? 'flex-1' : 'w-[360px] shrink-0'}`}>
                           <span className="block text-[13.5px] font-semibold tracking-tight text-gray-900 truncate">{job.company}</span>
                           <span className="block text-[12px] text-gray-400 truncate">{job.position}</span>
                         </span>
