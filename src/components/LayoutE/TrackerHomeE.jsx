@@ -36,7 +36,7 @@ function StageBar({ status, title }) {
   const terminal = TERMINAL.has(status)
   const ix = STAGE_IX[status] ?? -1
   return (
-    <div className="hidden lg:flex items-center flex-1 min-w-0 max-w-[300px]" title={title || (terminal ? 'Closed' : STAGES[ix]?.label || '')}>
+    <div className="hidden lg:flex items-center w-[150px] shrink-0" title={title || (terminal ? 'Closed' : STAGES[ix]?.label || '')}>
       {STAGES.map((s, i) => (
         <Fragment key={s.key}>
           <span className="w-2 h-2 rounded-full shrink-0" style={{ background: !terminal && i <= ix ? ACCENT : MUTED }} />
@@ -235,18 +235,23 @@ export default function TrackerHomeE({
                         >
                           {initials(job.company)}
                         </span>
-                        <span className={`min-w-0 ${compact ? 'flex-1' : 'w-[260px] shrink-0'}`}>
+                        <span className={`min-w-0 ${compact ? 'flex-1' : 'w-[240px] shrink-0'}`}>
                           <span className="block text-[13.5px] font-semibold tracking-tight text-gray-900 truncate">{job.company}</span>
                           <span className="block text-[12px] text-gray-400 truncate">{job.position}</span>
                         </span>
                         {!compact && <StageBar status={last?.status || job.status} title={lastNote} />}
                         {!compact && (
-                          <span className="hidden md:block w-20 text-right text-[12px] text-gray-400 tabular-nums shrink-0">
+                          <span className="hidden md:block flex-1 min-w-0 truncate text-[12.5px] text-gray-400">{lastNote}</span>
+                        )}
+                        {!compact && (
+                          <span className="hidden md:block w-16 text-right text-[12px] text-gray-400 tabular-nums shrink-0">
                             {shortDate(last?.date || job.date)}
                           </span>
                         )}
-                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${getStatus(last?.status || job.status)?.color || 'bg-gray-100 text-gray-500'}`}>
-                          {getStatusLabel(last?.status || job.status, t)}
+                        <span className={`w-28 flex justify-end shrink-0`}>
+                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${getStatus(last?.status || job.status)?.color || 'bg-gray-100 text-gray-500'}`}>
+                            {getStatusLabel(last?.status || job.status, t)}
+                          </span>
                         </span>
                       </button>
                       <button
