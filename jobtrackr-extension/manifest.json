@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
-  "name": "JobTrackr",
-  "version": "1.6.0",
-  "description": "Ajoute une offre d'emploi \u00e0 JobTrackr en 1 clic + Autofill IA des formulaires de candidature",
+  "name": "SmartJobTracker",
+  "version": "1.6.1",
+  "description": "Ajoute une offre d'emploi \u00e0 SmartJobTracker en 1 clic + Autofill IA des formulaires de candidature",
   "icons": {
     "48": "icon48.png",
     "96": "icon96.png"
@@ -26,7 +26,7 @@
       "48": "icon48.png",
       "96": "icon96.png"
     },
-    "default_title": "JobTrackr"
+    "default_title": "SmartJobTracker"
   },
   "content_scripts": [
     {
@@ -40,10 +40,10 @@
       "all_frames": true
     }
   ],
-  "homepage_url": "https://jobtracking-three.vercel.app",
+  "homepage_url": "https://www.smartjobtracker.com",
   "developer": {
-    "name": "JobTrackr Team",
-    "url": "https://jobtracking-three.vercel.app"
+    "name": "Alexandre Leblanc",
+    "url": "https://www.smartjobtracker.com"
   },
   "browser_specific_settings": {
     "gecko": {
