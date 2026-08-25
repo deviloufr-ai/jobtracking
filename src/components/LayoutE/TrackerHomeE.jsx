@@ -9,7 +9,7 @@
 // candidature switches it in place (active row highlighted), the content reflows
 // left of the drawer on desktop, and the drawer closes on ✕ / Esc / re-clicking
 // the open row. Every view opens the same drawer, whose body reuses JobCard.
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { getStatus, getStatusLabel } from '../../hooks/useJobs'
 import { scoreColorClasses } from '../ScoreJob'
 import KanbanBoard from '../KanbanBoard'
@@ -23,6 +23,29 @@ const PALETTE = ['#4f46e5', '#2563eb', '#0d9488', '#d97706', '#db2777', '#7c3aed
 const colorFor = (s = '') => PALETTE[[...s].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETTE.length]
 const initials = (s = '') =>
   s.replace(/[^A-Za-z0-9 ]/g, '').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?'
+const shortDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '')
+
+// Compact per-row stage progress (Applied → Reviewing → Interview → Offer).
+const STAGES = [{ key: 'sent', label: 'Applied' }, { key: 'reviewing', label: 'Reviewing' }, { key: 'interview', label: 'Interview' }, { key: 'offer', label: 'Offer' }]
+const STAGE_IX = { todo: -1, sent: 0, reviewing: 1, waiting: 1, interview: 2, done: 2, offer: 3 }
+const TERMINAL = new Set(['rejected', 'rejected_ats', 'cancelled', 'archived'])
+const ACCENT = 'var(--theme-primary, #6366f1)'
+const MUTED = 'var(--theme-border, #d8dbe4)'
+
+function StageBar({ status, title }) {
+  const terminal = TERMINAL.has(status)
+  const ix = STAGE_IX[status] ?? -1
+  return (
+    <div className="hidden lg:flex items-center flex-1 min-w-0 max-w-[300px]" title={title || (terminal ? 'Closed' : STAGES[ix]?.label || '')}>
+      {STAGES.map((s, i) => (
+        <Fragment key={s.key}>
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: !terminal && i <= ix ? ACCENT : MUTED }} />
+          {i < STAGES.length - 1 && <span className="h-0.5 flex-1" style={{ background: !terminal && i < ix ? ACCENT : MUTED }} />}
+        </Fragment>
+      ))}
+    </div>
+  )
+}
 
 export default function TrackerHomeE({
   jobs = [],
@@ -66,6 +89,7 @@ export default function TrackerHomeE({
   const [openId, setOpenId] = useState(null)
   const openJob = jobs.find(j => j.id === openId) || null
   const open = (j) => setOpenId(j.id)
+  const compact = !!openJob // drawer open → list is narrow, hide extra columns
 
   // Close the drawer if its job disappears (deleted / filtered away entirely).
   useEffect(() => {
@@ -174,9 +198,10 @@ export default function TrackerHomeE({
               </div>
               <div className="divide-y divide-gray-50">
                 {filtered.map(job => {
-                  const status = getStatus(job.status)
                   const active = openId === job.id
                   const selected = selectedJobIds.has(job.id)
+                  const last = (job.history || []).at(-1)
+                  const lastNote = last?.note ? last.note.replace(/\s*\n\s*/g, ' ') : ''
                   return (
                     <div
                       key={job.id}
@@ -210,12 +235,18 @@ export default function TrackerHomeE({
                         >
                           {initials(job.company)}
                         </span>
-                        <span className="flex-1 min-w-0">
+                        <span className={`min-w-0 ${compact ? 'flex-1' : 'w-[260px] shrink-0'}`}>
                           <span className="block text-[13.5px] font-semibold tracking-tight text-gray-900 truncate">{job.company}</span>
                           <span className="block text-[12px] text-gray-400 truncate">{job.position}</span>
                         </span>
-                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${status?.color || 'bg-gray-100 text-gray-500'}`}>
-                          {getStatusLabel(job.status, t)}
+                        {!compact && <StageBar status={last?.status || job.status} title={lastNote} />}
+                        {!compact && (
+                          <span className="hidden md:block w-20 text-right text-[12px] text-gray-400 tabular-nums shrink-0">
+                            {shortDate(last?.date || job.date)}
+                          </span>
+                        )}
+                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${getStatus(last?.status || job.status)?.color || 'bg-gray-100 text-gray-500'}`}>
+                          {getStatusLabel(last?.status || job.status, t)}
                         </span>
                       </button>
                       <button
