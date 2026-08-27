@@ -26,7 +26,11 @@ function fullDate(dateStr) {
   }
 }
 
-export default function NotificationBell({ notifications, unreadCount, onMarkAllRead, onClear, onRemove, onNavigate, t = (k) => k }) {
+// `variant`:
+//   'button' (default) → compact 36px icon+badge for the classic top header.
+//   'rail'             → full-width labeled row for the new-design left NavRail,
+//                        matching its other rows; the panel opens on the left.
+export default function NotificationBell({ notifications, unreadCount, onMarkAllRead, onClear, onRemove, onNavigate, variant = 'button', t = (k) => k }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -42,26 +46,54 @@ export default function NotificationBell({ notifications, unreadCount, onMarkAll
     if (!open && unreadCount > 0) onMarkAllRead()
   }
 
+  const bellPath = "M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+  const isRail = variant === 'rail'
+  // Rail sits in a narrow left sidebar → open the panel from the left edge so the
+  // 320px card spills into the content area, not off-screen to the left.
+  const panelPos = isRail ? 'left-0 top-full mt-2' : 'right-0 top-full mt-2'
+
   return (
     <div className="relative" ref={ref}>
-      <button
-        onClick={handleOpen}
-        title="Notifications"
-        className="relative flex items-center justify-center w-9 h-9 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-      >
-        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-        </svg>
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5">
-            {unreadCount > 9 ? '9+' : unreadCount}
+      {isRail ? (
+        <button
+          onClick={handleOpen}
+          title="Notifications"
+          aria-label="Notifications"
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+            open ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+          }`}
+        >
+          <span className="relative w-5 flex items-center justify-center leading-none">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={bellPath} />
+            </svg>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[15px] h-[15px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </span>
-        )}
-      </button>
+          <span className="flex-1 text-left">Notifications</span>
+        </button>
+      ) : (
+        <button
+          onClick={handleOpen}
+          title="Notifications"
+          className="relative flex items-center justify-center w-9 h-9 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={bellPath} />
+          </svg>
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </button>
+      )}
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+        <div className={`absolute ${panelPos} w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden`}>
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <span className="text-sm font-semibold text-gray-800">Notifications</span>
@@ -129,15 +161,12 @@ export default function NotificationBell({ notifications, unreadCount, onMarkAll
                           onClick={e => { e.stopPropagation(); onRemove(n.id) }}
                           title="Supprimer"
                           aria-label="Supprimer"
-                          className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity w-5 h-5 flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 rounded"
+                          className="w-5 h-5 flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
                         >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                       )}
-                      {!n.read && <span className="w-2 h-2 rounded-full bg-blue-500 mt-1" />}
-                      {(n.meta?.jobId || n.meta?.company) && (
-                        <span className="text-[10px] text-gray-300 group-hover:hidden">→</span>
-                      )}
+                      {!n.read && <span className="w-2 h-2 rounded-full bg-blue-500" />}
                     </div>
                   </div>
                 )

@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
 import { useJobs, getStatus } from './hooks/useJobs'
 import { useExtensionImport } from './hooks/useExtensionImport'
 import { useExtensionDetect } from './hooks/useExtensionDetect'
+import { useExtensionUpdate } from './hooks/useExtensionUpdate'
+import { EXTENSION_XPI_PATH } from './constants/extension'
 import { useSettings } from './hooks/useSettings'
 import { useLanguage } from './hooks/useLanguage'
 import './styles/themes.css'
@@ -55,6 +57,7 @@ import { useDebugLogs } from './hooks/useDebugLogs'
 import LandingPage from './components/LandingPage'
 import LandingPageEN from './components/LandingPageEN'
 import OnboardingModal from './components/OnboardingModal'
+import ExtensionUpdateModal from './components/ExtensionUpdateModal'
 import GuidedTour from './components/GuidedTour'
 import BottomSheet from './components/BottomSheet'
 
@@ -133,16 +136,32 @@ function JobTableColgroup() {
 
 // Always-visible extension affordance in the header toolbar.
 // `installed` comes from the shared useExtensionDetect() in App:
+//   true + updateAvailable → amber "Update" button (opens the update modal)
 //   true  → green "Installed" pill
 //   false → orange 🦊 download button + an ⓘ info popover explaining what & why
 //   null  → still checking, render nothing
-function ExtensionButton({ installed, t }) {
+function ExtensionButton({ installed, updateAvailable, onUpdate, t }) {
   const [info, setInfo] = useState(false)
   const isFirefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent)
 
   if (installed === null) return null // still checking
 
   if (installed === true) {
+    if (updateAvailable) {
+      return (
+        <button
+          onClick={onUpdate}
+          title={t('extensionUpdate.badge')}
+          className="flex items-center gap-1.5 bg-orange-50 border border-orange-200 text-orange-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg hover:bg-orange-100 active:scale-95 transition-all"
+        >
+          <span className="relative flex">
+            <span>🦊</span>
+            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-500 ring-2 ring-white" />
+          </span>
+          <span className="hidden sm:inline">{t('extensionUpdate.badge')}</span>
+        </button>
+      )
+    }
     return (
       <div
         title={t('extension.title')}
@@ -163,7 +182,7 @@ function ExtensionButton({ installed, t }) {
   return (
     <div className="relative flex items-center gap-0.5">
       <a
-        href="/jobtracker-addon-1.6.0.xpi"
+        href={EXTENSION_XPI_PATH}
         title={t('extension.download')}
         className="flex items-center gap-1.5 bg-orange-50 border border-orange-200 text-orange-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg hover:bg-orange-100 active:scale-95 transition-all"
       >
@@ -201,7 +220,7 @@ function ExtensionButton({ installed, t }) {
             </div>
             <div className="px-4 pb-4">
               <a
-                href="/jobtracker-addon-1.6.0.xpi"
+                href={EXTENSION_XPI_PATH}
                 onClick={() => setInfo(false)}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold bg-orange-500 text-white rounded-xl hover:bg-orange-600 active:scale-95 transition-all"
               >
@@ -229,6 +248,7 @@ export default function App() {
   useDebugLogs() // Control console.log visibility based on debugLogsEnabled setting
   const { t, language } = useLanguage()
   const extensionInstalled = useExtensionDetect()
+  const extUpdate = useExtensionUpdate()
   const { permission: notificationPermission } = useNotificationPermission()
   useNotificationScenarios(jobs, notificationPermission)
 
@@ -295,6 +315,7 @@ export default function App() {
   const [bulkCvOpen, setBulkCvOpen] = useState(false)
   const [mergeModal, setMergeModal] = useState(null)
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showExtUpdate, setShowExtUpdate] = useState(false)
   const [settingsInitialTab, setSettingsInitialTab] = useState(null)
   const [tourActive, setTourActive] = useState(false)
   const tourAutoStartedRef = useRef(false)
@@ -328,6 +349,23 @@ export default function App() {
   const dismissOnboarding = () => {
     localStorage.setItem(ONBOARDED_KEY, '1')
     setShowOnboarding(false)
+  }
+
+  // Prompt to update the browser extension when a newer signed build is out and
+  // the user hasn't skipped this version. `?extupdate=preview` force-opens the
+  // modal for QA regardless of the installed version. Stays out of the way of the
+  // first-run onboarding modal.
+  const extUpdatePreview = new URLSearchParams(window.location.search).get('extupdate') === 'preview'
+  useEffect(() => {
+    if (showOnboarding) return
+    if (extUpdatePreview || (extUpdate.updateAvailable && !extUpdate.dismissed)) {
+      setShowExtUpdate(true)
+    }
+  }, [extUpdate.updateAvailable, extUpdate.dismissed, showOnboarding, extUpdatePreview])
+
+  const dismissExtUpdate = () => {
+    extUpdate.dismiss()
+    setShowExtUpdate(false)
   }
 
   // Auto-launch the interactive tour once, for users who haven't taken it. It
@@ -955,7 +993,7 @@ export default function App() {
             </button>
           ))}
           {extensionInstalled === false && (
-            <a href="/jobtracker-addon-1.6.0.xpi" onClick={() => setAddSheet(false)}
+            <a href={EXTENSION_XPI_PATH} onClick={() => setAddSheet(false)}
               className="w-full flex items-center gap-3.5 p-3 rounded-2xl hover:bg-orange-50 active:scale-[0.98] transition-all text-left">
               <span className="w-11 h-11 rounded-xl flex items-center justify-center text-xl bg-orange-50">🦊</span>
               <div className="min-w-0">
@@ -1028,6 +1066,17 @@ export default function App() {
           onAccount={() => goTab('settings')}
           onTour={startTour}
           extensionInstalled={extensionInstalled}
+          notificationSlot={
+            <NotificationBell
+              variant="rail"
+              notifications={notifications} unreadCount={unreadCount}
+              onMarkAllRead={markAllRead} onClear={clearNotifs} onRemove={removeNotif} t={t}
+              onNavigate={({ jobId, company }) => {
+                setActiveTab('tracker')
+                if (company) setFilters(f => ({ ...f, search: company }))
+              }}
+            />
+          }
           t={t}
         />
       )}
@@ -1082,7 +1131,7 @@ export default function App() {
 
           {/* Right actions */}
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-            <ExtensionButton installed={extensionInstalled} t={t} />
+            <ExtensionButton installed={extensionInstalled} updateAvailable={extUpdate.updateAvailable} onUpdate={() => setShowExtUpdate(true)} t={t} />
 
             {/* Replay the interactive tour */}
             <button onClick={startTour} title={t('tour.replay')} aria-label={t('tour.replay')}
@@ -1138,7 +1187,7 @@ export default function App() {
                     </button>
                     {extensionInstalled === false && (
                       <>
-                        <a href="/jobtracker-addon-1.6.0.xpi"
+                        <a href={EXTENSION_XPI_PATH}
                           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-orange-700 hover:bg-orange-50 transition-colors">
                           <span className="text-base">🦊</span>
                           <div className="text-left"><div className="font-medium">{t('addMenu.installExt')}</div><div className="text-[11px] text-gray-400">{t('addMenu.installExtDesc')}</div></div>
@@ -1555,6 +1604,15 @@ export default function App() {
       )}
       {mergeModal && <MergeModal jobs={mergeModal} onConfirm={handleMergeConfirm} onCancel={() => setMergeModal(null)} t={t} />}
       {showOnboarding && <OnboardingModal onAddKey={handleOnboardingAddKey} onSkip={dismissOnboarding} extensionInstalled={extensionInstalled} t={t} />}
+      {showExtUpdate && (
+        <ExtensionUpdateModal
+          installedVersion={extUpdatePreview ? (extUpdate.installedVersion || '1.5.1') : extUpdate.installedVersion}
+          latestVersion={extUpdate.latestVersion}
+          onUpdate={dismissExtUpdate}
+          onClose={dismissExtUpdate}
+          t={t}
+        />
+      )}
       {tourActive && <GuidedTour steps={TOUR_STEPS} onFinish={finishTour} t={t} />}
 
       {/* Bulk-action bar — table view of Candidatures, when rows are selected */}

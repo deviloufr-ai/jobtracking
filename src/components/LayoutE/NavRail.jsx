@@ -7,7 +7,7 @@
 // existing body.is-dark theme overrides apply here too.
 import { useState } from 'react'
 
-const XPI_HREF = '/jobtracker-addon-1.6.0.xpi'
+import { EXTENSION_XPI_PATH as XPI_HREF } from '../../constants/extension'
 
 // Browser-extension affordance for the rail footer.
 //   installed === true  → green "installed" row
@@ -103,6 +103,7 @@ export default function NavRail({
   onAccount,
   onTour,
   extensionInstalled = null,
+  notificationSlot = null,
   t = (k) => k,
 }) {
   return (
@@ -129,6 +130,11 @@ export default function NavRail({
           {t('nav.add')}
         </button>
       </div>
+
+      {/* Notifications — the top-header bell has no home in this layout, so it
+          lives here as a rail row. Kept OUTSIDE the scrollable nav below so its
+          dropdown panel isn't clipped by overflow-y-auto. */}
+      {notificationSlot && <div className="px-3 pt-2">{notificationSlot}</div>}
 
       {/* Navigation */}
       <nav data-tour="nav" className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-1">
