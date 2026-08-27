@@ -168,10 +168,24 @@ export function stripGenderSuffix(pos = '') {
   return (pos || '').replace(GENDER_SUFFIX_RE, '$1')
 }
 
-// Canonical position string: lowercased, h/f + French gender markers stripped, and
-// ALL punctuation flattened to single spaces. Makes hyphenation/spacing/gender
-// variants compare equal — e.g. "No-Code" === "No Code",
-// "Product Manager (H/F)" === "Product Manager", "Chef(fe)" === "Chef".
+// Common job-title abbreviations that denote the SAME role as their expansion.
+// Applied token-by-token (whole word only) so a title that was abbreviated on one
+// import ("Senior PM", typically from a parsed email) compares equal to the full
+// posting title ("Senior Product Manager (H/F) - CDI") and the two rows collapse
+// into one candidature instead of showing as a doublon. Each abbreviation expands
+// to the LONGER canonical form so positionsSameFamily's word-boundary prefix match
+// does the rest ("senior product manager" ⊂ "senior product manager cdi"). Keep
+// entries unambiguous in this app's product/tech context.
+const POSITION_ABBREVIATIONS = {
+  pm: 'product manager',
+  po: 'product owner',
+}
+
+// Canonical position string: lowercased, h/f + French gender markers stripped,
+// ALL punctuation flattened to single spaces, and known abbreviations expanded.
+// Makes hyphenation/spacing/gender/abbreviation variants compare equal — e.g.
+// "No-Code" === "No Code", "Product Manager (H/F)" === "Product Manager",
+// "Chef(fe)" === "Chef", "PM" === "Product Manager".
 export function canonicalizePosition(pos = '') {
   return (pos || '')
     .toLowerCase()
@@ -179,6 +193,10 @@ export function canonicalizePosition(pos = '') {
     .replace(GENDER_SUFFIX_RE, '$1')
     .replace(/[^a-z0-9]+/g, ' ')
     .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .map(t => POSITION_ABBREVIATIONS[t] || t)
+    .join(' ')
     .trim()
 }
 

@@ -201,6 +201,24 @@ describe('deduplicateJobs', () => {
     expect(result.some(j => j.company === 'Figma')).toBe(true)
   })
 
+  it('collapses an abbreviated title into the full one at the same company ("PM" = "Product Manager")', () => {
+    const jobs = [
+      { id: '1', company: 'Weglot', position: 'Senior Product Manager (H/F) - CDI', status: 'reviewing', date: '2026-08-10',
+        history: [
+          { date: '2026-08-10', status: 'sent', note: 'Candidature envoyée' },
+          { date: '2026-08-12', status: 'reviewing', note: 'Candidature bien reçue, profil en cours d\'examen' },
+        ] },
+      { id: '2', company: 'Weglot', position: 'Senior PM', status: 'rejected', date: '2026-08-20',
+        history: [
+          { date: '2026-08-20', status: 'rejected', note: 'Refus explicite après étude de candidature' },
+        ] },
+      { id: '3', company: 'Figma', position: 'Designer', status: 'todo', date: '2026-08-01', history: [] },
+    ]
+    const result = deduplicateJobs(jobs)
+    expect(result.filter(j => j.company === 'Weglot')).toHaveLength(1)
+    expect(result.some(j => j.company === 'Figma')).toBe(true)
+  })
+
   it('keeps genuinely-distinct roles at the same company separate', () => {
     const jobs = [
       { id: '1', company: 'Datadog', position: 'Product Manager Mobile', status: 'sent', date: '2026-06-01', history: [] },
