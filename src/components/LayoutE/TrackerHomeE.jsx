@@ -56,7 +56,7 @@ function StepTooltip({ hover, t }) {
   )
 }
 
-function StageBar({ history, t, width = 188 }) {
+function StageBar({ history, t, width = 188, onResizeStart, onResizeReset }) {
   const steps = (history || []).filter(h => h.date)
   const scrollRef = useRef(null)
   const [hover, setHover] = useState(null)
@@ -64,33 +64,49 @@ function StageBar({ history, t, width = 188 }) {
     const el = scrollRef.current
     if (el) el.scrollLeft = el.scrollWidth
   }, [steps.length, width])
-  // Keep the column's footprint stable even for candidatures with no dated step.
-  if (steps.length === 0) return <div className="hidden lg:block shrink-0" style={{ width }} />
   const showStep = (e, h) => {
     const r = e.currentTarget.getBoundingClientRect()
     setHover({ h, x: r.left + r.width / 2, top: r.top, bottom: r.bottom })
   }
   return (
-    <div ref={scrollRef} className="hidden lg:block shrink-0 overflow-x-auto no-scrollbar" style={{ width }}>
-      <ol className="flex items-start w-max">
-        {steps.map((h, i) => (
-          <li
-            key={i}
-            className="relative shrink-0 flex flex-col items-center"
-            onMouseEnter={(e) => showStep(e, h)}
-            onMouseLeave={() => setHover(null)}
-          >
-            {/* rail: a half-segment each side of the dot; li has no side padding
-                so w-full segments meet the neighbours into one unbroken line */}
-            <div className="relative h-2 w-full flex items-center justify-center">
-              {i > 0 && <span className="absolute top-1/2 -translate-y-1/2 left-0 w-1/2 h-0.5 bg-gray-200" />}
-              {i < steps.length - 1 && <span className="absolute top-1/2 -translate-y-1/2 left-1/2 w-1/2 h-0.5 bg-gray-200" />}
-              <span className={`relative z-[1] w-2 h-2 rounded-full ${getStatus(h.status)?.dot || 'bg-gray-400'}`} />
-            </div>
-            <span className="mt-1 px-2 text-[9px] leading-none tabular-nums text-gray-400 whitespace-nowrap">{shortDate(h.date)}</span>
-          </li>
-        ))}
-      </ol>
+    <div className="hidden lg:block relative shrink-0 group/tl" style={{ width }}>
+      <div ref={scrollRef} className="overflow-x-auto no-scrollbar">
+        {steps.length === 0 ? (
+          <div className="h-2" />
+        ) : (
+          <ol className="flex items-start w-max">
+            {steps.map((h, i) => (
+              <li
+                key={i}
+                className="relative shrink-0 flex flex-col items-center"
+                onMouseEnter={(e) => showStep(e, h)}
+                onMouseLeave={() => setHover(null)}
+              >
+                {/* rail: a half-segment each side of the dot; li has no side padding
+                    so w-full segments meet the neighbours into one unbroken line */}
+                <div className="relative h-2 w-full flex items-center justify-center">
+                  {i > 0 && <span className="absolute top-1/2 -translate-y-1/2 left-0 w-1/2 h-0.5 bg-gray-200" />}
+                  {i < steps.length - 1 && <span className="absolute top-1/2 -translate-y-1/2 left-1/2 w-1/2 h-0.5 bg-gray-200" />}
+                  <span className={`relative z-[1] w-2 h-2 rounded-full ${getStatus(h.status)?.dot || 'bg-gray-400'}`} />
+                </div>
+                <span className="mt-1 px-2 text-[9px] leading-none tabular-nums text-gray-400 whitespace-nowrap">{shortDate(h.date)}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+      {/* drag grip — resizes the shared timeline column; double-click = auto-fit */}
+      {onResizeStart && (
+        <span
+          onMouseDown={onResizeStart}
+          onDoubleClick={onResizeReset}
+          onClick={(e) => e.stopPropagation()}
+          role="separator"
+          aria-orientation="vertical"
+          title="Drag to resize · double-click to auto-fit"
+          className="absolute top-1/2 -translate-y-1/2 right-0 h-6 w-1.5 rounded-full cursor-col-resize bg-gray-200 opacity-0 group-hover/tl:opacity-100 hover:bg-indigo-400 transition-colors"
+        />
+      )}
       <StepTooltip hover={hover} t={t} />
     </div>
   )
@@ -139,6 +155,39 @@ export default function TrackerHomeE({
   const openJob = jobs.find(j => j.id === openId) || null
   const open = (j) => setOpenId(j.id)
   const compact = !!openJob // drawer open → list is narrow, hide extra columns
+
+  // ── Timeline column width: shared across rows, auto-fits the data by default,
+  // and drag-resizable (persisted). null = auto; a number = user-chosen. ───────
+  const TL_MIN = 120, TL_MAX = 460, TL_AUTO_MAX = 300, TL_PER_STEP = 46
+  const [timelineWidth, setTimelineWidth] = useState(() => {
+    try { const v = localStorage.getItem('jobtrackr_timeline_col_w'); return v ? Number(v) : null } catch { return null }
+  })
+  const maxSteps = filtered.reduce((m, j) => Math.max(m, (j.history || []).filter(h => h.date).length), 1)
+  const autoTimelineWidth = Math.max(TL_MIN, Math.min(TL_AUTO_MAX, maxSteps * TL_PER_STEP))
+  const timelineColWidth = timelineWidth ?? autoTimelineWidth
+  const tlDrag = useRef(null)
+  const startTimelineResize = (e) => {
+    e.preventDefault(); e.stopPropagation()
+    tlDrag.current = { startX: e.clientX, startW: timelineColWidth, w: timelineColWidth }
+    const onMove = (ev) => {
+      const w = Math.max(TL_MIN, Math.min(TL_MAX, tlDrag.current.startW + (ev.clientX - tlDrag.current.startX)))
+      tlDrag.current.w = w
+      setTimelineWidth(w)
+    }
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      document.body.style.userSelect = ''
+      try { localStorage.setItem('jobtrackr_timeline_col_w', String(tlDrag.current.w)) } catch {}
+    }
+    document.body.style.userSelect = 'none'
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+  const resetTimelineWidth = () => {
+    setTimelineWidth(null)
+    try { localStorage.removeItem('jobtrackr_timeline_col_w') } catch {}
+  }
 
   // Close the drawer if its job disappears (deleted / filtered away entirely).
   useEffect(() => {
@@ -289,7 +338,7 @@ export default function TrackerHomeE({
                           <span className="block text-[13.5px] font-semibold tracking-tight text-gray-900 truncate">{job.company}</span>
                           <span className="block text-[12px] text-gray-400 truncate">{job.position}</span>
                         </span>
-                        {!compact && <StageBar history={job.history} t={t} />}
+                        {!compact && <StageBar history={job.history} t={t} width={timelineColWidth} onResizeStart={startTimelineResize} onResizeReset={resetTimelineWidth} />}
                         <span className="w-32 shrink-0">
                           <span className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full ${getStatus(last?.status || job.status)?.color || 'bg-gray-100 text-gray-500'}`}>
                             {getStatusLabel(last?.status || job.status, t)}
