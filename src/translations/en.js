@@ -91,6 +91,23 @@ export const en = {
     whatIsIt: 'What is this?',
   },
 
+  // Browser-extension update prompt (ExtensionUpdateModal + header badge)
+  extensionUpdate: {
+    badge: 'Update',
+    title: 'Extension update available',
+    intro: 'A newer version of the SmartJobTracker browser extension is ready. Update to get the latest capture, autofill and scoring improvements.',
+    current: 'Installed',
+    latest: 'Latest',
+    howTo: 'How to update',
+    step1: 'Click "Download the update" below — Firefox will fetch the new add-on file.',
+    step2: 'When Firefox asks, confirm "Add" — the new version installs over the old one automatically.',
+    step3: 'That\'s it — reload this page and you\'re on the latest version.',
+    download: 'Download the update',
+    firefoxReady: 'Firefox add-on · free. Installs over your current version.',
+    firefoxNote: 'Firefox add-on · free. Open this page in Firefox to update.',
+    later: 'Later',
+  },
+
   // Mobile Menu
   mobileMenu: {
     navigation: 'Navigation',
@@ -959,6 +976,9 @@ export const en = {
     install: '📥 Install',
     enabled: '✓ Enabled',
     checking: '⏳ Checking...',
+    update: 'Update',
+    version: 'Version',
+    versionHint: 'Installed extension version vs. the latest release',
   },
 
   // Settings - Debug Tab

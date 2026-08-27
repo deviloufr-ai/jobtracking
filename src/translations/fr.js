@@ -91,6 +91,23 @@ export const fr = {
     whatIsIt: "C'est quoi ?",
   },
 
+  // Invite à mettre à jour l'extension (ExtensionUpdateModal + badge d'en-tête)
+  extensionUpdate: {
+    badge: 'Mettre à jour',
+    title: 'Mise à jour de l\'extension disponible',
+    intro: 'Une nouvelle version de l\'extension SmartJobTracker est prête. Mettez à jour pour profiter des dernières améliorations de capture, d\'autofill et de scoring.',
+    current: 'Installée',
+    latest: 'Dernière',
+    howTo: 'Comment mettre à jour',
+    step1: 'Cliquez sur « Télécharger la mise à jour » ci-dessous — Firefox récupère le nouveau fichier de l\'extension.',
+    step2: 'Quand Firefox le demande, confirmez « Ajouter » — la nouvelle version remplace automatiquement l\'ancienne.',
+    step3: 'C\'est tout — rechargez cette page et vous êtes à jour.',
+    download: 'Télécharger la mise à jour',
+    firefoxReady: 'Module Firefox · gratuit. S\'installe par-dessus votre version actuelle.',
+    firefoxNote: 'Module Firefox · gratuit. Ouvrez cette page dans Firefox pour mettre à jour.',
+    later: 'Plus tard',
+  },
+
   // Mobile Menu
   mobileMenu: {
     navigation: 'Navigation',
@@ -551,6 +568,9 @@ export const fr = {
     install: '📥 Installer',
     enabled: '✓ Activée',
     checking: '⏳ Vérification...',
+    update: 'Mettre à jour',
+    version: 'Version',
+    versionHint: 'Version de l\'extension installée vs. dernière version publiée',
   },
 
   // JobModal

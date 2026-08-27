@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useSettings, SETTINGS_DEFAULTS } from '../hooks/useSettings'
 import { useExtensionDetect } from '../hooks/useExtensionDetect'
+import { useExtensionUpdate } from '../hooks/useExtensionUpdate'
+import { EXTENSION_XPI_PATH } from '../constants/extension'
 import { useJobs } from '../hooks/useJobs'
 import { useLanguage } from '../hooks/useLanguage'
 import { useCVs } from '../hooks/useCVs'
@@ -119,6 +121,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
   const { t, language, setLanguage, availableLanguages } = useLanguage()
   const { cvs } = useCVs()
   const extensionInstalled = useExtensionDetect()
+  const extUpdate = useExtensionUpdate()
   const CATEGORIES = getCATEGORIES(t)
   const [activeTab, setActiveTab] = useState(initialTab || 'profile')
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -976,14 +979,19 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
               <Card title={t('settingsExtension.firefoxExtension')}>
                 <Row label={t('settingsExtension.status')} hint={t('settingsExtension.statusHint')}>
                   {extensionInstalled === false && (
-                    <a href="/jobtracker-addon-1.6.0.xpi" className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600">
+                    <a href={EXTENSION_XPI_PATH} className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600">
                       {t('settingsExtension.install')}
                     </a>
                   )}
-                  {extensionInstalled === true && (
+                  {extensionInstalled === true && !extUpdate.updateAvailable && (
                     <span className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-green-100 text-green-700">
                       {t('settingsExtension.enabled')}
                     </span>
+                  )}
+                  {extensionInstalled === true && extUpdate.updateAvailable && (
+                    <a href={EXTENSION_XPI_PATH} className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600">
+                      🦊 {t('settingsExtension.update')} → v{extUpdate.latestVersion}
+                    </a>
                   )}
                   {extensionInstalled === null && (
                     <span className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-gray-100 text-gray-700">
@@ -991,6 +999,16 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                     </span>
                   )}
                 </Row>
+                {extensionInstalled === true && (
+                  <Row label={t('settingsExtension.version')} hint={t('settingsExtension.versionHint')}>
+                    <span className="text-sm font-mono text-gray-600">
+                      {extUpdate.installedVersion ? `v${extUpdate.installedVersion}` : '—'}
+                      {extUpdate.updateAvailable && (
+                        <span className="ml-2 text-orange-600 font-sans font-medium">→ v{extUpdate.latestVersion}</span>
+                      )}
+                    </span>
+                  </Row>
+                )}
               </Card>
             )}
 

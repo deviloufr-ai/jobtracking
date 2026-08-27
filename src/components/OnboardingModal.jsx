@@ -8,8 +8,7 @@
 // BEFORE any Gmail scan so a new user isn't dropped straight into the import.
 import { useState } from 'react'
 import { useDragDock } from '../hooks/useDragDock'
-
-const XPI_HREF = '/jobtracker-addon-1.6.0.xpi'
+import { EXTENSION_XPI_PATH as XPI_HREF } from '../constants/extension'
 
 export default function OnboardingModal({ onAddKey, onSkip, extensionInstalled, t = (k) => k }) {
   const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 512 })

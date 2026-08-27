@@ -2446,8 +2446,15 @@ window.addEventListener('beforeunload', () => {
 // SECTION 5 : Extension detection ping/pong
 // JobTrackr web app sends 'jobtrackr-ext-ping', we respond with 'jobtrackr-ext-pong'
 // ─────────────────────────────────────────────────────────────────────────────
+// Advertise the installed version so the web app can offer updates. Older builds
+// only set the attribute to 'true'; here we expose the real version instead so
+// SmartJobTracker can compare it against the latest release. Falls back to 'true'
+// if the manifest can't be read for any reason.
+let JOBTRACKR_EXT_VERSION = 'true'
+try { JOBTRACKR_EXT_VERSION = browser.runtime.getManifest().version || 'true' } catch (e) {}
+
 window.addEventListener('jobtrackr-ext-ping', () => {
-  window.dispatchEvent(new CustomEvent('jobtrackr-ext-pong'))
+  window.dispatchEvent(new CustomEvent('jobtrackr-ext-pong', { detail: JOBTRACKR_EXT_VERSION }))
 })
-// Also set the attribute immediately for faster detection
-document.documentElement.setAttribute('data-jobtrackr-ext', 'true')
+// Also set the attribute immediately for faster detection (value = version).
+document.documentElement.setAttribute('data-jobtrackr-ext', JOBTRACKR_EXT_VERSION)
