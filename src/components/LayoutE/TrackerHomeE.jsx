@@ -158,7 +158,7 @@ export default function TrackerHomeE({
 
   // ── Timeline column width: shared across rows, auto-fits the data by default,
   // and drag-resizable (persisted). null = auto; a number = user-chosen. ───────
-  const TL_MIN = 120, TL_MAX = 460, TL_AUTO_MAX = 300, TL_PER_STEP = 46
+  const TL_MIN = 120, TL_MAX = 460, TL_AUTO_MAX = 240, TL_PER_STEP = 46
   const [timelineWidth, setTimelineWidth] = useState(() => {
     try { const v = localStorage.getItem('jobtrackr_timeline_col_w'); return v ? Number(v) : null } catch { return null }
   })
@@ -319,7 +319,7 @@ export default function TrackerHomeE({
                       <button
                         onClick={() => setOpenId(cur => (cur === job.id ? null : job.id))}
                         aria-current={active ? 'true' : undefined}
-                        className="flex-1 min-w-0 flex items-center gap-3 text-left"
+                        className="flex-1 min-w-0 overflow-hidden flex items-center gap-3 text-left"
                       >
                         {typeof job.score === 'number' ? (
                           <span className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold border shrink-0 ${scoreColorClasses(job.score)}`}>
