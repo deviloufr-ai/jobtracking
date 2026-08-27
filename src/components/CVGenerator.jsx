@@ -786,7 +786,7 @@ export default function CVGenerator({ cv, cvs = [], job, editSaved = false, onBa
     <div className="flex flex-col h-full space-y-3">
 
       {/* Header */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-4 py-3 flex items-center justify-between flex-wrap gap-2">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-4 py-3 flex items-center justify-between flex-wrap gap-2 flex-shrink-0">
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="text-gray-400 hover:text-gray-600 p-1.5 hover:bg-gray-100 rounded-lg text-sm">{t('cvGeneratorUI.back')}</button>
           <div>
@@ -999,28 +999,27 @@ export default function CVGenerator({ cv, cvs = [], job, editSaved = false, onBa
 
       {/* Preview */}
       {step === 'preview' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden" style={{ minHeight: 640 }}>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col flex-1 min-h-0">
           {isEditing ? (
-            <div className="p-4">
-              <p className="text-xs text-gray-400 mb-2">Éditez le Markdown — cliquez sur "Aperçu" pour voir le rendu</p>
+            <div className="p-4 flex-1 min-h-0 flex flex-col">
+              <p className="text-xs text-gray-400 mb-2 flex-shrink-0">Éditez le Markdown — cliquez sur "Aperçu" pour voir le rendu</p>
               <textarea
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-mono text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
-                style={{ height: 580 }}
+                className="w-full flex-1 min-h-0 border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-mono text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
                 value={editableCV} onChange={e => setEditableCV(e.target.value)}
               />
             </div>
           ) : (
-            <div className="flex divide-x divide-gray-100" style={{ minHeight: 640 }}>
+            <div className="flex divide-x divide-gray-100 flex-1 min-h-0">
 
               {/* BEFORE */}
               {(viewMode === 'split' || viewMode === 'before') && (
-                <div className={`flex flex-col ${viewMode==='split' ? 'w-1/2' : 'w-full'}`}>
+                <div className={`flex flex-col min-h-0 ${viewMode==='split' ? 'w-1/2' : 'w-full'}`}>
                   <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100">
                     <span className="w-2 h-2 rounded-full bg-gray-400"></span>
                     <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">CV Original</span>
                     <span className="text-xs text-gray-400 ml-auto">{activeCV?.name}</span>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-5" style={{ background:'#f1f5f9' }}>
+                  <div className="flex-1 min-h-0 overflow-auto p-5" style={{ background:'#f1f5f9' }}>
                     <div className="cv-paper" style={{ fontFamily:'Arial,sans-serif', lineHeight:'1.5', padding:'20px', borderRadius:4 }}
                       dangerouslySetInnerHTML={{ __html: renderSimple(activeCV?.text) }} />
                   </div>
@@ -1029,13 +1028,13 @@ export default function CVGenerator({ cv, cvs = [], job, editSaved = false, onBa
 
               {/* AFTER — rendered with selected template */}
               {(viewMode === 'split' || viewMode === 'after') && (
-                <div className={`flex flex-col ${viewMode==='split' ? 'w-1/2' : 'w-full'}`}>
+                <div className={`flex flex-col min-h-0 ${viewMode==='split' ? 'w-1/2' : 'w-full'}`}>
                   <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border-b border-indigo-100">
                     <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
                     <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">CV Adapté — {job.company}</span>
                     <span className="text-[10px] text-indigo-400 ml-auto">{currentTpl.icon} {currentTpl.label}</span>
                   </div>
-                  <div className="flex-1 overflow-y-auto" style={{ background:'#f1f5f9' }}>
+                  <div className="flex-1 min-h-0 overflow-auto" style={{ background:'#f1f5f9' }}>
                     <div style={{ margin:'16px auto', maxWidth:680, background:'#fff', boxShadow:'0 4px 24px rgba(0,0,0,0.10)', borderRadius:4, overflow:'hidden', fontFamily:'Arial,Helvetica,sans-serif' }}
                       dangerouslySetInnerHTML={{ __html: renderCV(editableCV, template, profilePic) }} />
                   </div>
