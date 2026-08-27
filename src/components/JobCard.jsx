@@ -129,6 +129,19 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
   const noteText = history.length ? history[history.length - 1].note : job.notes
   const emailCount = history.filter(h => h.source === 'email').length
 
+  // Earliest date each funnel stage was reached — shown under the progress
+  // stepper. Uses the min date per step so it holds even if history isn't sorted.
+  const stepDates = (() => {
+    const dates = [null, null, null]
+    for (const h of history) {
+      const si = STEP_REACHED[h.status]
+      if (si === undefined || !h.date) continue
+      if (dates[si] == null || new Date(h.date) < new Date(dates[si])) dates[si] = h.date
+    }
+    return dates
+  })()
+  const stepDateLabel = (d) => (d ? new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '')
+
   // Open + scroll when triggered from "Next steps"
   useEffect(() => {
     if (!forceExpand) return
@@ -286,16 +299,17 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
         <div className={`${px} pb-3.5 animate-expand`}>
           {/* Progress stepper — funnel position at a glance */}
           {STEP_REACHED[displayStatusKey] !== undefined && (
-            <div className="flex items-center mb-4 px-1">
+            <div className="flex items-start mb-4 px-1">
               {[getStatusLabel('sent', t), getStatusLabel('interview', t), getStatusLabel('offer', t)].map((label, i) => {
                 const reached = STEP_REACHED[displayStatusKey]
                 return (
                   <Fragment key={i}>
-                    <div className="flex flex-col items-center gap-1">
+                    <div className="flex flex-col items-center gap-1 text-center">
                       <span className={`w-3 h-3 rounded-full ${i <= reached ? 'bg-indigo-500' : 'bg-gray-200'}`} />
-                      <span className={`text-[10px] ${i <= reached ? 'text-indigo-600 font-medium' : 'text-gray-400'}`}>{label}</span>
+                      <span className={`text-[10px] leading-tight ${i <= reached ? 'text-indigo-600 font-medium' : 'text-gray-400'}`}>{label}</span>
+                      {stepDates[i] && <span className="text-[10px] leading-tight text-gray-400 tabular-nums">{stepDateLabel(stepDates[i])}</span>}
                     </div>
-                    {i < 2 && <div className={`flex-1 h-0.5 mx-1 -mt-4 ${i < reached ? 'bg-indigo-500' : 'bg-gray-200'}`} />}
+                    {i < 2 && <div className={`flex-1 h-0.5 mt-[5px] mx-1 ${i < reached ? 'bg-indigo-500' : 'bg-gray-200'}`} />}
                   </Fragment>
                 )
               })}
