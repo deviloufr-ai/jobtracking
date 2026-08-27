@@ -159,6 +159,30 @@ export function isHelloWorkOfferGone(e) {
   return OFFER_GONE_PHRASES.some(p => hay.includes(p))
 }
 
+// Deterministic status/note corrections Haiku gets wrong on well-known templates.
+// Mutates the parsed result `j` in place using its source email `e`. Idempotent, so
+// it can run BOTH before the confidence cutoff (to correct + floor fresh items) and
+// again over every returned result (to heal items cached under the old, wrong
+// classification — the cached objects are shared by reference, so the cache self-heals).
+function applyDeterministicCorrections(j, e) {
+  if (!j || !e) return
+  // ① Indeed/LinkedIn send-confirmation → "sent" (not "reviewing"), no fake review note.
+  if (isBoardSendConfirmation(e)) {
+    if (['reviewing', 'todo', 'waiting'].includes(j.status)) j.status = 'sent'
+    if (REVIEW_CLAIM_RE.test(j.notes || '')) {
+      const suffix = j.company && !j.companyFromAts ? ` à ${j.company}` : ''
+      j.notes = `Confirmation ${boardName(e)} : candidature envoyée${suffix}`
+    }
+    if ((j.confidence || 0) < 45) j.confidence = 45
+  }
+  // ② HelloWork "offre n'est plus disponible" → rejected (posting withdrawn).
+  if (isHelloWorkOfferGone(e)) {
+    j.status = 'rejected'
+    j.notes = "Offre retirée — n'est plus disponible sur HelloWork"
+    j.confidence = Math.max(j.confidence || 0, 80)
+  }
+}
+
 export function getEmailCacheStats() {
   const cache = loadEmailCache()
   const keys = Object.keys(cache)
@@ -677,31 +701,11 @@ OUTPUT JSON FORMAT
         if (!j.status || j.status === 'todo') j.status = 'reviewing'
       }
     }
-    // Deterministic status/note corrections Haiku gets wrong on well-known templates.
-    // Runs BEFORE the confidence cutoff so even a low-scored item is corrected + floored.
+    // Deterministic corrections BEFORE the confidence cutoff so even a low-scored
+    // item is corrected + floored above 35 and survives to advance its job.
     for (const j of rawParsed) {
       const idx = parseInt(String(j.emailId).replace(/\D/g, ''), 10) - 1
-      const e = uncached[idx]
-      if (!e) continue
-      // ① Indeed/LinkedIn send-confirmation → "sent" (not "reviewing"), no fake review note.
-      if (isBoardSendConfirmation(e)) {
-        if (['reviewing', 'todo', 'waiting'].includes(j.status)) {
-          console.log(`📨 Board send-confirm: "${e.subject}" → status ${j.status}→sent`)
-          j.status = 'sent'
-        }
-        if (REVIEW_CLAIM_RE.test(j.notes || '')) {
-          const suffix = j.company && !j.companyFromAts ? ` à ${j.company}` : ''
-          j.notes = `Confirmation ${boardName(e)} : candidature envoyée${suffix}`
-        }
-        if ((j.confidence || 0) < 45) j.confidence = 45
-      }
-      // ② HelloWork "offre n'est plus disponible" → rejected (posting withdrawn).
-      if (isHelloWorkOfferGone(e)) {
-        console.log(`🚫 HelloWork offer-gone: "${e.subject}" → status ${j.status}→rejected`)
-        j.status = 'rejected'
-        j.notes = "Offre retirée — n'est plus disponible sur HelloWork"
-        j.confidence = Math.max(j.confidence || 0, 80)
-      }
+      applyDeterministicCorrections(j, uncached[idx])
     }
     const parsed = rawParsed.filter(j => (j.confidence || 0) >= 35).map(j => {
       // Normalize emailId: Claude sometimes returns "[1]", "1", or 1 — strip brackets and coerce
@@ -774,6 +778,15 @@ OUTPUT JSON FORMAT
       all.push(signal)
       cache[emailCacheKey(e)] = { result: signal, ts: Date.now() }
     }
+  }
+
+  // Deterministic corrections win regardless of the parse cache: reapply to EVERY
+  // result (fresh + cached) so a plain refresh heals records that were cached under
+  // the old, wrong classification. Cached results are shared by reference with the
+  // cache entries, so this mutation also self-heals the cache before it's saved.
+  const emailById = new Map(emails.filter(e => e && e.id).map(e => [e.id, e]))
+  for (const j of all) {
+    if (j && j.gmailId) applyDeterministicCorrections(j, emailById.get(j.gmailId))
   }
 
   saveEmailCache(cache)
