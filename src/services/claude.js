@@ -114,6 +114,51 @@ function isAtsConfirmationEmail(e) {
   return ATS_SENDER_DOMAINS.some(d => from.includes(d))
 }
 
+// ─── Job-board SEND confirmation (Indeed / LinkedIn) ────────────────────────────
+// "Les éléments suivants ont été envoyés à X" / "Your application was sent to X" is
+// the JOB BOARD confirming it FORWARDED your application. It only proves you APPLIED
+// — the employer has NOT acknowledged it or started a review. Haiku over-classifies
+// these as "reviewing" and even fabricates a review stage ("profil en cours d'examen
+// par équipe Talent Acquisition") the email never mentions. They must map to "sent".
+// This is DISTINCT from an employer/ATS RECEIPT acknowledgement ("thank you for
+// applying", greenhouse/lever…), which legitimately means the file is being processed
+// (reviewing) — hence the strict indeed/linkedin domain gate.
+const BOARD_SEND_DOMAINS = ['indeed.com', 'linkedin.com']
+const BOARD_SEND_PHRASES = [
+  'les éléments suivants ont été envoyés', 'éléments suivants ont été envoyés',
+  'votre candidature a été envoyée', 'candidature envoyée à', 'candidature a été transmise',
+  'your application was sent', 'your application has been sent', 'we sent your application',
+  'application was sent to', 'application has been submitted to',
+]
+export function isBoardSendConfirmation(e) {
+  const from = (e.from || '').toLowerCase()
+  if (!BOARD_SEND_DOMAINS.some(d => from.includes(d))) return false
+  const hay = `${e.subject || ''} ${e.snippet || ''} ${e.body || ''}`.toLowerCase()
+  return BOARD_SEND_PHRASES.some(p => hay.includes(p))
+}
+const boardName = e => (/linkedin\.com/i.test(e.from || '') ? 'LinkedIn' : 'Indeed')
+// A note that claims the profile is under review — invented by Haiku for a pure
+// send confirmation. Stripped/replaced when the email only confirms the send.
+const REVIEW_CLAIM_RE = /en cours d'examen|profil en cours|talent acquisition|candidature re[çc]ue|en cours de traitement|being reviewed|under review|équipe recrutement examine/i
+
+// ─── HelloWork "offer no longer available" ──────────────────────────────────────
+// "L'offre … n'est plus disponible sur notre site. Avez-vous été recruté ?" — the
+// posting was pulled and HelloWork asks the candidate to self-report the outcome.
+// For tracking, a withdrawn offer with no interview is a dead candidature → rejected.
+// (If the user was actually recruited they can flip it to Offer manually; the note
+// makes the reason visible.) Gated to HelloWork so the generic phrasing can't
+// mislabel unrelated mail.
+const OFFER_GONE_PHRASES = [
+  "n'est plus disponible", 'nest plus disponible', 'no longer available',
+  'offre pourvue', 'poste pourvu', 'offre clôturée', 'offre cloturee', 'position has been filled',
+]
+export function isHelloWorkOfferGone(e) {
+  const from = (e.from || '').toLowerCase()
+  if (!from.includes('hellowork')) return false
+  const hay = `${e.subject || ''} ${e.snippet || ''} ${e.body || ''}`.toLowerCase()
+  return OFFER_GONE_PHRASES.some(p => hay.includes(p))
+}
+
 export function getEmailCacheStats() {
   const cache = loadEmailCache()
   const keys = Object.keys(cache)
@@ -470,6 +515,12 @@ DÉTECTION STATUS (PRIORISER LA RÉALITÉ)
   Exemple HelloWork REJECTION:
   "Réponse reçue de l'entreprise via HelloWork" + "Your application was studied but..." → REJECTED (confidence 95)
 
+  HELLOWORK "OFFRE PLUS DISPONIBLE" (RÈGLE):
+  "L'offre de <POSTE> n'est plus disponible", "n'est plus disponible sur notre site",
+  "Avez-vous été recruté pour ce poste ?" → l'offre a été retirée. Pour le suivi,
+  une offre retirée sans entretien = candidature morte → status: "rejected", confidence 85,
+  notes: "Offre retirée — n'est plus disponible sur HelloWork".
+
 🟢 OFFER (offre formelle) :
   "offer letter", "job offer", "proposition d'embauche", "nous serions ravis de vous accueillir"
 
@@ -498,6 +549,13 @@ DÉTECTION STATUS (PRIORISER LA RÉALITÉ)
 
 📨 SENT (candidature envoyée par vous) :
   Emails du dossier SENT, ou "I am applying", "Please find my CV", "Je vous contacte"
+  ⚠️ CONFIRMATION D'ENVOI JOB BOARD (Indeed / LinkedIn) = "sent", PAS "reviewing" :
+  "Les éléments suivants ont été envoyés à X", "Votre candidature a été envoyée à X",
+  "Your application was sent to X" → le job board confirme seulement qu'il a TRANSMIS
+  ta candidature. L'employeur n'a RIEN accusé ni examiné → status: "sent".
+  ❌ NE JAMAIS inventer "profil en cours d'examen", "équipe Talent Acquisition",
+     "candidature reçue" : l'email ne dit QUE que la candidature a été envoyée.
+  ✅ notes: "Confirmation Indeed : candidature envoyée à X" (factuel, rien de plus)
 
 ⚠️ CONFIRMATION ATS / ACCUSÉ DE RÉCEPTION (RÈGLE PRIORITAIRE — override le scoring) :
 Un accusé de réception de candidature est TOUJOURS une VRAIE candidature, jamais du bruit.
@@ -619,6 +677,32 @@ OUTPUT JSON FORMAT
         if (!j.status || j.status === 'todo') j.status = 'reviewing'
       }
     }
+    // Deterministic status/note corrections Haiku gets wrong on well-known templates.
+    // Runs BEFORE the confidence cutoff so even a low-scored item is corrected + floored.
+    for (const j of rawParsed) {
+      const idx = parseInt(String(j.emailId).replace(/\D/g, ''), 10) - 1
+      const e = uncached[idx]
+      if (!e) continue
+      // ① Indeed/LinkedIn send-confirmation → "sent" (not "reviewing"), no fake review note.
+      if (isBoardSendConfirmation(e)) {
+        if (['reviewing', 'todo', 'waiting'].includes(j.status)) {
+          console.log(`📨 Board send-confirm: "${e.subject}" → status ${j.status}→sent`)
+          j.status = 'sent'
+        }
+        if (REVIEW_CLAIM_RE.test(j.notes || '')) {
+          const suffix = j.company && !j.companyFromAts ? ` à ${j.company}` : ''
+          j.notes = `Confirmation ${boardName(e)} : candidature envoyée${suffix}`
+        }
+        if ((j.confidence || 0) < 45) j.confidence = 45
+      }
+      // ② HelloWork "offre n'est plus disponible" → rejected (posting withdrawn).
+      if (isHelloWorkOfferGone(e)) {
+        console.log(`🚫 HelloWork offer-gone: "${e.subject}" → status ${j.status}→rejected`)
+        j.status = 'rejected'
+        j.notes = "Offre retirée — n'est plus disponible sur HelloWork"
+        j.confidence = Math.max(j.confidence || 0, 80)
+      }
+    }
     const parsed = rawParsed.filter(j => (j.confidence || 0) >= 35).map(j => {
       // Normalize emailId: Claude sometimes returns "[1]", "1", or 1 — strip brackets and coerce
       const emailIdx = parseInt(String(j.emailId).replace(/\D/g, ''), 10) - 1
@@ -668,13 +752,18 @@ OUTPUT JSON FORMAT
     for (const e of missedConfirmations) {
       const r = recovered[e.id]
       if (!r || !r.position || !r.company) continue
+      // A board SEND confirmation only proves the application was forwarded → "sent".
+      // A true receipt acknowledgement ("thank you for applying") → "reviewing".
+      const isSend = isBoardSendConfirmation(e)
       const signal = {
         company: r.company,
         companyFromAts: r.companyFromAts === true,
         position: r.position,
-        status: 'reviewing',
+        status: isSend ? 'sent' : 'reviewing',
         date: e.date || new Date().toISOString().split('T')[0],
-        notes: 'Candidature reçue — accusé de réception',
+        notes: isSend
+          ? `Confirmation ${boardName(e)} : candidature envoyée${r.companyFromAts ? '' : ` à ${r.company}`}`
+          : 'Candidature reçue — accusé de réception',
         confidence: Math.max(r.confidence || 0, 60),
         gmailId: e.id,
         fromEmail: e.from,

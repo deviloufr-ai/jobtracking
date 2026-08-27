@@ -129,13 +129,29 @@ export function getStatusLabel(key, t = (key) => key) {
 // entry that sorts last (same-day ties break by pipeline stage, then addedAt).
 // Returns null when history has no usable entry, so callers keep the current status.
 // Auto-archiving still has the final say: it runs after this and re-archives stale jobs.
+// A "discovery seed" is the auto-created lead entry addJob writes when an offer is
+// found/added ("Offre trouvée — prête à postuler", showCVButton:true). It records
+// WHEN the offer was found, not a real status transition. When an offer already
+// applied-to is (re-)discovered via job search on a later date, this seed lands on
+// top of the timeline and drags the job back to `todo` — so a job you've already
+// sent reads "to apply". A seed must therefore never determine the effective status
+// once the job has advanced, and a seed that POST-dates a real application is a
+// spurious re-discovery to hide from the timeline. A manual status→todo change
+// (updateStatus) carries no showCVButton, so it is not treated as a seed.
+export const isDiscoverySeed = (h) =>
+  !!h && h.status === 'todo' && (h.showCVButton === true || /offre\s+(trouv|ajout)/i.test(h.note || ''))
+
 export function deriveStatusFromHistory(history) {
   if (!Array.isArray(history) || history.length === 0) return null
   const known = new Set(STATUSES.map(s => s.key))
   const candidates = history.filter(h => h && h.date && known.has(h.status))
   if (candidates.length === 0) return null
-  let best = candidates[0]
-  for (const h of candidates) {
+  // Discovery seeds never win the status race when any real (non-seed) entry exists —
+  // you can't un-apply. If the only entries are seeds, the job is a genuine lead (todo).
+  const nonSeed = candidates.filter(h => !isDiscoverySeed(h))
+  const pool = nonSeed.length ? nonSeed : candidates
+  let best = pool[0]
+  for (const h of pool) {
     if (compareHistoryEntries(h, best) > 0) best = h
   }
   return best.status
@@ -1049,6 +1065,24 @@ function combineTopicNotes(notes) {
 
 const TOPIC_STATUS_ORDER = ['todo', 'sent', 'reviewing', 'interview', 'waiting', 'done', 'offer', 'rejected', 'rejected_ats', 'cancelled', 'archived']
 
+// Hide a discovery seed that POST-dates a real application. In the normal flow the
+// seed is the oldest entry (found → applied → …) and is kept as useful context. But
+// when an already-applied offer is re-discovered via job search on a later date, the
+// seed rides on top of the timeline and contradicts it ("Offre trouvée — prête à
+// postuler" above an earlier "Candidature envoyée"). Display-only: rawJobs keep the
+// entry, so nothing is lost from storage. A seed that precedes the application stays.
+export function dropMisplacedSeeds(history) {
+  if (!Array.isArray(history) || history.length < 2) return history
+  const application = history.filter(h => !isDiscoverySeed(h) && TOPIC_STATUS_ORDER.indexOf(h.status) > 0)
+  if (!application.length) return history
+  return history.filter(h => {
+    if (!isDiscoverySeed(h)) return true
+    const seedT = new Date(h.date).getTime()
+    // Drop only when a real application entry is dated STRICTLY earlier than the seed.
+    return !application.some(a => new Date(a.date).getTime() < seedT)
+  })
+}
+
 function mergeTopicGroup(group) {
   // Representative = entry carrying the most metadata, then the longest note.
   const score = e => (e.body ? 2 : 0) + (e.from ? 1 : 0) + (e.note || '').length / 1000
@@ -1579,7 +1613,9 @@ export function useJobs() {
       // duplicate candidature existed. This also keeps the debounced saveJobs(jobs)
       // from persisting the resurrected copy back to IndexedDB.
       return processed.map(job =>
-        job.history?.length ? { ...job, history: filterDeletedHistory(job.id, job.history) } : job
+        job.history?.length
+          ? { ...job, history: dropMisplacedSeeds(filterDeletedHistory(job.id, job.history)) }
+          : job
       )
     } catch (err) {
       console.error('❌ Error in jobs processing pipeline:', err)

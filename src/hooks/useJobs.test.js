@@ -26,6 +26,9 @@ import {
   isDeletedHistoryEntry,
   filterDeletedHistory,
   partitionJobsByTombstones,
+  deriveStatusFromHistory,
+  isDiscoverySeed,
+  dropMisplacedSeeds,
 } from './useJobs'
 
 const daysAgo = n => new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString()
@@ -264,6 +267,53 @@ describe('deduplicateJobs', () => {
     ]
     const result = deduplicateJobs(jobs)
     expect(result.filter(j => j.company.startsWith('Nextep'))).toHaveLength(2)
+  })
+})
+
+describe('deriveStatusFromHistory — discovery seeds never regress an applied job', () => {
+  it('ignores a discovery seed dated after a real application (pill stays applied)', () => {
+    // Hublo case: Indeed send-confirmation on Aug 21, then the offer re-discovered
+    // (todo seed) on Aug 27. Latest-wins would pick todo; the seed must be ignored.
+    const history = [
+      { date: '2026-08-21', status: 'sent', note: 'Confirmation Indeed : candidature envoyée à Hublo' },
+      { date: '2026-08-27', status: 'todo', note: 'Offre trouvée — prête à postuler', showCVButton: true },
+    ]
+    expect(deriveStatusFromHistory(history)).toBe('sent')
+  })
+
+  it('still returns todo when the only entries are discovery seeds (genuine lead)', () => {
+    const history = [
+      { date: '2026-08-27', status: 'todo', note: 'Offre trouvée — prête à postuler', showCVButton: true },
+    ]
+    expect(deriveStatusFromHistory(history)).toBe('todo')
+  })
+
+  it('honors a manual status→todo change (no showCVButton) as a real transition', () => {
+    const history = [
+      { date: '2026-08-21', status: 'sent', note: 'Candidature envoyée' },
+      { date: '2026-08-27', status: 'todo', note: 'Statut mis à jour → To do' },
+    ]
+    expect(isDiscoverySeed(history[1])).toBe(false)
+    expect(deriveStatusFromHistory(history)).toBe('todo')
+  })
+})
+
+describe('dropMisplacedSeeds — timeline', () => {
+  it('hides a seed that post-dates a real application', () => {
+    const history = [
+      { date: '2026-08-21', status: 'sent', note: 'Candidature envoyée' },
+      { date: '2026-08-27', status: 'todo', note: 'Offre trouvée — prête à postuler', showCVButton: true },
+    ]
+    expect(dropMisplacedSeeds(history).map(h => h.status)).toEqual(['sent'])
+  })
+
+  it('keeps a seed that precedes the application (normal lead → apply flow)', () => {
+    const history = [
+      { date: '2026-07-23', status: 'todo', note: 'Offre trouvée — prête à postuler', showCVButton: true },
+      { date: '2026-07-23', status: 'reviewing', note: 'Candidature enregistrée' },
+      { date: '2026-08-05', status: 'reviewing', note: 'Relance' },
+    ]
+    expect(dropMisplacedSeeds(history)).toHaveLength(3)
   })
 })
 
