@@ -470,6 +470,7 @@ export const en = {
     noActions: 'No actions required',
     emptyTitle: "You're all caught up!",
     emptyDesc: 'No urgent actions right now. Keep up the momentum 👏',
+    dismiss: 'Hide this action',
   },
 
   // RowActions

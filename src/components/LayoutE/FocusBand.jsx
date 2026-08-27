@@ -3,7 +3,8 @@
 // Reuses NextAction's rules engine (buildAllActions) so the focus cards stay in
 // lockstep with the "Prochaines étapes" list. Shows up to 3 top actions and
 // renders NOTHING when the user is caught up (auto-hide → the list gets the space).
-import { buildAllActions, loadDismissed } from '../NextAction'
+import { useState } from 'react'
+import { buildAllActions, loadDismissed, dismissAction } from '../NextAction'
 
 const TINT = {
   cv: 'bg-violet-100 text-violet-700',
@@ -13,8 +14,13 @@ const TINT = {
 }
 
 export default function FocusBand({ jobs = [], userName, onOpenJob, onGenerateCV, onSTAR, t = (k) => k }) {
+  // Local dismissed state so hiding a focus card re-renders immediately; the
+  // shared helper persists it (same store as the "Prochaines étapes" list).
+  const [dismissed, setDismissed] = useState(loadDismissed)
+  const remove = (job, rule) => setDismissed(dismissAction(job, rule))
+
   const activeJobs = jobs.filter(j => !['cancelled', 'archived'].includes(j.status))
-  const actions = buildAllActions(activeJobs, {}, t, loadDismissed())
+  const actions = buildAllActions(activeJobs, {}, t, dismissed)
   if (actions.length === 0) return null // caught up — hide entirely
 
   const top = actions.slice(0, 3)
@@ -44,8 +50,18 @@ export default function FocusBand({ jobs = [], userName, onOpenJob, onGenerateCV
             tabIndex={0}
             onClick={() => onOpenJob?.(job)}
             onKeyDown={e => { if (e.key === 'Enter') onOpenJob?.(job) }}
-            className="flex flex-col gap-2.5 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-gray-200 transition-all cursor-pointer"
+            className="group/card relative flex flex-col gap-2.5 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-gray-200 transition-all cursor-pointer"
           >
+            {/* Remove — hides this action (persists like the list dismiss).
+                stopPropagation so the card click still opens the job. */}
+            <button
+              onClick={e => { e.stopPropagation(); remove(job, rule) }}
+              className="absolute top-2.5 right-2.5 opacity-0 group-hover/card:opacity-100 focus:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center text-gray-300 hover:text-gray-500 hover:bg-gray-100 rounded-md"
+              title={t('nextAction.dismiss')}
+              aria-label={t('nextAction.dismiss')}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
             <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-base ${TINT[rule.type] || TINT.default}`}>
               {rule.icon}
             </span>

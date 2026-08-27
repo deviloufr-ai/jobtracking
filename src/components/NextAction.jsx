@@ -13,6 +13,16 @@ const DISMISSED_KEY = 'jobtrackr_dismissed_actions'
 export function loadDismissed() { try { return new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY) || '[]')) } catch { return new Set() } }
 function saveDismissed(s) { try { localStorage.setItem(DISMISSED_KEY, JSON.stringify([...s])) } catch {} }
 
+// Persist a dismissal and return the updated set. Shared by the classic
+// "Prochaines étapes" list (NextAction) and the new-design FocusBand cards so
+// hiding an action sticks and behaves identically across both surfaces.
+export function dismissAction(job, rule) {
+  const next = loadDismissed()
+  next.add(actionKey(job, rule))
+  saveDismissed(next)
+  return next
+}
+
 // Helper to format translation strings with dynamic values
 function formatTrans(key, replacements = {}) {
   let str = key
@@ -330,13 +340,7 @@ export function buildAllActions(activeJobs, s, t = (key) => key, dismissed = new
 export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDraftEmail, t = (key) => key }) {
   const [dismissed, setDismissed] = useState(loadDismissed)
 
-  const dismiss = (job, rule) => {
-    const key = actionKey(job, rule)
-    const next = new Set(dismissed)
-    next.add(key)
-    setDismissed(next)
-    saveDismissed(next)
-  }
+  const dismiss = (job, rule) => setDismissed(dismissAction(job, rule))
   // archived/cancelled are explicit terminal flags — check the RAW status, not the
   // derived one. Archiving doesn't add a history entry, so effectiveStatus() of an
   // archived job still reads "rejected" and would wrongly resurface it here.
@@ -422,7 +426,7 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
             <button
               onClick={e => { e.stopPropagation(); dismiss(job, rule) }}
               className="flex-shrink-0 opacity-0 group-hover/action:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center text-gray-300 hover:text-gray-500 hover:bg-gray-100 rounded-md"
-              title="Masquer cette action"
+              title={t('nextAction.dismiss')}
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>

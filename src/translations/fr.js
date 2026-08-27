@@ -707,6 +707,7 @@ export const fr = {
     noActions: 'Aucune action requise',
     emptyTitle: 'Vous êtes à jour !',
     emptyDesc: 'Aucune action urgente pour le moment. Continuez sur votre lancée 👏',
+    dismiss: 'Masquer cette action',
   },
 
   // RowActions
