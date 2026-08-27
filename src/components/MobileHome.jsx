@@ -1,4 +1,4 @@
-import { buildAllActions, loadDismissed } from './NextAction'
+import { buildAllActions, loadDismissed, runPrimaryAction } from './NextAction'
 import { deriveStatusFromHistory } from '../hooks/useJobs'
 
 const isEN = typeof navigator !== 'undefined' && navigator.language.startsWith('en')
@@ -25,13 +25,7 @@ export default function MobileHome({ jobs, userName, onOpenJob, onDraftEmail, on
   const dateStr = now.toLocaleDateString(isEN ? 'en-US' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
   const name = userName ? `, ${userName.split(' ')[0]}` : ''
 
-  const runCta = (job, rule) => {
-    if (rule.emailType === 'relance') return onDraftEmail?.(job, 'relance')
-    if (rule.emailType === 'remerciement') return onDraftEmail?.(job, 'remerciement')
-    if (rule.type === 'cv') return onGenerateCV?.(job)
-    if (rule.type === 'prep' && !rule.label(job).toLowerCase().includes('test')) return onSTAR?.(job)
-    return onOpenJob?.(job)
-  }
+  const runCta = (job, rule) => runPrimaryAction(job, rule, { onGenerateCV, onSTAR, onDraftEmail, onOpenJob })
 
   const ctaLabel = (rule, job) => {
     if (rule.emailType === 'relance') return tr('flux.relance', 'Relancer', 'Follow up')

@@ -337,6 +337,19 @@ export function buildAllActions(activeJobs, s, t = (key) => key, dismissed = new
   return [...capped, ...missedRejections]
 }
 
+// Clicking a next-step action should DO the action, not just open the job:
+// a thank-you card opens the thank-you email, a follow-up opens the follow-up
+// draft, a CV card opens the generator, an interview-prep card opens STAR.
+// Actions with no dedicated flow (test prep, negotiation, offer…) fall back to
+// opening the candidature. Shared by the "Prochaines étapes" list, the FocusBand
+// cards and the mobile home so all three behave identically.
+export function runPrimaryAction(job, rule, { onGenerateCV, onSTAR, onDraftEmail, onOpenJob } = {}) {
+  if (rule.emailType && onDraftEmail) return onDraftEmail(job, rule.emailType)
+  if (rule.type === 'cv' && onGenerateCV) return onGenerateCV(job)
+  if (rule.type === 'prep' && !rule.label(job).toLowerCase().includes('test') && onSTAR) return onSTAR(job)
+  return onOpenJob?.(job)
+}
+
 export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDraftEmail, t = (key) => key }) {
   const [dismissed, setDismissed] = useState(loadDismissed)
 
@@ -385,7 +398,7 @@ export default function NextAction({ jobs, onGenerateCV, onOpenJob, onSTAR, onDr
       </div>
       <div className="divide-y divide-gray-50 flex-1 overflow-y-auto">
         {actions.map(({ job, rule, urgency }, i) => (
-          <div key={i} onClick={() => onOpenJob?.(job)} className="flex items-center gap-3 px-4 py-2.5 hover:bg-indigo-50/40 transition-colors group/action cursor-pointer">
+          <div key={i} onClick={() => runPrimaryAction(job, rule, { onGenerateCV, onSTAR, onDraftEmail, onOpenJob })} className="flex items-center gap-3 px-4 py-2.5 hover:bg-indigo-50/40 transition-colors group/action cursor-pointer">
             {/* Urgency dot */}
             <div className={`w-2 h-2 rounded-full flex-shrink-0 ${URGENCY_DOT[urgency]}`} />
             <span className="text-sm flex-shrink-0">{rule.icon}</span>

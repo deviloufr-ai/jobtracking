@@ -4,7 +4,7 @@
 // lockstep with the "Prochaines étapes" list. Shows up to 3 top actions and
 // renders NOTHING when the user is caught up (auto-hide → the list gets the space).
 import { useState } from 'react'
-import { buildAllActions, loadDismissed, dismissAction } from '../NextAction'
+import { buildAllActions, loadDismissed, dismissAction, runPrimaryAction } from '../NextAction'
 
 const TINT = {
   cv: 'bg-violet-100 text-violet-700',
@@ -13,11 +13,14 @@ const TINT = {
   default: 'bg-amber-100 text-amber-700',
 }
 
-export default function FocusBand({ jobs = [], userName, onOpenJob, onGenerateCV, onSTAR, t = (k) => k }) {
+export default function FocusBand({ jobs = [], userName, onOpenJob, onGenerateCV, onSTAR, onDraftEmail, t = (k) => k }) {
   // Local dismissed state so hiding a focus card re-renders immediately; the
   // shared helper persists it (same store as the "Prochaines étapes" list).
   const [dismissed, setDismissed] = useState(loadDismissed)
   const remove = (job, rule) => setDismissed(dismissAction(job, rule))
+  // Clicking a card runs its action (open thank-you/follow-up email, CV, STAR…),
+  // falling back to opening the candidature when there's no dedicated flow.
+  const runAction = (job, rule) => runPrimaryAction(job, rule, { onGenerateCV, onSTAR, onDraftEmail, onOpenJob })
 
   const activeJobs = jobs.filter(j => !['cancelled', 'archived'].includes(j.status))
   const actions = buildAllActions(activeJobs, {}, t, dismissed)
@@ -48,8 +51,8 @@ export default function FocusBand({ jobs = [], userName, onOpenJob, onGenerateCV
             key={i}
             role="button"
             tabIndex={0}
-            onClick={() => onOpenJob?.(job)}
-            onKeyDown={e => { if (e.key === 'Enter') onOpenJob?.(job) }}
+            onClick={() => runAction(job, rule)}
+            onKeyDown={e => { if (e.key === 'Enter') runAction(job, rule) }}
             className="group/card relative flex flex-col gap-2.5 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-gray-200 transition-all cursor-pointer"
           >
             {/* Remove — hides this action (persists like the list dismiss).
@@ -83,6 +86,14 @@ export default function FocusBand({ jobs = [], userName, onOpenJob, onGenerateCV
                 className="self-start text-xs font-semibold bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600 transition-colors"
               >
                 STAR ✦
+              </button>
+            )}
+            {rule.emailType && onDraftEmail && (
+              <button
+                onClick={e => { e.stopPropagation(); onDraftEmail(job, rule.emailType) }}
+                className={`self-start text-xs font-semibold text-white px-3 py-1.5 rounded-lg transition-colors ${rule.emailType === 'remerciement' ? 'bg-pink-500 hover:bg-pink-600' : 'bg-blue-500 hover:bg-blue-600'}`}
+              >
+                {rule.cta} ✦
               </button>
             )}
           </div>

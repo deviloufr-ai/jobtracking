@@ -123,6 +123,7 @@ export default function TrackerHomeE({
         onOpenJob={open}
         onGenerateCV={onGenerateCV}
         onSTAR={onSTAR}
+        onDraftEmail={onDraftEmail}
         t={t}
       />
 
