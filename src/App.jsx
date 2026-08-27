@@ -1066,19 +1066,27 @@ export default function App() {
           onAccount={() => goTab('settings')}
           onTour={startTour}
           extensionInstalled={extensionInstalled}
-          notificationSlot={
-            <NotificationBell
-              variant="rail"
-              notifications={notifications} unreadCount={unreadCount}
-              onMarkAllRead={markAllRead} onClear={clearNotifs} onRemove={removeNotif} t={t}
-              onNavigate={({ jobId, company }) => {
-                setActiveTab('tracker')
-                if (company) setFilters(f => ({ ...f, search: company }))
-              }}
-            />
-          }
+          extensionUpdateAvailable={extUpdate.updateAvailable}
+          onExtensionUpdate={() => setShowExtUpdate(true)}
           t={t}
         />
+      )}
+
+      {/* Notifications bell — the top header (which normally hosts it) is
+          md:hidden under the E layout, so pin the bell to the top-right of the
+          content area on md+. z-30 keeps it below the job drawer (z-40), which
+          simply covers it while a candidature is open. */}
+      {layoutE && (
+        <div className="hidden md:block fixed top-2.5 right-4 lg:right-6 z-30">
+          <NotificationBell
+            notifications={notifications} unreadCount={unreadCount}
+            onMarkAllRead={markAllRead} onClear={clearNotifs} onRemove={removeNotif} t={t}
+            onNavigate={({ jobId, company }) => {
+              setActiveTab('tracker')
+              if (company) setFilters(f => ({ ...f, search: company }))
+            }}
+          />
+        </div>
       )}
 
       {/* ── Header ────────────────────────────────────────────────────────────── */}

@@ -10,16 +10,33 @@ import { useState } from 'react'
 import { EXTENSION_XPI_PATH as XPI_HREF } from '../../constants/extension'
 
 // Browser-extension affordance for the rail footer.
+//   installed === true + updateAvailable → amber "Update" row (opens update modal)
 //   installed === true  → green "installed" row
 //   installed === false → orange "Install extension" row + ⓘ what-and-why popover
 //   installed === null  → nothing (still detecting)
-function RailExtension({ installed, t }) {
+function RailExtension({ installed, updateAvailable, onUpdate, t }) {
   const [info, setInfo] = useState(false)
   const isFirefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent)
 
   if (installed === null) return null
 
   if (installed === true) {
+    if (updateAvailable) {
+      return (
+        <button
+          onClick={onUpdate}
+          title={t('extensionUpdate.badge')}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 transition-colors"
+        >
+          <span className="relative flex text-base leading-none w-5 justify-center">
+            <span>🦊</span>
+            <span className="absolute -top-1 right-0.5 w-2 h-2 rounded-full bg-orange-500 ring-2 ring-white" />
+          </span>
+          <span className="flex-1 text-left">{t('extensionUpdate.badge')}</span>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+        </button>
+      )
+    }
     return (
       <div className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-green-700 bg-green-50">
         <span className="text-base leading-none w-5 text-center">🦊</span>
@@ -103,7 +120,8 @@ export default function NavRail({
   onAccount,
   onTour,
   extensionInstalled = null,
-  notificationSlot = null,
+  extensionUpdateAvailable = false,
+  onExtensionUpdate,
   t = (k) => k,
 }) {
   return (
@@ -130,11 +148,6 @@ export default function NavRail({
           {t('nav.add')}
         </button>
       </div>
-
-      {/* Notifications — the top-header bell has no home in this layout, so it
-          lives here as a rail row. Kept OUTSIDE the scrollable nav below so its
-          dropdown panel isn't clipped by overflow-y-auto. */}
-      {notificationSlot && <div className="px-3 pt-2">{notificationSlot}</div>}
 
       {/* Navigation */}
       <nav data-tour="nav" className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-1">
@@ -175,7 +188,7 @@ export default function NavRail({
             {refreshing ? t('header.loading') : t('nav.refresh')}
           </button>
         )}
-        <RailExtension installed={extensionInstalled} t={t} />
+        <RailExtension installed={extensionInstalled} updateAvailable={extensionUpdateAvailable} onUpdate={onExtensionUpdate} t={t} />
         {onTour && (
           <button
             onClick={onTour}
