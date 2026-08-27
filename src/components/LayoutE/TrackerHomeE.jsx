@@ -9,7 +9,7 @@
 // candidature switches it in place (active row highlighted), the content reflows
 // left of the drawer on desktop, and the drawer closes on ✕ / Esc / re-clicking
 // the open row. Every view opens the same drawer, whose body reuses JobCard.
-import { useState, useEffect, Fragment } from 'react'
+import { useState, useEffect } from 'react'
 import { getStatus, getStatusLabel } from '../../hooks/useJobs'
 import { scoreColorClasses } from '../ScoreJob'
 import KanbanBoard from '../KanbanBoard'
@@ -32,17 +32,37 @@ const TERMINAL = new Set(['rejected', 'rejected_ats', 'cancelled', 'archived'])
 const ACCENT = 'var(--theme-primary, #6366f1)'
 const MUTED = 'var(--theme-border, #d8dbe4)'
 
-function StageBar({ status, title }) {
+function StageBar({ status, title, history }) {
   const terminal = TERMINAL.has(status)
   const ix = STAGE_IX[status] ?? -1
+  // Earliest real date each stage was reached (min per stage, order-independent),
+  // so a date can sit under the dot of every stage the candidature actually hit.
+  const stageDates = (() => {
+    const dates = [null, null, null, null]
+    for (const h of history || []) {
+      const si = STAGE_IX[h.status]
+      if (si === undefined || si < 0 || !h.date) continue
+      if (dates[si] == null || new Date(h.date) < new Date(dates[si])) dates[si] = h.date
+    }
+    return dates
+  })()
   return (
-    <div className="hidden lg:flex items-center w-[150px] shrink-0" title={title || (terminal ? 'Closed' : STAGES[ix]?.label || '')}>
-      {STAGES.map((s, i) => (
-        <Fragment key={s.key}>
-          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: !terminal && i <= ix ? ACCENT : MUTED }} />
-          {i < STAGES.length - 1 && <span className="h-0.5 flex-1" style={{ background: !terminal && i < ix ? ACCENT : MUTED }} />}
-        </Fragment>
-      ))}
+    <div className="hidden lg:grid grid-cols-4 w-[164px] shrink-0" title={title || (terminal ? 'Closed' : STAGES[ix]?.label || '')}>
+      {STAGES.map((s, i) => {
+        const on = !terminal && i <= ix
+        return (
+          <div key={s.key} className="relative flex flex-col items-center gap-1">
+            {/* connector to the next dot — sits behind the dots */}
+            {i < STAGES.length - 1 && (
+              <span className="absolute top-[3px] left-1/2 w-full h-0.5" style={{ background: !terminal && i < ix ? ACCENT : MUTED }} />
+            )}
+            <span className="w-2 h-2 rounded-full relative z-[1]" style={{ background: on ? ACCENT : MUTED }} />
+            <span className="h-[9px] text-[9px] leading-none tabular-nums text-gray-400">
+              {on && stageDates[i] ? shortDate(stageDates[i]) : ''}
+            </span>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -240,7 +260,7 @@ export default function TrackerHomeE({
                           <span className="block text-[13.5px] font-semibold tracking-tight text-gray-900 truncate">{job.company}</span>
                           <span className="block text-[12px] text-gray-400 truncate">{job.position}</span>
                         </span>
-                        {!compact && <StageBar status={last?.status || job.status} title={lastNote} />}
+                        {!compact && <StageBar status={last?.status || job.status} title={lastNote} history={job.history} />}
                         <span className="w-32 shrink-0">
                           <span className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full ${getStatus(last?.status || job.status)?.color || 'bg-gray-100 text-gray-500'}`}>
                             {getStatusLabel(last?.status || job.status, t)}
