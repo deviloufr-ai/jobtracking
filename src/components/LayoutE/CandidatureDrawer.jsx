@@ -6,7 +6,7 @@
 // ATS coverage, applied, emails) + recruiter contact + commute + a timeline with
 // per-step edit/delete + primary actions. CV / Cover letter / Interview keep the
 // real generators. Self-contained (classic JobRow/JobCandidaturePanel untouched).
-import { useState, useRef, useEffect, Fragment } from 'react'
+import { useState, Fragment } from 'react'
 import { STATUSES, getStatus, getStatusLabel } from '../../hooks/useJobs'
 import { gmailMessageUrl } from '../../services/gmail'
 import { scoreColorClasses, ScoreBreakdown } from '../ScoreJob'
@@ -64,7 +64,7 @@ export default function CandidatureDrawer({
   const [showScore, setShowScore] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [step, setStep] = useState(() => nowStep(displayStatus))
-  const [editIdx, setEditIdx] = useState(null)   // history index being edited
+  const [editIdx, setEditIdx] = useState(null)   // display index being edited
   const [editForm, setEditForm] = useState({})
   const [confirmDel, setConfirmDel] = useState(null)
   const [homeAddress] = useState(() => { try { return JSON.parse(localStorage.getItem('jobtrackr_profile') || '{}').homeAddress || '' } catch { return '' } })
@@ -78,23 +78,20 @@ export default function CandidatureDrawer({
     setStep(nowStep(job.status))
     setAddOpen(false)
   }
-  const saveEdit = (idx) => {
+  const toOriginal = (displayIdx) => history.length - 1 - displayIdx
+  const saveEdit = (displayIdx) => {
+    const idx = toOriginal(displayIdx)
     const merged = { ...history[idx], ...editForm }
     if (merged.status === 'interview' && new Date(merged.date) < new Date()) merged.status = 'done'
     const updated = [...history]; updated[idx] = merged
     onUpdateHistory?.(job.id, [...updated].sort((a, b) => new Date(a.date) - new Date(b.date)))
     setEditIdx(null); setEditForm({})
   }
-  const deleteStep = (idx) => {
+  const deleteStep = (displayIdx) => {
+    const idx = toOriginal(displayIdx)
     onUpdateHistory?.(job.id, history.filter((_, i) => i !== idx))
     setConfirmDel(null)
   }
-  // The horizontal timeline runs oldest → newest; land on the most recent step.
-  const timelineRef = useRef(null)
-  useEffect(() => {
-    const el = timelineRef.current
-    if (el) el.scrollLeft = el.scrollWidth
-  }, [history.length, tab])
   const fetchAddress = async () => {
     setFetchingAddr(true); setAddrError(null)
     try {
@@ -213,67 +210,64 @@ export default function CandidatureDrawer({
             {history.length === 0 ? (
               <p className="text-sm text-gray-400">No steps yet.</p>
             ) : (
-              <div ref={timelineRef} className="overflow-x-auto overflow-y-hidden -mx-5 px-5 pb-3 mb-1">
-                <ol className="flex items-start w-max">
-                  {history.map((h, i) => {
-                    const editing = editIdx === i
-                    const ids = h.gmailIds || (h.gmailId ? [h.gmailId] : [])
-                    return (
-                      <li key={i} className="relative shrink-0 w-[210px] group">
-                        {/* horizontal rail: half-segment each side of the dot so
-                            adjacent nodes join into one continuous line */}
-                        <div className="relative h-3">
-                          {i > 0 && <span className="absolute top-1/2 -translate-y-1/2 left-0 w-1/2 h-0.5 bg-gray-200" />}
-                          {i < history.length - 1 && <span className="absolute top-1/2 -translate-y-1/2 left-1/2 w-1/2 h-0.5 bg-gray-200" />}
-                          <span className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full ring-4 ring-white ${getStatus(h.status)?.dot || 'bg-gray-400'}`} />
-                        </div>
-
-                        {editing ? (
-                          <div className="mx-1 mt-2 rounded-xl bg-indigo-50/60 border border-indigo-100 p-2.5 space-y-2">
-                            <select value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white">
+              <ul className="mb-2">
+                {[...history].reverse().map((h, i, arr) => {
+                  const editing = editIdx === i
+                  return (
+                    <li key={i} className="relative pl-6 pb-4 last:pb-0 group">
+                      {i < arr.length - 1 && <span className="absolute left-[5px] top-3 bottom-0 w-px bg-gray-200" />}
+                      <span className={`absolute left-0 top-1 w-3 h-3 rounded-full ring-4 ring-white ${getStatus(h.status)?.dot || 'bg-gray-400'}`} />
+                      {editing ? (
+                        <div className="rounded-xl bg-indigo-50/60 border border-indigo-100 p-3 space-y-2.5">
+                          <div className="flex gap-2">
+                            <select value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value })} className="flex-1 text-sm border border-gray-200 rounded-lg px-2.5 py-2 bg-white">
                               {STATUSES.map(s => <option key={s.key} value={s.key}>{getStatusLabel(s.key, t)}</option>)}
                             </select>
-                            <input type="date" value={(editForm.date || '').slice(0, 10)} onChange={e => setEditForm({ ...editForm, date: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white" />
-                            <textarea value={editForm.note || ''} onChange={e => setEditForm({ ...editForm, note: e.target.value })} rows={3} className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white resize-none" />
-                            <div className="flex gap-2">
-                              <button onClick={() => saveEdit(i)} className={btnP}>Save</button>
-                              <button onClick={() => { setEditIdx(null); setEditForm({}) }} className={btn}>Cancel</button>
-                            </div>
+                            <input type="date" value={(editForm.date || '').slice(0, 10)} onChange={e => setEditForm({ ...editForm, date: e.target.value })} className="text-sm border border-gray-200 rounded-lg px-2.5 py-2 bg-white" />
                           </div>
-                        ) : (
-                          <div className="relative mx-1 mt-2 rounded-xl border border-gray-100 bg-white p-2.5 shadow-sm">
-                            <div className="absolute top-1.5 right-1.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <textarea value={editForm.note || ''} onChange={e => setEditForm({ ...editForm, note: e.target.value })} rows={2} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white resize-none" />
+                          <div className="flex gap-2">
+                            <button onClick={() => saveEdit(i)} className={btnP}>Save</button>
+                            <button onClick={() => { setEditIdx(null); setEditForm({}) }} className={btn}>Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full ${getStatus(h.status)?.color || 'bg-gray-100 text-gray-500'}`}>{getStatusLabel(h.status, t)}</span>
+                            <span className="text-xs text-gray-400">{fullDate(h.date)}</span>
+                            <div className="ml-auto flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button onClick={() => { setEditIdx(i); setEditForm({ status: h.status, date: h.date, note: h.note || '' }) }} aria-label="edit step" className={`${iconBtn} w-6 h-6`}>✎</button>
                               <button onClick={() => setConfirmDel(i)} aria-label="delete step" className={`${iconBtn} w-6 h-6 hover:text-red-600`}>🗑</button>
                             </div>
-                            <div className="text-[11px] text-gray-400 mb-1.5 pr-12">{fullDate(h.date)}</div>
-                            <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full ${getStatus(h.status)?.color || 'bg-gray-100 text-gray-500'}`}>{getStatusLabel(h.status, t)}</span>
-                            {h.note && <p className="text-[13px] text-gray-600 mt-1.5 whitespace-pre-line leading-snug line-clamp-4" title={h.note}>{h.note}</p>}
-                            {ids.length > 0 && (() => {
-                              const { url, account, uncertain } = gmailMessageUrl(ids[0], h.receivedBy)
-                              return (
-                                <a href={url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                                  className={`inline-flex items-center gap-1 text-[11px] mt-1.5 font-medium transition-colors ${uncertain ? 'text-amber-500 hover:text-amber-600' : 'text-gray-400 hover:text-red-500'}`}
-                                  title={account ? `Open in ${account}` : 'Open email'}>
-                                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.909 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" /></svg>
-                                  Open email{ids.length > 1 ? ` (${ids.length})` : ''}
-                                </a>
-                              )
-                            })()}
-                            {confirmDel === i && (
-                              <div className="flex items-center gap-2 mt-2 text-[11px]">
-                                <span className="text-gray-500">Delete?</span>
-                                <button onClick={() => deleteStep(i)} className="font-semibold text-red-600 hover:underline">Delete</button>
-                                <button onClick={() => setConfirmDel(null)} className="text-gray-400 hover:underline">Cancel</button>
-                              </div>
-                            )}
                           </div>
-                        )}
-                      </li>
-                    )
-                  })}
-                </ol>
-              </div>
+                          {h.note && <p className="text-sm text-gray-600 mt-1.5 whitespace-pre-line leading-relaxed">{h.note}</p>}
+                          {(() => {
+                            const ids = h.gmailIds || (h.gmailId ? [h.gmailId] : [])
+                            if (!ids.length) return null
+                            const { url, account, uncertain } = gmailMessageUrl(ids[0], h.receivedBy)
+                            return (
+                              <a href={url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                                className={`inline-flex items-center gap-1 text-xs mt-1.5 font-medium transition-colors ${uncertain ? 'text-amber-500 hover:text-amber-600' : 'text-gray-400 hover:text-red-500'}`}
+                                title={account ? `Open in ${account}` : 'Open email'}>
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.909 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" /></svg>
+                                Open email{ids.length > 1 ? ` (${ids.length})` : ''}
+                              </a>
+                            )
+                          })()}
+                          {confirmDel === i && (
+                            <div className="flex items-center gap-2 mt-2 text-xs">
+                              <span className="text-gray-500">Delete this step?</span>
+                              <button onClick={() => deleteStep(i)} className="font-semibold text-red-600 hover:underline">Delete</button>
+                              <button onClick={() => setConfirmDel(null)} className="text-gray-400 hover:underline">Cancel</button>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
             )}
 
             {addOpen ? (

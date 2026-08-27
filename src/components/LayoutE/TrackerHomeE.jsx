@@ -9,7 +9,7 @@
 // candidature switches it in place (active row highlighted), the content reflows
 // left of the drawer on desktop, and the drawer closes on ✕ / Esc / re-clicking
 // the open row. Every view opens the same drawer, whose body reuses JobCard.
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getStatus, getStatusLabel } from '../../hooks/useJobs'
 import { scoreColorClasses } from '../ScoreJob'
 import KanbanBoard from '../KanbanBoard'
@@ -25,44 +25,37 @@ const initials = (s = '') =>
   s.replace(/[^A-Za-z0-9 ]/g, '').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?'
 const shortDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '')
 
-// Compact per-row stage progress (Applied → Reviewing → Interview → Offer).
-const STAGES = [{ key: 'sent', label: 'Applied' }, { key: 'reviewing', label: 'Reviewing' }, { key: 'interview', label: 'Interview' }, { key: 'offer', label: 'Offer' }]
-const STAGE_IX = { todo: -1, sent: 0, reviewing: 1, waiting: 1, interview: 2, done: 2, offer: 3 }
-const TERMINAL = new Set(['rejected', 'rejected_ats', 'cancelled', 'archived'])
-const ACCENT = 'var(--theme-primary, #6366f1)'
-const MUTED = 'var(--theme-border, #d8dbe4)'
-
-function StageBar({ status, title, history }) {
-  const terminal = TERMINAL.has(status)
-  const ix = STAGE_IX[status] ?? -1
-  // Earliest real date each stage was reached (min per stage, order-independent),
-  // so a date can sit under the dot of every stage the candidature actually hit.
-  const stageDates = (() => {
-    const dates = [null, null, null, null]
-    for (const h of history || []) {
-      const si = STAGE_IX[h.status]
-      if (si === undefined || si < 0 || !h.date) continue
-      if (dates[si] == null || new Date(h.date) < new Date(dates[si])) dates[si] = h.date
-    }
-    return dates
-  })()
+// Dynamic per-row timeline — a status-colored dot for every real step, dated
+// and in chronological order. Scrolls horizontally when the journey is long and
+// auto-scrolls to the most recent step; the full note shows on hover.
+function StageBar({ history, t }) {
+  const steps = (history || []).filter(h => h.date)
+  const scrollRef = useRef(null)
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el) el.scrollLeft = el.scrollWidth
+  }, [steps.length])
+  // Keep the column's footprint stable even for candidatures with no dated step.
+  if (steps.length === 0) return <div className="hidden lg:block w-[188px] shrink-0" />
   return (
-    <div className="hidden lg:grid grid-cols-4 w-[164px] shrink-0" title={title || (terminal ? 'Closed' : STAGES[ix]?.label || '')}>
-      {STAGES.map((s, i) => {
-        const on = !terminal && i <= ix
-        return (
-          <div key={s.key} className="relative flex flex-col items-center gap-1">
-            {/* connector to the next dot — sits behind the dots */}
-            {i < STAGES.length - 1 && (
-              <span className="absolute top-[3px] left-1/2 w-full h-0.5" style={{ background: !terminal && i < ix ? ACCENT : MUTED }} />
-            )}
-            <span className="w-2 h-2 rounded-full relative z-[1]" style={{ background: on ? ACCENT : MUTED }} />
-            <span className="h-[9px] text-[9px] leading-none tabular-nums text-gray-400">
-              {on && stageDates[i] ? shortDate(stageDates[i]) : ''}
-            </span>
-          </div>
-        )
-      })}
+    <div ref={scrollRef} className="hidden lg:block w-[188px] shrink-0 overflow-x-auto no-scrollbar">
+      <ol className="flex items-start w-max">
+        {steps.map((h, i) => (
+          <li
+            key={i}
+            className="relative shrink-0 flex flex-col items-center px-1.5"
+            title={`${getStatusLabel(h.status, t)} · ${shortDate(h.date)}${h.note ? ` — ${h.note}` : ''}`}
+          >
+            {/* rail: a half-segment each side of the dot so the nodes join up */}
+            <div className="relative h-2 w-full flex items-center justify-center">
+              {i > 0 && <span className="absolute top-1/2 -translate-y-1/2 left-0 w-1/2 h-0.5 bg-gray-200" />}
+              {i < steps.length - 1 && <span className="absolute top-1/2 -translate-y-1/2 left-1/2 w-1/2 h-0.5 bg-gray-200" />}
+              <span className={`relative z-[1] w-2 h-2 rounded-full ${getStatus(h.status)?.dot || 'bg-gray-400'}`} />
+            </div>
+            <span className="mt-1 text-[9px] leading-none tabular-nums text-gray-400 whitespace-nowrap">{shortDate(h.date)}</span>
+          </li>
+        ))}
+      </ol>
     </div>
   )
 }
@@ -260,7 +253,7 @@ export default function TrackerHomeE({
                           <span className="block text-[13.5px] font-semibold tracking-tight text-gray-900 truncate">{job.company}</span>
                           <span className="block text-[12px] text-gray-400 truncate">{job.position}</span>
                         </span>
-                        {!compact && <StageBar status={last?.status || job.status} title={lastNote} history={job.history} />}
+                        {!compact && <StageBar history={job.history} t={t} />}
                         <span className="w-32 shrink-0">
                           <span className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full ${getStatus(last?.status || job.status)?.color || 'bg-gray-100 text-gray-500'}`}>
                             {getStatusLabel(last?.status || job.status, t)}
