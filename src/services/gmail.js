@@ -908,6 +908,25 @@ async function fetchEmailDetail(id, token) {
 
     const isATS = ATS_DOMAINS.some(d => fromRaw.includes(d)) || LINKEDIN_APP_CONFIRMATION || hasCandidatureConfirmation
 
+    // An ATS sends BOTH application confirmations AND job-alert digests ("one new
+    // job that matches your profile") from the SAME *.teamtailor-mail.com / ATS
+    // no-reply address. The isATS shortcut below skips every alert filter, so these
+    // alerts sailed through and got synthesized into bogus "reviewing" candidatures.
+    // Drop an ATS-domain alert unless it also carries an explicit application
+    // confirmation. These tells never appear on a real candidature acknowledgement.
+    const ATS_ALERT_TELLS = [
+      'matches your profile', 'match your profile', 'matching your profile',
+      'job openings that fit', 'jobs that fit your profile', 'latest job openings',
+      'new job that match', 'new jobs that match', 'browse career site',
+      'correspond à votre profil', 'correspondent à votre profil', 'nouvelle offre qui correspond',
+    ]
+    const looksLikeAtsAlert = ATS_ALERT_TELLS.some(s =>
+      subjectRaw.includes(s) || snippetRaw.includes(s) || bodyRaw.includes(s))
+    if (isATS && looksLikeAtsAlert && !hasCandidatureConfirmation && !LINKEDIN_APP_CONFIRMATION) {
+      log(`   ❌ Filtered: ATS job alert ("matches your profile" digest)`)
+      return null
+    }
+
     // Safety net: drop promotional/forum emails even if they slipped through the
     // query filters — BUT never drop a recognized ATS message or an explicit
     // candidature confirmation. Gmail routinely mis-files ATS no-reply mail

@@ -81,11 +81,37 @@ const CONFIRMATION_PHRASES = [
   'nous avons bien reçu votre candidature', 'bien reçu votre candidature',
   'candidature bien reçue', 'candidature enregistrée', 'candidature a bien été',
 ]
-function isAtsConfirmationEmail(e) {
-  const from = (e.from || '').toLowerCase()
-  if (ATS_SENDER_DOMAINS.some(d => from.includes(d))) return true
+// A recognized ATS domain (teamtailor-mail.com, greenhouse.io…) sends BOTH real
+// application confirmations AND job-alert / "new opening that matches your profile"
+// digests from the SAME no-reply address. These tells appear only on alerts and
+// never on a genuine candidature acknowledgement, so they veto the ATS-domain
+// shortcut — otherwise a Teamtailor "one new job that matches your profile" alert
+// is synthesized into a bogus "reviewing" candidature.
+const JOB_ALERT_SIGNALS = [
+  // EN
+  'matches your profile', 'match your profile', 'matching your profile',
+  'job that matches', 'jobs that match', 'new job that match', 'new jobs that match',
+  'job openings that fit', 'jobs that fit your profile', 'latest job openings',
+  'jobs you might like', 'job matching your', 'new jobs matching', 'recommended job',
+  'browse career site',
+  // FR
+  'correspond à votre profil', 'correspondent à votre profil', 'correspondant à votre profil',
+  'offre qui correspond', 'offres qui correspondent', 'nouvelle offre qui correspond',
+  'offres recommand', 'emplois recommand', 'offre recommand', 'nouvelles offres pour vous',
+]
+export function isJobAlertEmail(e) {
   const hay = `${e.subject || ''} ${e.snippet || ''} ${e.body || ''}`.toLowerCase()
-  return CONFIRMATION_PHRASES.some(p => hay.includes(p))
+  return JOB_ALERT_SIGNALS.some(s => hay.includes(s))
+}
+function isAtsConfirmationEmail(e) {
+  const hay = `${e.subject || ''} ${e.snippet || ''} ${e.body || ''}`.toLowerCase()
+  // An explicit confirmation phrase always wins — it's an unambiguous candidature.
+  if (CONFIRMATION_PHRASES.some(p => hay.includes(p))) return true
+  // Otherwise a job alert from an ATS domain is NOT a candidature — don't let the
+  // domain shortcut below synthesize one.
+  if (isJobAlertEmail(e)) return false
+  const from = (e.from || '').toLowerCase()
+  return ATS_SENDER_DOMAINS.some(d => from.includes(d))
 }
 
 export function getEmailCacheStats() {
