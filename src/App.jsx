@@ -525,7 +525,7 @@ export default function App() {
   const [cvGenEdit, setCvGenEdit] = useState(false) // true = open cvGenJob to edit its saved CV (thema/content/skills); false = generate fresh
   const [showImageImport, setShowImageImport] = useState(false)
 
-  const { notifications, push: pushNotif, markAllRead, clear: clearNotifs, unreadCount } = useNotifications()
+  const { notifications, push: pushNotif, markAllRead, clear: clearNotifs, remove: removeNotif, unreadCount } = useNotifications()
 
   const showToast = (msg, duration = 2500) => {
     setToast(msg)
@@ -1106,7 +1106,7 @@ export default function App() {
             {/* Notifications */}
             <NotificationBell
               notifications={notifications} unreadCount={unreadCount}
-              onMarkAllRead={markAllRead} onClear={clearNotifs} t={t}
+              onMarkAllRead={markAllRead} onClear={clearNotifs} onRemove={removeNotif} t={t}
               onNavigate={({ jobId, company }) => {
                 setActiveTab('tracker')
                 if (company) setFilters(f => ({ ...f, search: company }))

@@ -46,7 +46,16 @@ export function useNotifications() {
     save([])
   }, [])
 
+  // Remove a single notification (per-item dismiss, distinct from clear-all).
+  const remove = useCallback((id) => {
+    setNotifications(prev => {
+      const next = prev.filter(n => n.id !== id)
+      save(next)
+      return next
+    })
+  }, [])
+
   const unreadCount = notifications.filter(n => !n.read).length
 
-  return { notifications, push, markAllRead, clear, unreadCount }
+  return { notifications, push, markAllRead, clear, remove, unreadCount }
 }

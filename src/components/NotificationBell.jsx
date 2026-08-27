@@ -26,7 +26,7 @@ function fullDate(dateStr) {
   }
 }
 
-export default function NotificationBell({ notifications, unreadCount, onMarkAllRead, onClear, onNavigate, t = (k) => k }) {
+export default function NotificationBell({ notifications, unreadCount, onMarkAllRead, onClear, onRemove, onNavigate, t = (k) => k }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -93,7 +93,7 @@ export default function NotificationBell({ notifications, unreadCount, onMarkAll
                         setOpen(false)
                       }
                     }}
-                    className={`flex items-start gap-3 px-4 py-3 border-b border-gray-50 last:border-0 transition-colors
+                    className={`group flex items-start gap-3 px-4 py-3 border-b border-gray-50 last:border-0 transition-colors
                       ${!n.read ? 'bg-blue-50/30' : ''}
                       ${(n.meta?.jobId || n.meta?.company) ? 'cursor-pointer hover:bg-indigo-50/50' : ''}
                     `}
@@ -121,9 +121,22 @@ export default function NotificationBell({ notifications, unreadCount, onMarkAll
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      {/* Remove this single notification — hover-reveal, distinct
+                          from the header's "Tout effacer". stopPropagation so the
+                          row's navigate click doesn't also fire. */}
+                      {onRemove && (
+                        <button
+                          onClick={e => { e.stopPropagation(); onRemove(n.id) }}
+                          title="Supprimer"
+                          aria-label="Supprimer"
+                          className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity w-5 h-5 flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 rounded"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      )}
                       {!n.read && <span className="w-2 h-2 rounded-full bg-blue-500 mt-1" />}
                       {(n.meta?.jobId || n.meta?.company) && (
-                        <span className="text-[10px] text-gray-300">→</span>
+                        <span className="text-[10px] text-gray-300 group-hover:hidden">→</span>
                       )}
                     </div>
                   </div>
