@@ -296,7 +296,8 @@ export default function TrackerHomeE({
                 </span>
               </div>
               <div className="divide-y divide-gray-50">
-                {filtered.map(job => {
+                {/* Favorites pinned to the top; existing sort kept within each group (stable sort) */}
+                {[...filtered].sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0)).map(job => {
                   const active = openId === job.id
                   const selected = selectedJobIds.has(job.id)
                   const last = (job.history || []).at(-1)
