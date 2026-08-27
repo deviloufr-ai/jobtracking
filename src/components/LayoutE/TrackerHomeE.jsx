@@ -10,6 +10,7 @@
 // left of the drawer on desktop, and the drawer closes on ✕ / Esc / re-clicking
 // the open row. Every view opens the same drawer, whose body reuses JobCard.
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { getStatus, getStatusLabel } from '../../hooks/useJobs'
 import { scoreColorClasses } from '../ScoreJob'
 import KanbanBoard from '../KanbanBoard'
@@ -24,38 +25,73 @@ const colorFor = (s = '') => PALETTE[[...s].reduce((a, c) => a + c.charCodeAt(0)
 const initials = (s = '') =>
   s.replace(/[^A-Za-z0-9 ]/g, '').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?'
 const shortDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '')
+const fullDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) : '')
 
 // Dynamic per-row timeline — a status-colored dot for every real step, dated
-// and in chronological order. Scrolls horizontally when the journey is long and
-// auto-scrolls to the most recent step; the full note shows on hover.
-function StageBar({ history, t }) {
+// and in chronological order. One continuous rail runs through the dots; the
+// column scrolls when the journey is long and auto-scrolls to the latest step.
+// Hovering a dot pops a card (status + date + note) rendered in a portal so the
+// scroll container can't clip it. `width` is the shared, user-resizable column.
+function StepTooltip({ hover, t }) {
+  if (!hover) return null
+  const above = hover.top > 160
+  return createPortal(
+    <div
+      className="fixed z-[60] pointer-events-none"
+      style={{ left: hover.x, top: above ? hover.top : hover.bottom, transform: above ? 'translate(-50%, calc(-100% - 8px))' : 'translate(-50%, 8px)' }}
+    >
+      <div className="rounded-lg bg-white border border-gray-200 shadow-xl p-2.5 w-max max-w-[260px]">
+        <div className="flex items-center gap-2 mb-1">
+          <span className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full ${getStatus(hover.h.status)?.color || 'bg-gray-100 text-gray-500'}`}>
+            {getStatusLabel(hover.h.status, t)}
+          </span>
+          <span className="text-[11px] text-gray-400 tabular-nums">{fullDate(hover.h.date)}</span>
+        </div>
+        {hover.h.note
+          ? <p className="text-[12px] text-gray-600 whitespace-pre-line leading-snug line-clamp-6">{hover.h.note}</p>
+          : <p className="text-[12px] text-gray-400 italic">No note</p>}
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
+function StageBar({ history, t, width = 188 }) {
   const steps = (history || []).filter(h => h.date)
   const scrollRef = useRef(null)
+  const [hover, setHover] = useState(null)
   useEffect(() => {
     const el = scrollRef.current
     if (el) el.scrollLeft = el.scrollWidth
-  }, [steps.length])
+  }, [steps.length, width])
   // Keep the column's footprint stable even for candidatures with no dated step.
-  if (steps.length === 0) return <div className="hidden lg:block w-[188px] shrink-0" />
+  if (steps.length === 0) return <div className="hidden lg:block shrink-0" style={{ width }} />
+  const showStep = (e, h) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    setHover({ h, x: r.left + r.width / 2, top: r.top, bottom: r.bottom })
+  }
   return (
-    <div ref={scrollRef} className="hidden lg:block w-[188px] shrink-0 overflow-x-auto no-scrollbar">
+    <div ref={scrollRef} className="hidden lg:block shrink-0 overflow-x-auto no-scrollbar" style={{ width }}>
       <ol className="flex items-start w-max">
         {steps.map((h, i) => (
           <li
             key={i}
-            className="relative shrink-0 flex flex-col items-center px-1.5"
-            title={`${getStatusLabel(h.status, t)} · ${shortDate(h.date)}${h.note ? ` — ${h.note}` : ''}`}
+            className="relative shrink-0 flex flex-col items-center"
+            onMouseEnter={(e) => showStep(e, h)}
+            onMouseLeave={() => setHover(null)}
           >
-            {/* rail: a half-segment each side of the dot so the nodes join up */}
+            {/* rail: a half-segment each side of the dot; li has no side padding
+                so w-full segments meet the neighbours into one unbroken line */}
             <div className="relative h-2 w-full flex items-center justify-center">
               {i > 0 && <span className="absolute top-1/2 -translate-y-1/2 left-0 w-1/2 h-0.5 bg-gray-200" />}
               {i < steps.length - 1 && <span className="absolute top-1/2 -translate-y-1/2 left-1/2 w-1/2 h-0.5 bg-gray-200" />}
               <span className={`relative z-[1] w-2 h-2 rounded-full ${getStatus(h.status)?.dot || 'bg-gray-400'}`} />
             </div>
-            <span className="mt-1 text-[9px] leading-none tabular-nums text-gray-400 whitespace-nowrap">{shortDate(h.date)}</span>
+            <span className="mt-1 px-2 text-[9px] leading-none tabular-nums text-gray-400 whitespace-nowrap">{shortDate(h.date)}</span>
           </li>
         ))}
       </ol>
+      <StepTooltip hover={hover} t={t} />
     </div>
   )
 }
