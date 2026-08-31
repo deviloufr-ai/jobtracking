@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { settingsToSupabaseRow, SETTINGS_TO_SUPABASE } from './fieldConversion'
+import {
+  settingsToSupabaseRow,
+  SETTINGS_TO_SUPABASE,
+  convertHistoryToSupabase,
+  convertHistoryFromSupabase,
+} from './fieldConversion'
 
 describe('settingsToSupabaseRow', () => {
   it('maps camelCase settings to their existing snake_case columns', () => {
@@ -52,5 +57,48 @@ describe('settingsToSupabaseRow', () => {
     for (const col of Object.values(SETTINGS_TO_SUPABASE)) {
       expect(col).toMatch(/^[a-z][a-z_]*$/)
     }
+  })
+})
+
+describe('history gmailIds round-trip (cross-device shield)', () => {
+  it('preserves a merged entry\'s full gmailIds array to Supabase (not just the first id)', () => {
+    const row = convertHistoryToSupabase({ date: '2026-08-25', status: 'waiting', note: 'a · b', gmailIds: ['g-a', 'g-b'] })
+    expect(row.gmail_ids).toEqual(['g-a', 'g-b'])
+    expect(row.gmail_id).toBe('g-a') // first, for single-id back-compat readers
+  })
+
+  it('stores a single-id entry as gmail_id with gmail_ids null', () => {
+    const row = convertHistoryToSupabase({ date: '2026-08-25', status: 'sent', note: 'x', gmailId: 'g-solo' })
+    expect(row.gmail_id).toBe('g-solo')
+    expect(row.gmail_ids).toBeNull()
+  })
+
+  it('merges a singular gmailId into gmailIds without duplication', () => {
+    const row = convertHistoryToSupabase({ date: '2026-08-25', status: 'waiting', note: 'x', gmailId: 'g-a', gmailIds: ['g-a', 'g-b'] })
+    expect(row.gmail_ids).toEqual(['g-a', 'g-b'])
+  })
+
+  it('reads a multi-id entry back as gmailIds with NO singular gmailId (canonical-key stable)', () => {
+    const entry = convertHistoryFromSupabase({ date: '2026-08-25', status: 'waiting', note: 'a · b', gmail_id: 'g-a', gmail_ids: ['g-a', 'g-b'] })
+    expect(entry.gmailIds).toEqual(['g-a', 'g-b'])
+    expect(entry.gmailId).toBeUndefined() // matches mergeTopicGroup: plural only, no singular
+  })
+
+  it('reads a single-id entry back as a singular gmailId', () => {
+    const entry = convertHistoryFromSupabase({ date: '2026-08-25', status: 'sent', note: 'x', gmail_id: 'g-solo', gmail_ids: null })
+    expect(entry.gmailId).toBe('g-solo')
+    expect(entry.gmailIds).toBeNull()
+  })
+
+  it('round-trips a merged entry so its ids survive (the cross-device phantom shield)', () => {
+    const local = { date: '2026-08-25', status: 'waiting', note: 'a · b', gmailIds: ['g-a', 'g-b'] }
+    const back = convertHistoryFromSupabase(convertHistoryToSupabase(local))
+    expect(back.gmailIds).toEqual(['g-a', 'g-b'])
+    expect(back.gmailId).toBeUndefined()
+  })
+
+  it('tolerates a JSON-string gmail_ids column without throwing', () => {
+    const entry = convertHistoryFromSupabase({ date: '2026-08-25', status: 'waiting', note: 'a · b', gmail_ids: '["g-a","g-b"]' })
+    expect(entry.gmailIds).toEqual(['g-a', 'g-b'])
   })
 })

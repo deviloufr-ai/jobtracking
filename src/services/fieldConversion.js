@@ -29,15 +29,39 @@ export function camelToSnake(obj) {
   return snake
 }
 
+function parseGmailIds(raw) {
+  if (!raw) return null
+  if (Array.isArray(raw)) return raw
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw)
+      return Array.isArray(parsed) ? parsed : null
+    } catch { return null }
+  }
+  return null
+}
+
 export function convertHistoryFromSupabase(supabaseEntry) {
   if (!supabaseEntry) return supabaseEntry
+
+  const ids = parseGmailIds(supabaseEntry.gmail_ids)
+  const hasMulti = ids && ids.length > 1
+  // Preserve the canonical-key invariant of a topic-merged entry: MANY ids → keep
+  // the plural array and NO singular gmailId (historyEntryKey falls back to
+  // date||status||note, identical to the device that created the merge via
+  // mergeTopicGroup). ONE id → singular gmailId (historyEntryKey = gmail:<id>).
+  // Emitting both for a merged entry would give the same logical entry different
+  // keys on different devices → a cross-device doublon.
+  const gmailId = hasMulti ? undefined : (supabaseEntry.gmail_id || (ids && ids.length === 1 ? ids[0] : undefined))
+  const gmailIds = hasMulti ? ids : null
+
   return {
     date: supabaseEntry.date,
     status: supabaseEntry.status,
     note: supabaseEntry.note,
     meetingLink: supabaseEntry.meeting_link,
-    gmailId: supabaseEntry.gmail_id,
-    gmailIds: supabaseEntry.gmail_ids ? (typeof supabaseEntry.gmail_ids === 'string' ? JSON.parse(supabaseEntry.gmail_ids) : supabaseEntry.gmail_ids) : null,
+    gmailId,
+    gmailIds,
     offerUrl: supabaseEntry.offer_url,
     showCVButton: supabaseEntry.show_cv_button,
     from: supabaseEntry.from_email,
@@ -52,19 +76,24 @@ export function convertHistoryFromSupabase(supabaseEntry) {
 export function convertHistoryToSupabase(localEntry) {
   if (!localEntry) return localEntry
 
-  // Store only first gmailId if multiple (to avoid array serialization issues)
-  let gmailId = localEntry.gmailId || null
-  if (!gmailId && localEntry.gmailIds && localEntry.gmailIds.length > 0) {
-    gmailId = localEntry.gmailIds[0]
-  }
+  // Preserve the FULL set of Gmail ids. A same-day topic merge (mergeTopicGroup)
+  // collapses several emails into ONE entry carrying a `gmailIds` array and drops
+  // the singular gmailId. Storing only the first id (the old behavior) lost the
+  // rest on a Supabase round-trip, so the pre-parse "already-imported" shield
+  // (filterEmailsBeforeParse reads gmailIds) broke on other devices and the merged
+  // email got re-parsed + re-notified. gmail_ids is a text[] column (migration 001).
+  const allIds = [...new Set([
+    ...(Array.isArray(localEntry.gmailIds) ? localEntry.gmailIds : []),
+    ...(localEntry.gmailId ? [localEntry.gmailId] : []),
+  ])]
 
   return {
     date: localEntry.date,
     status: localEntry.status || null,
     note: localEntry.note || null,
     meeting_link: localEntry.meetingLink || null,
-    gmail_id: gmailId,
-    gmail_ids: null, // Keep as null - we'll use gmail_id only
+    gmail_id: allIds[0] || null,
+    gmail_ids: allIds.length > 1 ? allIds : null,
     offer_url: localEntry.offerUrl || null,
     show_cv_button: localEntry.showCVButton || false,
     from_email: localEntry.from || null,
