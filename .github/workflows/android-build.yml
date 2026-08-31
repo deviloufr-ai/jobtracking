@@ -16,9 +16,16 @@ on:
       - '.github/workflows/android-build.yml'
   workflow_dispatch:
 
+# Serialize runs on a branch so the APK-refresh commits below don't race.
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # allow committing the refreshed APK back to public/
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -72,3 +79,22 @@ jobs:
           name: smartjobtracker-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      # Keep the website's download (public/smartjobtracker.apk) in sync with the
+      # latest build. Only commits when the APK actually changed. The push uses
+      # GITHUB_TOKEN, which by design does not re-trigger this workflow, and
+      # public/ isn't in the trigger paths anyway — so no build loop.
+      - name: Publish APK to public/ for the website download
+        if: github.ref == 'refs/heads/main'
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk public/smartjobtracker.apk
+          if git diff --quiet -- public/smartjobtracker.apk; then
+            echo "APK unchanged — nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/smartjobtracker.apk
+          git commit -m "chore(android): refresh downloadable APK [skip ci]"
+          git push origin HEAD:main \
+            || (git fetch origin main && git rebase origin/main && git push origin HEAD:main)
