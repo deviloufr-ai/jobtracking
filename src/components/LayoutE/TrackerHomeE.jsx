@@ -216,19 +216,15 @@ export default function TrackerHomeE({
 
   return (
     <div className={`w-full min-w-0 transition-[padding] duration-300 ${openJob ? 'md:pr-[616px] 2xl:pr-[916px]' : ''}`}>
-      {/* Desktop only — on mobile the Home tab already surfaces the priority
-          action, so the band here would be redundant. */}
-      <div className="hidden md:block">
-        <FocusBand
-          jobs={jobs}
-          userName={userName}
-          onOpenJob={open}
-          onGenerateCV={onGenerateCV}
-          onSTAR={onSTAR}
-          onDraftEmail={onDraftEmail}
-          t={t}
-        />
-      </div>
+      <FocusBand
+        jobs={jobs}
+        userName={userName}
+        onOpenJob={open}
+        onGenerateCV={onGenerateCV}
+        onSTAR={onSTAR}
+        onDraftEmail={onDraftEmail}
+        t={t}
+      />
 
       <ListToolbar
         filters={filters}

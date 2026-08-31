@@ -297,11 +297,7 @@ export default function App() {
   const [showGmail, setShowGmail] = useState(false)
   const [gmailUser, setGmailUser] = useState(() => getCachedUser())
   const [gmailConnected, setGmailConnected] = useState(() => isConnected())
-  // Mobile lands on the Home dashboard; desktop keeps the Tracker (there's no
-  // Home tab in the desktop nav). Viewport-checked once at first render.
-  const [activeTab, setActiveTab] = useState(
-    () => (typeof window !== 'undefined' && window.innerWidth < 768 ? 'home' : 'tracker')
-  )
+  const [activeTab, setActiveTab] = useState('tracker')
   // Job search is an experimental, hidden-by-default feature (opt-in from
   // Settings → Debug). Track the flag and keep it live across toggles.
   const [searchEnabled, setSearchEnabled] = useState(() => getFlag(FLAGS.JOB_SEARCH))
@@ -923,8 +919,9 @@ export default function App() {
 
   // Mobile bottom-nav tabs: adds a Home destination while keeping Settings in the
   // bar. Desktop keeps NAV_TABS.
+  // Mobile bottom-nav = content destinations only. Add is a floating FAB (not a
+  // nav slot). Desktop keeps NAV_TABS.
   const MOBILE_TABS = [
-    { id: 'home',      label: t('nav.tabs.home'),      icon: '🏠', badge: null },
     { id: 'tracker',   label: t('nav.tabs.tracker'),   icon: '📋', badge: jobs.length || null },
     { id: 'analytics', label: t('nav.tabs.analytics'), icon: '📊', badge: null },
     ...(searchEnabled ? [{ id: 'search', label: t('nav.tabs.search'), icon: '🔎', badge: null }] : []),
@@ -1373,21 +1370,7 @@ export default function App() {
 
       {/* ── Main content ───────────────────────────────────────────────────────── */}
       <main className={`${layoutE ? '' : 'max-w-screen-2xl mx-auto '}px-3 sm:px-6 py-4 sm:py-6 pb-24 md:pb-6`}>
-        {activeTab === 'home' ? (
-          /* Mobile Home destination — action-first dashboard + upcoming meetings. */
-          <div className="max-w-xl mx-auto md:mx-0 space-y-4">
-            <MobileHome
-              jobs={jobs}
-              userName={gmailUser?.name}
-              onOpenJob={(job) => setDetailJob(job)}
-              onGenerateCV={handleGenerateCV}
-              onSTAR={(job) => setStarJob(job)}
-              onDraftEmail={(job, type) => setEmailDraft({ job, type })}
-              t={t}
-            />
-            <UpcomingMeetings jobs={jobs} t={t} />
-          </div>
-        ) : activeTab === 'settings' ? (
+        {activeTab === 'settings' ? (
           <Settings jobs={jobs} syncUserId={syncUserId} onMergeDuplicates={mergeDuplicates} onUpdateJob={updateJob} initialTab={settingsInitialTab} />
         ) : activeTab === 'analytics' ? (
           <Analytics jobs={jobs} t={t} language={language} />
@@ -1665,34 +1648,31 @@ export default function App() {
       <NotificationPermissionBanner />
       <AppUpdateBanner />
 
-      {/* ── Mobile bottom nav bar (4 tabs + raised center FAB) ────────────────── */}
+      {/* Floating Add button — mobile. Kept out of the bottom nav; sits above it,
+          thumb-reachable in the bottom-right. */}
+      <button data-tour="add" onClick={() => setAddSheet(true)} aria-label={t('nav.add')}
+        className="md:hidden fixed right-4 bottom-[4.75rem] z-40 w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center shadow-lg shadow-indigo-400/40 active:scale-90 transition-transform">
+        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+      </button>
+
+      {/* ── Mobile bottom nav — content destinations only (Add is the FAB above) ── */}
       <nav data-tour="nav" className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-white/95 backdrop-blur-lg border-t border-gray-100 shadow-[0_-2px_16px_0_rgba(0,0,0,0.08)]">
-        <div className="flex items-stretch justify-around px-1 pt-1.5 pb-1 safe-area-bottom">
-          {MOBILE_TABS.map((tab, i) => (
-            <Fragment key={tab.id}>
-              {/* Raised FAB injected in the middle (after the 2nd tab) */}
-              {i === 2 && (
-                <div className="flex-1 flex justify-center">
-                  <button data-tour="add" onClick={() => setAddSheet(true)} aria-label={t('nav.add')}
-                    className="-mt-6 w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-300/50 ring-4 ring-white active:scale-90 transition-transform">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
-                  </button>
-                </div>
+        <div className="flex items-stretch justify-around px-2 pt-1.5 pb-1 safe-area-bottom">
+          {MOBILE_TABS.map((tab) => (
+            <button key={tab.id} onClick={() => goTab(tab.id)}
+              data-tour={tab.id === 'settings' ? 'settings' : undefined}
+              aria-current={activeTab === tab.id ? 'page' : undefined}
+              className={`relative flex flex-col items-center justify-center gap-1 py-2 rounded-xl transition-colors min-w-0 flex-1 ${
+                activeTab === tab.id ? 'text-indigo-600' : 'text-gray-400'
+              }`}
+            >
+              <span className={`text-2xl leading-none transition-transform ${activeTab === tab.id ? 'scale-110' : ''}`}>{tab.icon}</span>
+              <span className="text-[11px] font-medium truncate w-full text-center">{tab.label.split(' ')[0]}</span>
+              {tab.badge > 0 && activeTab !== tab.id && (
+                <span className="absolute top-0.5 right-1/4 min-w-[16px] h-4 px-1 text-[9px] font-bold bg-indigo-500 text-white rounded-full flex items-center justify-center">{tab.badge > 99 ? '99' : tab.badge}</span>
               )}
-              <button onClick={() => goTab(tab.id)}
-                data-tour={tab.id === 'settings' ? 'settings' : undefined}
-                className={`relative flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition-colors min-w-0 flex-1 ${
-                  activeTab === tab.id ? 'text-indigo-600' : 'text-gray-400'
-                }`}
-              >
-                <span className={`text-xl leading-none transition-transform ${activeTab === tab.id ? 'scale-110' : ''}`}>{tab.icon}</span>
-                <span className="text-[10px] font-medium truncate w-full text-center">{tab.label.split(' ')[0]}</span>
-                {tab.badge > 0 && activeTab !== tab.id && (
-                  <span className="absolute top-0 right-1.5 min-w-[16px] h-4 px-1 text-[9px] font-bold bg-indigo-500 text-white rounded-full flex items-center justify-center">{tab.badge > 99 ? '99' : tab.badge}</span>
-                )}
-                {activeTab === tab.id && <span className="absolute -top-0.5 w-6 h-1 bg-indigo-600 rounded-full" />}
-              </button>
-            </Fragment>
+              {activeTab === tab.id && <span className="absolute -top-0.5 w-7 h-1 bg-indigo-600 rounded-full" />}
+            </button>
           ))}
         </div>
       </nav>
