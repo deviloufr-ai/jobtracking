@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SmartJobTracker</string>
+    <string name="title_activity_main">SmartJobTracker</string>
+    <string name="package_name">com.smartjobtracker.app</string>
+    <string name="custom_url_scheme">com.smartjobtracker.app</string>
+</resources>

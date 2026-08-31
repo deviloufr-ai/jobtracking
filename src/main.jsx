@@ -2,6 +2,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import Root from './Root.jsx'
+import { installNativeApiShim } from './services/nativeApi.js'
+
+// Route relative /api/* calls to the deployed backend when running inside the
+// native Capacitor shell. No-op on the web build.
+installNativeApiShim()
 
 // Recover from stale lazy chunks. When the app is redeployed while a tab is
 // still open, the loaded index references chunk hashes that no longer exist on

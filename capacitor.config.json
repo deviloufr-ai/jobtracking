@@ -1,0 +1,10 @@
+{
+  "appId": "com.smartjobtracker.app",
+  "appName": "SmartJobTracker",
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}
