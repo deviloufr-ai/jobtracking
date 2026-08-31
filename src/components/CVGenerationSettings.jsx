@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useCVs } from '../hooks/useCVs'
+import { pushLocalPrefs } from '../services/profileSync'
 
 // Single source of truth for the CV-generation preferences UI. Used both in
 // Settings → My CV and in the candidature CV tab. Everything is persisted to
@@ -45,6 +46,7 @@ export default function CVGenerationSettings({ t = (k) => k, defaultOpen = true,
   const handleAtsChange = (v) => {
     setAtsLevel(v)
     try { localStorage.setItem(ATS_LEVEL_KEY, v) } catch {}
+    pushLocalPrefs()
   }
   const toggleRule = (id) => {
     setRules(prev => {
@@ -52,15 +54,18 @@ export default function CVGenerationSettings({ t = (k) => k, defaultOpen = true,
       try { localStorage.setItem(RULES_KEY, JSON.stringify(next)) } catch {}
       return next
     })
+    pushLocalPrefs()
   }
   const handleCustomChange = (v) => {
     const next = (v || '').slice(0, CUSTOM_RULES_MAXLEN)
     setCustomRules(next)
     try { localStorage.setItem(CUSTOM_RULES_KEY, next) } catch {}
+    pushLocalPrefs()
   }
   const handleBaseChange = (id) => {
     setBaseId(id)
     try { localStorage.setItem(BASE_CV_KEY, id) } catch {}
+    pushLocalPrefs()
   }
 
   const inputCls = 'w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all'

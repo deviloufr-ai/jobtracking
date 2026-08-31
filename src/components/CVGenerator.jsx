@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { resolveAutoLanguage, generateTailoredCV, suggestCvPoints } from '../services/cvGeneration'
+import { pushLocalPrefs, AUX_PREFS_SYNCED_EVENT } from '../services/profileSync'
 import CVSuggestions from './CVSuggestions'
 
 // html2pdf is heavy (jsPDF + html2canvas); load it lazily at export time so it
@@ -528,12 +529,27 @@ export default function CVGenerator({ cv, cvs = [], job, editSaved = false, onBa
         const b64 = canvas.toDataURL('image/jpeg', 0.82)  // Optimized JPEG quality
         setProfilePic(b64)
         localStorage.setItem('cv_profile_picture', b64)
+        pushLocalPrefs()  // mirror the photo to other devices
       }
       img.src = ev.target.result
     }
     reader.readAsDataURL(file)
   }
-  const removePic = () => { setProfilePic(null); localStorage.removeItem('cv_profile_picture') }
+  const removePic = () => {
+    setProfilePic(null)
+    localStorage.removeItem('cv_profile_picture')
+    pushLocalPrefs()
+  }
+
+  // A cross-device sync can restore the profile picture after this component has
+  // already mounted (its initial value is a one-shot localStorage snapshot).
+  useEffect(() => {
+    const onAuxSynced = () => {
+      try { setProfilePic(localStorage.getItem('cv_profile_picture') || null) } catch { /* ignore */ }
+    }
+    window.addEventListener(AUX_PREFS_SYNCED_EVENT, onAuxSynced)
+    return () => window.removeEventListener(AUX_PREFS_SYNCED_EVENT, onAuxSynced)
+  }, [])
 
   // ── JD fetch ──────────────────────────────────────────────────────────────
   // Once a job description is obtained we surface the "Points manquants" (missing

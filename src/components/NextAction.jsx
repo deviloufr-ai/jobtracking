@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { getStatus, deriveStatusFromHistory } from '../hooks/useJobs'
 import { loadSettings } from '../hooks/useSettings'
 import { isNoReply, extractRecipientEmail } from './EmailDraft'
+import { pushLocalPrefs } from '../services/profileSync'
 
 // Status shown in the UI follows the latest timeline entry (see JobRow), but the
 // raw stored job.status isn't self-healed on initial load. Rules must read the
@@ -11,7 +12,11 @@ const effectiveStatus = job => deriveStatusFromHistory(job?.history) || job?.sta
 const DISMISSED_KEY = 'jobtrackr_dismissed_actions'
 // Persist dismissals across sessions (localStorage) so hiding an action sticks.
 export function loadDismissed() { try { return new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY) || '[]')) } catch { return new Set() } }
-function saveDismissed(s) { try { localStorage.setItem(DISMISSED_KEY, JSON.stringify([...s])) } catch {} }
+function saveDismissed(s) {
+  try { localStorage.setItem(DISMISSED_KEY, JSON.stringify([...s])) } catch {}
+  // Mirror to Supabase so hidden actions stay hidden across devices.
+  pushLocalPrefs()
+}
 
 // Persist a dismissal and return the updated set. Shared by the classic
 // "Prochaines étapes" list (NextAction) and the new-design FocusBand cards so

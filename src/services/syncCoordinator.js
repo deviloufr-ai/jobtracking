@@ -74,12 +74,13 @@ class SyncCoordinator {
       }
 
       // Profile: remote wins if present (hydrates a fresh device); otherwise push
-      // this device's local profile up so it becomes the canonical copy.
+      // this device's local profile + portable prefs (CV picture, CV-gen settings,
+      // dismissed actions) up so they become the canonical copy. pushProfile
+      // re-reads the portable prefs and no-ops when there's genuinely nothing.
       try {
         const remoteProfile = await pullProfile(this.userId)
         if (!remoteProfile) {
-          const localProfile = loadLocalProfile()
-          if (localProfile) await pushProfile(localProfile)
+          await pushProfile(loadLocalProfile() || {})
         }
       } catch (err) {
         console.warn('Profile sync failed (non-critical):', err.message)
