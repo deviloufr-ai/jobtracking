@@ -124,7 +124,9 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
   const extUpdate = useExtensionUpdate()
   const CATEGORIES = getCATEGORIES(t)
   const [activeTab, setActiveTab] = useState(initialTab || 'profile')
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  // Mobile: Settings is a grouped-list landing that pushes into a section.
+  // Drill straight in when App requested a specific tab (e.g. the API-key nudge).
+  const [mobileDrilled, setMobileDrilled] = useState(!!initialTab)
   const [confirmReset, setConfirmReset] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
   const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('jobtrackr_theme') || 'light')
@@ -397,16 +399,8 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
 
   return (
     <div className="flex h-[calc(100vh-8rem)] bg-white overflow-hidden">
-      {/* Sidebar */}
-      <div className={`fixed inset-0 z-40 sm:relative sm:z-0 ${sidebarOpen ? 'block' : 'hidden'} sm:block sm:w-56 bg-white border-r border-gray-200 flex flex-col overflow-y-auto`}>
-        {/* Close button on mobile */}
-        <button
-          onClick={() => setSidebarOpen(false)}
-          className="sm:hidden absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg"
-        >
-          ✕
-        </button>
-
+      {/* Sidebar — desktop only (mobile uses the grouped-list landing below) */}
+      <div className="hidden sm:flex sm:w-56 bg-white border-r border-gray-200 flex-col overflow-y-auto">
         <div className="p-5 space-y-1.5">
           {CATEGORIES.map((cat, i) => {
             // Render a group header before the first item of each family.
@@ -419,7 +413,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                   </p>
                 )}
                 <button
-                  onClick={() => { setActiveTab(cat.id); setSidebarOpen(false) }}
+                  onClick={() => setActiveTab(cat.id)}
                   className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${
                     activeTab === cat.id
                       ? 'bg-indigo-100 text-indigo-700'
@@ -435,21 +429,52 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
         </div>
       </div>
 
-      {/* Overlay on mobile when sidebar is open */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/20 sm:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
+      {/* Mobile: grouped-list landing — tap a section to push into it */}
+      {!mobileDrilled && (
+        <div className="sm:hidden flex-1 overflow-y-auto bg-gray-50">
+          <div className="p-4">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4 px-1">{t('nav.tabs.settings')}</h1>
+            {['groupYou', 'groupAI', 'groupSync', 'groupAdvanced'].map(groupKey => {
+              const label = t(`settingsSidebar.${groupKey}`)
+              const items = CATEGORIES.filter(c => c.group === label)
+              if (items.length === 0) return null
+              return (
+                <div key={groupKey} className="mb-5">
+                  <p className="px-1 pb-1.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{label}</p>
+                  <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                    {items.map((cat, i) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => { setActiveTab(cat.id); setMobileDrilled(true) }}
+                        className={`w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-gray-50 transition-colors ${i > 0 ? 'border-t border-gray-100' : ''}`}
+                      >
+                        <span className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-lg shrink-0">{cat.icon}</span>
+                        <span className="flex-1 text-sm font-medium text-gray-800">{cat.label}</span>
+                        <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       )}
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto p-6 sm:p-8">
-          {/* Header with mobile menu */}
-          <div className="flex items-center justify-between gap-4 mb-8">
+      {/* Main Content — desktop always; mobile only after drilling into a section */}
+      <div className={`${mobileDrilled ? 'flex' : 'hidden'} sm:flex flex-1 overflow-y-auto flex-col`}>
+        <div className="max-w-3xl mx-auto p-6 sm:p-8 w-full">
+          {/* Header: back button (mobile) + title */}
+          <div className="flex items-center gap-3 mb-8">
+            <button
+              onClick={() => setMobileDrilled(false)}
+              aria-label={language === 'en' ? 'Back' : 'Retour'}
+              className="sm:hidden shrink-0 w-9 h-9 -ml-1 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            </button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{currentCategory?.icon} {currentCategory?.label}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{currentCategory?.icon} {currentCategory?.label}</h1>
               <p className="text-gray-500 text-sm mt-1">
                 {activeTab === 'profile' && t('settingsDesc.profile')}
                 {activeTab === 'cv' && t('settingsDesc.cv')}
@@ -464,12 +489,6 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                 {activeTab === 'debug' && t('settingsDesc.debug')}
               </p>
             </div>
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="sm:hidden p-2 rounded-lg hover:bg-gray-100"
-            >
-              ☰
-            </button>
           </div>
 
           <div className="space-y-6">
