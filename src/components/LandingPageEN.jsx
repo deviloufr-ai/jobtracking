@@ -512,6 +512,25 @@ export default function LandingPageEN({ onLogin }) {
 
         <hr className="rule" />
 
+        {/* ANDROID APP */}
+        <section>
+          <div className="section-head">
+            <div className="kicker">Android app</div>
+            <h2>Take your search with you, in your pocket.</h2>
+            <p>The same app, native on Android: tracking, timeline, follow-ups and coaching — synced with the web version.</p>
+          </div>
+          <div style={{ background: '#161b26', border: '1px solid #2b3242', borderRadius: '14px', padding: '28px', display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
+            <div style={{ fontSize: '46px', lineHeight: 1 }}>🤖</div>
+            <div style={{ flex: 1, minWidth: '220px' }}>
+              <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '18px', fontWeight: 700, marginBottom: '6px' }}>SmartJobTracker for Android</div>
+              <div style={{ fontSize: '13.5px', color: '#9aa3ba', lineHeight: 1.55 }}>Download the .apk and install it directly. Allow “unknown sources” when prompted. <span style={{ color: '#6b7488' }}>≈ 6 MB · Android 7+</span></div>
+            </div>
+            <a href="/smartjobtracker.apk" download className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>⬇ Download the APK</a>
+          </div>
+        </section>
+
+        <hr className="rule" />
+
         {/* PROBLEM */}
         <section>
           <div className="section-head">
