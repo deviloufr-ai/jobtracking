@@ -64,6 +64,13 @@ jobs:
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
+      # public/ is copied into dist/ by Vite, and cap sync bundles dist/ into the
+      # APK — so the download-only files (the APK itself, the .xpi add-ons) would
+      # get embedded inside the app, ballooning it every build. Strip them; Vercel
+      # builds its own dist and still serves them for the website.
+      - name: Trim download-only assets from the bundled app
+        run: rm -f dist/*.apk dist/*.xpi
+
       - name: Sync Capacitor
         run: npx cap sync android
 
