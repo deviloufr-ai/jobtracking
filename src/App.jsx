@@ -52,6 +52,8 @@ import CalendarWidget from './components/CalendarWidget'
 import NotificationBell from './components/NotificationBell'
 import { useNotifications } from './hooks/useNotifications'
 import NotificationPermissionBanner from './components/NotificationPermissionBanner'
+import AppUpdateBanner from './components/AppUpdateBanner'
+import { APP_VERSION } from './constants/appVersion'
 import { useNotificationPermission } from './hooks/useNotificationPermission'
 import { useNotificationScenarios } from './hooks/useNotificationScenarios'
 import { useDebugLogs } from './hooks/useDebugLogs'
@@ -1636,7 +1638,7 @@ export default function App() {
         )}
 
         <div className="flex items-center justify-between mt-6">
-          <p className="text-xs text-gray-300">SmartJobTracker v0.4 <span title={`commit ${__COMMIT_HASH__}`}>· #{__COMMIT_COUNT__}</span></p>
+          <p className="text-xs text-gray-300">SmartJobTracker v{APP_VERSION} <span title={`commit ${__COMMIT_HASH__}`}>· #{__COMMIT_COUNT__}</span></p>
           {jobs.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap justify-end">
               <button onClick={mergeDuplicates}
@@ -1657,6 +1659,7 @@ export default function App() {
 
       {/* ── Notification Permission Banner ────────────────────────────────────── */}
       <NotificationPermissionBanner />
+      <AppUpdateBanner />
 
       {/* ── Mobile bottom nav bar (4 tabs + raised center FAB) ────────────────── */}
       <nav data-tour="nav" className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-white/95 backdrop-blur-lg border-t border-gray-100 shadow-[0_-2px_16px_0_rgba(0,0,0,0.08)]">
