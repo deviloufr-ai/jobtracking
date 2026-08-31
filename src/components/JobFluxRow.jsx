@@ -1,4 +1,4 @@
-import { useRef, useState, memo } from 'react'
+import { useRef, useState, memo, Fragment } from 'react'
 import { getStatus, getStatusLabel } from '../hooks/useJobs'
 import CompanyAvatar from './CompanyAvatar'
 import { ScoreBadge } from './ScoreJob'
@@ -6,6 +6,48 @@ import { getJobHealth, HEALTH_DOT_CLASS } from '../utils/jobHealth'
 
 // Width of the swipe-revealed action drawer (two 76px buttons).
 const REVEAL = 152
+
+// Collapse a history into milestone nodes: chronological, with consecutive
+// same-status entries merged (keeping the latest date). Caps at 4 nodes —
+// first + last three when longer — so the strip always fits the card width.
+function buildMilestones(history) {
+  const dated = (history || []).filter(h => h.date).slice().sort((a, b) => new Date(a.date) - new Date(b.date))
+  const nodes = []
+  for (const h of dated) {
+    const key = h.status || null
+    const prev = nodes[nodes.length - 1]
+    if (prev && prev.status === key) { prev.date = h.date; continue }
+    nodes.push({ status: key, date: h.date })
+  }
+  return nodes.length > 4 ? [nodes[0], ...nodes.slice(-3)] : nodes
+}
+
+// Compact horizontal timeline shown on the flux card — the candidature's
+// progression at a glance. Fits the card width (no scroll, so it never fights
+// the row's swipe gesture). Renders nothing until there are ≥2 milestones.
+function MiniTimeline({ history, fallbackStatus, t }) {
+  const nodes = buildMilestones(history)
+  if (nodes.length < 2) return null
+  const shortDate = (d) => new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+  return (
+    <div className="flex items-start pt-0.5" aria-hidden="true">
+      {nodes.map((n, i) => {
+        const st = getStatus(n.status || fallbackStatus)
+        const last = i === nodes.length - 1
+        return (
+          <Fragment key={i}>
+            <div className="flex flex-col items-center text-center min-w-0 px-0.5">
+              <span className={`w-2.5 h-2.5 rounded-full ring-2 ring-white ${st.dot} ${last ? 'shadow-[0_0_0_3px_rgba(99,102,241,0.15)]' : ''}`} />
+              <span className="text-[9.5px] font-medium text-gray-500 leading-tight mt-1 truncate max-w-[62px]">{getStatusLabel(n.status || fallbackStatus, t)}</span>
+              <span className="text-[9px] text-gray-400 tabular-nums leading-tight">{shortDate(n.date)}</span>
+            </div>
+            {!last && <div className="flex-1 h-0.5 bg-gray-200 mt-[4px] mx-0.5" />}
+          </Fragment>
+        )
+      })}
+    </div>
+  )
+}
 
 // Localized "x days ago" — mirrors JobCard.relativeTime, kept local so the row
 // stays self-contained.
@@ -97,10 +139,11 @@ function JobFluxRow({ job, onOpen, onToggleFavorite, onArchive, onRelance, t = (
         onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
         onClick={handleClick}
         style={{ transform: `translateX(${dx}px)`, transition: start.current.mode === 'swipe' ? 'none' : 'transform .2s ease', touchAction: 'pan-y' }}
-        className={`relative flex items-center gap-3 p-3.5 rounded-2xl border ${
+        className={`relative flex flex-col gap-2.5 p-3.5 rounded-2xl border ${
           job.favorite ? 'bg-amber-50/70 border-amber-200' : 'bg-white border-gray-200'
         } ${job.status === 'cancelled' ? 'opacity-50' : ''}`}
       >
+        <div className="flex items-center gap-3">
         <CompanyAvatar company={job.company} sizeClass="w-11 h-11" textClass="text-sm" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
@@ -125,6 +168,8 @@ function JobFluxRow({ job, onOpen, onToggleFavorite, onArchive, onRelance, t = (
           aria-label="favorite"
           className={`self-start text-xl leading-none transition-all active:scale-125 p-1 -m-1 ${job.favorite ? 'text-yellow-400' : 'text-gray-300'}`}
         >★</button>
+        </div>
+        <MiniTimeline history={history} fallbackStatus={statusKey} t={t} />
       </div>
     </div>
   )
