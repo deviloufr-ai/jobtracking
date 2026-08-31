@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useDragDock } from '../hooks/useDragDock'
 import { connectGmail, disconnectGmail, refreshToken, fetchJobEmails, fetchJobEmailsForAccount, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, getConnectedAccounts } from '../services/gmail'
 import { fetchCalendarEvents } from '../services/calendar'
@@ -45,6 +45,15 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
     setConnectedAccounts(accounts)
     onUserChange?.(accounts[0] || null)
   }
+
+  // On native, connecting Gmail goes through a system-browser OAuth round-trip;
+  // the account is adopted asynchronously when the user returns. Refresh the
+  // list when that happens so the "connected" state updates.
+  useEffect(() => {
+    const onAccountsUpdated = () => refreshAccountList()
+    window.addEventListener('jobtrackr:gmail-accounts-updated', onAccountsUpdated)
+    return () => window.removeEventListener('jobtrackr:gmail-accounts-updated', onAccountsUpdated)
+  }, [])
 
   const handleDisconnect = (email) => {
     disconnectGmail(email)

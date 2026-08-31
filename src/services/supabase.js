@@ -9,6 +9,16 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 // browser and Supabase redirects back here as a deep link.
 const NATIVE_AUTH_REDIRECT = 'com.smartjobtracker.app://auth-callback'
 
+// Gmail/Calendar scopes requested at native login so the Google provider token
+// can drive the Gmail import (kept in sync with services/gmail.js SCOPES).
+const NATIVE_GOOGLE_SCOPES = [
+  'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/gmail.send',
+  'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/userinfo.profile',
+].join(' ')
+
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn(
     'Supabase credentials not found. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env'
@@ -139,6 +149,11 @@ async function signInWithGoogleNative() {
       redirectTo: NATIVE_AUTH_REDIRECT,
       // Return the consent URL instead of navigating the webview to it.
       skipBrowserRedirect: true,
+      // Request Gmail/Calendar access at login so the provider token can drive
+      // the Gmail import natively (GIS can't run in the webview). offline +
+      // consent make Google return a refresh token we can store.
+      scopes: NATIVE_GOOGLE_SCOPES,
+      queryParams: { access_type: 'offline', prompt: 'consent' },
     },
   })
 
@@ -180,9 +195,25 @@ export function initNativeAuthDeepLink() {
       }
       if (!code) return
 
-      const { error } = await supabase.auth.exchangeCodeForSession(code)
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code)
       if (error) {
         console.error('Failed to exchange auth code for session:', error)
+        return
+      }
+
+      // The Google access/refresh token comes back on the session only right
+      // after sign-in (Supabase doesn't persist it). Hand it to the Gmail
+      // service so the native import can use it. Dynamic import avoids a static
+      // circular dependency (gmail.js imports this module).
+      const providerToken = data?.session?.provider_token
+      const providerRefreshToken = data?.session?.provider_refresh_token
+      if (providerToken) {
+        try {
+          const gmail = await import('./gmail.js')
+          await gmail.adoptGoogleAccount(providerToken, providerRefreshToken)
+        } catch (e) {
+          console.error('Failed to adopt Google token for Gmail import:', e)
+        }
       }
     })
   })

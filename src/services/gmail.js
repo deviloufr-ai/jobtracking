@@ -1,4 +1,5 @@
-import { supabase } from './supabase'
+import { supabase, signInWithGoogle } from './supabase'
+import { Capacitor } from '@capacitor/core'
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
@@ -266,6 +267,17 @@ function waitForGoogle() {
 export async function connectGmail(hint = '') {
   if (!CLIENT_ID) throw new Error('VITE_GOOGLE_CLIENT_ID manquant dans .env')
 
+  // Native (Android/iOS): Google Identity Services can't run inside the webview
+  // (window.google is undefined), so authorize Gmail through the same
+  // system-browser Google OAuth used for login. The deep-link handler in
+  // supabase.js adopts the returned provider token via adoptGoogleAccount().
+  // This resolves once the browser opens; the connected account appears when the
+  // user returns and the 'jobtrackr:gmail-accounts-updated' event fires.
+  if (Capacitor.isNativePlatform()) {
+    await signInWithGoogle()
+    return { pending: true }
+  }
+
   // If Google not loaded yet, wait for it (but only once)
   if (!window.google?.accounts?.oauth2) {
     await waitForGoogle()
@@ -323,6 +335,33 @@ export async function connectGmail(hint = '') {
       reject(err)
     }
   })
+}
+
+// Adopt a Google access/refresh token obtained elsewhere (native login via
+// Supabase provider_token) as a connected Gmail account. Mirrors the account
+// shape connectGmail() produces so the rest of the pipeline is unchanged.
+export async function adoptGoogleAccount(accessToken, refreshTokenValue) {
+  if (!accessToken) return null
+
+  const user = await fetchUserInfo(accessToken)
+  if (!user?.email) {
+    console.warn('adoptGoogleAccount: could not resolve profile for token')
+    return null
+  }
+
+  accounts[user.email] = {
+    token: accessToken,
+    refreshToken: refreshTokenValue || accounts[user.email]?.refreshToken || null,
+    user,
+    tokenExpiry: new Date(Date.now() + 3600 * 1000).toISOString(),
+  }
+  saveAccounts(accounts)
+  console.log(`✅ Adopted Gmail account ${user.email} from native login`)
+
+  // Let the Gmail UI refresh its connected-account list.
+  try { window.dispatchEvent(new CustomEvent('jobtrackr:gmail-accounts-updated')) } catch {}
+
+  return { token: accessToken, user }
 }
 
 // Auto-refresh token if expired (using refresh token for silent refresh)
