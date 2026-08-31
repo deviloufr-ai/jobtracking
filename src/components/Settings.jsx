@@ -516,7 +516,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                     >
                       {extracting
                         ? <><span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin inline-block" /> {t('settingsProfile.extractingFromCV')}…</>
-                        : profile?.extractedFrom ? `🔄 ${t('settingsProfile.reExtract')}` : `✦ ${t('settingsProfile.extract')}`
+                        : profile?.extractedFrom ? t('settingsProfile.reExtract') : t('settingsProfile.extract')
                       }
                     </button>
                   </div>
@@ -597,7 +597,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                       profileSaved ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-indigo-600 text-white hover:bg-indigo-700'
                     }`}
                   >
-                    {profileSaved ? `✓ ${t('settingsProfile.saved')}` : t('common.save')}
+                    {profileSaved ? t('settingsProfile.saved') : t('common.save')}
                   </button>
                 </div>
               </>
@@ -695,7 +695,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                           : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                       }`}
                     >
-                      {apiKeySaved ? `✓ ${t('settingsAPI.keySaved')}` : apiKey.trim() ? t('settingsAPI.saveKey') : t('settingsAPI.enterKey')}
+                      {apiKeySaved ? t('settingsAPI.keySaved') : apiKey.trim() ? t('settingsAPI.saveKey') : t('settingsAPI.enterKey')}
                     </button>
                     {apiKey.trim() && (
                       <button
@@ -710,9 +710,9 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                         }`}
                       >
                         {apiKeyTestLoading
-                          ? `⏳ ${t('settingsAPI.testing')}`
+                          ? t('settingsAPI.testing')
                           : apiKeyTested
-                          ? `✓ ${t('settingsAPI.testSuccess')}`
+                          ? t('settingsAPI.testSuccess')
                           : t('settingsAPI.testKey')}
                       </button>
                     )}
@@ -874,7 +874,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                           : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                       }`}
                     >
-                      {exportDone ? `✓ ${t('settingsData.exported')}` : t('settingsData.exportApplications')}
+                      {exportDone ? t('settingsData.exported') : t('settingsData.exportApplications')}
                     </button>
                   </Row>
                   <Row label={t('settingsData.importApplications')} hint={t('settingsData.importApplicationsHint')}>
@@ -906,7 +906,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                             : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-300'
                         }`}
                       >
-                        {serverDedupLoading ? `⏳ ${t('settingsData.clearing')}` : t('settingsData.clean')}
+                        {serverDedupLoading ? t('settingsData.clearing') : t('settingsData.clean')}
                       </button>
                       {serverDedupResult && (
                         <p className="text-xs text-green-600">
@@ -952,7 +952,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                             disabled={deleteHistoryLoading}
                             className="text-xs font-semibold px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
                           >
-                            {deleteHistoryLoading ? `⏳ ${t('settingsData.deleting')}` : t('settingsData.deleteHistoryButton')}
+                            {deleteHistoryLoading ? t('settingsData.deleting') : t('settingsData.deleteHistoryButton')}
                           </button>
                           <button onClick={() => { setConfirmDeleteHistory(false); setDeleteHistoryDetails(null) }} className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">
                             {t('settingsData.cancel')}
