@@ -79,6 +79,40 @@ export function convertHistoryToSupabase(localEntry) {
   }
 }
 
+// ─── user_settings camelCase → snake_case ─────────────────────────────────────
+// The app keeps settings in camelCase; the user_settings table is snake_case.
+// A blind camelToSnake is NOT safe here: the table has NO column for `theme` or
+// `debugLogsEnabled` (kept local-only), and its Gmail-lookback column is
+// `gmail_period_months` while the app uses `gmailPeriodDays` (different unit) —
+// so a blind conversion sends unknown columns and PostgREST rejects the whole
+// write (PGRST204 "Could not find the 'archiveRejectedDays' column"). Map only
+// the columns that exist, by explicit name.
+export const SETTINGS_TO_SUPABASE = {
+  weeklyApps: 'weekly_apps',
+  responseRate: 'response_rate',
+  monthlyInterviews: 'monthly_interviews',
+  archiveSentDays: 'archive_sent_days',
+  archiveRejectedDays: 'archive_rejected_days',
+  followUpSentDays: 'follow_up_sent_days',
+  followUpReviewingDays: 'follow_up_reviewing_days',
+  followUpWaitingDays: 'follow_up_waiting_days',
+  followUpOfferDays: 'follow_up_offer_days',
+  autoRefreshHours: 'auto_refresh_hours',
+  checkPositionAfterDays: 'check_position_after_days',
+  checkPositionEnabled: 'check_position_enabled',
+}
+
+// Build a user_settings row for an upsert(onConflict: 'user_id'). Only maps keys
+// present in the record, so a partial settings patch touches only those columns
+// (and leaves the rest of the row untouched on conflict). `user_id` is required.
+export function settingsToSupabaseRow(userId, record = {}) {
+  const row = { user_id: userId, last_modified_at: new Date().toISOString() }
+  for (const [camel, snake] of Object.entries(SETTINGS_TO_SUPABASE)) {
+    if (record[camel] !== undefined) row[snake] = record[camel]
+  }
+  return row
+}
+
 export function deserializeJobFields(job) {
   if (!job) return job
 

@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
-import { convertHistoryToSupabase } from './fieldConversion'
+import { convertHistoryToSupabase, settingsToSupabaseRow } from './fieldConversion'
 import { historyEntryKey } from '../hooks/useJobs'
 
 // Rich per-job fields with no dedicated column — bundled into the `jobs.extras`
@@ -197,6 +197,24 @@ class SyncManager {
     if (!userId) throw new Error('User not authenticated')
 
     let result
+
+    // user_settings is a per-user singleton (UNIQUE(user_id)) with NO id in the
+    // app's settings object. The generic update-by-id path below filtered by
+    // .eq('id', undefined) (→ id=eq.undefined, matching nothing) AND sent the raw
+    // camelCase record (→ PGRST204 "Could not find the 'archiveRejectedDays'
+    // column"). Upsert on user_id with an explicit snake_case column map instead.
+    if (table === 'user_settings') {
+      const row = settingsToSupabaseRow(userId, record)
+      const res = await supabase
+        .from('user_settings')
+        .upsert(row, { onConflict: 'user_id' })
+        .select()
+      if (res.error) {
+        console.error('Mutation error:', res.status, res.error)
+        throw res.error
+      }
+      return { success: true, data: res.data }
+    }
 
     // For jobs table, extract history and strip local-only fields
     let jobRecord = record
