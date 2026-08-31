@@ -3,7 +3,7 @@ import { isConnected, fetchJobEmails, fetchJobEmailsForAccount, getConnectedAcco
 import { parseEmailsForJobs, validateAndCleanJobs } from '../services/claude'
 import { fetchCalendarEvents } from '../services/calendar'
 import { extractJobUrlsFromEmail, rankUrlsByJobRelevance } from '../services/positionChecker'
-import { isAtsRejection, isDeletedJob, mergeHistoryBySameDayTopic, splitMeetingDatesInHistory, deriveStatusFromHistory, ATS_DOMAINS } from './useJobs'
+import { isAtsRejection, isDeletedJob, mergeHistoryBySameDayTopic, splitMeetingDatesInHistory, deriveStatusFromHistory, historyEntryKey, ATS_DOMAINS } from './useJobs'
 import { normalize, isJobBoard, JOB_BOARD_NAMES } from '../constants/jobBoards'
 import { isGenericPosition as isGenericPos } from '../constants/positions'
 
@@ -65,20 +65,28 @@ const STATUS_ORDER = ['todo','sent','reviewing','interview','done','waiting','of
 
 // ─── History dedup keys ───────────────────────────────────────────────────────
 // Decide whether a freshly-parsed email is already present in a job's history.
-// A stored note may have been merged across refreshes using EITHER separator —
-// mergeNotes joins segments with ' | ', combineTopicNotes (same-day topic merge)
-// with ' · '. So expand stored notes on BOTH separators and key each part by its
-// date. Splitting on only one separator makes a re-parsed individual note look
-// new every refresh, which re-imports it and fires a phantom "nouvelle entrée
-// dans l'historique" notification while the timeline re-merges it away (so the
-// user sees a notification but nothing new). Keep this in sync with the
-// separators used by combineTopicNotes / mergeNotes in useJobs.js.
+// PRIMARY identity is the canonical historyEntryKey (a Gmail email is `gmail:<id>`,
+// everything else `date||status||note`) — the SAME key reprocessJobs/deduplicateHistory
+// use, so the two paths can no longer disagree. Two extra layers guard the cases
+// historyEntryKey alone misses:
+//   • gmailIds (plural): mergeHistoryBySameDayTopic's mergeTopicGroup DROPS the
+//     singular gmailId and stores a `gmailIds` array, so historyEntryKey falls back
+//     to date||status||note and no longer recognizes the constituent emails. Expand
+//     each id back into a `gmail:<id>` key.
+//   • text notes: a stored note may have been merged with EITHER separator —
+//     mergeNotes joins with ' | ', combineTopicNotes with ' · '. Expand both so a
+//     re-parsed individual note still resolves even without a gmailId.
+// Skipping any of these makes a re-parsed email look new every refresh, which
+// re-imports it and fires a phantom "nouvelle entrée dans l'historique"
+// notification while the timeline re-merges it away (notification, nothing new).
 const HISTORY_NOTE_SEPARATORS = / · | \| /
 const normNote = s => (s || '').trim().replace(/\s+/g, ' ').slice(0, 80)
 
 export function historyDedupKeys(history) {
   const keys = new Set()
   for (const h of history || []) {
+    keys.add(historyEntryKey(h))
+    for (const id of h.gmailIds || []) keys.add(`gmail:${id}`)
     for (const part of (h.note || '').split(HISTORY_NOTE_SEPARATORS)) {
       keys.add(`${h.date}_${normNote(part)}`)
     }
@@ -87,6 +95,10 @@ export function historyDedupKeys(history) {
 }
 
 export function isNewHistoryEntry(existingKeys, entry) {
+  if (!entry) return false
+  // Canonical identity first (gmailId for emails); fall back to the text key so the
+  // check stays symmetric with historyDedupKeys' text expansion for note-only merges.
+  if (existingKeys.has(historyEntryKey(entry))) return false
   return !existingKeys.has(`${entry?.date}_${normNote(entry?.note)}`)
 }
 
@@ -263,8 +275,14 @@ export function filterEmailsBeforeParse(emails, jobs) {
     const sendersForJob = new Set()
     let lastEmailMs = 0
     for (const h of job.history || []) {
-      if (h.gmailId && !importedGmailIds.has(h.gmailId)) {
-        importedGmailIds.set(h.gmailId, `${job.company}/${job.position} [${job.status}]`)
+      // Index BOTH the singular gmailId and any plural gmailIds left by a same-day
+      // topic merge — otherwise a merged entry stops shielding its constituent
+      // emails and they get re-sent to Claude (and re-notified) every refresh.
+      const entryGmailIds = h.gmailIds || (h.gmailId ? [h.gmailId] : [])
+      for (const gid of entryGmailIds) {
+        if (!importedGmailIds.has(gid)) {
+          importedGmailIds.set(gid, `${job.company}/${job.position} [${job.status}]`)
+        }
       }
       // Anchor the date rule on real inbound emails only — an upcoming calendar
       // interview can be future-dated and would wrongly suppress every email.

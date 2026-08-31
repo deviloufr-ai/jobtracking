@@ -172,7 +172,52 @@ describe('historyDedupKeys / isNewHistoryEntry', () => {
 
   it('handles empty / missing history and notes without throwing', () => {
     expect(historyDedupKeys(undefined).size).toBe(0)
-    expect(historyDedupKeys([{ date: '2026-06-29' }]).size).toBe(1) // empty note → one key
+    expect(historyDedupKeys([{ date: '2026-06-29', gmailId: undefined }]).size).toBeGreaterThanOrEqual(1) // empty note → at least the text key
     expect(isNewHistoryEntry(new Set(), { date: '2026-06-29', note: 'x' })).toBe(true)
+  })
+
+  // Regression: the phantom "1 nouvelle entrée" loop on eXalt Flow. A re-fetched
+  // email whose note text drifted (or whose date got re-stamped) looked new to the
+  // old text-only key, got re-added every refresh, then collapsed by the canonical
+  // (gmailId) dedup in reprocessJobs — a notification with nothing new in the
+  // timeline. Keying on the Gmail id makes the same email resolve regardless of note.
+  it('matches a re-parsed email by gmailId even when its note text drifted', () => {
+    const keys = historyDedupKeys([
+      { date: '2026-08-25', status: 'waiting', note: 'Candidature en cours d\'examen', gmailId: 'g-exalt-1' },
+    ])
+    // Same email (same id), Claude re-phrased the note and re-stamped the day.
+    expect(isNewHistoryEntry(keys, { date: '2026-08-26', status: 'reviewing', note: 'Votre candidature est étudiée', gmailId: 'g-exalt-1' })).toBe(false)
+  })
+
+  it('recognizes an email whose id survives only in a merged entry\'s gmailIds array', () => {
+    // mergeTopicGroup drops the singular gmailId and keeps a plural gmailIds array.
+    const keys = historyDedupKeys([
+      { date: '2026-08-25', status: 'waiting', note: 'Email reçu · Relance envoyée', gmailIds: ['g-a', 'g-b'] },
+    ])
+    expect(isNewHistoryEntry(keys, { date: '2026-08-25', status: 'waiting', note: 'anything', gmailId: 'g-a' })).toBe(false)
+    expect(isNewHistoryEntry(keys, { date: '2026-08-25', status: 'waiting', note: 'anything', gmailId: 'g-b' })).toBe(false)
+  })
+
+  it('still treats an email with a brand-new gmailId as new', () => {
+    const keys = historyDedupKeys([
+      { date: '2026-08-25', status: 'waiting', note: 'Email reçu', gmailId: 'g-old' },
+    ])
+    expect(isNewHistoryEntry(keys, { date: '2026-08-25', status: 'waiting', note: 'Nouvel email', gmailId: 'g-new' })).toBe(true)
+  })
+
+  it('shields a merged entry\'s constituent emails from re-parsing (filterEmailsBeforeParse reads gmailIds)', () => {
+    const job = {
+      company: 'eXalt Flow', position: 'Responsable d\'application', status: 'waiting',
+      history: [
+        { date: '2026-08-25', status: 'waiting', note: 'Email reçu · Relance envoyée', source: 'email', gmailIds: ['g-a', 'g-b'] },
+      ],
+    }
+    const emails = [
+      { id: 'g-a', from: 'rh@exaltflow.com', date: daysAgo(3) },
+      { id: 'g-b', from: 'rh@exaltflow.com', date: daysAgo(2) },
+    ]
+    const { kept, reasons } = filterEmailsBeforeParse(emails, [job])
+    expect(kept).toEqual([])                 // both already-imported via gmailIds
+    expect(reasons.alreadyImported).toBe(2)
   })
 })

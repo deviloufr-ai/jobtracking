@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
-import { useJobs, getStatus } from './hooks/useJobs'
+import { useJobs, getStatus, historyEntryKey } from './hooks/useJobs'
 import { useExtensionImport } from './hooks/useExtensionImport'
 import { useExtensionDetect } from './hooks/useExtensionDetect'
 import { useExtensionUpdate } from './hooks/useExtensionUpdate'
@@ -580,9 +580,20 @@ export default function App() {
   const updateJobWithNotif = (id, data) => {
     updateJob(id, data)
     const job = jobs.find(j => j.id === id)
-    if (job && data.history && data.history.length > (job.history?.length || 0)) {
-      const newCount = data.history.length - (job.history?.length || 0)
-      pushNotif('update', `${job.company} — ${newCount} nouvelle${newCount > 1 ? 's' : ''} entrée${newCount > 1 ? 's' : ''} dans l'historique`, { company: job.company, position: job.position, status: data.status || job.status, count: newCount, jobId: id })
+    // Notify on genuinely-new timeline entries, keyed by canonical identity — NOT a
+    // raw array-length delta. A refresh that re-merges an already-known email can
+    // shuffle length without adding anything real; counting by length fired a
+    // phantom "1 nouvelle entrée" every hour (nothing new visible in the timeline).
+    if (job && Array.isArray(data.history)) {
+      const oldKeys = new Set()
+      for (const h of job.history || []) {
+        oldKeys.add(historyEntryKey(h))
+        for (const gid of h.gmailIds || []) oldKeys.add(`gmail:${gid}`)
+      }
+      const newCount = data.history.filter(h => !oldKeys.has(historyEntryKey(h))).length
+      if (newCount > 0) {
+        pushNotif('update', `${job.company} — ${newCount} nouvelle${newCount > 1 ? 's' : ''} entrée${newCount > 1 ? 's' : ''} dans l'historique`, { company: job.company, position: job.position, status: data.status || job.status, count: newCount, jobId: id })
+      }
     }
   }
 
