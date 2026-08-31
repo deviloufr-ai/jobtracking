@@ -903,6 +903,15 @@ export default function App() {
     { id: 'settings', label: t('nav.tabs.settings'),     icon: '⚙️',  badge: null },
   ]
 
+  // Mobile bottom-nav tabs: Home is its own destination and Settings moves to the
+  // header gear, so the thumb bar stays content-only. Desktop keeps NAV_TABS.
+  const MOBILE_TABS = [
+    { id: 'home',      label: t('nav.tabs.home'),      icon: '🏠', badge: null },
+    { id: 'tracker',   label: t('nav.tabs.tracker'),   icon: '📋', badge: jobs.length || null },
+    { id: 'analytics', label: t('nav.tabs.analytics'), icon: '📊', badge: null },
+    ...(searchEnabled ? [{ id: 'search', label: t('nav.tabs.search'), icon: '🔎', badge: null }] : []),
+  ]
+
   const goTab = (id) => {
     if (id !== 'settings') setSettingsInitialTab(null)
     setActiveTab(id)
@@ -1006,7 +1015,7 @@ export default function App() {
       </BottomSheet>
 
       {/* ── Mobile: Account bottom sheet (avatar) ──────────────────────────── */}
-      <BottomSheet open={accountSheet} onClose={() => setAccountSheet(false)} title={t('nav.tabs.settings')}>
+      <BottomSheet open={accountSheet} onClose={() => setAccountSheet(false)} title={t('nav.account')}>
         <div className="space-y-1">
           {gmailUser && (
             <div className="flex items-center gap-3 p-2 mb-2">
@@ -1031,11 +1040,6 @@ export default function App() {
             className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
             <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>
             {gmailUser || gmailConnected ? t('nav.connected') : t('mobileMenu.connectGmail')}
-          </button>
-          <button onClick={() => { setAccountSheet(false); goTab('settings') }}
-            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-            <span className="w-5 h-5 flex items-center justify-center">⚙️</span>
-            {t('nav.tabs.settings')}
           </button>
           <button onClick={startTour}
             className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
@@ -1262,16 +1266,31 @@ export default function App() {
               </button>
             )}
 
-            {/* Account avatar — mobile only (tappable, opens account sheet) */}
-            <button data-tour="gmail" onClick={() => setAccountSheet(true)} className="sm:hidden flex items-center justify-center" aria-label={t('nav.tabs.settings')}>
+            {/* Settings gear — mobile only (Settings moved off the bottom tab bar) */}
+            <button data-tour="settings" onClick={() => goTab('settings')} aria-label={t('nav.tabs.settings')}
+              className="sm:hidden flex items-center justify-center w-8 h-8 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+
+            {/* Account avatar — mobile only (tappable, opens account sheet). Shows
+                the connected Google profile photo with a small Google glyph. */}
+            <button data-tour="gmail" onClick={() => setAccountSheet(true)} className="sm:hidden relative flex items-center justify-center" aria-label={gmailUser?.email || t('mobileMenu.connectGmail')}>
               {gmailUser?.picture
-                ? <img src={gmailUser.picture} alt="" className="w-8 h-8 rounded-full border-2 border-white shadow-sm" />
+                ? <img src={gmailUser.picture} alt="" referrerPolicy="no-referrer" className="w-8 h-8 rounded-full border-2 border-white shadow-sm" />
                 : gmailUser
                   ? <div className="w-8 h-8 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center font-bold">{gmailUser.email?.[0]?.toUpperCase()}</div>
                   : <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                     </div>
               }
+              {gmailUser && (
+                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center shadow-sm">
+                  <svg width="9" height="9" viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M45 24c0-1.6-.1-2.8-.4-4H24v7.5h12c-.2 1.9-1.6 4.8-4.6 6.7l6.6 5.1C42.1 35.6 45 30.4 45 24z"/><path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.3l-6.6-5.1c-1.8 1.2-4.2 2-7.9 2-6 0-11.1-4-12.9-9.5l-6.9 5.3C7.4 40.9 15 46 24 46z"/><path fill="#FBBC05" d="M11.1 28.1c-.5-1.4-.7-2.9-.7-4.1s.3-2.7.7-4.1l-6.9-5.3C2.8 17.4 2 20.6 2 24s.8 6.6 2.2 9.4l6.9-5.3z"/><path fill="#EA4335" d="M24 10.4c3.3 0 5.6 1.4 6.9 2.6l5.8-5.6C33.1 4.1 28.9 2 24 2 15 2 7.4 7.1 4.2 14.6l6.9 5.3C12.9 14.4 18 10.4 24 10.4z"/></svg>
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -1279,7 +1298,21 @@ export default function App() {
 
       {/* ── Main content ───────────────────────────────────────────────────────── */}
       <main className={`${layoutE ? '' : 'max-w-screen-2xl mx-auto '}px-3 sm:px-6 py-4 sm:py-6 pb-24 md:pb-6`}>
-        {activeTab === 'settings' ? (
+        {activeTab === 'home' ? (
+          /* Mobile Home destination — action-first dashboard + upcoming meetings. */
+          <div className="max-w-xl mx-auto md:mx-0 space-y-4">
+            <MobileHome
+              jobs={jobs}
+              userName={gmailUser?.name}
+              onOpenJob={(job) => setDetailJob(job)}
+              onGenerateCV={handleGenerateCV}
+              onSTAR={(job) => setStarJob(job)}
+              onDraftEmail={(job, type) => setEmailDraft({ job, type })}
+              t={t}
+            />
+            <UpcomingMeetings jobs={jobs} t={t} />
+          </div>
+        ) : activeTab === 'settings' ? (
           <Settings jobs={jobs} syncUserId={syncUserId} onMergeDuplicates={mergeDuplicates} onUpdateJob={updateJob} initialTab={settingsInitialTab} />
         ) : activeTab === 'analytics' ? (
           <Analytics jobs={jobs} t={t} language={language} />
@@ -1559,7 +1592,7 @@ export default function App() {
       {/* ── Mobile bottom nav bar (4 tabs + raised center FAB) ────────────────── */}
       <nav data-tour="nav" className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-white/95 backdrop-blur-lg border-t border-gray-100 shadow-[0_-2px_16px_0_rgba(0,0,0,0.08)]">
         <div className="flex items-stretch justify-around px-1 pt-1.5 pb-1 safe-area-bottom">
-          {NAV_TABS.map((tab, i) => (
+          {MOBILE_TABS.map((tab, i) => (
             <Fragment key={tab.id}>
               {/* Raised FAB injected in the middle (after the 2nd tab) */}
               {i === 2 && (

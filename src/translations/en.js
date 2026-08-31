@@ -67,7 +67,9 @@ export const en = {
   },
   // Navigation & Tabs
   nav: {
+    account: 'Account',
     tabs: {
+      home: 'Home',
       tracker: 'Applications',
       analytics: 'Analytics',
       search: 'Search',

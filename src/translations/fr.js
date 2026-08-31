@@ -67,7 +67,9 @@ export const fr = {
   },
   // Navigation & Tabs
   nav: {
+    account: 'Compte',
     tabs: {
+      home: 'Accueil',
       tracker: 'Candidatures',
       analytics: 'Analyse',
       search: 'Recherche',
