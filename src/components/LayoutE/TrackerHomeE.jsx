@@ -16,6 +16,7 @@ import { scoreColorClasses } from '../ScoreJob'
 import KanbanBoard from '../KanbanBoard'
 import MobilePipeline from '../MobilePipeline'
 import PlatformView from '../PlatformView'
+import JobFluxRow from '../JobFluxRow'
 import FocusBand from './FocusBand'
 import ListToolbar from './ListToolbar'
 import CandidatureDrawer from './CandidatureDrawer'
@@ -272,7 +273,35 @@ export default function TrackerHomeE({
         )
       ) : (
         /* table = unified list */
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <>
+        {/* Mobile: real cards (JobFluxRow) with the horizontal timeline —
+            replaces the desktop-oriented rows, which are cramped on a phone.
+            Favorites pinned to the top, matching the desktop sort. */}
+        <div className="md:hidden">
+          {filtered.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm text-center py-16">
+              <p className="text-gray-500 font-medium">{t('empty.noResults') || t('empty.noApplications')}</p>
+              {resetBtn}
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {[...filtered].sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0)).map(job => (
+                <JobFluxRow
+                  key={job.id}
+                  job={job}
+                  onOpen={open}
+                  onToggleFavorite={onToggleFavorite}
+                  onArchive={(j) => onStatusChange?.(j.id, 'archived')}
+                  onRelance={(j) => onDraftEmail?.(j, 'relance')}
+                  t={t}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Desktop/tablet: unified rows */}
+        <div className="hidden md:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           {filtered.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-gray-500 font-medium">{t('empty.noResults') || t('empty.noApplications')}</p>
@@ -371,6 +400,7 @@ export default function TrackerHomeE({
             </>
           )}
         </div>
+        </>
       )}
 
       {/* Master-detail drawer */}
