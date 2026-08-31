@@ -10,6 +10,7 @@ import CVManager from './CVManager'
 import CVGenerationSettings from './CVGenerationSettings'
 import BatchCVGenerator from './BatchCVGenerator'
 import NotificationSettings from './NotificationSettings'
+import UpdateChecker from './UpdateChecker'
 import { supabase } from '../services/supabase'
 import { indexeddb } from '../services/indexeddb'
 import { THEMES } from '../utils/themes'
@@ -102,6 +103,10 @@ function TextInput({ value, onChange, placeholder, multiline = false, rows = 2 }
     : <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={cls} />
 }
 
+// Inline locale for the About entry (translations live in a file the other
+// session is editing — avoid touching it).
+const IS_EN = typeof navigator !== 'undefined' && navigator.language.startsWith('en')
+
 // Sidebar entries, ordered into four families. The `group` key labels the
 // section header shown above the first item of each group.
 const getCATEGORIES = (t) => [
@@ -116,6 +121,7 @@ const getCATEGORIES = (t) => [
   { id: 'appearance', label: t('settingsSidebar.appearance'), icon: '🎨', group: t('settingsSidebar.groupAdvanced') },
   { id: 'extension', label: t('settingsSidebar.extension'), icon: '🦊', group: t('settingsSidebar.groupAdvanced') },
   { id: 'debug', label: t('settingsSidebar.debug'), icon: '🐛', group: t('settingsSidebar.groupAdvanced') },
+  { id: 'about', label: IS_EN ? 'About' : 'À propos', icon: 'ℹ️', group: t('settingsSidebar.groupAdvanced') },
 ]
 
 export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdateJob, initialTab }) {
@@ -490,6 +496,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                 {activeTab === 'data' && t('settingsDesc.data')}
                 {activeTab === 'extension' && t('settingsDesc.extension')}
                 {activeTab === 'debug' && t('settingsDesc.debug')}
+                {activeTab === 'about' && (IS_EN ? 'App version and updates' : 'Version de l’app et mises à jour')}
               </p>
             </div>
           </div>
@@ -1106,6 +1113,8 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
               </Card>
               </>
             )}
+
+            {activeTab === 'about' && <UpdateChecker />}
           </div>
         </div>
       </div>
