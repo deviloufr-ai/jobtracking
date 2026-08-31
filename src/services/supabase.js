@@ -1,7 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
+import { Capacitor } from '@capacitor/core'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+// Custom URL scheme the native app registers (see AndroidManifest.xml). Google
+// blocks OAuth inside the webview, so on native we open the flow in the system
+// browser and Supabase redirects back here as a deep link.
+const NATIVE_AUTH_REDIRECT = 'com.smartjobtracker.app://auth-callback'
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn(
@@ -92,6 +98,13 @@ export async function signInAnonymously() {
 
 // Sign in with Google
 export async function signInWithGoogle() {
+  // Native (Android/iOS): Google refuses OAuth inside a webview, so run the flow
+  // in the system browser and catch the redirect via a deep link. See
+  // signInWithGoogleNative / initNativeAuthDeepLink below.
+  if (Capacitor.isNativePlatform()) {
+    return signInWithGoogleNative()
+  }
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
@@ -109,6 +122,70 @@ export async function signInWithGoogle() {
   }
 
   return data
+}
+
+// Native Google sign-in: open the OAuth flow in the system browser (Chrome
+// Custom Tab), where Google allows it, then let Supabase redirect back to the
+// app's custom scheme. initNativeAuthDeepLink() catches that redirect and
+// exchanges the code for a session. Routing through Supabase's own HTTPS
+// callback means Google never sees the custom scheme, so no Android OAuth
+// client / SHA-1 registration is needed.
+async function signInWithGoogleNative() {
+  const { Browser } = await import('@capacitor/browser')
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: NATIVE_AUTH_REDIRECT,
+      // Return the consent URL instead of navigating the webview to it.
+      skipBrowserRedirect: true,
+    },
+  })
+
+  if (error) {
+    console.error('Error starting native Google sign-in:', error)
+    throw error
+  }
+
+  if (data?.url) {
+    await Browser.open({ url: data.url })
+  }
+  return data
+}
+
+// Register the deep-link listener that completes native OAuth. Call once at
+// startup (main.jsx). No-op on the web build.
+export function initNativeAuthDeepLink() {
+  if (!Capacitor.isNativePlatform()) return
+
+  import('@capacitor/app').then(({ App }) => {
+    App.addListener('appUrlOpen', async ({ url }) => {
+      if (!url || !url.includes('auth-callback')) return
+
+      // Parse the code/error out of the deep link. The WHATWG URL parser is
+      // unreliable for custom schemes, so read the query string directly.
+      const query = url.split('?')[1]?.split('#')[0] || ''
+      const params = new URLSearchParams(query)
+      const code = params.get('code')
+      const errorDescription = params.get('error_description') || params.get('error')
+
+      try {
+        const { Browser } = await import('@capacitor/browser')
+        Browser.close().catch(() => {})
+      } catch { /* browser may already be closed */ }
+
+      if (errorDescription) {
+        console.error('Native Google sign-in was cancelled or failed:', errorDescription)
+        return
+      }
+      if (!code) return
+
+      const { error } = await supabase.auth.exchangeCodeForSession(code)
+      if (error) {
+        console.error('Failed to exchange auth code for session:', error)
+      }
+    })
+  })
 }
 
 // Sign out

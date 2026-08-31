@@ -22,6 +22,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Deep link for native Google sign-in: Supabase redirects the
+                 OAuth flow back to com.smartjobtracker.app://auth-callback -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.smartjobtracker.app" />
+            </intent-filter>
+
         </activity>
 
         <provider
