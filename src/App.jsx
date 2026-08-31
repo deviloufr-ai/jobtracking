@@ -297,7 +297,11 @@ export default function App() {
   const [showGmail, setShowGmail] = useState(false)
   const [gmailUser, setGmailUser] = useState(() => getCachedUser())
   const [gmailConnected, setGmailConnected] = useState(() => isConnected())
-  const [activeTab, setActiveTab] = useState('tracker')
+  // Mobile lands on the Home dashboard; desktop keeps the Tracker (there's no
+  // Home tab in the desktop nav). Viewport-checked once at first render.
+  const [activeTab, setActiveTab] = useState(
+    () => (typeof window !== 'undefined' && window.innerWidth < 768 ? 'home' : 'tracker')
+  )
   // Job search is an experimental, hidden-by-default feature (opt-in from
   // Settings → Debug). Track the flag and keep it live across toggles.
   const [searchEnabled, setSearchEnabled] = useState(() => getFlag(FLAGS.JOB_SEARCH))
