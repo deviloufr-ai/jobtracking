@@ -27,6 +27,7 @@ import STARGenerator from './components/STARGenerator'
 import EmailDraft from './components/EmailDraft'
 import MergeModal from './components/MergeModal'
 import { useAutoRefresh } from './hooks/useAutoRefresh'
+import { useAndroidBackButton } from './hooks/useAndroidBackButton'
 import { useAutoScore } from './hooks/useAutoScore'
 import { useAutoCheckPositions } from './hooks/useAutoCheckPositions'
 import { usePolling } from './hooks/usePolling'
@@ -931,6 +932,71 @@ export default function App() {
     setAccountSheet(false)
   }
 
+  // Close the Gmail import overlay + refresh the connected-account chips. Shared
+  // by the modal's own close button and the Android Back handler below.
+  const closeGmail = () => {
+    setShowGmail(false)
+    const connected = isConnected()
+    setGmailConnected(connected)
+    setGmailUser(connected ? getCachedUser() : null)
+  }
+
+  // ── Android hardware Back button ─────────────────────────────────────────────
+  // Tab history so Back walks to the previously-visited tab instead of exiting.
+  // `activeTab` is set from many places (nav bars, notifications, deep actions),
+  // so we record every change here rather than only inside goTab. `backNavRef`
+  // skips recording the Back-triggered navigation itself, so it doesn't re-push
+  // the tab we just left.
+  const tabHistoryRef = useRef([activeTab])
+  const backNavRef = useRef(false)
+  useEffect(() => {
+    if (backNavRef.current) { backNavRef.current = false; return }
+    const stack = tabHistoryRef.current
+    if (stack[stack.length - 1] !== activeTab) {
+      stack.push(activeTab)
+      if (stack.length > 50) stack.shift() // cap: guard against unbounded growth
+    }
+  }, [activeTab])
+
+  // Back with no overlay open: step back through the tab history, else exit.
+  // Only ever invoked from the native Back listener, so App.exitApp() is safe.
+  const handleAndroidBack = () => {
+    const stack = tabHistoryRef.current
+    if (stack.length > 1) {
+      stack.pop() // drop the current tab; its predecessor becomes active
+      backNavRef.current = true
+      setActiveTab(stack[stack.length - 1])
+      setSettingsInitialTab(null)
+      return
+    }
+    import('@capacitor/app').then(({ App }) => App.exitApp())
+  }
+
+  // Ordered top-most first: Back closes the first open overlay; if none is open
+  // it falls through to handleAndroidBack (tab history → exit).
+  useAndroidBackButton(
+    [
+      { open: tourActive, close: finishTour },
+      { open: showExtUpdate, close: dismissExtUpdate },
+      { open: showOnboarding, close: dismissOnboarding },
+      { open: bulkCvOpen, close: () => setBulkCvOpen(false) },
+      { open: !!cvGenJob, close: () => { setCvGenJob(null); setCvGenEdit(false) } },
+      { open: !!mergeModal, close: () => setMergeModal(null) },
+      { open: !!emailDraft, close: () => setEmailDraft(null) },
+      { open: !!starJob, close: () => setStarJob(null) },
+      { open: showImageImport, close: () => setShowImageImport(false) },
+      { open: showGmail, close: closeGmail },
+      { open: !!toDelete, close: () => setToDelete(null) },
+      { open: !!modal, close: () => setModal(null) },
+      { open: !!detailJob, close: () => setDetailJob(null) },
+      { open: addSheet, close: () => setAddSheet(false) },
+      { open: accountSheet, close: () => setAccountSheet(false) },
+      { open: showAddMenu, close: () => setShowAddMenu(false) },
+      { open: selectedJobIds.size > 0, close: clearSelection },
+    ],
+    handleAndroidBack
+  )
+
   // While the auth session is still loading, render nothing (avoids a flash of
   // the landing page for an already-signed-in user).
   if (isSupabaseConfigured() && authLoading) {
@@ -964,7 +1030,7 @@ export default function App() {
         {!showGmail ? (
           <LandingComponent onLogin={() => setShowGmail(true)} />
         ) : (
-          <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={() => { setShowGmail(false); const connected = isConnected(); setGmailConnected(connected); setGmailUser(connected ? getCachedUser() : null) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u) }} existingJobs={jobs} t={t} />
+          <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={closeGmail} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u) }} existingJobs={jobs} t={t} />
         )}
       </ErrorBoundary>
     )
@@ -1626,7 +1692,7 @@ export default function App() {
 
       {modal && <JobModal job={modal === 'add' ? null : modal} onSave={handleSave} onClose={() => setModal(null)} findDuplicate={findDuplicateInList} t={t} />}
       {toDelete && <ConfirmDelete job={toDelete} onConfirm={handleDelete} onCancel={() => setToDelete(null)} t={t} />}
-      {showGmail && <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={() => { setShowGmail(false); const connected = isConnected(); setGmailConnected(connected); setGmailUser(connected ? getCachedUser() : null) }} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u) }} existingJobs={jobs} t={t} />}
+      {showGmail && <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={closeGmail} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u) }} existingJobs={jobs} t={t} />}
       {showImageImport && <ImageImport onImport={handleBulkImport} onClose={() => setShowImageImport(false)} existingJobs={jobs} />}
       {starJob && <STARGenerator job={starJob} onClose={() => setStarJob(null)} />}
       {emailDraft && <EmailDraft job={emailDraft.job} type={emailDraft.type} onClose={() => setEmailDraft(null)} onEmailSent={handleEmailSent} />}
