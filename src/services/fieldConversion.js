@@ -110,12 +110,13 @@ export function convertHistoryToSupabase(localEntry) {
 
 // ─── user_settings camelCase → snake_case ─────────────────────────────────────
 // The app keeps settings in camelCase; the user_settings table is snake_case.
-// A blind camelToSnake is NOT safe here: the table has NO column for `theme` or
-// `debugLogsEnabled` (kept local-only), and its Gmail-lookback column is
-// `gmail_period_months` while the app uses `gmailPeriodDays` (different unit) —
-// so a blind conversion sends unknown columns and PostgREST rejects the whole
-// write (PGRST204 "Could not find the 'archiveRejectedDays' column"). Map only
-// the columns that exist, by explicit name.
+// A blind camelToSnake is NOT safe here: the table has NO column for
+// `debugLogsEnabled` (kept local-only, consistent with featureFlags.js), and its
+// legacy `gmail_period_months` column is a different UNIT than the app's
+// `gmailPeriodDays` — so a blind conversion sends unknown columns and PostgREST
+// rejects the whole write (PGRST204 "Could not find the 'archiveRejectedDays'
+// column"). Map only real columns, by explicit name. `theme` and
+// `gmail_period_days` require migration 010.
 export const SETTINGS_TO_SUPABASE = {
   weeklyApps: 'weekly_apps',
   responseRate: 'response_rate',
@@ -129,6 +130,8 @@ export const SETTINGS_TO_SUPABASE = {
   autoRefreshHours: 'auto_refresh_hours',
   checkPositionAfterDays: 'check_position_after_days',
   checkPositionEnabled: 'check_position_enabled',
+  gmailPeriodDays: 'gmail_period_days', // migration 010
+  theme: 'theme',                       // migration 010
 }
 
 // Build a user_settings row for an upsert(onConflict: 'user_id'). Only maps keys

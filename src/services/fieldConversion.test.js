@@ -25,21 +25,22 @@ describe('settingsToSupabaseRow', () => {
   })
 
   it('never emits a camelCase key (the PGRST204 crash) and drops columns the table lacks', () => {
-    // theme / debugLogsEnabled have NO column, gmailPeriodDays is a different unit
-    // than the table's gmail_period_months — all must be excluded, not blindly snaked.
+    // debugLogsEnabled has NO column (local-only). theme + gmail_period_days ARE
+    // real columns (migration 010) and must map; gmail_period_months (legacy unit)
+    // is never written.
     const row = settingsToSupabaseRow('u-1', {
       archiveRejectedDays: 45,
       theme: 'dark',
       debugLogsEnabled: true,
-      gmailPeriodDays: 14,
+      gmailPeriodDays: 21,
     })
     expect(Object.keys(row).every(k => k === k.toLowerCase() && !/[A-Z]/.test(k))).toBe(true)
     expect(row).not.toHaveProperty('archiveRejectedDays')
-    expect(row).not.toHaveProperty('theme')
     expect(row).not.toHaveProperty('debug_logs_enabled')
-    expect(row).not.toHaveProperty('gmail_period_days')
     expect(row).not.toHaveProperty('gmail_period_months')
     expect(row.archive_rejected_days).toBe(45)
+    expect(row.theme).toBe('dark')
+    expect(row.gmail_period_days).toBe(21)
   })
 
   it('is a partial upsert — only present keys become columns, so untouched settings survive on conflict', () => {

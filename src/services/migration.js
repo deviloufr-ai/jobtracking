@@ -181,9 +181,10 @@ export async function migrateSettings(userId, settings) {
       follow_up_waiting_days: settings.followUpWaitingDays || 7,
       follow_up_offer_days: settings.followUpOfferDays || 3,
       auto_refresh_hours: settings.autoRefreshHours || 6,
-      gmail_period_months: settings.gmailPeriodMonths || 3,
+      gmail_period_days: settings.gmailPeriodDays || 14, // migration 010 (app measures lookback in days)
       check_position_after_days: settings.checkPositionAfterDays || 14,
       check_position_enabled: settings.checkPositionEnabled !== false,
+      theme: settings.theme || 'light', // migration 010
       version: 1,
       device_id: localStorage.getItem('device_id') || null,
       last_modified_at: new Date().toISOString()

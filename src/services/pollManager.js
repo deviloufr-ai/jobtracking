@@ -324,8 +324,11 @@ class PollManager {
   }
 
   mergeSettings(local, remote) {
-    // Settings: remote always wins (single canonical version)
-    return remote
+    // Remote wins per-key (single canonical version), but keys the remote row
+    // doesn't carry must survive from local — e.g. debugLogsEnabled is
+    // intentionally never synced (no column), and returning bare `remote` used to
+    // wipe it (and any not-yet-synced setting) on every poll. Spread-merge instead.
+    return { ...(local || {}), ...remote }
   }
 }
 
