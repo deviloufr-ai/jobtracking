@@ -9,17 +9,26 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
-  auth: {
-    // Persist the session across reloads and refresh tokens automatically.
-    persistSession: true,
-    autoRefreshToken: true,
-    // Detect & consume the OAuth redirect (?code=… / #access_token=…) on load so
-    // the Google sign-in callback works without a dedicated router/route.
-    detectSessionInUrl: true,
-    flowType: 'pkce',
-  },
-})
+// createClient throws on an empty URL/key, which would crash the whole app at
+// import time and render a blank white screen (this bit the first Android build
+// whose CI had no Supabase env vars). Fall back to harmless placeholders so the
+// app still loads — in local-only mode (localStorage) — when unconfigured.
+// Use isSupabaseConfigured() to gate anything that needs a real backend.
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-anon-key',
+  {
+    auth: {
+      // Persist the session across reloads and refresh tokens automatically.
+      persistSession: true,
+      autoRefreshToken: true,
+      // Detect & consume the OAuth redirect (?code=… / #access_token=…) on load so
+      // the Google sign-in callback works without a dedicated router/route.
+      detectSessionInUrl: true,
+      flowType: 'pkce',
+    },
+  }
+)
 
 // ── Auth identity (auth.uid()) ────────────────────────────────────────────────
 // The Supabase user id is now the canonical sync identity (replaces the old
