@@ -65,13 +65,16 @@ function Row({ label, hint, children, wide = false }) {
       {children}
     </div>
   )
+  // Mobile: stack the label above a full-width control so text inputs / theme
+  // pickers aren't squeezed into a narrow right column (cramped, colliding
+  // labels). Desktop (sm+) keeps the original side-by-side row.
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div className="flex-1 min-w-0">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <div className="min-w-0 sm:flex-1">
         <p className="text-sm font-medium text-gray-700">{label}</p>
         {hint && <p className="text-xs text-gray-500 mt-0.5">{hint}</p>}
       </div>
-      <div className="shrink-0">{children}</div>
+      <div className="w-full sm:w-auto sm:shrink-0">{children}</div>
     </div>
   )
 }
@@ -496,18 +499,20 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
             {activeTab === 'profile' && (
               <>
                 <Card subtitle={t('settingsProfile.autoFillSubtitle')}>
-                  <div className="flex items-center gap-3 bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 rounded-lg px-4 py-3 -mx-2">
-                    <span className="text-xl shrink-0">✨</span>
-                    <div className="flex-1 min-w-0">
-                      {profile?.extractedFrom
-                        ? <p className="text-xs text-indigo-700">{`${t('settingsProfile.profileExtractedFrom')} `}<strong>{profile.extractedFrom}</strong>{profile.extractedAt ? ` · ${new Date(profile.extractedAt).toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US')}` : ''}</p>
-                        : <p className="text-xs text-indigo-700 font-medium">{t('settingsProfile.zeroManualEntry')}</p>
-                      }
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 rounded-lg px-4 py-3 -mx-2">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <span className="text-xl shrink-0">✨</span>
+                      <div className="min-w-0">
+                        {profile?.extractedFrom
+                          ? <p className="text-xs text-indigo-700">{`${t('settingsProfile.profileExtractedFrom')} `}<strong>{profile.extractedFrom}</strong>{profile.extractedAt ? ` · ${new Date(profile.extractedAt).toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US')}` : ''}</p>
+                          : <p className="text-xs text-indigo-700 font-medium">{t('settingsProfile.zeroManualEntry')}</p>
+                        }
+                      </div>
                     </div>
                     <button
                       onClick={handleExtractFromCV}
                       disabled={extracting}
-                      className="shrink-0 text-xs font-semibold bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
+                      className="shrink-0 w-full sm:w-auto justify-center text-xs font-semibold bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
                     >
                       {extracting
                         ? <><span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin inline-block" /> {t('settingsProfile.extractingFromCV')}…</>
