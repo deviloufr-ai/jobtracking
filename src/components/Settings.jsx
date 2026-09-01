@@ -16,6 +16,7 @@ import { indexeddb } from '../services/indexeddb'
 import { THEMES } from '../utils/themes'
 import { getFlag, setFlag, FLAGS } from '../services/featureFlags'
 import { pushProfile, pushLocalPrefs, PROFILE_SYNCED_EVENT } from '../services/profileSync'
+import { runSyncDiagnostic } from '../services/syncDiagnostic'
 import { Capacitor } from '@capacitor/core'
 
 const PROFILE_KEY = 'jobtrackr_profile'
@@ -146,6 +147,8 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
   const [layoutEFlag, setLayoutEFlag] = useState(() => getFlag(FLAGS.LAYOUT_E))
   // Cross-device deletion sync is ON by default; the flag is a "disable" kill-switch.
   const [crossDeleteDisabled, setCrossDeleteDisabled] = useState(() => getFlag(FLAGS.CROSS_DEVICE_DELETE_OFF))
+  const [syncDiag, setSyncDiag] = useState(null)
+  const [syncDiagLoading, setSyncDiagLoading] = useState(false)
 
   // Listen for theme changes
   useEffect(() => {
@@ -1063,6 +1066,41 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                     {settings.debugLogsEnabled ? '✓ Enabled' : 'Disabled'}
                   </button>
                 </Row>
+              </Card>
+
+              <Card title="🩺 Diagnostic de synchronisation" subtitle="Teste l'accès Supabase (lecture + écriture) depuis CET appareil. Sur Android, montre le vrai résultat d'une écriture que la console du webview ne révèle pas.">
+                <Row label="Lancer le test" hint="Fait une lecture puis une écriture inoffensive (met à jour la date d'une candidature existante) et affiche le résultat brut.">
+                  <button
+                    onClick={async () => {
+                      setSyncDiagLoading(true)
+                      setSyncDiag(null)
+                      try {
+                        setSyncDiag(await runSyncDiagnostic())
+                      } catch (e) {
+                        setSyncDiag({ error: String(e?.message || e) })
+                      } finally {
+                        setSyncDiagLoading(false)
+                      }
+                    }}
+                    disabled={syncDiagLoading}
+                    className="px-4 py-2 rounded-lg font-medium transition-all bg-purple-500 text-white hover:bg-purple-600 disabled:opacity-60"
+                  >
+                    {syncDiagLoading ? '⏳ Test en cours…' : '🩺 Tester la synchro'}
+                  </button>
+                </Row>
+                {syncDiag && (
+                  <div className="mt-2">
+                    <button
+                      onClick={() => { try { navigator.clipboard?.writeText(JSON.stringify(syncDiag, null, 2)) } catch {} }}
+                      className="mb-2 px-3 py-1.5 rounded-md text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    >
+                      📋 Copier le résultat
+                    </button>
+                    <pre className="text-xs leading-snug whitespace-pre-wrap break-words p-3 rounded-lg bg-gray-900 text-green-200 overflow-x-auto max-h-96 overflow-y-auto">
+{JSON.stringify(syncDiag, null, 2)}
+                    </pre>
+                  </div>
+                )}
               </Card>
 
               <Card title="🧪 Expérimental" subtitle="Fonctionnalités en cours d'évaluation — peuvent changer ou disparaître.">
