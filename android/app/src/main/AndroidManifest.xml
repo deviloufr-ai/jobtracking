@@ -47,4 +47,6 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 13+ runtime permission to post notifications (FCM push) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>
