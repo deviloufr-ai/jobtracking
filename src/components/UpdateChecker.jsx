@@ -20,11 +20,20 @@ export default function UpdateChecker() {
       if (!res.ok) throw new Error('bad status')
       const data = await res.json()
       const latest = String(data?.version || '')
-      if (latest && compareVersions(latest, APP_VERSION) > 0) {
-        setState({ status: 'available', latest })
+
+      // Native: the app loads the live web, so only a native change needs a new
+      // APK — compare version.json.minNative to the installed versionCode.
+      // Web: a stale tab behind the deployed APP_VERSION.
+      let outdated
+      if (isNative) {
+        const { App } = await import('@capacitor/app')
+        const info = await App.getInfo()
+        outdated = (Number(data?.minNative) || 0) > (Number(info?.build) || 0)
       } else {
-        setState({ status: 'uptodate', latest })
+        outdated = latest && compareVersions(latest, APP_VERSION) > 0
       }
+
+      setState({ status: outdated ? 'available' : 'uptodate', latest })
     } catch {
       setState({ status: 'error', latest: null })
     }

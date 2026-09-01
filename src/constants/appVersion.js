@@ -11,6 +11,15 @@
 //   the count without being a real release, which would nag users falsely.
 export const APP_VERSION = '0.5.0'
 
+// Minimum Android APK build (versionCode) the current web app needs. With
+// server.url the app loads the live web, so pure web changes never require a new
+// APK — but a native change (new Capacitor plugin, permission, or config) does,
+// because the plugin's JS proxy must match the native code frozen in the APK.
+// When that happens, bump BOTH this and `versionCode` in android/app/build.gradle
+// together; out-of-date installs then get an "update the app" prompt. Web-only
+// releases leave this alone.
+export const MIN_NATIVE_VERSION = 2
+
 // Absolute URL of the deployed version manifest. MUST be absolute: the native
 // app has its own bundled /version.json, so a relative fetch would only ever
 // read its own baked version. This points at the live site so it learns the

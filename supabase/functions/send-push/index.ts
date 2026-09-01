@@ -78,6 +78,15 @@ async function sendOne(accessToken: string, projectId: string, token: string, ti
 
 const ymd = (d: Date) => d.toISOString().slice(0, 10)
 
+// Localized digest body (FR default / EN).
+function digestBody(nInterview: number, nFollow: number, lang: string): string {
+  const en = lang === "en"
+  const parts: string[] = []
+  if (nInterview) parts.push(en ? `${nInterview} interview${nInterview > 1 ? "s" : ""} coming up` : `${nInterview} entretien${nInterview > 1 ? "s" : ""} à venir`)
+  if (nFollow) parts.push(en ? `${nFollow} follow-up${nFollow > 1 ? "s" : ""} to do` : `${nFollow} relance${nFollow > 1 ? "s" : ""} à faire`)
+  return parts.join(" · ")
+}
+
 serve(async (req) => {
   // Only the scheduler (with the shared secret) may trigger this. Fail CLOSED:
   // if CRON_SECRET isn't configured, reject everything rather than run open.
@@ -117,12 +126,17 @@ serve(async (req) => {
       })
     }
 
-    // Tokens grouped by user.
-    const { data: tokens } = await supabase.from("push_tokens").select("token, user_id")
+    // Prune long-dead tokens (not refreshed in 60d — the device likely dropped
+    // it; it re-registers on next open).
+    await supabase.from("push_tokens").delete().lt("updated_at", new Date(Date.now() - 60 * 86400000).toISOString())
+
+    // Tokens grouped by user, carrying each device's language. select("*") so a
+    // missing lang column (migration 012 not applied yet) doesn't error the run.
+    const { data: tokens } = await supabase.from("push_tokens").select("*")
     if (!tokens?.length) return new Response(JSON.stringify({ sent: 0, note: "no tokens" }), { status: 200 })
 
-    const byUser = new Map<string, string[]>()
-    for (const t of tokens) byUser.set(t.user_id, [...(byUser.get(t.user_id) || []), t.token])
+    const byUser = new Map<string, { token: string; lang: string }[]>()
+    for (const t of tokens) byUser.set(t.user_id, [...(byUser.get(t.user_id) || []), { token: t.token, lang: t.lang || "fr" }])
     const userIds = [...byUser.keys()]
 
     const today = ymd(new Date())
@@ -169,13 +183,8 @@ serve(async (req) => {
       const { interview: nInterview, follow: nFollow } = tally.get(uid)!
       if (nInterview + nFollow === 0) continue
 
-      const parts: string[] = []
-      if (nInterview) parts.push(`${nInterview} entretien${nInterview > 1 ? "s" : ""} à venir`)
-      if (nFollow) parts.push(`${nFollow} relance${nFollow > 1 ? "s" : ""} à faire`)
-      const body = parts.join(" · ")
-
-      for (const tok of byUser.get(uid)!) {
-        const res = await sendOne(accessToken, sa.project_id, tok, "SmartJobTracker", body)
+      for (const { token: tok, lang } of byUser.get(uid)!) {
+        const res = await sendOne(accessToken, sa.project_id, tok, "SmartJobTracker", digestBody(nInterview, nFollow, lang))
         if (res.ok) sent++
         else if (res.status === 404 || res.status === 400) staleTokens.push(tok) // UNREGISTERED / invalid
       }

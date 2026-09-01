@@ -20,8 +20,12 @@ android {
         applicationId "com.smartjobtracker.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // Native build number. Bump this AND MIN_NATIVE_VERSION in
+        // src/constants/appVersion.js together whenever a native change (new
+        // plugin, permission, config) requires users to install a fresh APK —
+        // the live-loaded web then prompts out-of-date installs to update.
+        versionCode 2
+        versionName "0.5.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

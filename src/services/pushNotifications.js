@@ -18,10 +18,11 @@ async function saveToken(token) {
   try {
     const userId = await resolveAuthUserId()
     if (!userId) return // retried on the next auth change
-    await supabase.from('push_tokens').upsert(
-      { token, user_id: userId, platform: Capacitor.getPlatform(), updated_at: new Date().toISOString() },
-      { onConflict: 'token' },
-    )
+    const base = { token, user_id: userId, platform: Capacitor.getPlatform(), updated_at: new Date().toISOString() }
+    const lang = (typeof navigator !== 'undefined' && navigator.language.startsWith('en')) ? 'en' : 'fr'
+    const { error } = await supabase.from('push_tokens').upsert({ ...base, lang }, { onConflict: 'token' })
+    // The lang column may not exist yet (migration 012) — fall back without it.
+    if (error) await supabase.from('push_tokens').upsert(base, { onConflict: 'token' })
   } catch (e) {
     console.error('push: saveToken failed', e)
   }

@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { execSync } from 'child_process'
-import { APP_VERSION } from './src/constants/appVersion.js'
+import { APP_VERSION, MIN_NATIVE_VERSION } from './src/constants/appVersion.js'
 
 const commitCount = (() => {
   try { return execSync('git rev-list --count HEAD').toString().trim() } catch { return '?' }
@@ -20,6 +20,7 @@ const emitVersionJson = () => ({
       fileName: 'version.json',
       source: JSON.stringify({
         version: APP_VERSION,
+        minNative: MIN_NATIVE_VERSION,
         build: commitCount,
         hash: commitHash,
         builtAt: new Date().toISOString(),
