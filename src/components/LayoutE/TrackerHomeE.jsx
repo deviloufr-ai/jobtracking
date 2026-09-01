@@ -190,6 +190,48 @@ export default function TrackerHomeE({
     try { localStorage.removeItem('jobtrackr_timeline_col_w') } catch {}
   }
 
+  // ── Detail drawer width: drag the drawer's left edge to resize it freely
+  // (desktop), persisted; double-click the grip resets to the default. Mobile
+  // stays full-screen. The list's right padding tracks the width through a CSS
+  // variable so the content reflows exactly beside the drawer. ────────────────
+  const DW_MIN = 420, DW_MAX = 1200
+  const defaultDrawerWidth = () =>
+    (typeof window !== 'undefined' && window.innerWidth >= 1536) ? 820 : 600
+  const [drawerWidth, setDrawerWidth] = useState(() => {
+    try { const v = localStorage.getItem('jobtrackr_drawer_w'); if (v) return Number(v) } catch {}
+    return defaultDrawerWidth()
+  })
+  const [resizingDrawer, setResizingDrawer] = useState(false)
+  const dwDrag = useRef(null)
+  const startDrawerResize = (e) => {
+    e.preventDefault(); e.stopPropagation()
+    dwDrag.current = { startX: e.clientX, startW: drawerWidth, w: drawerWidth }
+    setResizingDrawer(true)
+    const onMove = (ev) => {
+      const max = Math.min(DW_MAX, window.innerWidth - 320)
+      // drawer is docked right → dragging left (smaller clientX) widens it
+      const w = Math.max(DW_MIN, Math.min(max, dwDrag.current.startW - (ev.clientX - dwDrag.current.startX)))
+      dwDrag.current.w = w
+      setDrawerWidth(w)
+    }
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      document.body.style.userSelect = ''
+      document.body.style.cursor = ''
+      setResizingDrawer(false)
+      try { localStorage.setItem('jobtrackr_drawer_w', String(dwDrag.current.w)) } catch {}
+    }
+    document.body.style.userSelect = 'none'
+    document.body.style.cursor = 'col-resize'
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+  const resetDrawerWidth = () => {
+    setDrawerWidth(defaultDrawerWidth())
+    try { localStorage.removeItem('jobtrackr_drawer_w') } catch {}
+  }
+
   // Close the drawer if its job disappears (deleted / filtered away entirely).
   useEffect(() => {
     if (openId && !jobs.some(j => j.id === openId)) setOpenId(null)
@@ -215,7 +257,10 @@ export default function TrackerHomeE({
   )
 
   return (
-    <div className={`w-full min-w-0 transition-[padding] duration-300 ${openJob ? 'md:pr-[616px] 2xl:pr-[916px]' : ''}`}>
+    <div
+      className={`w-full min-w-0 ${resizingDrawer ? '' : 'transition-[padding] duration-300'} ${openJob ? 'md:pr-[var(--drawer-pad)]' : ''}`}
+      style={openJob ? { '--drawer-pad': `${drawerWidth + 16}px`, '--drawer-w': `${drawerWidth}px` } : undefined}
+    >
       <FocusBand
         jobs={jobs}
         userName={userName}
@@ -407,7 +452,19 @@ export default function TrackerHomeE({
       {openJob && (
         <>
           <div className="fixed inset-0 bg-black/30 z-40 md:hidden" onClick={close} />
-          <aside className="fixed top-0 right-0 bottom-0 z-40 w-full md:w-[600px] 2xl:w-[900px] bg-white border-l border-gray-100 shadow-2xl flex flex-col animate-slide-up md:animate-none">
+          <aside className="fixed top-0 right-0 bottom-0 z-40 w-full md:w-[var(--drawer-w)] bg-white border-l border-gray-100 shadow-2xl flex flex-col animate-slide-up md:animate-none">
+            {/* resize grip — drag the drawer's left edge to resize freely
+                (desktop); double-click resets to the default width */}
+            <div
+              onMouseDown={startDrawerResize}
+              onDoubleClick={resetDrawerWidth}
+              role="separator"
+              aria-orientation="vertical"
+              title="Drag to resize · double-click to reset"
+              className={`hidden md:flex absolute inset-y-0 left-0 -translate-x-1/2 w-3 cursor-col-resize items-center justify-center z-10 group/dw ${resizingDrawer ? 'bg-indigo-50/40' : ''}`}
+            >
+              <span className={`h-10 w-1 rounded-full transition-colors ${resizingDrawer ? 'bg-indigo-400' : 'bg-gray-200 group-hover/dw:bg-indigo-400'}`} />
+            </div>
             <div className="flex-1 overflow-y-auto">
               <CandidatureDrawer
                 job={openJob}
