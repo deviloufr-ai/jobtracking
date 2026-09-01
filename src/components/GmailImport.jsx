@@ -444,6 +444,35 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
                 </svg>
                 Se connecter avec Google
               </button>
+
+              {/* Security FAQ — explains the Google "unverified app / unsafe" warning */}
+              {(() => {
+                const faqItems = t('gmailImport.faq.items')
+                if (!Array.isArray(faqItems)) return null
+                return (
+                  <div className="mt-7 text-left border-t border-gray-100 pt-4">
+                    <p className="text-xs font-semibold text-gray-600 flex items-center gap-1.5">
+                      <span>🛡️</span> {t('gmailImport.faq.title')}
+                    </p>
+                    <p className="text-[11px] text-gray-400 mt-0.5 mb-3">{t('gmailImport.faq.intro')}</p>
+                    <div className="space-y-1.5">
+                      {faqItems.map((item, i) => (
+                        <details key={i} className="group bg-gray-50 rounded-lg border border-gray-100 open:border-indigo-200 open:bg-indigo-50/40 transition-colors">
+                          <summary className="cursor-pointer list-none px-3 py-2 flex items-start gap-2 text-xs font-medium text-gray-700 hover:text-indigo-700 select-none">
+                            <span className="text-gray-300 group-open:text-indigo-500 group-open:rotate-90 transition-transform mt-px flex-shrink-0">▶</span>
+                            <span className="flex-1">{item.q}</span>
+                          </summary>
+                          <div className="px-3 pb-3 pl-8 space-y-1.5">
+                            {(item.a || []).map((para, j) => (
+                              <p key={j} className="text-[11px] text-gray-500 leading-relaxed">{para}</p>
+                            ))}
+                          </div>
+                        </details>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           )}
 

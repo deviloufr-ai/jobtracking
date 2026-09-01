@@ -261,6 +261,11 @@ export const en = {
     done: 'Done',
   },
 
+  // Per-status count strip above the filter bar
+  statusCounts: {
+    ongoing: 'ongoing',
+  },
+
   // Column Headers
   table: {
     company: 'Company / Position',
@@ -466,6 +471,51 @@ export const en = {
     errorConnectionFailed: 'Gmail connection canceled or failed: ',
     errorSessionExpired: 'Session expired — please reconnect.',
     errorNothingFound: 'No emails found in {months} months. Try increasing the period or check your Gmail permissions.',
+    faq: {
+      title: 'Why does Google show a warning?',
+      intro: 'Don\'t worry — this is normal and safe. Here\'s the logic behind each step.',
+      items: [
+        {
+          q: '"Google hasn\'t verified this app" — is that bad?',
+          a: [
+            'No. Google shows this screen for ANY app that requests access to Gmail or Calendar until it has completed the official verification process.',
+            'For Gmail access, that verification requires an annual third-party security audit (several hundred euros a year). SmartJobTracker is still in its testing phase, so this hasn\'t been started yet — hence the warning.',
+            'It does not mean the app is dangerous: access stays strictly limited to what is described below.',
+          ],
+        },
+        {
+          q: 'How do I continue past the warning?',
+          a: [
+            '1. On the warning screen, click "Advanced" (bottom left).',
+            '2. Then click "Go to smartjobtracker.com (unsafe)".',
+            'Only do this for apps you trust.',
+          ],
+        },
+        {
+          q: 'What data do you actually access?',
+          a: [
+            '📥 Gmail (read-only) — to automatically detect your applications and recruiter replies.',
+            '📤 Gmail (send) — only to send follow-up emails that YOU write, never without your knowledge.',
+            '📅 Calendar (read-only) — to find your interviews and enrich your tracking.',
+            'Nothing else: no contacts, no deletion, no other Google service.',
+          ],
+        },
+        {
+          q: 'Where do my emails go? Are they stored?',
+          a: [
+            'Your emails are analyzed on the fly to extract the company, role, status and dates.',
+            'The content of your emails is NOT kept on our servers — only the extracted application details are saved to your account.',
+          ],
+        },
+        {
+          q: 'Can I remove this access later?',
+          a: [
+            'Yes, at any time. Click "Disconnect" in the app,',
+            'or revoke access from your Google account: myaccount.google.com/permissions.',
+          ],
+        },
+      ],
+    },
   },
 
   // CVManager

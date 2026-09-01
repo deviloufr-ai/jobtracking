@@ -17,6 +17,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import KpiStrip from './components/KpiStrip'
 import Analytics from './components/Analytics'
 import Filters from './components/Filters'
+import StatusCounts from './components/StatusCounts'
 import JobRow from './components/JobRow'
 import JobCard from './components/JobCard'
 import JobFluxRow from './components/JobFluxRow'
@@ -671,6 +672,21 @@ export default function App() {
   const archivedCount = useMemo(() => jobs.filter(j => j.status === 'archived').length, [jobs])
   const favCount = useMemo(() => jobs.filter(j => j.favorite).length, [jobs])
 
+  // The connected account shown in the nav rail footer: prefer the Gmail import
+  // account, otherwise fall back to the signed-in Supabase account so the row
+  // reflects who is logged in instead of a generic "Settings" placeholder.
+  const railAccount = useMemo(() => {
+    if (gmailUser) return gmailUser
+    const u = session && session.user
+    if (!u) return null
+    const m = u.user_metadata || {}
+    return {
+      email: u.email,
+      name: m.full_name || m.name || u.email,
+      picture: m.avatar_url || m.picture || null,
+    }
+  }, [gmailUser, session])
+
   const filtered = useMemo(() => {
     const list = jobs.filter(j => {
       if (filters.search) {
@@ -1150,6 +1166,7 @@ export default function App() {
           onNav={goTab}
           onAdd={() => setModal('add')}
           gmailUser={gmailUser}
+          account={railAccount}
           showRefresh={!!(gmailUser || gmailConnected)}
           refreshing={refreshing}
           onRefresh={() => doRefresh(false)}
@@ -1472,6 +1489,9 @@ export default function App() {
               <Goals jobs={jobs} t={t} />
             </div>
           </div>
+        )}
+        {jobs.length > 0 && (
+          <StatusCounts jobs={jobs} filters={filters} onChange={setFilters} t={t} />
         )}
         <div data-tour="views">
           <Filters

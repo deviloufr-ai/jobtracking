@@ -327,6 +327,11 @@ export const fr = {
     done: 'Terminée',
   },
 
+  // Bandeau de comptage par statut au-dessus des filtres
+  statusCounts: {
+    ongoing: 'en cours',
+  },
+
   // Column Headers
   table: {
     company: 'Entreprise / Poste',
@@ -706,6 +711,51 @@ export const fr = {
     errorConnectionFailed: 'Connexion Gmail annulée ou échouée : ',
     errorSessionExpired: 'Session expirée — veuillez vous reconnecter.',
     errorNothingFound: 'Aucun email trouvé sur {months} mois. Essayez d\'augmenter la période ou vérifiez vos autorisations Gmail.',
+    faq: {
+      title: 'Pourquoi Google affiche-t-il un avertissement ?',
+      intro: 'Rassurez-vous : c\'est normal et sans danger. Voici la logique derrière chaque étape.',
+      items: [
+        {
+          q: '« Google n\'a pas validé cette application » — est-ce grave ?',
+          a: [
+            'Non. Google affiche cet écran pour TOUTE application qui demande l\'accès à Gmail ou à l\'Agenda tant qu\'elle n\'a pas terminé sa procédure de validation officielle.',
+            'Cette validation impose, pour l\'accès Gmail, un audit de sécurité annuel réalisé par un cabinet tiers (plusieurs centaines d\'euros par an). SmartJobTracker étant un projet en phase de test, cette validation n\'est pas encore engagée — d\'où l\'avertissement.',
+            'Cela ne veut pas dire que l\'application est dangereuse : l\'accès reste strictement limité à ce qui est décrit ci-dessous.',
+          ],
+        },
+        {
+          q: 'Comment continuer malgré l\'avertissement ?',
+          a: [
+            '1. Sur l\'écran d\'avertissement, cliquez sur « Paramètres avancés » (en bas à gauche).',
+            '2. Puis cliquez sur « Accéder à smartjobtracker.com (non sécurisé) ».',
+            'Ne le faites que pour les applications auxquelles vous faites confiance.',
+          ],
+        },
+        {
+          q: 'À quelles données accédez-vous exactement ?',
+          a: [
+            '📥 Gmail (lecture seule) — pour détecter automatiquement vos candidatures et les réponses des recruteurs.',
+            '📤 Gmail (envoi) — uniquement pour envoyer les emails de relance que VOUS rédigez, jamais à votre insu.',
+            '📅 Agenda (lecture seule) — pour retrouver vos entretiens et enrichir votre suivi.',
+            'Rien d\'autre : pas d\'accès aux contacts, aucune suppression, aucun autre service Google.',
+          ],
+        },
+        {
+          q: 'Où vont mes emails ? Sont-ils stockés ?',
+          a: [
+            'Vos emails sont analysés à la volée pour en extraire l\'entreprise, le poste, le statut et les dates.',
+            'Le contenu de vos emails n\'est PAS conservé sur nos serveurs — seules les informations de candidature extraites sont enregistrées dans votre espace.',
+          ],
+        },
+        {
+          q: 'Puis-je retirer cet accès plus tard ?',
+          a: [
+            'Oui, à tout moment. Cliquez sur « Déconnecter » dans l\'application,',
+            'ou révoquez l\'accès depuis votre compte Google : myaccount.google.com/permissions.',
+          ],
+        },
+      ],
+    },
   },
 
   // CVManager

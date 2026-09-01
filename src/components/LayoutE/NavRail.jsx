@@ -114,6 +114,7 @@ export default function NavRail({
   onNav,
   onAdd,
   gmailUser,
+  account,
   showRefresh,
   refreshing,
   onRefresh,
@@ -198,19 +199,24 @@ export default function NavRail({
             {t('tour.replay')}
           </button>
         )}
-        <button
-          data-tour="gmail"
-          onClick={onAccount}
-          className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50 transition-colors text-left"
-        >
-          {gmailUser?.picture
-            ? <img src={gmailUser.picture} alt="" className="w-8 h-8 rounded-full" />
-            : <div className="w-8 h-8 rounded-full bg-indigo-500 text-white text-sm flex items-center justify-center font-bold">{(gmailUser?.email || gmailUser?.name || 'U')[0]?.toUpperCase()}</div>}
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold text-gray-900 truncate">{gmailUser?.name || gmailUser?.email || t('nav.tabs.settings')}</div>
-            {gmailUser?.email && <div className="text-[11px] text-gray-400 truncate">{gmailUser.email}</div>}
-          </div>
-        </button>
+        {(() => {
+          const acct = account || gmailUser
+          return (
+            <button
+              data-tour="gmail"
+              onClick={onAccount}
+              className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50 transition-colors text-left"
+            >
+              {acct?.picture
+                ? <img src={acct.picture} alt="" referrerPolicy="no-referrer" className="w-8 h-8 rounded-full" />
+                : <div className="w-8 h-8 rounded-full bg-indigo-500 text-white text-sm flex items-center justify-center font-bold">{(acct?.email || acct?.name || 'U')[0]?.toUpperCase()}</div>}
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-gray-900 truncate">{acct?.name || acct?.email || t('nav.tabs.settings')}</div>
+                {acct?.email && acct.email !== acct?.name && <div className="text-[11px] text-gray-400 truncate">{acct.email}</div>}
+              </div>
+            </button>
+          )
+        })()}
       </div>
     </aside>
   )
