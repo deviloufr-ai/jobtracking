@@ -319,26 +319,34 @@ export function buildAllActions(activeJobs, s, t = (key) => key, dismissed = new
   // Sort by priority first
   items.sort((a, b) => a.sortKey - b.sortKey)
 
-  // Drop dismissed actions BEFORE capping — otherwise a hidden action wastes a
-  // slot and can push a real action (e.g. a rejection follow-up) past the limit.
-  const visible = items.filter(item => !dismissed.has(actionKey(item.job, item.rule)))
-
-  // Keep only ONE action per job — the highest priority one
+  // Keep only ONE action per job — the highest priority one. This runs BEFORE the
+  // dismissed filter on purpose: dismissing the card the user actually sees must
+  // hide that job's action outright, not silently promote a lower-priority action
+  // for the same job into its place. A `sent` job, for instance, matches both the
+  // urgent "follow up" rule and the next-step "follow-up overdue" rule — different
+  // labels, so different dismiss keys. Filtering first would let the second card
+  // reappear the instant the first is dismissed ("deleted cards keep showing").
+  // If the job's situation later changes, its new top action carries a new label
+  // (new key) and resurfaces as expected.
   const seenJobs = new Set()
-  const deduped = visible.filter(item => {
+  const deduped = items.filter(item => {
     if (seenJobs.has(item.job.id)) return false
     seenJobs.add(item.job.id)
     return true
   })
+
+  // Drop dismissed actions BEFORE capping — otherwise a hidden action wastes a
+  // slot and can push a real action (e.g. a rejection follow-up) past the limit.
+  const visible = deduped.filter(item => !dismissed.has(actionKey(item.job, item.rule)))
 
   // Cap the list, but NEVER drop a rejection follow-up draft: a gracious reply
   // is time-sensitive and there are only a handful, so guarantee they appear
   // even when higher-priority follow-ups would otherwise fill every slot.
   const isRejectionDraft = item =>
     item.rule.type === 'email' && /remerciement|thank/i.test(item.rule.label(item.job))
-  const capped = deduped.slice(0, 12)
+  const capped = visible.slice(0, 12)
   const cappedSet = new Set(capped)
-  const missedRejections = deduped.filter(item => isRejectionDraft(item) && !cappedSet.has(item))
+  const missedRejections = visible.filter(item => isRejectionDraft(item) && !cappedSet.has(item))
   return [...capped, ...missedRejections]
 }
 
