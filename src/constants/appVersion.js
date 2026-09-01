@@ -9,7 +9,7 @@
 //
 //   Do NOT tie this to the git commit count — the CI APK-refresh commits bump
 //   the count without being a real release, which would nag users falsely.
-export const APP_VERSION = '0.4.4'
+export const APP_VERSION = '0.4.5'
 
 // Absolute URL of the deployed version manifest. MUST be absolute: the native
 // app has its own bundled /version.json, so a relative fetch would only ever
