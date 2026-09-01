@@ -91,15 +91,19 @@ serve(async (req) => {
     }
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE)
 
-    // Manual test: POST { "test_user_id": "<uuid>" } (or { "test_token": "..." })
-    // to push a one-off notification and verify the pipeline before the cron is
-    // live. Optional "message" overrides the body text.
+    // Manual test: POST { "test_all": true } (all registered devices),
+    // { "test_user_id": "<uuid>" }, or { "test_token": "..." } to push a one-off
+    // notification and verify the pipeline before the cron is live. Optional
+    // "message" overrides the body text.
     const body = await req.json().catch(() => ({} as any))
-    if (body.test_user_id || body.test_token) {
+    if (body.test_all || body.test_user_id || body.test_token) {
       const accessToken = await getAccessToken(sa)
       let toks: string[] = body.test_token ? [body.test_token] : []
       if (body.test_user_id) {
         const { data } = await supabase.from("push_tokens").select("token").eq("user_id", body.test_user_id)
+        toks = (data || []).map((r: any) => r.token)
+      } else if (body.test_all) {
+        const { data } = await supabase.from("push_tokens").select("token")
         toks = (data || []).map((r: any) => r.token)
       }
       let n = 0
