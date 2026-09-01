@@ -5,6 +5,18 @@ const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
 const REDIRECT_URI = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
 
+// On the native build, CapacitorHttp (enabled in capacitor.config.json) patches
+// window.fetch and routes every non-GET request through native networking, which
+// drops the Authorization Bearer header — so a Gmail send (POST) would fail with
+// 401. Capacitor preserves the untouched browser fetch as window.CapacitorWebFetch;
+// use it for cross-origin writes to googleapis.com so the token survives. GET reads
+// already stay on the original fetch, so they don't need this. No-op on web, where
+// CapacitorWebFetch is absent and plain fetch is used. Mirrors the supabase.js fix.
+const browserFetch = (...args) =>
+  (typeof window !== 'undefined' && typeof window.CapacitorWebFetch === 'function')
+    ? window.CapacitorWebFetch(...args)
+    : fetch(...args)
+
 // Debug mode: set localStorage.debug = '1' to enable verbose logging
 const DEBUG = typeof window !== 'undefined' && localStorage?.getItem('debug') === '1'
 const log = (...args) => DEBUG && console.log(...args)
@@ -500,7 +512,7 @@ export async function sendEmail({ to, subject, body, fromAccount, threadId, inRe
   const encoded = btoa(unescape(encodeURIComponent(mime)))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 
-  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+  const res = await browserFetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
     method: 'POST',
     headers: { Authorization: `Bearer ${acct.token}`, 'Content-Type': 'application/json' },
     // threadId keeps the reply in the same Gmail conversation.
