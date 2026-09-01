@@ -91,6 +91,27 @@ serve(async (req) => {
     }
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE)
 
+    // Manual test: POST { "test_user_id": "<uuid>" } (or { "test_token": "..." })
+    // to push a one-off notification and verify the pipeline before the cron is
+    // live. Optional "message" overrides the body text.
+    const body = await req.json().catch(() => ({} as any))
+    if (body.test_user_id || body.test_token) {
+      const accessToken = await getAccessToken(sa)
+      let toks: string[] = body.test_token ? [body.test_token] : []
+      if (body.test_user_id) {
+        const { data } = await supabase.from("push_tokens").select("token").eq("user_id", body.test_user_id)
+        toks = (data || []).map((r: any) => r.token)
+      }
+      let n = 0
+      for (const t of toks) {
+        const r = await sendOne(accessToken, sa.project_id, t, "SmartJobTracker", body.message || "Test push ✅")
+        if (r.ok) n++
+      }
+      return new Response(JSON.stringify({ test: true, sent: n, tokens: toks.length }), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      })
+    }
+
     // Tokens grouped by user.
     const { data: tokens } = await supabase.from("push_tokens").select("token, user_id")
     if (!tokens?.length) return new Response(JSON.stringify({ sent: 0, note: "no tokens" }), { status: 200 })
