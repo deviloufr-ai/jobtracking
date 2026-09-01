@@ -25,6 +25,24 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
+// Supabase must NOT go through Capacitor's HTTP layer. On the native build,
+// CapacitorHttp (enabled in capacitor.config.json) monkey-patches window.fetch to
+// route every non-GET request through native networking. That path drops the
+// per-user Authorization Bearer JWT on Supabase writes, so under RLS the
+// UPDATE/INSERT matches zero rows and returns 200 with an empty body and NO error
+// — the mutation silently never syncs (GET reads stay on the original fetch, which
+// is why the breakage looked one-directional: cross-device pulls worked, pushes
+// from Android didn't). Capacitor preserves the untouched browser fetch as
+// window.CapacitorWebFetch (see @capacitor/android native-bridge.js). Route
+// supabase-js through it so requests keep real fetch semantics + CORS — the app is
+// served from the www origin, which Supabase's REST API allows. Resolved lazily
+// per call so it's a no-op on web, where CapacitorWebFetch is absent and plain
+// fetch is used (identical to the previous default).
+const supabaseFetch = (...args) =>
+  (typeof window !== 'undefined' && typeof window.CapacitorWebFetch === 'function')
+    ? window.CapacitorWebFetch(...args)
+    : fetch(...args)
+
 // createClient throws on an empty URL/key, which would crash the whole app at
 // import time and render a blank white screen (this bit the first Android build
 // whose CI had no Supabase env vars). Fall back to harmless placeholders so the
@@ -34,6 +52,7 @@ export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseAnonKey || 'placeholder-anon-key',
   {
+    global: { fetch: supabaseFetch },
     auth: {
       // Persist the session across reloads and refresh tokens automatically.
       persistSession: true,
