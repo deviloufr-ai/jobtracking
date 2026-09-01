@@ -9,12 +9,14 @@
 import { useState } from 'react'
 import { useDragDock } from '../hooks/useDragDock'
 import { EXTENSION_XPI_PATH as XPI_HREF } from '../constants/extension'
+import { Capacitor } from '@capacitor/core'
 
 export default function OnboardingModal({ onAddKey, onSkip, extensionInstalled, t = (k) => k }) {
   const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 512 })
 
   // Include the extension page unless we've confirmed it's already installed.
-  const showExt = extensionInstalled !== true
+  // The Firefox extension is irrelevant in the native app — skip its page there.
+  const showExt = extensionInstalled !== true && !Capacitor.isNativePlatform()
   const pages = showExt ? ['ai', 'ext'] : ['ai']
   const [step, setStep] = useState(0)
   const page = pages[step]

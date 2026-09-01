@@ -4,6 +4,11 @@ import { useExtensionImport } from './hooks/useExtensionImport'
 import { useExtensionDetect } from './hooks/useExtensionDetect'
 import { useExtensionUpdate } from './hooks/useExtensionUpdate'
 import { EXTENSION_XPI_PATH } from './constants/extension'
+import { Capacitor } from '@capacitor/core'
+
+// The Firefox extension is irrelevant inside the native Android app — hide every
+// promo surface when running in the Capacitor shell.
+const IS_NATIVE = Capacitor.isNativePlatform()
 import { useSettings } from './hooks/useSettings'
 import { useLanguage } from './hooks/useLanguage'
 import './styles/themes.css'
@@ -1082,7 +1087,7 @@ export default function App() {
               </div>
             </button>
           ))}
-          {extensionInstalled === false && (
+          {!IS_NATIVE && extensionInstalled === false && (
             <a href={EXTENSION_XPI_PATH} onClick={() => setAddSheet(false)}
               className="w-full flex items-center gap-3.5 p-3 rounded-2xl hover:bg-orange-50 active:scale-[0.98] transition-all text-left">
               <span className="w-11 h-11 rounded-xl flex items-center justify-center text-xl bg-orange-50">🦊</span>
@@ -1224,7 +1229,7 @@ export default function App() {
 
           {/* Right actions */}
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-            <ExtensionButton installed={extensionInstalled} updateAvailable={extUpdate.updateAvailable} onUpdate={() => setShowExtUpdate(true)} t={t} />
+            {!IS_NATIVE && <ExtensionButton installed={extensionInstalled} updateAvailable={extUpdate.updateAvailable} onUpdate={() => setShowExtUpdate(true)} t={t} />}
 
             {/* Replay the interactive tour */}
             <button onClick={startTour} title={t('tour.replay')} aria-label={t('tour.replay')}

@@ -16,6 +16,7 @@ import { indexeddb } from '../services/indexeddb'
 import { THEMES } from '../utils/themes'
 import { getFlag, setFlag, FLAGS } from '../services/featureFlags'
 import { pushProfile, PROFILE_SYNCED_EVENT } from '../services/profileSync'
+import { Capacitor } from '@capacitor/core'
 
 const PROFILE_KEY = 'jobtrackr_profile'
 // CV generation preferences (ATS level, rules checklist, custom rules, base CV)
@@ -106,6 +107,8 @@ function TextInput({ value, onChange, placeholder, multiline = false, rows = 2 }
 // Inline locale for the About entry (translations live in a file the other
 // session is editing — avoid touching it).
 const IS_EN = typeof navigator !== 'undefined' && navigator.language.startsWith('en')
+// The Firefox extension is irrelevant in the native app — drop its settings entry.
+const IS_NATIVE = Capacitor.isNativePlatform()
 
 // Sidebar entries, ordered into four families. The `group` key labels the
 // section header shown above the first item of each group.
@@ -131,7 +134,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
   const { cvs } = useCVs()
   const extensionInstalled = useExtensionDetect()
   const extUpdate = useExtensionUpdate()
-  const CATEGORIES = getCATEGORIES(t)
+  const CATEGORIES = getCATEGORIES(t).filter(c => !(IS_NATIVE && c.id === 'extension'))
   const [activeTab, setActiveTab] = useState(initialTab || 'profile')
   // Mobile: Settings is a grouped-list landing that pushes into a section.
   // Drill straight in when App requested a specific tab (e.g. the API-key nudge).
