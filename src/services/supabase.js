@@ -170,9 +170,13 @@ async function signInWithGoogleNative() {
       skipBrowserRedirect: true,
       // Request Gmail/Calendar access at login so the provider token can drive
       // the Gmail import natively (GIS can't run in the webview). offline +
-      // consent make Google return a refresh token we can store.
+      // consent make Google return a refresh token we can store. select_account
+      // ALWAYS shows the Google account chooser: signOut() clears only the
+      // Supabase session, not the system browser's Google session, so without
+      // this a re-login silently reuses whatever account is active there — which
+      // is how a device ended up synced to the wrong account (empty dataset).
       scopes: NATIVE_GOOGLE_SCOPES,
-      queryParams: { access_type: 'offline', prompt: 'consent' },
+      queryParams: { access_type: 'offline', prompt: 'select_account consent' },
     },
   })
 
