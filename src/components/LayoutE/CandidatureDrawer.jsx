@@ -130,14 +130,27 @@ export default function CandidatureDrawer({
               </span>
               {source && <span className="text-xs text-gray-400">via {source}</span>}
               {appliedDate && <span className="text-xs text-gray-400">{source ? '· ' : ''}{shortDate(appliedDate)}</span>}
-              {jdHref && (
-                <a href={jdHref} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-indigo-600 hover:underline">
-                  {displayStatus === 'todo' ? t('candidature.apply') || 'Apply' : t('candidature.viewOffer') || 'See job description'} ↗
-                </a>
-              )}
             </div>
           </div>
         </div>
+
+        {/* Prominent apply / job-description CTA — primary when there's still an
+            application to send (todo), outline once applied */}
+        {jdHref && (
+          <a
+            href={jdHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`mt-3 flex items-center justify-center gap-2 w-full px-4 py-2.5 text-sm font-semibold rounded-xl transition ${
+              displayStatus === 'todo'
+                ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-sm hover:brightness-105'
+                : 'border border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            {displayStatus === 'todo' ? (t('candidature.apply') || 'Apply') : (t('candidature.viewOffer') || 'See job description')}
+            <span aria-hidden>↗</span>
+          </a>
+        )}
 
         <div className="flex gap-1 mt-3 -mb-px">
           {TABS.map(([id, label]) => (
