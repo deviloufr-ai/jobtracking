@@ -2,6 +2,10 @@
   "appId": "com.smartjobtracker.app",
   "appName": "SmartJobTracker",
   "webDir": "dist",
+  "server": {
+    "url": "https://www.smartjobtracker.com",
+    "cleartext": false
+  },
   "plugins": {
     "CapacitorHttp": {
       "enabled": true
