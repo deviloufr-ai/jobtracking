@@ -140,7 +140,7 @@ function JobFluxRow({ job, onOpen, onToggleFavorite, onArchive, onRelance, t = (
         onClick={handleClick}
         style={{ transform: `translateX(${dx}px)`, transition: start.current.mode === 'swipe' ? 'none' : 'transform .2s ease', touchAction: 'pan-y' }}
         className={`relative flex flex-col gap-2.5 p-3.5 rounded-2xl border ${
-          job.favorite ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-200'
+          job.favorite ? 'bg-white border-amber-400 ring-1 ring-amber-400/60' : 'bg-white border-gray-200'
         } ${job.status === 'cancelled' ? 'opacity-50' : ''}`}
       >
         <div className="flex items-center gap-3">
