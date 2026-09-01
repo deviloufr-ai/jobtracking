@@ -15,7 +15,7 @@ import { supabase } from '../services/supabase'
 import { indexeddb } from '../services/indexeddb'
 import { THEMES } from '../utils/themes'
 import { getFlag, setFlag, FLAGS } from '../services/featureFlags'
-import { pushProfile, PROFILE_SYNCED_EVENT } from '../services/profileSync'
+import { pushProfile, pushLocalPrefs, PROFILE_SYNCED_EVENT } from '../services/profileSync'
 import { Capacitor } from '@capacitor/core'
 
 const PROFILE_KEY = 'jobtrackr_profile'
@@ -837,6 +837,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                             console.log('🎨 Changing theme to:', theme.id)
                             localStorage.setItem('jobtrackr_theme', theme.id)
                             window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: theme.id } }))
+                            pushLocalPrefs()  // mirror the theme choice to other devices
                           }}
                           className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg border-2 transition-all text-left ${
                             currentTheme === theme.id

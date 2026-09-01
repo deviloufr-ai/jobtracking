@@ -23,6 +23,7 @@ export const AUX_PREFS_SYNCED_EVENT = 'jobtrackr-aux-prefs-synced'
 
 // Portable local-only preference keys folded into `__aux`.
 const PICTURE_KEY = 'cv_profile_picture'
+const THEME_KEY = 'jobtrackr_theme'
 const DISMISSED_KEY = 'jobtrackr_dismissed_actions'
 const CV_PREF_KEYS = [
   'jobtrackr_cv_base_id',
@@ -47,6 +48,11 @@ function collectAuxPrefs() {
   try {
     const pic = localStorage.getItem(PICTURE_KEY)
     if (pic) aux.profilePicture = pic
+  } catch { /* ignore */ }
+
+  try {
+    const theme = localStorage.getItem(THEME_KEY)
+    if (theme) aux.theme = theme
   } catch { /* ignore */ }
 
   const cvPrefs = {}
@@ -74,6 +80,9 @@ function applyAuxPrefs(aux) {
     if (typeof aux.profilePicture === 'string') {
       localStorage.setItem(PICTURE_KEY, aux.profilePicture)
     }
+    if (typeof aux.theme === 'string') {
+      localStorage.setItem(THEME_KEY, aux.theme)
+    }
     if (aux.cvPrefs && typeof aux.cvPrefs === 'object') {
       for (const k of CV_PREF_KEYS) {
         if (typeof aux.cvPrefs[k] === 'string') localStorage.setItem(k, aux.cvPrefs[k])
@@ -85,6 +94,11 @@ function applyAuxPrefs(aux) {
   } catch { /* quota / serialization — non-critical */ }
   try {
     window.dispatchEvent(new CustomEvent(AUX_PREFS_SYNCED_EVENT, { detail: aux }))
+    // App.jsx applies the theme off `theme-changed`; re-fire it so a pulled theme
+    // takes effect live (not just on the next reload).
+    if (typeof aux.theme === 'string') {
+      window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: aux.theme } }))
+    }
   } catch { /* ignore */ }
 }
 
