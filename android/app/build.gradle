@@ -31,6 +31,11 @@ android {
     }
     buildTypes {
         release {
+            // Public distribution ships a RELEASE build (debuggable=false, not an
+            // adb-backup-able debug apk). Signed with the same committed key as
+            // debug so updates still install in place. minify stays off — R8 can
+            // strip Capacitor plugin classes without extra proguard rules.
+            signingConfig signingConfigs.debug
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

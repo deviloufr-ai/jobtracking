@@ -79,8 +79,9 @@ async function sendOne(accessToken: string, projectId: string, token: string, ti
 const ymd = (d: Date) => d.toISOString().slice(0, 10)
 
 serve(async (req) => {
-  // Only the scheduler (with the shared secret) may trigger this.
-  if (CRON_SECRET && req.headers.get("x-cron-secret") !== CRON_SECRET) {
+  // Only the scheduler (with the shared secret) may trigger this. Fail CLOSED:
+  // if CRON_SECRET isn't configured, reject everything rather than run open.
+  if (!CRON_SECRET || req.headers.get("x-cron-secret") !== CRON_SECRET) {
     return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 })
   }
 
@@ -124,36 +125,48 @@ serve(async (req) => {
     for (const t of tokens) byUser.set(t.user_id, [...(byUser.get(t.user_id) || []), t.token])
     const userIds = [...byUser.keys()]
 
-    const today = new Date()
-    const soon = new Date(today.getTime() + 2 * 86400000) // interviews within ~2 days
-    const followupBefore = new Date(today.getTime() - FOLLOWUP_DAYS * 86400000)
+    const today = ymd(new Date())
+    const soon = ymd(new Date(Date.now() + 2 * 86400000))          // interviews within ~2 days
+    const followupCut = ymd(new Date(Date.now() - FOLLOWUP_DAYS * 86400000))
+    const CLOSED = new Set(["rejected", "rejected_ats", "cancelled", "archived"])
 
-    // Upcoming interviews per user (future-dated interview timeline entries).
-    const { data: interviews } = await supabase
-      .from("job_history")
-      .select("user_id, date")
-      .eq("status", "interview")
-      .gte("date", ymd(today))
-      .lte("date", ymd(soon))
-      .in("user_id", userIds)
+    // Pull jobs + history and derive each job's status the way the app does
+    // (latest timeline entry wins), so we never notify on a stale jobs.status or
+    // a candidature that's actually closed. Follow-ups use the LAST activity
+    // date, not the application date.
+    const [{ data: jobs }, { data: hist }] = await Promise.all([
+      supabase.from("jobs").select("id, user_id, status, date").in("user_id", userIds),
+      supabase.from("job_history").select("job_id, user_id, status, date").in("user_id", userIds),
+    ])
 
-    // Applications still pending past the follow-up window.
-    const { data: followups } = await supabase
-      .from("jobs")
-      .select("user_id")
-      .in("status", PENDING)
-      .lt("date", ymd(followupBefore))
-      .in("user_id", userIds)
+    const histByJob = new Map<string, any[]>()
+    for (const h of hist || []) {
+      if (!h.date) continue
+      histByJob.set(h.job_id, [...(histByJob.get(h.job_id) || []), h])
+    }
 
-    const count = (rows: any[] | null, uid: string) => (rows || []).filter((r) => r.user_id === uid).length
+    const tally = new Map<string, { interview: number; follow: number }>()
+    for (const uid of userIds) tally.set(uid, { interview: 0, follow: 0 })
+
+    for (const job of jobs || []) {
+      const acc = tally.get(job.user_id)
+      if (!acc) continue
+      const hs = (histByJob.get(job.id) || []).slice().sort((a, b) => (a.date > b.date ? 1 : a.date < b.date ? -1 : 0))
+      const latest = hs[hs.length - 1]
+      const derived = latest?.status || job.status
+      if (CLOSED.has(derived)) continue // dead candidature — never notify
+      const lastActivity = latest?.date || job.date
+      const upcomingInterview = hs.some((h) => h.status === "interview" && h.date >= today && h.date <= soon)
+      if (upcomingInterview) acc.interview++
+      else if (PENDING.includes(derived) && lastActivity < followupCut) acc.follow++
+    }
 
     const accessToken = await getAccessToken(sa)
     let sent = 0
     const staleTokens: string[] = []
 
     for (const uid of userIds) {
-      const nInterview = count(interviews, uid)
-      const nFollow = count(followups, uid)
+      const { interview: nInterview, follow: nFollow } = tally.get(uid)!
       if (nInterview + nFollow === 0) continue
 
       const parts: string[] = []

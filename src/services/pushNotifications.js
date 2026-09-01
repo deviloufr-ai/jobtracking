@@ -3,21 +3,21 @@ import { supabase, resolveAuthUserId } from './supabase'
 
 // Native (Android) FCM push registration. No-op on the web.
 //
-// Flow: request the POST_NOTIFICATIONS permission (Android 13+), register with
-// FCM, and on the 'registration' event store the device token in Supabase
-// (push_tokens table) against the signed-in user. A backend Edge Function reads
-// those tokens to send pushes. The token is re-saved when the user signs in, so
-// a token obtained before login still gets associated once auth is known.
+// We only request the POST_NOTIFICATIONS permission and register once the user
+// is signed in — prompting on a cold, pre-login open is jarring and a denial
+// there is wasted. On the 'registration' event the device token is stored in
+// Supabase (push_tokens) against the signed-in user.
 
 let lastToken = null
 let started = false
+let registered = false
 
 async function saveToken(token) {
   if (!token) return
   lastToken = token
   try {
     const userId = await resolveAuthUserId()
-    if (!userId) return // will retry on the next auth change
+    if (!userId) return // retried on the next auth change
     await supabase.from('push_tokens').upsert(
       { token, user_id: userId, platform: Capacitor.getPlatform(), updated_at: new Date().toISOString() },
       { onConflict: 'token' },
@@ -39,30 +39,38 @@ export async function initPushNotifications() {
     return
   }
 
-  try {
-    let perm = await PushNotifications.checkPermissions()
-    if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
-      perm = await PushNotifications.requestPermissions()
+  PushNotifications.addListener('registration', (token) => { saveToken(token.value) })
+  PushNotifications.addListener('registrationError', (err) => { console.error('push: registration error', err) })
+  // Foreground / tap handlers — left minimal; the payload can carry a jobId to
+  // deep-link later. For now the OS shows the notification.
+  PushNotifications.addListener('pushNotificationReceived', (n) => { console.log('push received', n?.title) })
+  PushNotifications.addListener('pushNotificationActionPerformed', (a) => { console.log('push tapped', a?.notification?.title) })
+
+  // Request permission + register once (gated on being signed in).
+  const requestAndRegister = async () => {
+    if (registered) return
+    try {
+      let perm = await PushNotifications.checkPermissions()
+      if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
+        perm = await PushNotifications.requestPermissions()
+      }
+      if (perm.receive !== 'granted') { console.log('push: permission not granted'); return }
+      registered = true
+      await PushNotifications.register()
+    } catch (e) {
+      console.error('push: register failed', e)
     }
-    if (perm.receive !== 'granted') {
-      console.log('push: permission not granted')
-      return
-    }
-
-    PushNotifications.addListener('registration', (token) => { saveToken(token.value) })
-    PushNotifications.addListener('registrationError', (err) => { console.error('push: registration error', err) })
-    // Foreground / tap handlers — left minimal; the payload can carry a jobId to
-    // deep-link later. For now the OS shows the notification.
-    PushNotifications.addListener('pushNotificationReceived', (n) => { console.log('push received', n?.title) })
-    PushNotifications.addListener('pushNotificationActionPerformed', (a) => { console.log('push tapped', a?.notification?.title) })
-
-    await PushNotifications.register()
-
-    // A token captured before sign-in gets associated once the user logs in.
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' && lastToken) saveToken(lastToken)
-    })
-  } catch (e) {
-    console.error('push: init failed', e)
   }
+
+  try {
+    const { data } = await supabase.auth.getSession()
+    if (data?.session) requestAndRegister()
+  } catch { /* ignore */ }
+
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_IN') {
+      requestAndRegister()
+      if (lastToken) saveToken(lastToken)
+    }
+  })
 }
