@@ -40,7 +40,7 @@ import { usePolling } from './hooks/usePolling'
 import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, autoReuseStoredTokens } from './services/gmail'
 import { supabase, signInWithGoogle, isSupabaseConfigured } from './services/supabase'
 import { migrateToAuthIdentity } from './services/authMigration'
-import { initializeSyncCoordinator } from './services/syncCoordinator'
+import { reinitializeSyncCoordinator } from './services/syncCoordinator'
 import JobSearch from './components/JobSearch'
 import { getFlag, FLAGS, FLAGS_EVENT } from './services/featureFlags'
 import NavRail from './components/LayoutE/NavRail'
@@ -507,17 +507,26 @@ export default function App() {
   // now the canonical sync identity (replaces the gmail-derived sync UUID). Before
   // the first sync, migrate any legacy rows from the old UUID onto auth.uid().
   useEffect(() => {
-    if (!session || syncUserId) return
+    // Signed out: forget the sync identity so the NEXT sign-in (possibly a
+    // different Google account) re-initializes cleanly instead of staying pointed
+    // at the old user. Without this, switching accounts silently kept syncing to
+    // the previous one — the guard below (authUid === syncUserId) never re-fired.
+    if (!session) {
+      if (syncUserId) setSyncUserId(null)
+      return
+    }
     const authUid = session.user?.id
-    if (!authUid) return
+    if (!authUid || authUid === syncUserId) return
 
-    console.log('🔐 Authenticated, migrating + initializing SyncCoordinator for', authUid)
+    console.log('🔐 Authenticated, migrating + (re)initializing SyncCoordinator for', authUid)
 
     migrateToAuthIdentity(session.user)
       .catch(err => console.error('Auth migration failed (continuing):', err))
       .finally(() => {
         setSyncUserId(authUid)
-        initializeSyncCoordinator(authUid)
+        // reinitialize (not initialize) so an account switch tears down the old
+        // coordinator + poll timer and starts a fresh full sync under the new uid.
+        reinitializeSyncCoordinator(authUid)
       })
   }, [session, syncUserId])
 
