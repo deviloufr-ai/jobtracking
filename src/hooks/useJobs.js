@@ -797,9 +797,20 @@ function normalizeForComparison(text = '') {
 function notesAreSimilar(wordsA, wordsB) {
   if (wordsA.length === 0 || wordsB.length === 0) return false
   const setB = new Set(wordsB)
-  const matches = wordsA.filter(w => setB.has(w)).length
+  const shared = wordsA.filter(w => setB.has(w))
+  const matches = shared.length
+  if (matches === 0) return false
   const minLength = Math.min(wordsA.length, wordsB.length)
-  return minLength > 0 && matches / minLength > 0.3
+  // Strong token overlap → the two notes clearly say the same thing.
+  if (matches / minLength > 0.3) return true
+  // Weaker overlap still counts as "almost the same content" when the notes
+  // share a distinctive topic word (≥6 chars, e.g. "relance", "entretien") and
+  // at least a quarter of the shorter note's significant words. This catches
+  // near-duplicate same-day beats ("Email de relance envoyé…" / "Relance
+  // candidature soumise…") that a pure overlap ratio misses, without merging
+  // entries that share nothing meaningful.
+  const hasDistinctiveShared = shared.some(w => w.length >= 6)
+  return hasDistinctiveShared && matches / minLength >= 0.25
 }
 
 // Merge a list of notes into a single ' | '-joined note WITHOUT nesting.
@@ -960,13 +971,9 @@ export function deduplicateHistory(jobs) {
         continue
       }
 
-      // Second pass: cluster similar entries on same date WITH SAME STATUS
-      // Skip expensive similarity clustering if few entries remain
-      if (withoutExactDupes.length <= 2) {
-        deduped.push(...withoutExactDupes)
-        continue
-      }
-
+      // Second pass: cluster similar entries on same date WITH SAME STATUS.
+      // Runs for pairs too — two same-day entries that are "almost the same
+      // content" (e.g. two follow-up notes) are exactly what we want to collapse.
       // Never merge entries with different statuses—they're different events
       const clusters = []
       const used = new Set()
@@ -1000,17 +1007,34 @@ export function deduplicateHistory(jobs) {
         clusters.push(cluster)
       }
 
-      // Merge similar entries in each cluster (idempotent: parts are de-nested)
+      // Merge similar entries in each cluster (idempotent: parts are de-nested).
       for (const cluster of clusters) {
-        const primary = withoutExactDupes[cluster[0]]
-        const note = dedupeNoteParts(cluster.map(idx => withoutExactDupes[idx].note))
+        const members = cluster.map(idx => withoutExactDupes[idx])
+        // Keep the richest member as the surviving entry so a merge never drops a
+        // gmailId ("Open email" link), meetingLink or email body onto the floor.
+        const score = e =>
+          (e.meetingLink ? 4 : 0) + (e.body ? 2 : 0) + (e.from ? 1 : 0) +
+          (e.gmailId || e.gmailIds ? 1 : 0) + (e.note || '').length / 1000
+        const primary = members.reduce((a, b) => (score(b) > score(a) ? b : a))
+        const note = dedupeNoteParts(members.map(m => m.note))
         // Reuse the primary object when nothing changed to avoid needless re-renders;
         // also cleans up previously-nested notes on single entries ("A | B | A" → "A | B").
-        if (cluster.length === 1 && note === (primary.note || '')) {
+        if (members.length === 1 && note === (primary.note || '')) {
           deduped.push(primary)
-        } else {
-          deduped.push({ ...primary, note })
+          continue
         }
+        // Union the gmailIds of every merged member so each "Open email" link is kept.
+        const ids = new Set([
+          ...(primary.gmailIds || (primary.gmailId ? [primary.gmailId] : [])),
+        ])
+        for (const m of members) {
+          if (m.gmailId) ids.add(m.gmailId)
+          for (const id of m.gmailIds || []) ids.add(id)
+        }
+        const merged = { ...primary, note }
+        if (ids.size > 1) { merged.gmailIds = [...ids]; delete merged.gmailId }
+        else if (ids.size === 1) { merged.gmailId = [...ids][0]; delete merged.gmailIds }
+        deduped.push(merged)
       }
     }
 

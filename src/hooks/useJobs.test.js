@@ -29,6 +29,7 @@ import {
   deriveStatusFromHistory,
   isDiscoverySeed,
   dropMisplacedSeeds,
+  deduplicateHistory,
 } from './useJobs'
 
 const daysAgo = n => new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString()
@@ -314,6 +315,51 @@ describe('dropMisplacedSeeds — timeline', () => {
       { date: '2026-08-05', status: 'reviewing', note: 'Relance' },
     ]
     expect(dropMisplacedSeeds(history)).toHaveLength(3)
+  })
+})
+
+describe('deduplicateHistory — same-day near-duplicate merge', () => {
+  it('merges two same-date, same-status entries that share a distinctive topic word', () => {
+    const job = { id: 'j1', history: [
+      { date: '2026-06-23', status: 'waiting', note: 'Email de relance envoyé à remi@publidata.io' },
+      { date: '2026-06-23', status: 'waiting', note: 'Relance candidature soumise il y a plusieurs semaines, en attente mise à jour', gmailId: 'g123' },
+    ] }
+    const [out] = deduplicateHistory([job])
+    expect(out.history).toHaveLength(1)
+    // The surviving entry keeps the gmailId so its "Open email" link is not lost.
+    expect(out.history[0].gmailId || out.history[0].gmailIds?.[0]).toBe('g123')
+    // Both notes are preserved in the merged note.
+    expect(out.history[0].note).toContain('Email de relance')
+    expect(out.history[0].note).toContain('Relance candidature soumise')
+  })
+
+  it('keeps two same-date, same-status entries that share no significant words', () => {
+    const job = { id: 'j2', history: [
+      { date: '2026-06-08', status: 'done', note: 'Préparation avant meeting — onepager du projet partagé' },
+      { date: '2026-06-08', status: 'done', note: 'Test produit en cours — améliorations à apporter, rendez-vous reporté au 10 juin' },
+    ] }
+    const [out] = deduplicateHistory([job])
+    expect(out.history).toHaveLength(2)
+  })
+
+  it('never merges same-date entries with different statuses', () => {
+    const job = { id: 'j3', history: [
+      { date: '2026-06-23', status: 'waiting', note: 'Relance envoyée au recruteur' },
+      { date: '2026-06-23', status: 'rejected', note: 'Relance sans réponse, candidature refusée' },
+    ] }
+    const [out] = deduplicateHistory([job])
+    expect(out.history).toHaveLength(2)
+  })
+
+  it('is idempotent — re-running on merged history is stable', () => {
+    const job = { id: 'j4', history: [
+      { date: '2026-06-23', status: 'waiting', note: 'Email de relance envoyé à remi@publidata.io' },
+      { date: '2026-06-23', status: 'waiting', note: 'Relance candidature soumise, en attente mise à jour', gmailId: 'g9' },
+    ] }
+    const once = deduplicateHistory([job])
+    const twice = deduplicateHistory(once)
+    expect(twice[0].history).toHaveLength(1)
+    expect(twice[0].history[0].note).toBe(once[0].history[0].note)
   })
 })
 
