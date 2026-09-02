@@ -15,7 +15,7 @@
 //
 // NOTE: this must always point at a version whose signed .xpi actually exists in
 // public/, otherwise the download 404s and "update" would loop forever.
-export const LATEST_EXTENSION_VERSION = '1.6.1'
+export const LATEST_EXTENSION_VERSION = '1.6.2'
 
 // Path (served from /public) of the signed .xpi users download to install/update.
 export const EXTENSION_XPI_PATH = `/jobtracker-addon-${LATEST_EXTENSION_VERSION}.xpi`
