@@ -327,6 +327,12 @@ export default function App() {
   const [showExtUpdate, setShowExtUpdate] = useState(false)
   const [settingsInitialTab, setSettingsInitialTab] = useState(null)
   const [tourActive, setTourActive] = useState(false)
+  // Once the tour has been completed (or skipped), we hide the "Take the tour"
+  // replay affordances. Tracked in React state (seeded from localStorage) so the
+  // buttons disappear the instant finishTour runs, not just on next reload.
+  const [tourDone, setTourDone] = useState(() => {
+    try { return !!localStorage.getItem(TOUR_DONE_KEY) } catch { return false }
+  })
   const tourAutoStartedRef = useRef(false)
 
   // Keep the experimental job-search flag live when toggled from Settings.
@@ -404,6 +410,7 @@ export default function App() {
   // Interactive guided tour controls.
   const finishTour = () => {
     localStorage.setItem(TOUR_DONE_KEY, '1')
+    setTourDone(true)
     setTourActive(false)
   }
   const startTour = () => {
@@ -1152,11 +1159,13 @@ export default function App() {
             <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>
             {gmailUser || gmailConnected ? t('nav.connected') : t('mobileMenu.connectGmail')}
           </button>
-          <button onClick={startTour}
-            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-            <span className="w-5 h-5 flex items-center justify-center">🧭</span>
-            {t('tour.replay')}
-          </button>
+          {!tourDone && (
+            <button onClick={startTour}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+              <span className="w-5 h-5 flex items-center justify-center">🧭</span>
+              {t('tour.replay')}
+            </button>
+          )}
           {session && (
             <button onClick={() => { setAccountSheet(false); supabase.auth.signOut() }}
               className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
@@ -1179,8 +1188,8 @@ export default function App() {
           showRefresh={!!(gmailUser || gmailConnected)}
           refreshing={refreshing}
           onRefresh={() => doRefresh(false)}
-          onAccount={() => goTab('settings')}
-          onTour={startTour}
+          onAccount={() => setShowGmail(true)}
+          onTour={tourDone ? undefined : startTour}
           extensionInstalled={extensionInstalled}
           extensionUpdateAvailable={extUpdate.updateAvailable}
           onExtensionUpdate={() => setShowExtUpdate(true)}
@@ -1257,13 +1266,15 @@ export default function App() {
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             {!IS_NATIVE && <ExtensionButton installed={extensionInstalled} updateAvailable={extUpdate.updateAvailable} onUpdate={() => setShowExtUpdate(true)} t={t} />}
 
-            {/* Replay the interactive tour */}
-            <button onClick={startTour} title={t('tour.replay')} aria-label={t('tour.replay')}
-              className="hidden sm:flex items-center justify-center w-8 h-8 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
+            {/* Replay the interactive tour — hidden once the tour is done */}
+            {!tourDone && (
+              <button onClick={startTour} title={t('tour.replay')} aria-label={t('tour.replay')}
+                className="hidden sm:flex items-center justify-center w-8 h-8 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+            )}
 
             {/* Refresh — desktop only (mobile is in drawer) */}
             {(gmailUser || gmailConnected) && (
