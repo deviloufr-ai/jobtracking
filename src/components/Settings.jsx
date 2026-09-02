@@ -17,6 +17,7 @@ import { THEMES } from '../utils/themes'
 import { getFlag, setFlag, FLAGS } from '../services/featureFlags'
 import { pushProfile, pushLocalPrefs, PROFILE_SYNCED_EVENT } from '../services/profileSync'
 import { runSyncDiagnostic } from '../services/syncDiagnostic'
+import { withUserApiKey } from '../services/apiKey'
 import { Capacitor } from '@capacitor/core'
 
 const PROFILE_KEY = 'jobtrackr_profile'
@@ -285,7 +286,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
       const res = await fetch('/api/extract-profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cvText: cv.text })
+        body: JSON.stringify(withUserApiKey({ cvText: cv.text }))
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error?.message || data.error || 'Extraction error')
