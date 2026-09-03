@@ -22,6 +22,7 @@ import MobileHome from '../MobileHome'
 import FocusBand from './FocusBand'
 import ListToolbar from './ListToolbar'
 import CandidatureDrawer from './CandidatureDrawer'
+import UpcomingMeetings from '../UpcomingMeetings'
 
 const PALETTE = ['#4f46e5', '#2563eb', '#0d9488', '#d97706', '#db2777', '#7c3aed', '#dc2626', '#059669']
 const colorFor = (s = '') => PALETTE[[...s].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETTE.length]
@@ -300,6 +301,15 @@ export default function TrackerHomeE({
           onDraftEmail={onDraftEmail}
           t={t}
         />
+      </div>
+
+      {/* Upcoming interviews / meetings from the connected Google Calendar(s).
+          Mounted here because the new layout dropped the legacy home's right
+          rail — without this, accepted interviews had nowhere to surface. The
+          widget self-hides (renders null) when there's nothing upcoming or no
+          calendar is connected, so the [&:empty]:hidden wrapper leaves no gap. */}
+      <div className="mb-4 [&:empty]:hidden">
+        <UpcomingMeetings jobs={jobs} t={t} />
       </div>
 
       <ListToolbar
