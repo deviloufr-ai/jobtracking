@@ -1185,6 +1185,7 @@ export default function App() {
           activeTab={activeTab}
           onNav={goTab}
           onAdd={() => setModal('add')}
+          jobs={jobs}
           gmailUser={gmailUser}
           account={railAccount}
           onAccount={() => setShowGmail(true)}

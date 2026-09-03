@@ -305,13 +305,10 @@ export default function TrackerHomeE({
       </div>
 
       {/* Upcoming interviews / meetings from the connected Google Calendar(s).
-          Mounted here because the new layout dropped the legacy home's right
-          rail — without this, accepted interviews had nowhere to surface. The
-          widget self-hides (renders null) when there's nothing upcoming or no
-          calendar is connected, so the [&:empty]:hidden wrapper leaves no gap.
-          Capped width (it was built for the legacy ~1/3 right rail): full-width
-          it became an oversized banner with a huge Join bar. */}
-      <div className="mb-4 max-w-xl [&:empty]:hidden">
+          Mobile only — on desktop this lives in the NavRail (RailMeetings), the
+          "left panel". Self-hides (renders null) when nothing's upcoming or no
+          calendar is connected, so the [&:empty]:hidden wrapper leaves no gap. */}
+      <div className="md:hidden mb-4 [&:empty]:hidden">
         <UpcomingMeetings jobs={jobs} t={t} />
       </div>
 

@@ -1,22 +1,4 @@
-import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
-import { fetchCalendarEvents, isCalendarConnected } from '../services/calendar'
-import { textMatchesCompany } from '../utils/companyMatch'
-
-// A calendar event is "job-related" if its title matches a tracked company
-// OR it looks like an interview/test/offer (type detected in calendar.js).
-// Returns the matched job (for position enrichment) or null.
-//
-// Matching is token-based (see companyMatch.js): a job named "Wivoo, a Wavestone
-// Company" matches an event titled "… premier échange Wivoo" on the shared
-// "Wivoo" token — plain full-string containment missed that link.
-function matchJob(event, activeJobs) {
-  for (const job of activeJobs) {
-    if (textMatchesCompany(event.title, job.company)) {
-      return job
-    }
-  }
-  return null
-}
+import { useUpcomingMeetings } from '../hooks/useUpcomingMeetings'
 
 function formatTime(rawStart) {
   if (!rawStart || rawStart.length === 10) return null // date-only, no time
@@ -74,94 +56,9 @@ function getMeetingPlatform(url = '') {
 }
 
 export default function UpcomingMeetings({ jobs, t = (key) => key }) {
-  const [rawEvents, setRawEvents] = useState([])
-  const [loading, setLoading] = useState(false)
+  const { meetings } = useUpcomingMeetings(jobs)
 
-  // Active jobs only — used to match calendar events to a tracked application
-  // (so we can show the company + position and filter out non-job events).
-  const activeJobs = useMemo(
-    () => jobs.filter(j => !['archived','rejected','rejected_ats','cancelled'].includes(j.status)),
-    [jobs]
-  )
-
-  // Fetch upcoming events straight from Google Calendar — reliable times, no
-  // dependency on Gmail-sync enrichment having run.
-  const lastLoad = useRef(0)
-  const load = useCallback(async () => {
-    if (!isCalendarConnected()) return
-    lastLoad.current = Date.now()
-    setLoading(true)
-    try {
-      const events = await fetchCalendarEvents('', 2) // ~2 months ahead
-      setRawEvents(events)
-    } catch {
-      setRawEvents([])
-    }
-    setLoading(false)
-  }, [])
-
-  // Load on mount, and refresh when the set of connected Google accounts
-  // changes (a newly-connected account may hold the interview) or when the tab
-  // regains focus (e.g. the user just accepted an invite in another tab) — the
-  // widget otherwise fetched only once, so a freshly-accepted invite stayed
-  // invisible until a full reload. Visibility reloads are throttled to 60s.
-  useEffect(() => {
-    load()
-    const onVisible = () => {
-      if (document.visibilityState === 'visible' && Date.now() - lastLoad.current > 60000) load()
-    }
-    window.addEventListener('jobtrackr:gmail-accounts-updated', load)
-    document.addEventListener('visibilitychange', onVisible)
-    return () => {
-      window.removeEventListener('jobtrackr:gmail-accounts-updated', load)
-      document.removeEventListener('visibilitychange', onVisible)
-    }
-  }, [load])
-
-  const meetings = useMemo(() => {
-    const today = new Date(); today.setHours(0, 0, 0, 0)
-    const in60 = new Date(today); in60.setDate(today.getDate() + 60)
-
-    const events = []
-    for (const e of rawEvents) {
-      if (!e.date) continue
-      const d = new Date(e.date); d.setHours(0, 0, 0, 0)
-      if (d < today || d > in60) continue
-
-      // "Only job-related": keep events that match a tracked company OR look
-      // like an interview/test/offer (type detected from the title).
-      const job = matchJob(e, activeJobs)
-      const isInterviewType = ['interview', 'test', 'offer'].includes(e.type)
-      if (!job && !isInterviewType) continue
-
-      events.push({
-        date: e.date,
-        rawStart: e.rawStart || null, // full datetime straight from the Calendar API
-        // When matched to a job, the company is the job's name, so the event
-        // title is the useful "what/who" detail. With no match, the title is
-        // already shown as the heading — surface the location instead.
-        note: job ? (e.title || '') : '',
-        company: job ? job.company : e.title,
-        position: job ? job.position : (e.location ? `📍 ${e.location}` : ''),
-        meetingLink: e.meetingLink,
-        source: 'calendar',
-        isUpcoming: e.isUpcoming,
-      })
-    }
-
-    // Sort by start time (nearest first), deduplicate by date+company+note
-    const seen = new Set()
-    return events
-      .sort((a, b) => new Date(a.rawStart || a.date) - new Date(b.rawStart || b.date))
-      .filter(e => {
-        const k = `${e.date}-${e.company}-${e.note}`
-        if (seen.has(k)) return false
-        seen.add(k)
-        return true
-      })
-  }, [rawEvents, activeJobs])
-
-  if (!isCalendarConnected() || meetings.length === 0) return null
+  if (meetings.length === 0) return null
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
