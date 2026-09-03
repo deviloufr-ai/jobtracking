@@ -1,5 +1,5 @@
 // Google Calendar service - reuses Gmail OAuth token (same scope request)
-import { getAccessToken, getConnectedAccounts } from './gmail'
+import { getAccessToken, getConnectedAccounts, ensureValidToken } from './gmail'
 import { distinctiveCompanyToken } from '../utils/companyMatch'
 
 function extractLink(text = '') {
@@ -72,14 +72,20 @@ async function fetchCalendarEventsForToken(token, companyName, monthsBack = 12) 
   } catch { return [] }
 }
 
-// Fetch from all connected accounts and merge (deduplicated by event id)
+// Fetch from all connected accounts and merge (deduplicated by event id).
+// IMPORTANT: use ensureValidToken (not the raw stored token) so an expired
+// access token is silently refreshed before the call. Without this the Calendar
+// API returns 401 and fetchCalendarEventsForToken swallows it as [] — so
+// calendar events (e.g. a scheduled interview) vanish ~1h after the last Gmail
+// sync even though the account is still "connected". Gmail fetches already
+// refresh; calendar must too.
 export async function fetchCalendarEvents(companyName, monthsBack = 12) {
   const accounts = getConnectedAccounts()
 
   if (accounts.length > 1) {
     const perAccount = await Promise.all(
-      accounts.map(acct => {
-        const token = getAccessToken(acct.email)
+      accounts.map(async acct => {
+        const token = await ensureValidToken(acct.email)
         return fetchCalendarEventsForToken(token, companyName, monthsBack)
       })
     )
@@ -94,7 +100,7 @@ export async function fetchCalendarEvents(companyName, monthsBack = 12) {
   }
 
   // Single account
-  const token = getAccessToken()
+  const token = await ensureValidToken()
   return fetchCalendarEventsForToken(token, companyName, monthsBack)
 }
 
