@@ -506,7 +506,7 @@ export default function JobCandidaturePanel({
                       onClick={() => onGenerateCoverLetter?.()}
                       className="flex-1 text-xs font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 px-3 py-2.5 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-sm"
                     >
-                      View Letter
+                      ✏️ Edit
                     </button>
                     <button
                       onClick={() => onGenerateCoverLetter?.()}
@@ -514,6 +514,12 @@ export default function JobCandidaturePanel({
                     >
                       Regenerate
                     </button>
+                  </div>
+                </div>
+                {/* Letter content shown inline in the tab (mirrors the embedded CV viewer above) */}
+                <div className="border border-gray-300 rounded-lg overflow-auto bg-white p-6" style={{ height: '750px' }}>
+                  <div className="prose prose-sm max-w-none whitespace-pre-wrap text-gray-700 leading-relaxed">
+                    {job.letterSaved.content}
                   </div>
                 </div>
               </>

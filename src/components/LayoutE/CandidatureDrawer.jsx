@@ -368,9 +368,33 @@ export default function CandidatureDrawer({
         )}
 
         {tab === 'letter' && (
-          <div className="text-center py-10">
-            <p className="text-sm text-gray-500 mb-4">{job.letterSaved ? 'Cover letter saved for this application.' : 'No cover letter yet.'}</p>
-            <button className={btnP} onClick={() => setShowLetter(true)}>{job.letterSaved ? 'Edit cover letter' : 'Generate cover letter'}</button>
+          <div className="space-y-4">
+            {job.letterSaved ? (
+              // Show the saved letter INLINE (mirrors the CV tab); the Edit /
+              // Regenerate buttons open the full generator modal.
+              <>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-gray-900">Cover letter</div>
+                    <div className="text-xs text-gray-400">{job.letterSaved.savedAt ? new Date(job.letterSaved.savedAt).toLocaleDateString() : ''}</div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button className={btnP} onClick={() => setShowLetter(true)}>✏️ Edit</button>
+                    <button className={btn} onClick={() => setShowLetter(true)}>↻ Regenerate</button>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-white overflow-auto p-6" style={{ height: 700 }}>
+                  <div className="prose prose-sm max-w-none whitespace-pre-wrap text-gray-700 leading-relaxed">
+                    {job.letterSaved.content}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-10">
+                <p className="text-sm text-gray-500 mb-4">No cover letter yet — generate one tailored to this application.</p>
+                <button className={btnP} onClick={() => setShowLetter(true)}>✍️ Generate cover letter</button>
+              </div>
+            )}
           </div>
         )}
 
