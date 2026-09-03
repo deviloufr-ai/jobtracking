@@ -19,6 +19,7 @@ import { isNoReply } from '../EmailDraft'
 import { getCompanyAddress, setCompanyAddress } from '../../services/commuteStore'
 import { searchCompanyAddress } from '../../services/googlePlaces'
 import { noteLines } from '../../utils/noteFormat'
+import { isCalendarConnected } from '../../services/calendar'
 
 const PALETTE = ['#4f46e5', '#2563eb', '#0d9488', '#d97706', '#db2777', '#7c3aed', '#dc2626', '#059669']
 const colorFor = (s = '') => PALETTE[[...s].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETTE.length]
@@ -100,6 +101,12 @@ export default function CandidatureDrawer({
   const appliedDate = appliedEntry?.date || job.date
   const jdHref = job.url ? (/^https?:\/\//i.test(job.url) ? job.url : `https://${job.url}`) : null
   const hasJobDetails = !!(job.jobDescription || job.url || (job.notes && job.notes.trim()))
+  // "Interview stage but no calendar event linked" — surfaces when the
+  // candidature is at the interview step yet no accepted Google Calendar event
+  // (with its date/time + join link) has attached to the timeline. Gated on a
+  // connected calendar, so we could actually have found and linked one.
+  const hasLinkedMeeting = history.some(h => h.meetingLink || h.source === 'calendar')
+  const invitePending = displayStatus === 'interview' && !hasLinkedMeeting && isCalendarConnected()
 
   const recruiterContact = (() => {
     for (const h of history) {
@@ -280,6 +287,18 @@ export default function CandidatureDrawer({
             {companyAddr && homeAddress && (
               <div className="mb-6 pt-3 border-t border-gray-100">
                 <CommuteInfo homeAddress={homeAddress} companyAddress={companyAddr} companyName={job.company} />
+              </div>
+            )}
+
+            {invitePending && (
+              <div className="mb-6 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3">
+                <span className="text-base leading-none mt-0.5" aria-hidden>📅</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-amber-800">{t('candidature.invitePendingTitle') || 'No calendar event linked to this interview yet'}</p>
+                  <p className="text-xs text-amber-700/90 mt-0.5 leading-relaxed">
+                    {t('candidature.invitePendingBody') || 'If a video interview is scheduled, make sure the invitation is accepted in your Google Calendar — once accepted, the meeting (date, time & join link) attaches here automatically on the next sync.'}
+                  </p>
+                </div>
               </div>
             )}
 

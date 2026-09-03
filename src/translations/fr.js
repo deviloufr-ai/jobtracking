@@ -65,6 +65,8 @@ export const fr = {
     apply: 'Postuler',
     viewOffer: 'Voir la description du poste',
     open: 'Ouvrir la candidature',
+    invitePendingTitle: 'Aucun évènement d\'agenda lié à cet entretien',
+    invitePendingBody: 'Si un entretien visio est prévu, vérifiez que l\'invitation est bien acceptée dans votre Google Agenda — une fois acceptée, le rendez-vous (date, heure et lien de connexion) se rattache ici automatiquement à la prochaine synchro.',
   },
   // Navigation & Tabs
   nav: {

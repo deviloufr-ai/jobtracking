@@ -65,6 +65,8 @@ export const en = {
     apply: 'Apply',
     viewOffer: 'See job description',
     open: 'Open candidature',
+    invitePendingTitle: 'No calendar event linked to this interview yet',
+    invitePendingBody: 'If a video interview is scheduled, make sure the invitation is accepted in your Google Calendar — once accepted, the meeting (date, time & join link) attaches here automatically on the next sync.',
   },
   // Navigation & Tabs
   nav: {

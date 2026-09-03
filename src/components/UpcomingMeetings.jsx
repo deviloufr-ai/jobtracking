@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { fetchCalendarEvents, isCalendarConnected } from '../services/calendar'
 import { textMatchesCompany } from '../utils/companyMatch'
 
@@ -86,8 +86,10 @@ export default function UpcomingMeetings({ jobs, t = (key) => key }) {
 
   // Fetch upcoming events straight from Google Calendar — reliable times, no
   // dependency on Gmail-sync enrichment having run.
+  const lastLoad = useRef(0)
   const load = useCallback(async () => {
     if (!isCalendarConnected()) return
+    lastLoad.current = Date.now()
     setLoading(true)
     try {
       const events = await fetchCalendarEvents('', 2) // ~2 months ahead
@@ -98,7 +100,23 @@ export default function UpcomingMeetings({ jobs, t = (key) => key }) {
     setLoading(false)
   }, [])
 
-  useEffect(() => { load() }, [load])
+  // Load on mount, and refresh when the set of connected Google accounts
+  // changes (a newly-connected account may hold the interview) or when the tab
+  // regains focus (e.g. the user just accepted an invite in another tab) — the
+  // widget otherwise fetched only once, so a freshly-accepted invite stayed
+  // invisible until a full reload. Visibility reloads are throttled to 60s.
+  useEffect(() => {
+    load()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastLoad.current > 60000) load()
+    }
+    window.addEventListener('jobtrackr:gmail-accounts-updated', load)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener('jobtrackr:gmail-accounts-updated', load)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [load])
 
   const meetings = useMemo(() => {
     const today = new Date(); today.setHours(0, 0, 0, 0)
