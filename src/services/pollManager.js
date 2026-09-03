@@ -194,6 +194,19 @@ class PollManager {
         const localSettings = await indexeddb.getSettings()
         const merged = this.mergeSettings(localSettings, settingsInCamel)
         await indexeddb.saveSettings(merged)
+        // Also mirror to localStorage (the store `loadSettings()` reads for the
+        // automation rules) and notify open hooks, so a settings change made on
+        // another device takes effect LIVE — without a page reload. Previously the
+        // poll wrote only IndexedDB, leaving the Settings UI and automation logic
+        // stale until the tab was reloaded. Guarded on an actual diff to avoid a
+        // needless re-render every poll cycle.
+        try {
+          const mergedStr = JSON.stringify(merged)
+          if (localStorage.getItem('jobtrackr_settings') !== mergedStr) {
+            localStorage.setItem('jobtrackr_settings', mergedStr)
+            window.dispatchEvent(new CustomEvent('jobtrackr-settings-changed', { detail: merged }))
+          }
+        } catch {}
       }
 
       if (cvs && cvs.length > 0) {

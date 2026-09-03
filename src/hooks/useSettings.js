@@ -66,6 +66,19 @@ export function useSettings() {
     loadSettingsAsync()
   }, [])
 
+  // Refresh in-memory settings when they change underneath us — either a local
+  // edit (saveSettingsLocal) or a remote change pulled by the poll (pollManager
+  // mirrors the merged row to localStorage and fires this same event). Without
+  // this, a setting changed on another device only appeared after a page reload.
+  useEffect(() => {
+    const onExternalChange = (e) => {
+      const next = e?.detail
+      if (next && typeof next === 'object') setSettings({ ...SETTINGS_DEFAULTS, ...next })
+    }
+    window.addEventListener('jobtrackr-settings-changed', onExternalChange)
+    return () => window.removeEventListener('jobtrackr-settings-changed', onExternalChange)
+  }, [])
+
   const updateSetting = useCallback((key, value) => {
     setSettings(prev => {
       const next = { ...prev, [key]: value }

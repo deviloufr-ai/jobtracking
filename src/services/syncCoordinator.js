@@ -14,6 +14,7 @@ class SyncCoordinator {
     this.pollTimer = null
     this.isPolling = false
     this.listeners = []
+    this.lastPollAt = 0 // epoch ms of the last poll (interval or on-focus)
 
     // Bind handlers so we can remove them later
     this.handleOnlineBinding = () => this.handleOnline()
@@ -21,10 +22,21 @@ class SyncCoordinator {
     this.handleDatasyncBinding = () => {
       this.notifyListeners({ status: 'synced', timestamp: new Date() })
     }
+    // Poll as soon as the tab regains focus, so a change made on another device
+    // shows up when the user switches back here instead of waiting out the 5-min
+    // timer. Throttled so rapid tab-switching can't spam Supabase.
+    this.handleVisibilityBinding = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+      if (!this.isPolling) return // not initialized yet
+      if (Date.now() - this.lastPollAt < 30000) return // polled <30s ago
+      this.doPoll()
+    }
 
     // Listen to online/offline events
     window.addEventListener('online', this.handleOnlineBinding)
     window.addEventListener('offline', this.handleOfflineBinding)
+    window.addEventListener('visibilitychange', this.handleVisibilityBinding)
+    window.addEventListener('focus', this.handleVisibilityBinding)
 
     // Listen to datasync events from pollManager
     window.addEventListener('jobtrackr:datasync', this.handleDatasyncBinding)
@@ -109,6 +121,8 @@ class SyncCoordinator {
     // Remove event listeners to prevent memory leaks
     window.removeEventListener('online', this.handleOnlineBinding)
     window.removeEventListener('offline', this.handleOfflineBinding)
+    window.removeEventListener('visibilitychange', this.handleVisibilityBinding)
+    window.removeEventListener('focus', this.handleVisibilityBinding)
     window.removeEventListener('jobtrackr:datasync', this.handleDatasyncBinding)
   }
 
@@ -134,6 +148,7 @@ class SyncCoordinator {
       return
     }
 
+    this.lastPollAt = Date.now()
     return pollManager.poll(this.userId, options)
   }
 
