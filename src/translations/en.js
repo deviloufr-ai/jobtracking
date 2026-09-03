@@ -64,6 +64,7 @@ export const en = {
   candidature: {
     apply: 'Apply',
     viewOffer: 'See job description',
+    open: 'Open candidature',
   },
   // Navigation & Tabs
   nav: {

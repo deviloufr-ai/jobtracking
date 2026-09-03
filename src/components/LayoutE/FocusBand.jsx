@@ -72,30 +72,48 @@ export default function FocusBand({ jobs = [], userName, onOpenJob, onGenerateCV
               <p className="text-sm font-semibold text-gray-800 leading-snug">{rule.label(job)}</p>
               <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{rule.tip(job)}</p>
             </div>
-            {rule.type === 'cv' && onGenerateCV && (
-              <button
-                onClick={e => { e.stopPropagation(); onGenerateCV(job) }}
-                className="self-start text-xs font-semibold bg-violet-500 text-white px-3 py-1.5 rounded-lg hover:bg-violet-600 transition-colors"
-              >
-                {rule.cta}
-              </button>
-            )}
-            {rule.type === 'prep' && !rule.label(job).toLowerCase().includes('test') && onSTAR && (
-              <button
-                onClick={e => { e.stopPropagation(); onSTAR(job) }}
-                className="self-start text-xs font-semibold bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600 transition-colors"
-              >
-                STAR ✦
-              </button>
-            )}
-            {rule.emailType && onDraftEmail && (
-              <button
-                onClick={e => { e.stopPropagation(); onDraftEmail(job, rule.emailType) }}
-                className={`self-start text-xs font-semibold text-white px-3 py-1.5 rounded-lg transition-colors ${rule.emailType === 'remerciement' ? 'bg-pink-500 hover:bg-pink-600' : 'bg-blue-500 hover:bg-blue-600'}`}
-              >
-                {rule.cta} ✦
-              </button>
-            )}
+            {/* Footer — the suggested next-step action (left) plus a dedicated
+                control to open the candidature (right). The whole card still runs
+                the action on click (see runAction); this open button is the
+                explicit escape hatch to the detail drawer. */}
+            <div className="mt-auto flex items-center justify-between gap-2 pt-0.5">
+              <div className="min-w-0">
+                {rule.type === 'cv' && onGenerateCV && (
+                  <button
+                    onClick={e => { e.stopPropagation(); onGenerateCV(job) }}
+                    className="text-xs font-semibold bg-violet-500 text-white px-3 py-1.5 rounded-lg hover:bg-violet-600 transition-colors"
+                  >
+                    {rule.cta}
+                  </button>
+                )}
+                {rule.type === 'prep' && !rule.label(job).toLowerCase().includes('test') && onSTAR && (
+                  <button
+                    onClick={e => { e.stopPropagation(); onSTAR(job) }}
+                    className="text-xs font-semibold bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600 transition-colors"
+                  >
+                    STAR ✦
+                  </button>
+                )}
+                {rule.emailType && onDraftEmail && (
+                  <button
+                    onClick={e => { e.stopPropagation(); onDraftEmail(job, rule.emailType) }}
+                    className={`text-xs font-semibold text-white px-3 py-1.5 rounded-lg transition-colors ${rule.emailType === 'remerciement' ? 'bg-pink-500 hover:bg-pink-600' : 'bg-blue-500 hover:bg-blue-600'}`}
+                  >
+                    {rule.cta || t('nextActionRules.draftEmail')} ✦
+                  </button>
+                )}
+              </div>
+              {onOpenJob && (
+                <button
+                  onClick={e => { e.stopPropagation(); onOpenJob(job) }}
+                  className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-indigo-600 transition-colors"
+                  title={t('candidature.open')}
+                  aria-label={t('candidature.open')}
+                >
+                  {t('candidature.open')} <span aria-hidden>↗</span>
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>

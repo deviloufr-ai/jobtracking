@@ -64,6 +64,7 @@ export const fr = {
   candidature: {
     apply: 'Postuler',
     viewOffer: 'Voir la description du poste',
+    open: 'Ouvrir la candidature',
   },
   // Navigation & Tabs
   nav: {
