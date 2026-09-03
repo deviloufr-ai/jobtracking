@@ -7,7 +7,7 @@ import { historyEntryKey } from '../hooks/useJobs'
 // jsonb blob so generated CVs, cover letters, scores and interview data sync
 // across devices. Requires migration 007 (jobs.extras jsonb).
 const EXTRA_FIELDS = [
-  'cvSaved', 'letterSaved',
+  'cvSaved', 'letterSaved', 'starSaved',
   'score', 'scoreDetails', 'scoreSignature',
   'interviewSessions', 'useCase',
   'salaryMin', 'salaryMax', 'location', 'companyAddress', 'companyFromAts',

@@ -29,11 +29,64 @@ const nowStep = (status) => {
   const n = new Date()
   return { status, note: '', date: n.toISOString().split('T')[0], time: `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}` }
 }
-const TABS = [['overview', 'Overview'], ['cv', 'CV'], ['letter', 'Cover letter'], ['interview', 'Interview']]
+const TABS = [['overview', 'Overview'], ['cv', 'CV'], ['letter', 'Cover letter'], ['star', 'STAR'], ['interview', 'Interview']]
 
 const btn = 'inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-xl border border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50 transition-colors'
 const btnP = 'inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:brightness-105 transition'
 const iconBtn = 'w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-colors'
+
+const decisionLabel = (d) => d === 'Yes' ? '✅ Move forward' : d === 'No' ? '❌ Not ready' : '⏳ On the fence'
+const decisionColor = (d) => d === 'Yes' ? 'text-green-700' : d === 'No' ? 'text-red-700' : 'text-orange-700'
+
+// Renders one mock-interview session's recruiter feedback inline (same layout as
+// the live MockInterviewChatbot result). `session.feedback` holds the AI analysis
+// { score, hire_decision, strengths[], concerns[], weak_example, better_answer } or
+// { raw } when the model didn't return clean JSON.
+function InterviewFeedback({ session }) {
+  const fb = session?.feedback || {}
+  const score = fb.score ?? session?.score
+  const decision = fb.hire_decision || session?.hire_decision
+  const hasDetail = fb.strengths || fb.concerns || fb.weak_example || fb.better_answer || fb.raw
+  return (
+    <div className="space-y-3">
+      <div className="text-center">
+        <div className="text-5xl font-bold text-indigo-600">{score ?? '—'}</div>
+        <p className="text-xs text-gray-500">Recruiter score</p>
+        {decision && <p className={`text-xs font-bold mt-1 ${decisionColor(decision)}`}>{decisionLabel(decision)}</p>}
+      </div>
+      {fb.strengths && (
+        <div>
+          <p className="text-xs font-bold text-green-700 mb-1">✅ What impressed</p>
+          <ul className="text-xs text-gray-700 space-y-1">
+            {(Array.isArray(fb.strengths) ? fb.strengths : [fb.strengths]).map((s, i) => <li key={i}>• {s}</li>)}
+          </ul>
+        </div>
+      )}
+      {fb.concerns && (
+        <div>
+          <p className="text-xs font-bold text-red-700 mb-1">⚠️ Concerns</p>
+          <ul className="text-xs text-gray-700 space-y-1">
+            {(Array.isArray(fb.concerns) ? fb.concerns : [fb.concerns]).map((c, i) => <li key={i}>• {c}</li>)}
+          </ul>
+        </div>
+      )}
+      {fb.weak_example && (
+        <div>
+          <p className="text-xs font-bold text-orange-700 mb-1">📍 Weak moment</p>
+          <p className="text-xs text-gray-700 italic">&ldquo;{fb.weak_example}&rdquo;</p>
+        </div>
+      )}
+      {fb.better_answer && (
+        <div>
+          <p className="text-xs font-bold text-blue-700 mb-1">💡 Better way to say it</p>
+          <p className="text-xs text-gray-700">{fb.better_answer}</p>
+        </div>
+      )}
+      {fb.raw && <p className="text-xs text-gray-600 whitespace-pre-wrap">{fb.raw}</p>}
+      {!hasDetail && <p className="text-xs text-gray-400 text-center">No detailed feedback saved for this session.</p>}
+    </div>
+  )
+}
 
 export default function CandidatureDrawer({
   job, onClose, onEdit, onDelete, onUpdateJob, onAddStep, onUpdateHistory,
@@ -62,6 +115,8 @@ export default function CandidatureDrawer({
   const [tab, setTab] = useState('overview')
   const [showLetter, setShowLetter] = useState(false)
   const [showMock, setShowMock] = useState(false)
+  const [sessionIdx, setSessionIdx] = useState(null)   // which interview session is shown inline (null = latest)
+  const [showTranscript, setShowTranscript] = useState(false)
   const [showScore, setShowScore] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [step, setStep] = useState(() => nowStep(displayStatus))
@@ -398,28 +453,103 @@ export default function CandidatureDrawer({
           </div>
         )}
 
-        {tab === 'interview' && (
-          <div className="space-y-5">
-            <div className="text-center py-6">
-              <p className="text-sm text-gray-500 mb-4">Practice with an AI mock interview (voice).</p>
-              <button className={btnP} onClick={() => setShowMock(true)}>Start mock interview</button>
-            </div>
-            {job.interviewSessions?.length > 0 && (
-              <div>
-                <h4 className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Past sessions</h4>
-                <div className="space-y-2">
-                  {job.interviewSessions.map((s, i) => (
-                    <div key={i} className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-sm">
-                      <span className="font-bold text-gray-900">{s.score ?? '—'}</span>
-                      <span className="text-gray-500 flex-1 truncate">{s.hire_decision || ''}</span>
-                      <span className="text-xs text-gray-400">{shortDate(s.date)}</span>
+        {tab === 'star' && (() => {
+          const saved = job.starSaved
+          if (!saved?.stars?.length) {
+            return (
+              <div className="text-center py-10">
+                <p className="text-sm text-gray-500 mb-4">No STAR answers yet — generate a set tailored to this role, then save them here.</p>
+                <button className={btnP} onClick={() => onSTAR?.(job)}>🎯 Generate STAR answers</button>
+              </div>
+            )
+          }
+          const isEn = saved.lang === 'en'
+          return (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-gray-900">STAR answers</div>
+                  <div className="text-xs text-gray-400">{saved.savedAt ? new Date(saved.savedAt).toLocaleDateString() : ''}</div>
+                </div>
+                <button className={btnP} onClick={() => onSTAR?.(job)}>↻ Regenerate</button>
+              </div>
+              {/* Saved STAR answers shown inline (mirrors the CV / letter / interview tabs) */}
+              <div className="rounded-xl border border-gray-200 bg-white overflow-auto p-4 space-y-3" style={{ maxHeight: 700 }}>
+                {saved.stars.map((s, i) => (
+                  <div key={i} className="border border-gray-100 rounded-xl p-3">
+                    <p className="text-sm font-medium text-gray-800 mb-2">{i + 1}. {s.question}</p>
+                    <div className="space-y-1.5">
+                      {[['S', 'Situation', 'bg-blue-50 text-blue-700'], ['T', isEn ? 'Task' : 'Tâche', 'bg-violet-50 text-violet-700'], ['A', 'Action', 'bg-amber-50 text-amber-700'], ['R', isEn ? 'Result' : 'Résultat', 'bg-green-50 text-green-700']].map(([k, label, cls]) => (
+                        <div key={k} className="flex gap-2">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5 ${cls}`}>{label}</span>
+                          <p className="text-sm text-gray-700 leading-relaxed">{s[k]}</p>
+                        </div>
+                      ))}
                     </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
+
+        {tab === 'interview' && (() => {
+          const sessions = job.interviewSessions || []
+          if (sessions.length === 0) {
+            return (
+              <div className="text-center py-10">
+                <p className="text-sm text-gray-500 mb-4">Practice with an AI mock interview (voice), then review your results here.</p>
+                <button className={btnP} onClick={() => setShowMock(true)}>🎤 Start mock interview</button>
+              </div>
+            )
+          }
+          const activeIdx = (sessionIdx == null || sessionIdx >= sessions.length) ? sessions.length - 1 : sessionIdx
+          const active = sessions[activeIdx]
+          return (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-gray-900">Mock interview</div>
+                  <div className="text-xs text-gray-400">{active?.date ? new Date(active.date).toLocaleDateString() : ''}</div>
+                </div>
+                <button className={btnP} onClick={() => setShowMock(true)}>🎤 New interview</button>
+              </div>
+
+              {/* Session picker when there is more than one */}
+              {sessions.length > 1 && (
+                <div className="flex flex-wrap gap-2">
+                  {sessions.map((s, i) => (
+                    <button key={i} onClick={() => { setSessionIdx(i); setShowTranscript(false) }}
+                      className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${i === activeIdx ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                      {shortDate(s.date)} · {s.score ?? '—'}
+                    </button>
                   ))}
                 </div>
+              )}
+
+              {/* Selected session's feedback shown inline (mirrors the CV / letter tabs) */}
+              <div className="rounded-xl border border-gray-200 bg-white overflow-auto p-5" style={{ maxHeight: 700 }}>
+                <InterviewFeedback session={active} />
+                {Array.isArray(active?.transcript) && active.transcript.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <button className="text-xs font-semibold text-indigo-600 hover:underline" onClick={() => setShowTranscript(v => !v)}>
+                      {showTranscript ? 'Hide transcript' : `Show transcript (${active.transcript.length})`}
+                    </button>
+                    {showTranscript && (
+                      <div className="mt-3 space-y-2">
+                        {active.transcript.map((m, i) => (
+                          <div key={i} className={`text-xs rounded-lg px-3 py-2 ${m.role === 'interviewer' ? 'bg-gray-50 text-gray-700' : 'bg-indigo-50 text-gray-800'}`}>
+                            <span className="font-semibold">{m.role === 'interviewer' ? 'Interviewer' : 'You'}: </span>{m.text}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )
+        })()}
       </div>
 
       {/* ── Generator modals ──────────────────────────────────────────────── */}

@@ -46,14 +46,24 @@ export default function STARGenerator(props) {
   )
 }
 
-function STARGeneratorPanel({ job, onClose }) {
+function STARGeneratorPanel({ job, onClose, onSaveSTAR }) {
   const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 672 })
   const [stars, setStars] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(null)
   const [expanded, setExpanded] = useState(0)
+  const [savedOk, setSavedOk] = useState(false)
   const lang = detectLanguage(job)
+
+  // Persist the current STAR set onto the job so it appears in the candidature
+  // panel's STAR tab (mirrors how a generated CV / cover letter is saved).
+  function saveStars() {
+    if (!stars.length || !onSaveSTAR) return
+    onSaveSTAR(job.id, { starSaved: { stars, lang, savedAt: new Date().toISOString() } })
+    setSavedOk(true)
+    setTimeout(() => setSavedOk(false), 2500)
+  }
 
   useEffect(() => { generate() }, [])
 
@@ -186,6 +196,11 @@ Réponds UNIQUEMENT en JSON valide (sans backticks) :
             <p className="text-xs text-gray-400">{job.position} · {job.company}</p>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            {stars.length > 0 && onSaveSTAR && (
+              <button onClick={saveStars} className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-all ${savedOk ? 'bg-green-50 border-green-200 text-green-700' : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}>
+                {savedOk ? '✓ Enregistré' : '💾 Enregistrer'}
+              </button>
+            )}
             {stars.length > 0 && (
               <button onClick={copyAll} className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-all ${copied === 'all' ? 'bg-green-50 border-green-200 text-green-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
                 {copied === 'all' ? '✓ Copié' : '📋 Tout copier'}

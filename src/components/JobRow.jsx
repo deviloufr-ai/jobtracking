@@ -99,7 +99,7 @@ function getSourceLabel(entry, companyName, t) {
   return null
 }
 
-function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, onViewSavedCV, forceExpand, onForceExpandDone, checkAllPositions, t = (key) => key, isSelected = false, onSelect = null }) {
+function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHistory, onUpdateJob, onGenerateCV, onToggleFavorite, onViewSavedCV, onSTAR, forceExpand, onForceExpandDone, checkAllPositions, t = (key) => key, isSelected = false, onSelect = null }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
   const [showUseCase, setShowUseCase] = useState(false)
@@ -532,6 +532,7 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
                 addrError={addrError}
                 onStartMockInterview={() => setShowMockInterview(true)}
                 onGenerateCoverLetter={() => setShowMotivationLetter(true)}
+                onGenerateSTAR={onSTAR ? () => onSTAR(job) : null}
                 CVViewerComponent={job.cvSaved ? <CVViewer job={job} onClose={() => {}} inline={true} onUpdate={onUpdateJob} t={t} /> : null}
                 t={t}
               />

@@ -47,6 +47,7 @@ export default function JobCandidaturePanel({
   addrError = null,
   onStartMockInterview = null,
   onGenerateCoverLetter = null,
+  onGenerateSTAR = null,
   CVViewerComponent = null,
 }) {
   const [activeTab, setActiveTab] = useState('overview')
@@ -91,6 +92,7 @@ export default function JobCandidaturePanel({
     { id: 'overview', label: 'Overview', icon: '📋' },
     { id: 'cv', label: 'CV', icon: '📄' },
     { id: 'letter', label: 'Cover Letter', icon: '✍️' },
+    { id: 'star', label: 'STAR', icon: '🎯' },
     { id: 'interview', label: 'Interview', icon: '🎤' },
   ]
 
@@ -538,6 +540,51 @@ export default function JobCandidaturePanel({
         )}
 
         {/* Interview Tab */}
+        {activeTab === 'star' && (
+          <div className="space-y-4">
+            {job.starSaved?.stars?.length > 0 ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-800">🎯 STAR Answers</h4>
+                    {job.starSaved.savedAt && <p className="text-xs text-gray-400">{new Date(job.starSaved.savedAt).toLocaleDateString()}</p>}
+                  </div>
+                  {onGenerateSTAR && (
+                    <button onClick={onGenerateSTAR} className="text-xs font-semibold text-indigo-600 bg-white border border-indigo-300 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors">
+                      ↻ Regenerate
+                    </button>
+                  )}
+                </div>
+                {job.starSaved.stars.map((s, i) => {
+                  const isEn = job.starSaved.lang === 'en'
+                  return (
+                    <div key={i} className="border border-gray-200 rounded-lg p-3">
+                      <p className="text-sm font-medium text-gray-800 mb-2">{i + 1}. {s.question}</p>
+                      <div className="space-y-1.5">
+                        {[['S', 'Situation', 'bg-blue-50 text-blue-700'], ['T', isEn ? 'Task' : 'Tâche', 'bg-violet-50 text-violet-700'], ['A', 'Action', 'bg-amber-50 text-amber-700'], ['R', isEn ? 'Result' : 'Résultat', 'bg-green-50 text-green-700']].map(([k, label, cls]) => (
+                          <div key={k} className="flex gap-2">
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5 ${cls}`}>{label}</span>
+                            <p className="text-sm text-gray-700 leading-relaxed">{s[k]}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-sm text-gray-500 mb-6">No STAR answers saved yet for this application</p>
+                {onGenerateSTAR && (
+                  <button onClick={onGenerateSTAR} className="text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-violet-600 px-8 py-3 rounded-lg hover:brightness-105 transition-all duration-200 shadow-md">
+                    🎯 Generate STAR Answers
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === 'interview' && (
           <div className="space-y-4">
             {/* Past Sessions */}
@@ -576,6 +623,16 @@ export default function JobCandidaturePanel({
                     {session.feedback?.concerns && (
                       <p className="text-xs text-gray-600">
                         <strong className="text-red-700">Concerns:</strong> {Array.isArray(session.feedback.concerns) ? session.feedback.concerns.join('; ') : session.feedback.concerns}
+                      </p>
+                    )}
+                    {session.feedback?.weak_example && (
+                      <p className="text-xs text-gray-600 mt-1">
+                        <strong className="text-orange-700">Weak moment:</strong> <span className="italic">&ldquo;{session.feedback.weak_example}&rdquo;</span>
+                      </p>
+                    )}
+                    {session.feedback?.better_answer && (
+                      <p className="text-xs text-gray-600 mt-1">
+                        <strong className="text-blue-700">Better answer:</strong> {session.feedback.better_answer}
                       </p>
                     )}
                   </div>

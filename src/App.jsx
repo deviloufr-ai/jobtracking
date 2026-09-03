@@ -1632,7 +1632,7 @@ export default function App() {
                       </thead>
                       <tbody>
                         {filtered.filter(j => j.favorite).map(job => (
-                          <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} onViewSavedCV={handleViewSavedCV} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} checkAllPositions={checkAllPositions} t={t} isSelected={selectedJobIds.has(job.id)} onSelect={toggleJobSelection} />
+                          <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} onViewSavedCV={handleViewSavedCV} onSTAR={(j) => setStarJob(j)} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} checkAllPositions={checkAllPositions} t={t} isSelected={selectedJobIds.has(job.id)} onSelect={toggleJobSelection} />
                         ))}
                       </tbody>
                     </table>
@@ -1660,7 +1660,7 @@ export default function App() {
                     </thead>
                     <tbody>
                       {filtered.filter(j => !j.favorite).map(job => (
-                        <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} onViewSavedCV={handleViewSavedCV} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} checkAllPositions={checkAllPositions} t={t} isSelected={selectedJobIds.has(job.id)} onSelect={toggleJobSelection} />
+                        <JobRow key={job.id} job={job} onEdit={setModal} onDelete={setToDelete} onStatusChange={handleStatusChange} onAddStep={addHistoryEntry} onUpdateHistory={handleUpdateHistory} onUpdateJob={updateJob} onGenerateCV={handleGenerateCV} onToggleFavorite={toggleFavorite} onViewSavedCV={handleViewSavedCV} onSTAR={(j) => setStarJob(j)} forceExpand={expandedJobId === job.id} onForceExpandDone={() => setExpandedJobId(null)} checkAllPositions={checkAllPositions} t={t} isSelected={selectedJobIds.has(job.id)} onSelect={toggleJobSelection} />
                       ))}
                     </tbody>
                   </table>
@@ -1729,7 +1729,7 @@ export default function App() {
       {toDelete && <ConfirmDelete job={toDelete} onConfirm={handleDelete} onCancel={() => setToDelete(null)} t={t} />}
       {showGmail && <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={closeGmail} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u) }} existingJobs={jobs} t={t} />}
       {showImageImport && <ImageImport onImport={handleBulkImport} onClose={() => setShowImageImport(false)} existingJobs={jobs} />}
-      {starJob && <STARGenerator job={starJob} onClose={() => setStarJob(null)} />}
+      {starJob && <STARGenerator job={starJob} onClose={() => setStarJob(null)} onSaveSTAR={updateJob} />}
       {emailDraft && <EmailDraft job={emailDraft.job} type={emailDraft.type} onClose={() => setEmailDraft(null)} onEmailSent={handleEmailSent} />}
       {cvGenJob && (baseCV || cvGenEdit) && (
         <FloatingWindow
