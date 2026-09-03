@@ -662,6 +662,31 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                 <Row label={t('settingsAutomation.checkPositionAvailability')} hint={t('settingsAutomation.checkPositionAvailabilityHint')}>
                   <NumInput value={settings.checkPositionAfterDays} onChange={v => updateSetting('checkPositionAfterDays', v)} min={0} max={365} suffix="j" />
                 </Row>
+                <div className="flex justify-end mt-4">
+                  <button
+                    onClick={async () => {
+                      try {
+                        // Save settings to IndexedDB first
+                        await indexeddb.saveSettings(settings)
+                        console.log('✅ Automation settings saved locally')
+                        
+                        // Force immediate sync to remote (no debounce)
+                        const profile = loadLocalProfile() || {}
+                        await pushProfile(profile, true)  // true = force sync
+                        console.log('🔄 Automation settings synced to cloud')
+                        
+                        // Show success feedback
+                        alert(t('settingsAutomation.syncSuccess'))
+                      } catch (error) {
+                        console.error('❌ Sync failed:', error)
+                        alert(t('settingsAutomation.syncError'))
+                      }
+                    }}
+                    className="text-sm font-semibold px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all"
+                  >
+                    {t('settingsAutomation.saveAndSync')}
+                  </button>
+                </div>
               </Card>
             )}
 

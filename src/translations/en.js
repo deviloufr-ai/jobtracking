@@ -880,6 +880,9 @@ export const en = {
     gmailPeriodHint: 'How many days back to fetch emails',
     checkPositionAvailability: 'Check position availability',
     checkPositionAvailabilityHint: 'Auto-check if the posting is still open, this many days after applying (0 = off)',
+    saveAndSync: 'Save & Sync Settings',
+    syncSuccess: '✅ Automation settings saved and synced to cloud!',
+    syncError: '❌ Failed to sync automation settings. Please check your connection.',
   },
 
   // Settings - API Tab
