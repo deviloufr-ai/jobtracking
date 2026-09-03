@@ -17,6 +17,7 @@ import { THEMES } from '../utils/themes'
 import { getFlag, setFlag, FLAGS } from '../services/featureFlags'
 import { loadLocalProfile, pushProfile, pushLocalPrefs, PROFILE_SYNCED_EVENT } from '../services/profileSync'
 import { runSyncDiagnostic } from '../services/syncDiagnostic'
+import { runCalendarDiagnostic } from '../services/calendarDiagnostic'
 import { withUserApiKey } from '../services/apiKey'
 import { Capacitor } from '@capacitor/core'
 
@@ -151,6 +152,8 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
   const [crossDeleteDisabled, setCrossDeleteDisabled] = useState(() => getFlag(FLAGS.CROSS_DEVICE_DELETE_OFF))
   const [syncDiag, setSyncDiag] = useState(null)
   const [syncDiagLoading, setSyncDiagLoading] = useState(false)
+  const [calDiag, setCalDiag] = useState(null)
+  const [calDiagLoading, setCalDiagLoading] = useState(false)
 
   // Listen for theme changes
   useEffect(() => {
@@ -1125,6 +1128,41 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                     </button>
                     <pre className="text-xs leading-snug whitespace-pre-wrap break-words p-3 rounded-lg bg-gray-900 text-green-200 overflow-x-auto max-h-96 overflow-y-auto">
 {JSON.stringify(syncDiag, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </Card>
+
+              <Card title="📅 Diagnostic du calendrier" subtitle="Teste l'accès Google Calendar de CHAQUE compte connecté (60 j à venir). Montre le vrai code HTTP (401/403) que l'app masque, et si un entretien est bien sur l'agenda et accepté.">
+                <Row label="Lancer le test" hint="Pour chaque compte Google connecté : rafraîchit le token puis liste les évènements à venir avec leur statut de réponse (accepted / needsAction…).">
+                  <button
+                    onClick={async () => {
+                      setCalDiagLoading(true)
+                      setCalDiag(null)
+                      try {
+                        setCalDiag(await runCalendarDiagnostic())
+                      } catch (e) {
+                        setCalDiag({ error: String(e?.message || e) })
+                      } finally {
+                        setCalDiagLoading(false)
+                      }
+                    }}
+                    disabled={calDiagLoading}
+                    className="px-4 py-2 rounded-lg font-medium transition-all bg-indigo-500 text-white hover:bg-indigo-600 disabled:opacity-60"
+                  >
+                    {calDiagLoading ? '⏳ Test en cours…' : '📅 Tester le calendrier'}
+                  </button>
+                </Row>
+                {calDiag && (
+                  <div className="mt-2">
+                    <button
+                      onClick={() => { try { navigator.clipboard?.writeText(JSON.stringify(calDiag, null, 2)) } catch {} }}
+                      className="mb-2 px-3 py-1.5 rounded-md text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    >
+                      📋 Copier le résultat
+                    </button>
+                    <pre className="text-xs leading-snug whitespace-pre-wrap break-words p-3 rounded-lg bg-gray-900 text-green-200 overflow-x-auto max-h-96 overflow-y-auto">
+{JSON.stringify(calDiag, null, 2)}
                     </pre>
                   </div>
                 )}

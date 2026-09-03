@@ -104,7 +104,7 @@ export async function fetchCalendarEvents(companyName, monthsBack = 12) {
   return fetchCalendarEventsForToken(token, companyName, monthsBack)
 }
 
-function detectEventType(title) {
+export function detectEventType(title) {
   const t = title.toLowerCase()
   if (t.includes('entretien') || t.includes('entrevue') || t.includes('interview') ||
       t.includes('call') || t.includes('meeting') || t.includes('visio') ||
