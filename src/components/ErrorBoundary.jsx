@@ -4,6 +4,7 @@ export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props)
     this.state = { hasError: false, error: null }
+    this.reset = this.reset.bind(this)
   }
 
   static getDerivedStateFromError(error) {
@@ -14,8 +15,19 @@ export default class ErrorBoundary extends Component {
     console.error('Render error:', error, errorInfo)
   }
 
+  reset() {
+    this.setState({ hasError: false, error: null })
+  }
+
   render() {
     if (this.state.hasError) {
+      // Scoped fallback: render a local error UI (with retry) for just this subtree
+      // instead of the full-screen app crash. Used to isolate AI feature panels.
+      if (this.props.fallback) {
+        return typeof this.props.fallback === 'function'
+          ? this.props.fallback(this.state.error, this.reset)
+          : this.props.fallback
+      }
       return (
         <div className="min-h-screen bg-red-50 flex items-center justify-center p-6">
           <div className="max-w-md bg-white rounded-2xl border border-red-200 shadow-lg p-8 text-center">

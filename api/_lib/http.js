@@ -144,40 +144,53 @@ export async function enforceSharedKeyQuota(req, weight = 1) {
   const rowUrl = `${cfg.url}/rest/v1/shared_key_usage?ip=eq.${encodeURIComponent(ip)}`
 
   try {
-    // Read current usage for this IP.
-    const getRes = await fetch(`${rowUrl}&select=count,window_start`, { headers })
-    const rows = getRes.ok ? await getRes.json() : []
     const now = Date.now()
-    const existing = rows[0]
-    const windowExpired = existing && (now - new Date(existing.window_start).getTime() > windowMs)
+    // Compare-and-swap loop: read → check budget → conditional PATCH keyed on the
+    // exact count we read. If a concurrent request incremented in between, the PATCH
+    // matches 0 rows and we re-read + retry. Blind read-then-write let two parallel
+    // callers both read N and both write N+1, bypassing the per-IP cap.
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const getRes = await fetch(`${rowUrl}&select=count,window_start`, { headers })
+      const rows = getRes.ok ? await getRes.json() : []
+      const existing = rows[0]
+      const windowExpired = existing && (now - new Date(existing.window_start).getTime() > windowMs)
 
-    // New IP, or its window rolled over → start a fresh window at `weight`.
-    if (!existing || windowExpired) {
-      const body = JSON.stringify({ ip, count: weight, window_start: new Date(now).toISOString(), updated_at: new Date(now).toISOString() })
-      await fetch(`${cfg.url}/rest/v1/shared_key_usage`, {
-        method: 'POST',
-        headers: { ...headers, Prefer: 'resolution=merge-duplicates' },
-        body,
+      // New IP, or its window rolled over → start a fresh window at `weight`.
+      // merge-duplicates makes the insert idempotent under the ip unique constraint.
+      if (!existing || windowExpired) {
+        await fetch(`${cfg.url}/rest/v1/shared_key_usage`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify({ ip, count: weight, window_start: new Date(now).toISOString(), updated_at: new Date(now).toISOString() }),
+        })
+        return { ok: weight <= limit, used: weight, limit }
+      }
+
+      const current = existing.count
+      const next = current + weight
+      if (next > limit) {
+        return { ok: false, used: current, limit }
+      }
+
+      // Conditional increment: only applies if `count` is still what we read.
+      const patchRes = await fetch(`${rowUrl}&count=eq.${current}`, {
+        method: 'PATCH',
+        headers: { ...headers, Prefer: 'return=representation' },
+        body: JSON.stringify({ count: next, updated_at: new Date(now).toISOString() }),
       })
-      return { ok: weight <= limit, used: weight, limit }
+      const updated = patchRes.ok ? await patchRes.json() : []
+      if (updated.length > 0) return { ok: true, used: next, limit }
+      // Lost the race (another request incremented first) → re-read and retry.
     }
-
-    const next = existing.count + weight
-    if (next > limit) {
-      return { ok: false, used: existing.count, limit }
-    }
-
-    // Within budget → increment.
-    await fetch(rowUrl, {
-      method: 'PATCH',
-      headers: { ...headers, Prefer: 'return=minimal' },
-      body: JSON.stringify({ count: next, updated_at: new Date(now).toISOString() }),
-    })
-    return { ok: true, used: next, limit }
+    // Too contended to settle → best-effort in-memory cap rather than allow freely.
+    const { ok } = rateLimit({ key: `sharedtrial:${ip}`, limit, windowMs })
+    return { ok, used: ok ? 1 : limit, limit }
   } catch (err) {
-    // On any storage error, fail OPEN (don't block legitimate users) but log it.
-    console.error('shared-key quota check failed, allowing request:', err?.message)
-    return { ok: true, used: 0, limit }
+    // Storage error → fall back to the best-effort in-memory cap, NOT a blind allow
+    // (which would let anyone who can induce a storage error bypass the trial cap).
+    console.error('shared-key quota check failed, using in-memory fallback:', err?.message)
+    const { ok } = rateLimit({ key: `sharedtrial:${ip}`, limit, windowMs })
+    return { ok, used: ok ? 1 : limit, limit }
   }
 }
 
@@ -203,6 +216,26 @@ function isPrivateIp(ip) {
   return false
 }
 
+// Resolve a hostname (or literal IP) to its validated public addresses, throwing
+// if any maps to a private/loopback/metadata range. safeFetch pins the socket to
+// exactly these addresses, so the connection can't be re-resolved elsewhere.
+async function resolveSafeAddresses(host) {
+  if (net.isIP(host)) {
+    if (isPrivateIp(host)) throw new Error('URL resolves to a private address')
+    return [{ address: host, family: net.isIPv6(host) ? 6 : 4 }]
+  }
+  let addrs
+  try {
+    addrs = await dns.lookup(host, { all: true })
+  } catch {
+    throw new Error('Could not resolve URL host')
+  }
+  if (!addrs.length || addrs.some(a => isPrivateIp(a.address))) {
+    throw new Error('URL resolves to a private address')
+  }
+  return addrs
+}
+
 /**
  * SSRF guard for server-side fetches of user-supplied URLs. Throws an Error
  * with a user-safe message if the URL is not a public http(s) endpoint.
@@ -223,34 +256,47 @@ export async function assertSafeUrl(rawUrl) {
   if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.internal')) {
     throw new Error('URL host is not allowed')
   }
-  // If the host is a literal IP, check it directly.
-  if (net.isIP(host)) {
-    if (isPrivateIp(host)) throw new Error('URL resolves to a private address')
-    return url.toString()
-  }
-  // Resolve DNS and ensure no resolved address is private.
-  let addrs
-  try {
-    addrs = await dns.lookup(host, { all: true })
-  } catch {
-    throw new Error('Could not resolve URL host')
-  }
-  if (!addrs.length || addrs.some(a => isPrivateIp(a.address))) {
-    throw new Error('URL resolves to a private address')
-  }
+  await resolveSafeAddresses(host)
   return url.toString()
+}
+
+// undici (the engine behind Node's global fetch, and a transitive dep of cheerio)
+// exposes an Agent whose connect.lookup we can pin. Loaded lazily; if unavailable
+// we fall back to a plain validated fetch (no worse than before).
+let _agentLoader
+function loadUndiciAgent() {
+  if (!_agentLoader) _agentLoader = import('undici').then(m => m.Agent).catch(() => null)
+  return _agentLoader
 }
 
 /**
  * SSRF-safe fetch for user-supplied URLs. Follows redirects MANUALLY, running
- * assertSafeUrl on every hop, so a public URL can't 30x-redirect into a private
- * / metadata host (the bypass left open by fetch's default redirect:'follow').
- * Returns the final Response (with redirects already resolved).
+ * assertSafeUrl on every hop, AND pins each connection to the pre-validated IP so
+ * the socket can't be re-resolved to a private/metadata host between validation
+ * and connect (DNS-rebinding / TOCTOU). Returns the final Response.
  */
 export async function safeFetch(rawUrl, init = {}, { maxRedirects = 5 } = {}) {
   let current = await assertSafeUrl(rawUrl)
+  const Agent = await loadUndiciAgent()
   for (let i = 0; i <= maxRedirects; i++) {
-    const res = await fetch(current, { ...init, redirect: 'manual' })
+    const u = new URL(current)
+    // Validate + capture the addresses THIS hop resolves to, and hand only those to
+    // the connector, so undici connects to a checked IP rather than re-resolving.
+    const addresses = await resolveSafeAddresses(u.hostname)
+    let dispatcher
+    if (Agent) {
+      try {
+        dispatcher = new Agent({
+          connect: {
+            lookup: (_host, _opts, cb) =>
+              cb(null, addresses.map(a => ({ address: a.address, family: a.family }))),
+          },
+        })
+      } catch {
+        dispatcher = undefined
+      }
+    }
+    const res = await fetch(current, { ...init, redirect: 'manual', ...(dispatcher ? { dispatcher } : {}) })
     // Not a redirect → this is the final response.
     if (res.status < 300 || res.status >= 400) return res
     const location = res.headers.get('location')

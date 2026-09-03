@@ -175,7 +175,7 @@ Exemples CORRECTS (une entrée par date) :
 Réponds UNIQUEMENT avec un tableau JSON valide, sans texte avant ou après, sans backticks.
 
 Emails:
-\${emailsText}\``
+${emailsText}`
       }]
     }))
   })

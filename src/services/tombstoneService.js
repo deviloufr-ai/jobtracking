@@ -109,3 +109,90 @@ export async function clearRemoteTombstones(userId) {
   // Also drop any unconfirmed local pending tombstones.
   writePending([])
 }
+
+// ── History-ENTRY tombstones (migration 013) ────────────────────────────────
+// Entry-level analogue of the job tombstones above: propagates the deletion of a
+// single timeline entry across devices, so the additive poll merge can't re-admit
+// it. Composite key is `${jobId}::${entryKey}` (entryKey = canonical historyEntryKey).
+// Fully graceful: if `deleted_history_entries` doesn't exist yet, every remote op
+// no-ops and the deletion stays local-only (exactly the old behaviour).
+
+const HISTORY_PENDING_KEY = 'jobtrackr_pending_history_tombstones'
+
+function readHistoryPending() {
+  try {
+    const v = JSON.parse(localStorage.getItem(HISTORY_PENDING_KEY) || '[]')
+    return Array.isArray(v) ? v : []
+  } catch {
+    return []
+  }
+}
+function writeHistoryPending(keys) {
+  try { localStorage.setItem(HISTORY_PENDING_KEY, JSON.stringify([...new Set(keys)])) } catch {}
+}
+function addHistoryPending(compositeKey) {
+  if (!compositeKey) return
+  const keys = readHistoryPending()
+  if (!keys.includes(compositeKey)) { keys.push(compositeKey); writeHistoryPending(keys) }
+}
+function removeHistoryPending(doneKeys) {
+  if (!doneKeys.length) return
+  const done = new Set(doneKeys)
+  writeHistoryPending(readHistoryPending().filter(k => !done.has(k)))
+}
+
+function compositeToRow(userId, compositeKey) {
+  const sep = compositeKey.indexOf('::')
+  return { user_id: userId, job_id: compositeKey.slice(0, sep), entry_key: compositeKey.slice(sep + 2) }
+}
+
+// Best-effort upsert of a batch of composite `jobId::entryKey` tombstones. Returns
+// the composites successfully written (so the caller can clear them from pending).
+async function upsertHistoryTombstones(userId, compositeKeys) {
+  if (!userId || !compositeKeys.length || !isSupabaseConfigured()) return []
+  const rows = compositeKeys.map(k => compositeToRow(userId, k))
+  const { error } = await supabase
+    .from('deleted_history_entries')
+    .upsert(rows, { onConflict: 'user_id,job_id,entry_key', ignoreDuplicates: true })
+  if (error) {
+    console.warn('History-tombstone upsert failed (will retry):', error.message)
+    return []
+  }
+  return compositeKeys
+}
+
+// Record that a timeline entry was deleted, propagating it to the user's other
+// devices. Fire-and-forget: queues locally first, then attempts an immediate write.
+export async function enqueueHistoryTombstone(jobId, entryKey) {
+  if (!jobId || !entryKey) return
+  const composite = `${jobId}::${entryKey}`
+  addHistoryPending(composite)
+  try {
+    const userId = await resolveAuthUserId()
+    const done = await upsertHistoryTombstones(userId, [composite])
+    removeHistoryPending(done)
+  } catch (err) {
+    console.warn('enqueueHistoryTombstone deferred:', err?.message)
+  }
+}
+
+// Retry any history tombstones not yet confirmed remotely (offline/error backlog).
+export async function flushPendingHistoryTombstones(userId) {
+  const pending = readHistoryPending()
+  if (!pending.length) return
+  const done = await upsertHistoryTombstones(userId, pending)
+  removeHistoryPending(done)
+}
+
+// Fetch the user's history-entry tombstones. `since` (ISO) → incremental fetch.
+export async function fetchRemoteHistoryTombstones(userId, since) {
+  if (!userId || !isSupabaseConfigured()) return []
+  let query = supabase.from('deleted_history_entries').select('job_id, entry_key, deleted_at').eq('user_id', userId)
+  if (since) query = query.gt('deleted_at', since)
+  const { data, error } = await query
+  if (error) {
+    console.warn('History-tombstone fetch failed:', error.message)
+    return []
+  }
+  return data || []
+}

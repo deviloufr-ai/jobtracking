@@ -40,14 +40,7 @@ function stripHtml(html) {
 function detectAvailability(content) {
   const lower = content.toLowerCase()
 
-  // High-confidence CLOSED: an explicit "closed/filled/no longer accepting" phrase
-  // appears in the visible page text. Anything weaker is too risky — a wrong
-  // "closed" verdict auto-rejects the application (see checkPosition() in useJobs.js).
-  for (const indicator of CLOSED_INDICATORS) {
-    if (lower.includes(indicator)) {
-      return { available: false, reason: `Detected: "${indicator}"` }
-    }
-  }
+  const closedHit = CLOSED_INDICATORS.find(indicator => lower.includes(indicator))
 
   // Confirm OPEN only with clear apply/hiring cues (need at least 2 to avoid a
   // stray "apply" in boilerplate flipping the verdict).
@@ -55,6 +48,18 @@ function detectAvailability(content) {
   for (const indicator of OPEN_INDICATORS) {
     if (lower.includes(indicator)) openScore++
   }
+
+  if (closedHit) {
+    // A "closed/filled" phrase can appear incidentally — a footer, an FAQ, a cookie
+    // wall, or ANOTHER listing on a multi-role careers/ATS page. If the page ALSO
+    // shows strong apply/hiring cues, treat it as ambiguous rather than closed: a
+    // wrong "closed" verdict is destructive (it can auto-reject the application).
+    if (openScore >= 2) {
+      return { available: null, reason: `Ambiguous: "${closedHit}" but apply cues present` }
+    }
+    return { available: false, reason: `Detected: "${closedHit}"` }
+  }
+
   if (openScore >= 2) {
     return { available: true, reason: 'Found apply/career indicators' }
   }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import AIPanelBoundary from './AIPanelBoundary'
 import { resolveAutoLanguage, generateTailoredCV, suggestCvPoints } from '../services/cvGeneration'
 import { pushLocalPrefs, AUX_PREFS_SYNCED_EVENT } from '../services/profileSync'
 import CVSuggestions from './CVSuggestions'
@@ -445,7 +446,15 @@ export const BASE_PRINT_CSS = `
 `
 
 // ─────────────────────────────────────────────────────────────────────────────
-export default function CVGenerator({ cv, cvs = [], job, editSaved = false, onBack, onSaveCV, t = (key) => key }) {
+export default function CVGenerator(props) {
+  return (
+    <AIPanelBoundary label="Le générateur de CV" onClose={props.onBack}>
+      <CVGeneratorPanel {...props} />
+    </AIPanelBoundary>
+  )
+}
+
+function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSaveCV, t = (key) => key }) {
   // When opened to *edit* an already-generated CV (a candidature's saved CV),
   // seed straight into the preview with its markdown/template/score instead of
   // running the fetch→suggest→generate flow. The JD is primed in the background

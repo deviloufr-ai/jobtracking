@@ -4,7 +4,31 @@ import {
   SETTINGS_TO_SUPABASE,
   convertHistoryToSupabase,
   convertHistoryFromSupabase,
+  deserializeJobFields,
 } from './fieldConversion'
+
+describe('deserializeJobFields', () => {
+  it('parses camelCase positionLinks/positionChecks (the post-snakeToCamel poll path)', () => {
+    const out = deserializeJobFields({
+      id: 'j1',
+      positionLinks: '["https://a.com","https://b.com"]',
+      positionChecks: '{"https://a.com":{"available":true}}',
+    })
+    expect(out.positionLinks).toEqual(['https://a.com', 'https://b.com'])
+    expect(out.positionChecks).toEqual({ 'https://a.com': { available: true } })
+  })
+
+  it('still parses raw snake_case keys', () => {
+    const out = deserializeJobFields({ id: 'j1', position_links: '["x"]' })
+    expect(out.position_links).toEqual(['x'])
+  })
+
+  it('leaves already-parsed values and unknown fields untouched', () => {
+    const out = deserializeJobFields({ id: 'j1', positionLinks: ['x'], other: 'y' })
+    expect(out.positionLinks).toEqual(['x'])
+    expect(out.other).toBe('y')
+  })
+})
 
 describe('settingsToSupabaseRow', () => {
   it('maps camelCase settings to their existing snake_case columns', () => {

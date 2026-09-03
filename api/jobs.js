@@ -294,8 +294,11 @@ export default async function handler(req, res) {
       }
       url = `https://jsearch.io/api?${params}`
     } else if (provider === 'adzuna') {
-      const APP_ID = process.env.VITE_ADZUNA_APP_ID
-      const APP_KEY = process.env.VITE_ADZUNA_APP_KEY
+      const APP_ID = process.env.ADZUNA_APP_ID || process.env.VITE_ADZUNA_APP_ID
+      // Prefer a server-only ADZUNA_APP_KEY; fall back to the legacy VITE_ name so
+      // nothing breaks before the env var is renamed in Vercel. The client no longer
+      // references VITE_ADZUNA_APP_KEY, so the key is no longer shipped in the bundle.
+      const APP_KEY = process.env.ADZUNA_APP_KEY || process.env.VITE_ADZUNA_APP_KEY
 
       if (!APP_ID || !APP_KEY) {
         return res.status(500).json({ error: 'Adzuna API keys not configured' })

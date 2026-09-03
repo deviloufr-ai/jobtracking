@@ -6,8 +6,8 @@
 // ATS coverage, applied, emails) + recruiter contact + commute + a timeline with
 // per-step edit/delete + primary actions. CV / Cover letter / Interview keep the
 // real generators. Self-contained (classic JobRow/JobCandidaturePanel untouched).
-import { useState, Fragment } from 'react'
-import { STATUSES, getStatus, getStatusLabel } from '../../hooks/useJobs'
+import { useState, useEffect, useRef, Fragment } from 'react'
+import { STATUSES, getStatus, getStatusLabel, historyEntryKey } from '../../hooks/useJobs'
 import { gmailMessageUrl } from '../../services/gmail'
 import { scoreColorClasses, ScoreBreakdown } from '../ScoreJob'
 import CVViewer from '../CVViewer'
@@ -65,9 +65,11 @@ export default function CandidatureDrawer({
   const [showScore, setShowScore] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [step, setStep] = useState(() => nowStep(displayStatus))
-  const [editIdx, setEditIdx] = useState(null)   // display index being edited
+  const [editIdx, setEditIdx] = useState(null)   // historyEntryKey of the step being edited
   const [editForm, setEditForm] = useState({})
-  const [confirmDel, setConfirmDel] = useState(null)
+  const [confirmDel, setConfirmDel] = useState(null)  // historyEntryKey pending delete-confirm
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
   const [homeAddress] = useState(() => { try { return JSON.parse(localStorage.getItem('jobtrackr_profile') || '{}').homeAddress || '' } catch { return '' } })
   const [companyAddr, setCompanyAddr] = useState(() => getCompanyAddress(job.id) || job.companyAddress || '')
   const [fetchingAddr, setFetchingAddr] = useState(false)
@@ -79,17 +81,22 @@ export default function CandidatureDrawer({
     setStep(nowStep(job.status))
     setAddOpen(false)
   }
-  const toOriginal = (displayIdx) => history.length - 1 - displayIdx
-  const saveEdit = (displayIdx) => {
-    const idx = toOriginal(displayIdx)
+  // Resolve the underlying history index from a step's identity, so a background
+  // refresh that inserts/reorders entries mid-edit can't make save/delete land on
+  // the wrong step (the old code mapped a captured display index by position).
+  const findIdxByKey = (key) => history.findIndex(e => historyEntryKey(e) === key)
+  const saveEdit = () => {
+    const idx = findIdxByKey(editIdx)
+    if (idx < 0) { setEditIdx(null); setEditForm({}); return }  // step moved/removed under us — abort
     const merged = { ...history[idx], ...editForm }
     if (merged.status === 'interview' && new Date(merged.date) < new Date()) merged.status = 'done'
     const updated = [...history]; updated[idx] = merged
     onUpdateHistory?.(job.id, [...updated].sort((a, b) => new Date(a.date) - new Date(b.date)))
     setEditIdx(null); setEditForm({})
   }
-  const deleteStep = (displayIdx) => {
-    const idx = toOriginal(displayIdx)
+  const deleteStep = () => {
+    const idx = findIdxByKey(confirmDel)
+    if (idx < 0) { setConfirmDel(null); return }
     onUpdateHistory?.(job.id, history.filter((_, i) => i !== idx))
     setConfirmDel(null)
   }
@@ -97,9 +104,10 @@ export default function CandidatureDrawer({
     setFetchingAddr(true); setAddrError(null)
     try {
       const { address } = await searchCompanyAddress(job.company)
+      if (!mountedRef.current) return
       if (address) { setCompanyAddress(job.id, address); setCompanyAddr(address); onUpdateJob?.(job.id, { companyAddress: address }) }
       else setAddrError('Adresse introuvable')
-    } catch (e) { setAddrError(e.message || 'Échec de la recherche') } finally { setFetchingAddr(false) }
+    } catch (e) { if (mountedRef.current) setAddrError(e.message || 'Échec de la recherche') } finally { if (mountedRef.current) setFetchingAddr(false) }
   }
 
   return (
@@ -226,9 +234,10 @@ export default function CandidatureDrawer({
             ) : (
               <ul className="mb-2">
                 {[...history].reverse().map((h, i, arr) => {
-                  const editing = editIdx === i
+                  const entryKey = historyEntryKey(h)
+                  const editing = editIdx === entryKey
                   return (
-                    <li key={i} className="relative pl-6 pb-4 last:pb-0 group">
+                    <li key={entryKey || i} className="relative pl-6 pb-4 last:pb-0 group">
                       {i < arr.length - 1 && <span className="absolute left-[5px] top-3 bottom-0 w-px bg-gray-200" />}
                       <span className={`absolute left-0 top-1 w-3 h-3 rounded-full ring-4 ring-white ${getStatus(h.status)?.dot || 'bg-gray-400'}`} />
                       {editing ? (
@@ -241,7 +250,7 @@ export default function CandidatureDrawer({
                           </div>
                           <textarea value={editForm.note || ''} onChange={e => setEditForm({ ...editForm, note: e.target.value })} rows={2} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white resize-none" />
                           <div className="flex gap-2">
-                            <button onClick={() => saveEdit(i)} className={btnP}>Save</button>
+                            <button onClick={saveEdit} className={btnP}>Save</button>
                             <button onClick={() => { setEditIdx(null); setEditForm({}) }} className={btn}>Cancel</button>
                           </div>
                         </div>
@@ -251,8 +260,8 @@ export default function CandidatureDrawer({
                             <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full ${getStatus(h.status)?.color || 'bg-gray-100 text-gray-500'}`}>{getStatusLabel(h.status, t)}</span>
                             <span className="text-xs text-gray-400">{fullDate(h.date)}</span>
                             <div className="ml-auto flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => { setEditIdx(i); setEditForm({ status: h.status, date: h.date, note: h.note || '' }) }} aria-label="edit step" className={`${iconBtn} w-6 h-6`}>✎</button>
-                              <button onClick={() => setConfirmDel(i)} aria-label="delete step" className={`${iconBtn} w-6 h-6 hover:text-red-600`}>🗑</button>
+                              <button onClick={() => { setEditIdx(entryKey); setEditForm({ status: h.status, date: h.date, note: h.note || '' }) }} aria-label="edit step" className={`${iconBtn} w-6 h-6`}>✎</button>
+                              <button onClick={() => setConfirmDel(entryKey)} aria-label="delete step" className={`${iconBtn} w-6 h-6 hover:text-red-600`}>🗑</button>
                             </div>
                           </div>
                           {h.note && (() => {
@@ -283,10 +292,10 @@ export default function CandidatureDrawer({
                               </a>
                             )
                           })()}
-                          {confirmDel === i && (
+                          {confirmDel === entryKey && (
                             <div className="flex items-center gap-2 mt-2 text-xs">
                               <span className="text-gray-500">Delete this step?</span>
-                              <button onClick={() => deleteStep(i)} className="font-semibold text-red-600 hover:underline">Delete</button>
+                              <button onClick={deleteStep} className="font-semibold text-red-600 hover:underline">Delete</button>
                               <button onClick={() => setConfirmDel(null)} className="text-gray-400 hover:underline">Cancel</button>
                             </div>
                           )}
@@ -397,7 +406,9 @@ export default function CandidatureDrawer({
         <MockInterviewChatbot job={job} cv={job.cvSaved?.markdown || ''} onClose={() => setShowMock(false)}
           onInterviewComplete={(result) => {
             const session = { type: 'interview', date: new Date().toISOString(), score: result.score, hire_decision: result.hire_decision, feedback: result.feedback, transcript: result.transcript }
-            onUpdateJob?.({ ...job, interviewSessions: [...(job.interviewSessions || []), session], updated_at: new Date().toISOString() })
+            // onUpdateJob is updateJob(id, data) — pass id + patch, not a whole job object,
+            // or jobs.find(id) never matches and the session is silently discarded.
+            onUpdateJob?.(job.id, { interviewSessions: [...(job.interviewSessions || []), session], updated_at: new Date().toISOString() })
             setShowMock(false)
           }} />
       )}

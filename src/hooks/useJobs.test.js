@@ -30,6 +30,7 @@ import {
   isDiscoverySeed,
   dropMisplacedSeeds,
   deduplicateHistory,
+  reconcileExactDuplicateJobs,
 } from './useJobs'
 
 const daysAgo = n => new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString()
@@ -447,5 +448,37 @@ describe('partitionJobsByTombstones (cross-device deletion consumer)', () => {
   it('tolerates empty/missing job lists', () => {
     expect(partitionJobsByTombstones([], ['a'])).toEqual({ kept: [], removed: [] })
     expect(partitionJobsByTombstones(undefined, ['a'])).toEqual({ kept: [], removed: [] })
+  })
+})
+
+describe('reconcileExactDuplicateJobs — timer-safe dedup never deletes distinct roles', () => {
+  // The automatic post-sync reconcile must only fold EXACT duplicates (same
+  // company + position + date + status). It must never fuzzy-merge (and thus
+  // hard-delete + tombstone) genuinely distinct rows, which is unrecoverable.
+  it('keeps two distinct roles at one employer (a fuzzy family/prefix match)', () => {
+    const jobs = [
+      { id: 'a', company: 'Acme', position: 'Product Manager', date: '2026-01-01', status: 'sent', history: [] },
+      { id: 'b', company: 'Acme', position: 'Product Manager Web', date: '2026-01-01', status: 'sent', history: [] },
+    ]
+    const out = reconcileExactDuplicateJobs(jobs)
+    expect(out.map(j => j.id).sort()).toEqual(['a', 'b'])
+  })
+
+  it('keeps a re-application (same company+position, different date/status)', () => {
+    const jobs = [
+      { id: 'a', company: 'Acme', position: 'PM', date: '2026-01-01', status: 'rejected', history: [] },
+      { id: 'b', company: 'Acme', position: 'PM', date: '2026-06-01', status: 'sent', history: [] },
+    ]
+    const out = reconcileExactDuplicateJobs(jobs)
+    expect(out).toHaveLength(2)
+  })
+
+  it('collapses true exact duplicates into one', () => {
+    const jobs = [
+      { id: 'a', company: 'Acme', position: 'PM', date: '2026-01-01', status: 'sent', history: [] },
+      { id: 'b', company: 'Acme', position: 'PM', date: '2026-01-01', status: 'sent', history: [] },
+    ]
+    const out = reconcileExactDuplicateJobs(jobs)
+    expect(out).toHaveLength(1)
   })
 })

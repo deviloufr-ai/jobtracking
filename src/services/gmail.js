@@ -1105,8 +1105,19 @@ async function fetchEmailDetail(id, token) {
     // Use Gmail's internalDate (receipt timestamp, in milliseconds) instead of the
     // Date header (which is set by sender and can be wrong/backdated). Convert to
     // ISO date string YYYY-MM-DD for consistent sorting and grouping.
+    // internalDate is normally present; guard against missing/NaN so a single
+    // malformed message doesn't throw (RangeError on new Date(NaN)) and get the
+    // whole email silently dropped. Fall back to the Date header, then to today.
     const internalDateMs = parseInt(data.internalDate, 10)
-    const receivedDate = new Date(internalDateMs).toISOString().split('T')[0]
+    let receivedDate
+    if (Number.isFinite(internalDateMs)) {
+      receivedDate = new Date(internalDateMs).toISOString().split('T')[0]
+    } else {
+      const headerDate = new Date(get('Date'))
+      receivedDate = isNaN(headerDate.getTime())
+        ? new Date().toISOString().split('T')[0]
+        : headerDate.toISOString().split('T')[0]
+    }
     return {
       id: data.id,
       subject: get('Subject'),

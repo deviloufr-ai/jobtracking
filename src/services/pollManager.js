@@ -1,8 +1,8 @@
 import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
 import { convertHistoryFromSupabase, snakeToCamel, deserializeJobFields } from './fieldConversion'
-import { isDeletedJobId, deduplicateHistory, filterDeletedHistory, historyEntryKey, markJobIdAsDeletedLocal, partitionJobsByTombstones } from '../hooks/useJobs'
-import { flushPendingTombstones, fetchRemoteTombstones } from './tombstoneService'
+import { isDeletedJobId, deduplicateHistory, filterDeletedHistory, historyEntryKey, markJobIdAsDeletedLocal, markHistoryEntryKeysDeletedLocal, partitionJobsByTombstones, deriveStatusFromHistory } from '../hooks/useJobs'
+import { flushPendingTombstones, fetchRemoteTombstones, flushPendingHistoryTombstones, fetchRemoteHistoryTombstones } from './tombstoneService'
 import { getFlag, FLAGS } from './featureFlags'
 
 const POLL_INTERVAL = 300000 // 5 minutes
@@ -61,6 +61,11 @@ class PollManager {
       // that was deleted on another device (deletion wins over a concurrent edit).
       const removedAny = await this.applyRemoteTombstones(userId, fullSync)
       if (removedAny) hasChanges = true
+
+      // Pull cross-device history-ENTRY deletions into the local tombstone set BEFORE
+      // the merge loop, so filterDeletedHistory (in mergeJob) drops them and the
+      // additive merge can't resurrect an entry another device deleted (migration 013).
+      await this.applyRemoteHistoryTombstones(userId, fullSync)
 
       // Fetch jobs changed since last sync
       const jobsQuery = supabase
@@ -287,6 +292,29 @@ class PollManager {
     }
   }
 
+  // Pull the user's history-entry tombstones (deletions of individual timeline
+  // entries made on other devices) into this device's local tombstone set, so the
+  // additive history merge drops them. Fully graceful: if migration 013 hasn't been
+  // applied, the fetch returns [] and this is a no-op. See tombstoneService.
+  async applyRemoteHistoryTombstones(userId, fullSync) {
+    try {
+      // Drain the producer queue (offline/failed writes) regardless.
+      await flushPendingHistoryTombstones(userId)
+
+      const since = fullSync ? null : await indexeddb.getMetadata('last_history_tombstone_sync')
+      const tombs = await fetchRemoteHistoryTombstones(userId, since)
+      if (!tombs.length) return
+
+      markHistoryEntryKeysDeletedLocal(tombs.map(t => `${t.job_id}::${t.entry_key}`))
+
+      const maxDeletedAt = tombs.reduce((m, t) =>
+        (!m || new Date(t.deleted_at) > new Date(m)) ? t.deleted_at : m, null)
+      if (maxDeletedAt) await indexeddb.setMetadata('last_history_tombstone_sync', maxDeletedAt)
+    } catch (err) {
+      console.warn('applyRemoteHistoryTombstones failed (non-critical):', err?.message)
+    }
+  }
+
   mergeJob(local, remote) {
     // Convert remote snake_case fields to camelCase (shared util in fieldConversion)
     const remoteConverted = snakeToCamel(remote)
@@ -295,7 +323,12 @@ class PollManager {
     // device's own just-made edit isn't clobbered by Supabase's server timestamp.
     const localTime = local.updated_at ? new Date(local.updated_at).getTime() : 0
     const remoteTime = remoteConverted.updated_at ? new Date(remoteConverted.updated_at).getTime() : 0
-    const base = localTime >= remoteTime ? local : remoteConverted
+    // Field-level union: the newer side wins on any shared key, but keys the winner
+    // doesn't carry survive from the loser. This stops a remote-wins poll from
+    // silently wiping local-only fields the remote row lacks (e.g. enrichedAt/sentAt
+    // from an older client, or any not-yet-synced local field).
+    const [winner, loser] = localTime >= remoteTime ? [local, remoteConverted] : [remoteConverted, local]
+    const base = { ...loser, ...winner }
 
     // History: ALWAYS additive-merge, regardless of which side won the scalar
     // fields. Returning only the winner's history (the old behaviour) silently
@@ -307,7 +340,7 @@ class PollManager {
     const remoteHistory = Array.isArray(remoteConverted.history) ? remoteConverted.history : []
     if (localHistory.length || remoteHistory.length) {
       // Winner's entries first so its metadata (meetingLink, gmailId…) is kept as primary.
-      const ordered = base === local
+      const ordered = winner === local
         ? [...localHistory, ...remoteHistory]
         : [...remoteHistory, ...localHistory]
       // Drop tombstoned entries BEFORE dedup so a deletion on this device can't be
@@ -316,33 +349,42 @@ class PollManager {
       const cleaned = filterDeletedHistory(jobId, ordered)
       const history = deduplicateHistory([{ history: cleaned }])[0].history
 
-      // Check if remote has genuinely new history entries (with dates newer than local's latest)
-      // If not, preserve local status to avoid overwriting user edits with stale remote data
-      const localLatestDate = localHistory.length > 0
-        ? new Date(localHistory[localHistory.length - 1].date).getTime()
-        : 0
-      const remoteHasNewEntries = remoteHistory.some(
-        h => new Date(h.date).getTime() > localLatestDate
-      )
-
-      // If base came from remote but there are NO new entries, use local status instead
-      if (base === remoteConverted && !remoteHasNewEntries) {
-        return { ...base, history, status: local.status }
-      }
-
-      return { ...base, history }
+      // Status derives from the LATEST merged timeline entry (canonical
+      // latest-entry-wins), not a date-granular "does remote have a strictly-newer
+      // entry" heuristic. The old heuristic kept the stale LOCAL status when both
+      // devices added a same-day entry, so a same-day reviewing→interview change on
+      // one device never propagated to the other.
+      const derivedStatus = deriveStatusFromHistory(history)
+      return derivedStatus ? { ...base, history, status: derivedStatus } : { ...base, history }
     }
 
     return base
   }
 
   mergeSettings(local, remote) {
-    // Remote wins per-key (single canonical version), but keys the remote row
-    // doesn't carry must survive from local — e.g. debugLogsEnabled is
-    // intentionally never synced (no column), and returning bare `remote` used to
-    // wipe it (and any not-yet-synced setting) on every poll. Spread-merge instead.
-    return { ...(local || {}), ...remote }
+    // LWW on last_modified_at, with LOCAL winning ties (>), so a not-yet-pushed
+    // local change isn't clobbered by an equal/older remote row (the previous
+    // unconditional remote-wins caused a visible flip-flop). Keys the winner lacks
+    // still survive from the loser — e.g. debugLogsEnabled is never synced (no
+    // column), and bare remote-wins used to wipe it every poll.
+    const localTime = local?.lastModifiedAt ? new Date(local.lastModifiedAt).getTime() : 0
+    const remoteTime = remote?.lastModifiedAt ? new Date(remote.lastModifiedAt).getTime() : 0
+    const [winner, loser] = remoteTime > localTime ? [remote, local] : [local, remote]
+    const merged = { ...(loser || {}), ...(winner || {}) }
+    return stripSettingsMeta(merged)
   }
+}
+
+// Identity/row-metadata keys that ride along on a Supabase settings row (after
+// snakeToCamel) but are NOT app settings. Stripped before the merged object is
+// mirrored to localStorage, which loadSettings reads as if every key were a
+// setting. lastModifiedAt is deliberately KEPT — it drives the LWW compare above.
+const SETTINGS_META_KEYS = ['userId', 'user_id', 'id', 'createdAt', 'created_at', 'deviceId', 'device_id']
+function stripSettingsMeta(obj) {
+  if (!obj || typeof obj !== 'object') return obj
+  const clean = { ...obj }
+  for (const k of SETTINGS_META_KEYS) delete clean[k]
+  return clean
 }
 
 export const pollManager = new PollManager()

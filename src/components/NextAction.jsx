@@ -119,7 +119,7 @@ function hasUpcomingCalendar(job) {
 }
 
 // Use case deadline helpers
-function useCaseDaysLeft(job) {
+function caseDaysLeft(job) {
   if (!job.useCase?.deadline) return null
   return Math.ceil((new Date(job.useCase.deadline) - new Date()) / (1000 * 60 * 60 * 24))
 }
@@ -134,13 +134,13 @@ function getUrgentRules(t = (key) => key) {
   // Use case deadline urgent — appears before all other rules when < 3 days left
   {
     match: j => {
-      const days = useCaseDaysLeft(j)
+      const days = caseDaysLeft(j)
       return days !== null && days <= 3 && j.useCase?.status !== 'submitted'
     },
     icon: '📝', urgency: 'high',
     label: job => formatTrans(t('nextActionRules.caseSubmit'), { company: job.company }),
     tip: job => {
-      const days = useCaseDaysLeft(job)
+      const days = caseDaysLeft(job)
       return days < 0
         ? formatTrans(t('nextActionRules.caseDeadlinePassed'), { days: Math.abs(days) })
         : days === 0

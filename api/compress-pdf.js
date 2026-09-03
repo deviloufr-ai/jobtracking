@@ -1,11 +1,23 @@
 import { PDFDocument } from 'pdf-lib'
-import { applyCors } from './_lib/http.js'
+import { applyCors, getClientIp, rateLimit } from './_lib/http.js'
+
+const MAX_PDF_BYTES = 8 * 1024 * 1024 // 8 MB decoded — bounds the CPU-bound parse
+const MAX_PDF_PAGES = 100
 
 export default async function handler(req, res) {
   if (applyCors(req, res, 'POST, OPTIONS')) return
 
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'POST only' })
+    return
+  }
+
+  // Throttle: this runs untrusted, CPU-bound pdf-lib parsing — cap the request rate
+  // so it can't be used as a compute-DoS lever.
+  const { ok, retryAfter } = rateLimit({ key: `compress-pdf:${getClientIp(req)}`, limit: 20, windowMs: 60_000 })
+  if (!ok) {
+    res.setHeader('Retry-After', String(retryAfter))
+    res.status(429).json({ error: 'Too many requests. Please slow down.' })
     return
   }
 
@@ -19,8 +31,19 @@ export default async function handler(req, res) {
     // Decode base64 PDF
     const pdfBytes = Buffer.from(pdfBase64.split(',')[1] || pdfBase64, 'base64')
 
+    // Bound decoded size before the (CPU-bound) parse.
+    if (pdfBytes.length > MAX_PDF_BYTES) {
+      res.status(413).json({ error: 'PDF too large (max 8 MB).' })
+      return
+    }
+
     // Load PDF and optimize
     const pdfDoc = await PDFDocument.load(pdfBytes)
+
+    if (pdfDoc.getPageCount() > MAX_PDF_PAGES) {
+      res.status(413).json({ error: `PDF has too many pages (max ${MAX_PDF_PAGES}).` })
+      return
+    }
 
     // Compress: remove unnecessary metadata and optimize
     pdfDoc.setProducer('SmartJobTracker')

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import AIPanelBoundary from './AIPanelBoundary'
 import { detectLanguage } from '../utils/detectLanguage'
 import { withUserApiKey } from '../services/apiKey'
 import { useDragDock } from '../hooks/useDragDock'
@@ -37,7 +38,15 @@ const MOCK_STARS = [
   }
 ]
 
-export default function STARGenerator({ job, onClose }) {
+export default function STARGenerator(props) {
+  return (
+    <AIPanelBoundary label="Le générateur STAR" onClose={props.onClose}>
+      <STARGeneratorPanel {...props} />
+    </AIPanelBoundary>
+  )
+}
+
+function STARGeneratorPanel({ job, onClose }) {
   const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 672 })
   const [stars, setStars] = useState([])
   const [loading, setLoading] = useState(false)

@@ -563,8 +563,7 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
           cv={job.cvSaved?.markdown || ''}
           onClose={() => setShowMockInterview(false)}
           onInterviewComplete={(result) => {
-            console.log('✅ onInterviewComplete fired with result:', result)
-            // Save interview session to job's history
+            // Save interview session to job's history.
             const session = {
               type: 'interview',
               date: new Date().toISOString(),
@@ -573,23 +572,12 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
               feedback: result.feedback,
               transcript: result.transcript
             }
-            const updated = {
-              ...job,
+            // onUpdateJob is updateJob(id, data) — pass id + patch, not a whole job object,
+            // or jobs.find(id) never matches and the session is silently discarded.
+            onUpdateJob(job.id, {
               interviewSessions: [...(job.interviewSessions || []), session],
               updated_at: new Date().toISOString()
-            }
-            console.log('📝 Saving updated job with sessions:', updated.interviewSessions)
-            console.log('📝 Job ID:', updated.id)
-            onUpdateJob(updated)
-            console.log('✅ onUpdateJob called')
-
-            // Verify it was saved
-            setTimeout(() => {
-              const jobs = JSON.parse(localStorage.getItem('jobtrackr_jobs') || '[]')
-              const saved = jobs.find(j => j.id === updated.id)
-              console.log('🔍 Verification - job in localStorage after update:', saved?.interviewSessions)
-            }, 100)
-
+            })
             setShowMockInterview(false)
           }}
         />

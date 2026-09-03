@@ -11,6 +11,10 @@ const EXTRA_FIELDS = [
   'score', 'scoreDetails', 'scoreSignature',
   'interviewSessions', 'useCase',
   'salaryMin', 'salaryMax', 'location', 'companyAddress', 'companyFromAts',
+  // enrichedAt gates re-enrichment (isEnriched); sentAt times follow-up reminders.
+  // Without syncing them, a remote-wins poll dropped them → needless paid re-enrich
+  // and mis-timed reminders, and they never existed at all on a fresh device.
+  'enrichedAt', 'sentAt',
 ]
 
 // Collect the present extra fields off a full job record into a jsonb blob.

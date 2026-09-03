@@ -1,11 +1,15 @@
 // Adzuna API - free tier, 250 req/day
 // Register at: https://developer.adzuna.com/
 const APP_ID = import.meta.env.VITE_ADZUNA_APP_ID || ''
-const APP_KEY = import.meta.env.VITE_ADZUNA_APP_KEY || ''
-const BASE_URL = 'https://api.adzuna.com/v1/api/jobs'
 
+// The private Adzuna app_key is deliberately NOT referenced in client code: any
+// VITE_ var used here is inlined into the JS bundle at build time, so reading
+// VITE_ADZUNA_APP_KEY would ship a private credential to every visitor. The real
+// API call runs server-side (/api/jobs, which reads the key from process.env); the
+// client only needs to know whether search is configured, which the (non-secret)
+// app_id presence answers.
 export function isAdzunaConfigured() {
-  return !!APP_ID && !!APP_KEY
+  return !!APP_ID
 }
 
 export async function searchJobs({ query = '', location = 'france', page = 1, resultsPerPage = 20, remote = false }) {

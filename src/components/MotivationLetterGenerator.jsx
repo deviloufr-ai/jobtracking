@@ -1,9 +1,18 @@
 import { useState, useRef, useMemo } from 'react'
+import AIPanelBoundary from './AIPanelBoundary'
 import { useCVs } from '../hooks/useCVs'
 import { aiFetch } from '../services/apiKey'
 import { useDragDock } from '../hooks/useDragDock'
 
-export default function MotivationLetterGenerator({ job, onClose, cvText, initialContent, onSaveLetter }) {
+export default function MotivationLetterGenerator(props) {
+  return (
+    <AIPanelBoundary label="La lettre de motivation" onClose={props.onClose}>
+      <MotivationLetterGeneratorPanel {...props} />
+    </AIPanelBoundary>
+  )
+}
+
+function MotivationLetterGeneratorPanel({ job, onClose, cvText, initialContent, onSaveLetter }) {
   const { cvs } = useCVs()
   const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 896 })
   const [selectedCVId, setSelectedCVId] = useState(null)

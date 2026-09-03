@@ -148,7 +148,11 @@ export function settingsToSupabaseRow(userId, record = {}) {
 export function deserializeJobFields(job) {
   if (!job) return job
 
-  const jsonFields = ['position_links', 'position_checks']
+  // Accept BOTH camelCase and snake_case keys. pollManager calls this AFTER
+  // snakeToCamel, so the live keys are positionLinks/positionChecks; only the
+  // snake_case keys were handled before, so post-conversion the fields stayed
+  // JSON strings and checkAllPositions ran .slice()/.length on a string.
+  const jsonFields = ['positionLinks', 'position_links', 'positionChecks', 'position_checks']
   const deserialized = { ...job }
 
   for (const field of jsonFields) {

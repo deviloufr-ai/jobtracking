@@ -100,14 +100,20 @@ export default async function handler(req, res) {
 
     const toDelete = []
     const duplicates = []
+    // primaryId → [loserIds]: the loser rows' history is moved to the primary BEFORE
+    // deletion, because job_history.job_id is ON DELETE CASCADE — deleting a loser
+    // would otherwise permanently drop its timeline (the client dedups history on load).
+    const reparentByPrimary = new Map()
 
-    for (const [key, group] of groups) {
+    for (const [, group] of groups) {
       if (group.length > 1) {
         group.sort((a, b) =>
           new Date(b.updated_at || b.date).getTime() - new Date(a.updated_at || a.date).getTime()
         )
         const [primary, ...others] = group
-        toDelete.push(...others.map(j => j.id))
+        const loserIds = others.map(j => j.id)
+        toDelete.push(...loserIds)
+        reparentByPrimary.set(primary.id, loserIds)
         duplicates.push({
           company: primary.company,
           position: primary.position,
@@ -116,9 +122,28 @@ export default async function handler(req, res) {
       }
     }
 
-    // Delete duplicates via REST API
     let deletedCount = 0
     if (toDelete.length > 0) {
+      // 1) Move each loser's history onto its primary (before the cascade delete),
+      //    so the merged candidature keeps the full timeline.
+      for (const [primaryId, loserIds] of reparentByPrimary) {
+        const reparentUrl = `${supabaseUrl}/rest/v1/job_history?job_id=in.(${loserIds.join(',')})`
+        const reparentRes = await fetch(reparentUrl, {
+          method: 'PATCH',
+          headers: {
+            'apikey': serviceKey,
+            'Authorization': `Bearer ${serviceKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({ job_id: primaryId, last_modified_at: new Date().toISOString() })
+        })
+        if (!reparentRes.ok) {
+          console.warn(`⚠️ History reparent → ${primaryId}: ${reparentRes.status} ${await reparentRes.text()}`)
+        }
+      }
+
+      // 2) Delete the loser job rows.
       const deleteUrl = `${supabaseUrl}/rest/v1/jobs?id=in.(${toDelete.join(',')})`
       console.log(`🗑️ Deleting ${toDelete.length} duplicates`)
 
@@ -139,6 +164,26 @@ export default async function handler(req, res) {
         const errText = await deleteResponse.text()
         console.warn(`⚠️ Delete response: ${deleteResponse.status} ${errText}`)
         deletedCount = toDelete.length
+      }
+
+      // 3) Tombstone the removed ids so every client converges — removes its local
+      //    copy and never re-uploads it. Without this the incremental poll (which
+      //    only returns changed rows, never deletions) leaves losers on other devices
+      //    and they get re-pushed, so the duplicates come back with lost history.
+      //    ignore-duplicates skips the UNIQUE(user_id, job_id) on a re-run.
+      const tombstones = toDelete.map(id => ({ user_id: userId, job_id: id }))
+      const tombRes = await fetch(`${supabaseUrl}/rest/v1/deleted_jobs`, {
+        method: 'POST',
+        headers: {
+          'apikey': serviceKey,
+          'Authorization': `Bearer ${serviceKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=ignore-duplicates,return=minimal'
+        },
+        body: JSON.stringify(tombstones)
+      })
+      if (!tombRes.ok) {
+        console.warn(`⚠️ Tombstone insert: ${tombRes.status} ${await tombRes.text()}`)
       }
     }
 

@@ -1,4 +1,4 @@
-import { applyCors, assertSafeUrl, safeFetch } from './_lib/http.js'
+import { applyCors, assertSafeUrl, safeFetch, getClientIp, rateLimit } from './_lib/http.js'
 
 // A JavaScript-rendered SPA (Welcome to the Jungle, LinkedIn, many ATS portals)
 // returns only a bootstrap shell to a plain server-side fetch — a "you need to
@@ -28,6 +28,15 @@ function looksUnusable(text) {
 export default async function handler(req, res) {
   if (applyCors(req, res, 'POST, OPTIONS')) return
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return }
+
+  // SSRF-guarded, but still a server-side fetcher of user URLs — throttle per IP so
+  // it can't be used as an unbounded URL-probing oracle (matches check-position.js).
+  const { ok, retryAfter } = rateLimit({ key: `fetch-jd:${getClientIp(req)}`, limit: 30, windowMs: 60_000 })
+  if (!ok) {
+    res.setHeader('Retry-After', String(retryAfter))
+    res.status(429).json({ error: 'Too many requests. Please slow down.' })
+    return
+  }
 
   const { url } = req.body
   if (!url) { res.status(400).json({ error: 'URL required' }); return }

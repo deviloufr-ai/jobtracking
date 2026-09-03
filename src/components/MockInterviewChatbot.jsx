@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import AIPanelBoundary from './AIPanelBoundary'
 import { aiFetch } from '../services/apiKey'
 import { transcribeBlob, canRecordAudio } from '../services/localSpeech'
 import { useDragDock } from '../hooks/useDragDock'
@@ -32,7 +33,15 @@ function stripFormatting(text) {
     .trim()
 }
 
-export default function MockInterviewChatbot({ job, cv, onClose, onInterviewComplete }) {
+export default function MockInterviewChatbot(props) {
+  return (
+    <AIPanelBoundary label="L'entretien blanc" onClose={props.onClose}>
+      <MockInterviewChatbotPanel {...props} />
+    </AIPanelBoundary>
+  )
+}
+
+function MockInterviewChatbotPanel({ job, cv, onClose, onInterviewComplete }) {
   const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 672 })
   const [messages, setMessages] = useState([])
   const [isRecording, setIsRecording] = useState(false)
@@ -56,6 +65,8 @@ export default function MockInterviewChatbot({ job, cv, onClose, onInterviewComp
   const mediaRecorderRef = useRef(null)
   const audioChunksRef = useRef([])
   const mediaStreamRef = useRef(null)
+  // False once the modal has unmounted, so in-flight AI calls don't setState after teardown.
+  const mountedRef = useRef(true)
 
   // Native Web Speech API (Chrome/Edge). When absent we fall back to recording
   // the mic and transcribing with a local WASM Whisper model (Firefox/Safari).
@@ -124,9 +135,13 @@ export default function MockInterviewChatbot({ job, cv, onClose, onInterviewComp
     }
   }, [detectedLanguage])
 
-  // Release the mic if the modal closes mid-recording.
+  // Release the mic + stop any text-to-speech if the modal closes mid-session, and
+  // mark unmounted so in-flight AI calls don't setState after teardown. Without the
+  // speechSynthesis.cancel() the interviewer's voice kept talking after the modal closed.
   useEffect(() => {
     return () => {
+      mountedRef.current = false
+      try { speechSynthesis?.cancel() } catch { /* noop */ }
       try {
         mediaRecorderRef.current?.stop()
       } catch {
@@ -171,6 +186,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
 
       if (!response.ok) throw new Error(`API error: ${response.status}`)
       const data = await response.json()
+      if (!mountedRef.current) return
       const rawQuestion = data.content[0]?.text || 'Tell me about your experience.'
       const firstQuestion = stripFormatting(rawQuestion)
 
@@ -182,7 +198,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
     } catch (err) {
       setError(err.message)
     } finally {
-      setIsLoading(false)
+      if (mountedRef.current) setIsLoading(false)
     }
   }
 
@@ -335,6 +351,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
 
       if (!response.ok) throw new Error(`API error: ${response.status}`)
       const data = await response.json()
+      if (!mountedRef.current) return
       const rawQuestion = data.content[0]?.text || 'Great answer. Tell me more.'
       const nextQuestion = stripFormatting(rawQuestion)
 
@@ -354,7 +371,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
     } catch (err) {
       setError(err.message)
     } finally {
-      setIsLoading(false)
+      if (mountedRef.current) setIsLoading(false)
     }
   }
 
@@ -447,6 +464,7 @@ Format as JSON with keys: hire_decision, score, strengths, concerns, weak_exampl
 
       if (!response.ok) throw new Error(`API error: ${response.status}`)
       const data = await response.json()
+      if (!mountedRef.current) return
       const analysisText = data.content[0]?.text || ''
 
       let analysis
@@ -475,7 +493,7 @@ Format as JSON with keys: hire_decision, score, strengths, concerns, weak_exampl
     } catch (err) {
       setError(`Analysis failed: ${err.message}`)
     } finally {
-      setIsLoading(false)
+      if (mountedRef.current) setIsLoading(false)
     }
   }
 

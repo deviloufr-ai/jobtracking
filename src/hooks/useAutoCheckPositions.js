@@ -58,7 +58,9 @@ export function useAutoCheckPositions(jobs, checkAllPositions, settings) {
 
           attemptedRef.current.add(job.id)
           try {
-            await checkRef.current(job.id, 1)
+            // auto:true → record the availability signal but never auto-reject on a
+            // heuristic page-text match (see checkPosition in useJobs.js).
+            await checkRef.current(job.id, 1, { auto: true })
             await new Promise(r => setTimeout(r, 700)) // gentle throttle
           } catch { /* ignore — will retry next session */ }
         }

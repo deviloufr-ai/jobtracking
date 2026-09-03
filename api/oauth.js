@@ -49,7 +49,8 @@ async function handleCodeExchange(req, res) {
       ? `https://${process.env.VERCEL_URL}`
       : 'http://localhost:3000'
 
-    console.log('OAuth token exchange:', { code: code?.slice(0, 10) + '...', redirectUri: origin })
+    // Don't log any part of the authorization code — it's a short-lived credential.
+    console.log('OAuth token exchange:', { redirectUri: origin })
 
     // Exchange code for tokens
     const response = await fetch('https://oauth2.googleapis.com/token', {

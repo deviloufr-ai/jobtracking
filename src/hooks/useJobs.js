@@ -5,7 +5,7 @@ import { indexeddb } from '../services/indexeddb'
 import { syncManager } from '../services/syncManager'
 import { getSyncCoordinator } from '../services/syncCoordinator'
 import { supabase, isSupabaseConfigured, resolveAuthUserId } from '../services/supabase'
-import { enqueueRemoteTombstone, clearRemoteTombstones } from '../services/tombstoneService'
+import { enqueueRemoteTombstone, clearRemoteTombstones, enqueueHistoryTombstone } from '../services/tombstoneService'
 import { deduplicateJobsViaEdgeFunction, formatDeduplicateResult } from '../services/deduplicateService'
 import { GENERIC_POSITIONS_SET, isGenericPosition } from '../constants/positions'
 import { isJobBoard } from '../constants/jobBoards'
@@ -565,6 +565,49 @@ export function reconcileDuplicateJobs(jobs) {
   }
 
   return deduped.map(({ _merged, _mergedIds, ...j }) => j)
+}
+
+// Timer-safe reconcile: physically removes ONLY exact-duplicate rows (identical
+// company + position + date + status), never the fuzzy family/generic merges that
+// deduplicateJobs performs for display. Running the fuzzy merge destructively on a
+// poll timer could permanently delete + remote-tombstone genuinely DISTINCT roles
+// at one employer — e.g. "Product Manager" vs "Product Manager Web" (prefix match)
+// or a generic title collapsed into the company — and the tombstone means the lost
+// row (with its unique CV / letter / score) can never resync to any device. Fuzzy
+// merging stays available, but only through the explicit user action
+// (mergeDuplicates / mergeJobs / server dedup). Returns the deduped list.
+export function reconcileExactDuplicateJobs(jobs) {
+  const deduped = deduplicateExactMatches(jobs)
+  const keptIds = new Set(deduped.map(j => j.id))
+  const dropped = jobs.filter(j => !keptIds.has(j.id))
+  if (dropped.length === 0) return deduped
+
+  const coordinator = getSyncCoordinator()
+  const exactKey = (j) => `${normalizeCompany(j.company)}|||${(j.position || '').toLowerCase().trim()}|||${j.date}|||${j.status}`
+  const keeperByKey = new Map(deduped.map(j => [exactKey(j), j]))
+  const touchedKeepers = new Set()
+
+  dropped.forEach(loser => {
+    markJobIdAsDeleted(loser.id)
+    if (coordinator) {
+      coordinator.mutate('jobs', 'delete', { id: loser.id })
+        .catch(err => console.error('Failed to delete exact-duplicate from Supabase:', err))
+    } else {
+      indexeddb.deleteJob(loser.id).catch(err => console.warn('Failed to delete exact-duplicate locally:', err))
+    }
+    const keeper = keeperByKey.get(exactKey(loser))
+    if (keeper) touchedKeepers.add(keeper)
+  })
+
+  // Re-sync only the keepers that actually absorbed a loser's notes/history.
+  if (coordinator) {
+    touchedKeepers.forEach(job => {
+      coordinator.mutate('jobs', 'update', job, { syncHistory: true })
+        .catch(err => console.error('Failed to sync exact-dup keeper:', err))
+    })
+  }
+  console.log(`🧹 Reconciled ${dropped.length} exact-duplicate job(s)`)
+  return deduped
 }
 
 function splitPipeNotes(jobs) {
@@ -1372,13 +1415,33 @@ export function isDeletedHistoryEntry(jobId, entry) {
 
 export function markHistoryEntryAsDeleted(jobId, entry) {
   const deleted = JSON.parse(localStorage.getItem(DELETED_HISTORY_ENTRIES_KEY) || '[]')
-  const key = `${jobId}::${historyEntryKey(entry)}`
+  const entryKey = historyEntryKey(entry)
+  const key = `${jobId}::${entryKey}`
   if (!deleted.includes(key)) {
     deleted.push(key)
     // Keep only last 1000 deletions to prevent localStorage overflow
     if (deleted.length > 1000) deleted.splice(0, 100)
     localStorage.setItem(DELETED_HISTORY_ENTRIES_KEY, JSON.stringify(deleted))
   }
+  // Propagate the entry deletion to the user's other devices (migration 013). Best-
+  // effort / offline-safe; no-ops gracefully if the remote table isn't present yet.
+  enqueueHistoryTombstone(jobId, entryKey)
+}
+
+// Local-only writer used by the poll consumer when applying history-entry tombstones
+// that ALREADY came from remote — no re-enqueue (that would be a redundant round-trip
+// / feedback loop). Composite keys are `${jobId}::${entryKey}`.
+export function markHistoryEntryKeysDeletedLocal(compositeKeys) {
+  if (!Array.isArray(compositeKeys) || compositeKeys.length === 0) return
+  const set = new Set(JSON.parse(localStorage.getItem(DELETED_HISTORY_ENTRIES_KEY) || '[]'))
+  let changed = false
+  for (const k of compositeKeys) {
+    if (k && !set.has(k)) { set.add(k); changed = true }
+  }
+  if (!changed) return
+  let arr = [...set]
+  if (arr.length > 2000) arr = arr.slice(arr.length - 2000)
+  localStorage.setItem(DELETED_HISTORY_ENTRIES_KEY, JSON.stringify(arr))
 }
 
 // Drop any tombstoned entries from a history array (used in every merge path).
@@ -1579,10 +1642,13 @@ export function useJobs() {
     const handleSync = (event) => {
       console.log('Data synced from Supabase, reloading...', event.detail)
       loadJobs().then(() => {
-        // Auto-reconcile after sync: physically remove duplicate rows (not just
-        // hide them) so they don't return on the next poll.
-        console.log('🔄 Auto-reconciling duplicate jobs after sync...')
-        setJobs(prev => reconcileDuplicateJobs(prev))
+        // Auto-reconcile after sync, but ONLY exact duplicates (same company +
+        // position + date + status). The fuzzy family/generic merge is display-only
+        // here and must NEVER run destructively on a timer — see
+        // reconcileExactDuplicateJobs. Fuzzy physical merges happen only when the
+        // user explicitly triggers mergeDuplicates / mergeJobs / server dedup.
+        console.log('🔄 Auto-reconciling EXACT duplicate jobs after sync...')
+        setJobs(prev => reconcileExactDuplicateJobs(prev))
       })
     }
     window.addEventListener('jobtrackr:datasync', handleSync)
@@ -1785,14 +1851,23 @@ export function useJobs() {
 
   const deleteJob = (id) => {
     const job = jobs.find(j => j.id === id)
+    const coordinator = getSyncCoordinator()
+    // A merged display row folds in physical duplicate rows (_mergedIds). Delete +
+    // tombstone those too, otherwise deduplicateJobs re-promotes one of them into a
+    // visible candidature on the next render and the "deleted" job reappears.
+    const mergedIds = (job?._mergedIds || []).filter(mid => mid && mid !== id)
     if (job) {
       // Track deletion by ID to prevent re-sync from remote
       markJobIdAsDeleted(id)
       // Also track by company/position for Gmail re-import prevention
       markJobAsDeleted(job.company, job.position)
+      mergedIds.forEach(mid => {
+        markJobIdAsDeleted(mid)
+        if (coordinator) coordinator.mutate('jobs', 'delete', { id: mid }).catch(err => console.error('Failed to sync merged deletion:', err))
+        else indexeddb.deleteJob(mid).catch(() => {})
+      })
     }
-    setJobs(prev => prev.filter(j => j.id !== id))
-    const coordinator = getSyncCoordinator()
+    setJobs(prev => prev.filter(j => j.id !== id && !mergedIds.includes(j.id)))
     if (coordinator) {
       coordinator.mutate('jobs', 'delete', { id }).catch(err => console.error('Failed to sync deletion:', err))
     }
@@ -1987,7 +2062,7 @@ export function useJobs() {
     })
   }
 
-  const checkPosition = async (jobId, url) => {
+  const checkPosition = async (jobId, url, opts = {}) => {
     const job = jobs.find(j => j.id === jobId)
     if (!job) return null
 
@@ -2003,7 +2078,12 @@ export function useJobs() {
       updated_at: new Date().toISOString()
     }
 
-    if (result.available === false && !['rejected', 'rejected_ats', 'cancelled', 'archived'].includes(job.status)) {
+    // Auto-reject ONLY on an explicit (user-triggered) check. The automatic
+    // background checker (useAutoCheckPositions) must NEVER flip a live application
+    // to `rejected` off a heuristic page-text match — a stray "position filled" in a
+    // footer / another listing / a 404 would silently kill an open candidature and
+    // sync that everywhere. In auto mode we just record the signal in positionChecks.
+    if (!opts.auto && result.available === false && !['rejected', 'rejected_ats', 'cancelled', 'archived'].includes(job.status)) {
       historyChanged = true
       updatedJob = sortJobHistory({
         ...updatedJob,
@@ -2035,14 +2115,14 @@ export function useJobs() {
     return result
   }
 
-  const checkAllPositions = async (jobId, topN = 1) => {
+  const checkAllPositions = async (jobId, topN = 1, opts = {}) => {
     const job = jobs.find(j => j.id === jobId)
     if (!job || !job.positionLinks?.length) return []
 
     const urlsToCheck = job.positionLinks.slice(0, topN)
     const results = []
     for (const url of urlsToCheck) {
-      const result = await checkPosition(jobId, url)
+      const result = await checkPosition(jobId, url, opts)
       results.push(result)
     }
     return results
