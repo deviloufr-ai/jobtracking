@@ -17,6 +17,7 @@ import KanbanBoard from '../KanbanBoard'
 import MobilePipeline from '../MobilePipeline'
 import PlatformView from '../PlatformView'
 import JobFluxRow from '../JobFluxRow'
+import MobileHome from '../MobileHome'
 import FocusBand from './FocusBand'
 import ListToolbar from './ListToolbar'
 import CandidatureDrawer from './CandidatureDrawer'
@@ -261,15 +262,31 @@ export default function TrackerHomeE({
       className={`w-full min-w-0 ${resizingDrawer ? '' : 'transition-[padding] duration-300'} ${openJob ? 'md:pr-[var(--drawer-pad)]' : ''}`}
       style={openJob ? { '--drawer-pad': `${drawerWidth + 16}px`, '--drawer-w': `${drawerWidth}px` } : undefined}
     >
-      <FocusBand
-        jobs={jobs}
-        userName={userName}
-        onOpenJob={open}
-        onGenerateCV={onGenerateCV}
-        onSTAR={onSTAR}
-        onDraftEmail={onDraftEmail}
-        t={t}
-      />
+      {/* Home hero — phone-tailored on mobile (greeting + single top action +
+          counters), the multi-card focus band on desktop. Both reuse the same
+          NextAction rules engine and open the master-detail drawer on tap. */}
+      <div className="md:hidden">
+        <MobileHome
+          jobs={jobs}
+          userName={userName}
+          onOpenJob={open}
+          onGenerateCV={onGenerateCV}
+          onSTAR={onSTAR}
+          onDraftEmail={onDraftEmail}
+          t={t}
+        />
+      </div>
+      <div className="hidden md:block">
+        <FocusBand
+          jobs={jobs}
+          userName={userName}
+          onOpenJob={open}
+          onGenerateCV={onGenerateCV}
+          onSTAR={onSTAR}
+          onDraftEmail={onDraftEmail}
+          t={t}
+        />
+      </div>
 
       <ListToolbar
         filters={filters}
