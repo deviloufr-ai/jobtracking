@@ -1187,9 +1187,6 @@ export default function App() {
           onAdd={() => setModal('add')}
           gmailUser={gmailUser}
           account={railAccount}
-          showRefresh={!!(gmailUser || gmailConnected)}
-          refreshing={refreshing}
-          onRefresh={() => doRefresh(false)}
           onAccount={() => setShowGmail(true)}
           onTour={tourDone ? undefined : startTour}
           extensionInstalled={extensionInstalled}
@@ -1199,12 +1196,24 @@ export default function App() {
         />
       )}
 
-      {/* Notifications bell — the top header (which normally hosts it) is
-          md:hidden under the E layout, so pin the bell to the top-right of the
-          content area on md+. z-30 keeps it below the job drawer (z-40), which
-          simply covers it while a candidature is open. */}
+      {/* Sync + notifications — the top header (which normally hosts them) is
+          md:hidden under the E layout, so pin them to the top-right of the
+          content area on md+. z-30 keeps them below the job drawer (z-40), which
+          simply covers them while a candidature is open. */}
       {layoutE && (
-        <div className="hidden md:block fixed top-2.5 right-4 lg:right-6 z-30">
+        <div className="hidden md:flex items-center gap-2 fixed top-2.5 right-4 lg:right-6 z-30">
+          {!!(gmailUser || gmailConnected) && (
+            <button
+              data-tour="refresh"
+              onClick={() => doRefresh(false)}
+              disabled={refreshing}
+              title={lastRefresh ? `${t('nav.lastSync')}: ${lastRefresh}` : t('nav.refresh')}
+              aria-label={t('nav.refresh')}
+              className="relative flex items-center justify-center w-9 h-9 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40"
+            >
+              <svg className={`w-4 h-4 text-gray-600 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            </button>
+          )}
           <NotificationBell
             notifications={notifications} unreadCount={unreadCount}
             onMarkAllRead={markAllRead} onClear={clearNotifs} onRemove={removeNotif} t={t}

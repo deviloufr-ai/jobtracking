@@ -23,6 +23,7 @@ import FocusBand from './FocusBand'
 import ListToolbar from './ListToolbar'
 import CandidatureDrawer from './CandidatureDrawer'
 import UpcomingMeetings from '../UpcomingMeetings'
+import StatusCounts from '../StatusCounts'
 
 const PALETTE = ['#4f46e5', '#2563eb', '#0d9488', '#d97706', '#db2777', '#7c3aed', '#dc2626', '#059669']
 const colorFor = (s = '') => PALETTE[[...s].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETTE.length]
@@ -313,6 +314,10 @@ export default function TrackerHomeE({
       <div className="mb-4 max-w-xl [&:empty]:hidden">
         <UpcomingMeetings jobs={jobs} t={t} />
       </div>
+
+      {/* Per-status count strip (ongoing total + count pills that double as
+          filters) — brought over from the legacy home, sits above the toolbar. */}
+      <StatusCounts jobs={jobs} filters={filters} onChange={onFilterChange} t={t} />
 
       <ListToolbar
         filters={filters}
