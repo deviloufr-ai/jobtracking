@@ -145,6 +145,33 @@ export const en = {
     loadingDesc: 'Fetching your applications from Supabase...',
   },
 
+  // Sync status indicator (floating badge + detail panel)
+  sync: {
+    synced: 'Synced',
+    syncing: 'Syncing…',
+    queued: 'Syncing',
+    offline: 'Offline',
+    failed: 'Sync failed',
+    checking: 'Checking…',
+    queuedStatus: 'Queued',
+    item: 'item',
+    items: 'items',
+    details: 'Sync details',
+    statusLabel: 'Status',
+    lastSync: 'Last synced',
+    queueLabel: 'In queue',
+    connection: 'Connection',
+    online: 'Online',
+    never: 'Not yet',
+    syncNow: 'Sync now',
+    retry: 'Retry',
+    ariaLabel: 'Sync status',
+    relJustNow: 'just now',
+    relMinutes: '{n}m ago',
+    relHours: '{n}h ago',
+    relDays: '{n}d ago',
+  },
+
   // Job Application Messages
   notifications: {
     applicationAdded: 'New application added',

@@ -59,6 +59,7 @@ import NotificationBell from './components/NotificationBell'
 import { useNotifications } from './hooks/useNotifications'
 import NotificationPermissionBanner from './components/NotificationPermissionBanner'
 import AppUpdateBanner from './components/AppUpdateBanner'
+import SyncStatusIndicator from './components/SyncStatusIndicator'
 import { APP_VERSION } from './constants/appVersion'
 import { useNotificationPermission } from './hooks/useNotificationPermission'
 import { useNotificationScenarios } from './hooks/useNotificationScenarios'
@@ -1693,6 +1694,7 @@ export default function App() {
       {/* ── Notification Permission Banner ────────────────────────────────────── */}
       <NotificationPermissionBanner />
       <AppUpdateBanner />
+      <SyncStatusIndicator t={t} />
 
       {/* Floating Add button — mobile. Kept out of the bottom nav; sits above it,
           thumb-reachable in the bottom-right. */}

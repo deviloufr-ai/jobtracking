@@ -145,6 +145,33 @@ export const fr = {
     loadingDesc: 'Récupération de vos candidatures depuis Supabase...',
   },
 
+  // Sync status indicator (badge flottant + panneau de détails)
+  sync: {
+    synced: 'Synchronisé',
+    syncing: 'Synchronisation…',
+    queued: 'Envoi de',
+    offline: 'Hors ligne',
+    failed: 'Échec de synchro',
+    checking: 'Vérification…',
+    queuedStatus: 'En attente',
+    item: 'élément',
+    items: 'éléments',
+    details: 'État de la synchro',
+    statusLabel: 'Statut',
+    lastSync: 'Dernière synchro',
+    queueLabel: 'En file',
+    connection: 'Connexion',
+    online: 'En ligne',
+    never: 'Pas encore',
+    syncNow: 'Synchroniser',
+    retry: 'Réessayer',
+    ariaLabel: 'État de la synchronisation',
+    relJustNow: "à l'instant",
+    relMinutes: 'il y a {n} min',
+    relHours: 'il y a {n} h',
+    relDays: 'il y a {n} j',
+  },
+
   // Job Application Messages
   notifications: {
     applicationAdded: 'Nouvelle candidature ajoutée',
