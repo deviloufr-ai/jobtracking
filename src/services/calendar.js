@@ -1,5 +1,6 @@
 // Google Calendar service - reuses Gmail OAuth token (same scope request)
 import { getAccessToken, getConnectedAccounts } from './gmail'
+import { distinctiveCompanyToken } from '../utils/companyMatch'
 
 function extractLink(text = '') {
   const patterns = [
@@ -33,7 +34,11 @@ async function fetchCalendarEventsForToken(token, companyName, monthsBack = 12) 
     orderBy: 'startTime',
     maxResults: '250',
   })
-  if (companyName) params.set('q', companyName)
+  // Search on the distinctive company token, not the full legal name. A job's
+  // company is often "Wivoo, a Wavestone Company" while the invite only contains
+  // "Wivoo" — passing the whole name as a multi-word `q` (AND-ish full-text
+  // match) returns nothing because "Wavestone"/"Company" aren't in the event.
+  if (companyName) params.set('q', distinctiveCompanyToken(companyName) || companyName)
 
   try {
     const res = await fetch(
@@ -95,10 +100,14 @@ export async function fetchCalendarEvents(companyName, monthsBack = 12) {
 
 function detectEventType(title) {
   const t = title.toLowerCase()
-  if (t.includes('entretien') || t.includes('interview') || t.includes('call') ||
-      t.includes('meeting') || t.includes('visio') || t.includes('rdv') ||
-      t.includes('rendez-vous') || t.includes('zoom') || t.includes('teams') ||
-      t.includes('meet')) return 'interview'
+  if (t.includes('entretien') || t.includes('entrevue') || t.includes('interview') ||
+      t.includes('call') || t.includes('meeting') || t.includes('visio') ||
+      t.includes('rdv') || t.includes('rendez-vous') || t.includes('zoom') ||
+      t.includes('teams') || t.includes('meet') ||
+      // First-round / recruiter-call phrasings that don't use the word "entretien"
+      t.includes('echange') || t.includes('échange') || t.includes('screening') ||
+      t.includes('screen') || t.includes('discovery') || t.includes('debrief') ||
+      t.includes('phone screen')) return 'interview'
   if (t.includes('test') || t.includes('technique') || t.includes('technical') ||
       t.includes('case study') || t.includes('assessment')) return 'test'
   if (t.includes('onboarding') || t.includes('welcome')) return 'offer'

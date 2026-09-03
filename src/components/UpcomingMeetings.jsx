@@ -1,24 +1,17 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { fetchCalendarEvents, isCalendarConnected } from '../services/calendar'
-
-// Normalize for fuzzy company matching: lowercase, strip accents + punctuation
-function normalize(text = '') {
-  return text
-    .toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '') // strip accents
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
+import { textMatchesCompany } from '../utils/companyMatch'
 
 // A calendar event is "job-related" if its title matches a tracked company
 // OR it looks like an interview/test/offer (type detected in calendar.js).
 // Returns the matched job (for position enrichment) or null.
+//
+// Matching is token-based (see companyMatch.js): a job named "Wivoo, a Wavestone
+// Company" matches an event titled "… premier échange Wivoo" on the shared
+// "Wivoo" token — plain full-string containment missed that link.
 function matchJob(event, activeJobs) {
-  const title = normalize(event.title)
   for (const job of activeJobs) {
-    const company = normalize(job.company)
-    if (company.length >= 3 && (title.includes(company) || company.includes(title))) {
+    if (textMatchesCompany(event.title, job.company)) {
       return job
     }
   }
