@@ -12,6 +12,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { getStatus, getStatusLabel } from '../../hooks/useJobs'
+import { noteLines } from '../../utils/noteFormat'
 import { scoreColorClasses } from '../ScoreJob'
 import KanbanBoard from '../KanbanBoard'
 import MobilePipeline from '../MobilePipeline'
@@ -49,9 +50,22 @@ function StepTooltip({ hover, t }) {
           </span>
           <span className="text-[11px] text-gray-400 tabular-nums">{fullDate(hover.h.date)}</span>
         </div>
-        {hover.h.note
-          ? <p className="text-[12px] text-gray-600 whitespace-pre-line leading-snug line-clamp-6">{hover.h.note}</p>
-          : <p className="text-[12px] text-gray-400 italic">No note</p>}
+        {(() => {
+          const lines = hover.h.note ? noteLines(hover.h.note) : []
+          if (!lines.length) return <p className="text-[12px] text-gray-400 italic">No note</p>
+          return lines.length > 1 ? (
+            <ul className="space-y-0.5">
+              {lines.map((line, li) => (
+                <li key={li} className="flex gap-1 text-[12px] text-gray-600 leading-snug line-clamp-3">
+                  <span className="text-gray-300 select-none">•</span>
+                  <span className="whitespace-pre-line">{line}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[12px] text-gray-600 whitespace-pre-line leading-snug line-clamp-6">{lines[0]}</p>
+          )
+        })()}
       </div>
     </div>,
     document.body,

@@ -18,6 +18,7 @@ import MockInterviewChatbot from '../MockInterviewChatbot'
 import { isNoReply } from '../EmailDraft'
 import { getCompanyAddress, setCompanyAddress } from '../../services/commuteStore'
 import { searchCompanyAddress } from '../../services/googlePlaces'
+import { noteLines } from '../../utils/noteFormat'
 
 const PALETTE = ['#4f46e5', '#2563eb', '#0d9488', '#d97706', '#db2777', '#7c3aed', '#dc2626', '#059669']
 const colorFor = (s = '') => PALETTE[[...s].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETTE.length]
@@ -254,7 +255,21 @@ export default function CandidatureDrawer({
                               <button onClick={() => setConfirmDel(i)} aria-label="delete step" className={`${iconBtn} w-6 h-6 hover:text-red-600`}>🗑</button>
                             </div>
                           </div>
-                          {h.note && <p className="text-sm text-gray-600 mt-1.5 whitespace-pre-line leading-relaxed">{h.note}</p>}
+                          {h.note && (() => {
+                            const lines = noteLines(h.note)
+                            return lines.length > 1 ? (
+                              <ul className="mt-1.5 space-y-1">
+                                {lines.map((line, li) => (
+                                  <li key={li} className="flex gap-1.5 text-sm text-gray-600 leading-relaxed">
+                                    <span className="text-gray-300 select-none leading-relaxed">•</span>
+                                    <span className="whitespace-pre-line">{line}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-sm text-gray-600 mt-1.5 whitespace-pre-line leading-relaxed">{lines[0] || h.note}</p>
+                            )
+                          })()}
                           {(() => {
                             const ids = h.gmailIds || (h.gmailId ? [h.gmailId] : [])
                             if (!ids.length) return null
