@@ -1,8 +1,8 @@
 // NavRail — left navigation rail for the new "E — Focus + List" layout.
 //
 // Desktop/tablet only (md+). It relocates the top header's tab nav + primary
-// actions (Add / Refresh / account) into a fixed left sidebar. Rendered behind
-// the FLAGS.LAYOUT_E flag; the current top-header layout stays intact when off.
+// actions (Add / Refresh / account) into a fixed left sidebar. This layout is now
+// the default; the FLAGS.LEGACY_LAYOUT flag falls back to the top-header layout.
 // Styling uses the same light utility classes the rest of the app uses, so the
 // existing body.is-dark theme overrides apply here too.
 import { useState } from 'react'

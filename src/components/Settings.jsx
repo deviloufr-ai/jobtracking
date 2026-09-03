@@ -145,7 +145,8 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
   const [confirmClear, setConfirmClear] = useState(false)
   const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('jobtrackr_theme') || 'light')
   const [jobSearchFlag, setJobSearchFlag] = useState(() => getFlag(FLAGS.JOB_SEARCH))
-  const [layoutEFlag, setLayoutEFlag] = useState(() => getFlag(FLAGS.LAYOUT_E))
+  // New layout is ON by default; this flag is a "revert to old design" switch.
+  const [legacyLayoutFlag, setLegacyLayoutFlag] = useState(() => getFlag(FLAGS.LEGACY_LAYOUT))
   // Cross-device deletion sync is ON by default; the flag is a "disable" kill-switch.
   const [crossDeleteDisabled, setCrossDeleteDisabled] = useState(() => getFlag(FLAGS.CROSS_DEVICE_DELETE_OFF))
   const [syncDiag, setSyncDiag] = useState(null)
@@ -1121,20 +1122,20 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                     {jobSearchFlag ? '✓ Activée' : 'Désactivée'}
                   </button>
                 </Row>
-                <Row label="Nouvelle interface (Focus + Liste)" hint="Refonte en cours : barre latérale de navigation + panneau détail latéral. L'ancienne interface reste la valeur par défaut (bureau uniquement pour l'instant).">
+                <Row label="Ancienne interface (classique)" hint="La nouvelle interface (Focus + Liste : barre latérale de navigation + panneau détail latéral) est désormais activée par défaut. Activez cette option pour revenir à l'ancienne interface avec en-tête supérieur.">
                   <button
                     onClick={() => {
-                      const next = !layoutEFlag
-                      setFlag(FLAGS.LAYOUT_E, next)
-                      setLayoutEFlag(next)
+                      const next = !legacyLayoutFlag
+                      setFlag(FLAGS.LEGACY_LAYOUT, next)
+                      setLegacyLayoutFlag(next)
                     }}
                     className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                      layoutEFlag
+                      legacyLayoutFlag
                         ? 'bg-green-500 text-white hover:bg-green-600'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
-                    {layoutEFlag ? '✓ Activée' : 'Désactivée'}
+                    {legacyLayoutFlag ? '✓ Activée' : 'Désactivée'}
                   </button>
                 </Row>
                 <Row label="Suppression multi-appareils" hint="Propage la suppression d'une candidature à vos autres appareils. Activé par défaut — désactivez seulement en cas de problème de synchronisation.">

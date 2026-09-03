@@ -309,7 +309,8 @@ export default function App() {
   const [searchEnabled, setSearchEnabled] = useState(() => getFlag(FLAGS.JOB_SEARCH))
   // New "E — Focus + List" layout (nav rail + drawer). Opt-in behind a flag while
   // it's built in parallel; off = current UI. Desktop (md+) only for now.
-  const [layoutE, setLayoutE] = useState(() => getFlag(FLAGS.LAYOUT_E))
+  // New "Focus + List" layout is the default; the LEGACY_LAYOUT flag opts back out.
+  const [layoutE, setLayoutE] = useState(() => !getFlag(FLAGS.LEGACY_LAYOUT))
   const [expandedJobId, setExpandedJobId] = useState(null)
   const [detailJob, setDetailJob] = useState(null) // mobile: job open in the full-screen detail sheet
   const [showLandingPage, setShowLandingPage] = useState(true)
@@ -342,7 +343,7 @@ export default function App() {
       setSearchEnabled(enabled)
       // Don't strand the user on a tab that just disappeared.
       if (!enabled) setActiveTab(tab => (tab === 'search' ? 'tracker' : tab))
-      setLayoutE(getFlag(FLAGS.LAYOUT_E))
+      setLayoutE(!getFlag(FLAGS.LEGACY_LAYOUT))
     }
     window.addEventListener(FLAGS_EVENT, onFlags)
     return () => window.removeEventListener(FLAGS_EVENT, onFlags)
