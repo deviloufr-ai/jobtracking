@@ -5,8 +5,6 @@
 // (click = include, click again = clear — no confusing tri-state). Drives the
 // same `filters` / `sort` / showFav / showArchived / view state the classic
 // tracker uses, so the shared `filtered` useMemo keeps working unchanged.
-import { STATUSES, getStatusLabel } from '../../hooks/useJobs'
-
 const VIEWS = [
   { id: 'table', icon: '☰', key: 'view.table' },
   { id: 'kanban', icon: '▦', key: 'view.kanban' },
@@ -33,8 +31,6 @@ export default function ListToolbar({
 }) {
   const statuses = filters?.statuses || {}
   const active = Object.entries(statuses).filter(([, v]) => v === 'include').map(([k]) => k)
-  const toggleStatus = (key) =>
-    onChange({ ...filters, statuses: { ...statuses, [key]: statuses[key] === 'include' ? undefined : 'include' } })
   const setSearch = (v) => onChange({ ...filters, search: v })
   const setPeriod = (v) => onChange({ ...filters, period: v })
 
@@ -109,28 +105,9 @@ export default function ListToolbar({
         </div>
       </div>
 
-      {/* Row 2 — status chips · favorites · archived · reset · count */}
+      {/* Row 2 — favorites · archived · reset · count.
+          Status filtering now lives in the StatusCounts strip above. */}
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1 py-0.5">
-          {STATUSES.filter(s => s.key !== 'archived').map(s => {
-            const on = active.includes(s.key)
-            return (
-              <button
-                key={s.key}
-                onClick={() => toggleStatus(s.key)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap border transition-all ${
-                  on ? s.color + ' border-transparent shadow-sm' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-                {getStatusLabel(s.key, t)}
-              </button>
-            )
-          })}
-        </div>
-
-        <div className="flex-1" />
-
         <button
           onClick={onToggleFav}
           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all whitespace-nowrap ${
@@ -150,6 +127,8 @@ export default function ListToolbar({
           📦 <span className="hidden sm:inline">{t('jobActions.archive')}</span>
           {archivedCount > 0 && <span className="opacity-60 tabular-nums">{archivedCount}</span>}
         </button>
+
+        <div className="flex-1" />
 
         {hasFilter && (
           <button onClick={onReset} className="text-xs text-indigo-600 hover:underline font-medium px-1 whitespace-nowrap">
