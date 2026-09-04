@@ -69,6 +69,11 @@ function ensureInit() {
     // verified/debugged from the console — e.g. `mixpanel.track('debug')` to
     // confirm ingestion, or `mixpanel.get_distinct_id()` to check identity.
     try { if (typeof window !== 'undefined') window.mixpanel = mixpanel } catch { /* ignore */ }
+    // Fire once per app boot: a lightweight session/DAU signal that also gives the
+    // live monitor an immediate heartbeat on every load. Not a page view (there is
+    // only one page), so it doesn't duplicate anything with autocapture off. Rides
+    // the utm_source / app_platform super properties.
+    track('app_opened', { app_opened_at: new Date() })
   } catch (err) {
     // Swallow — analytics must never take the app down.
     console.warn('Mixpanel init failed:', err?.message)
