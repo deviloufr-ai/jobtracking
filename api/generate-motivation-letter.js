@@ -116,7 +116,7 @@ ${jobDescription.slice(0, 2000)}
 ${hasContext ? `
 REMINDER: Make sure the candidate's instructions at the top of this prompt are clearly reflected in the letter.
 ` : ''}
-Return ONLY the motivation letter text (no preamble, no metadata). Include the date, salutation, paragraphs, closing, and signature line. Format as plain text with blank lines between paragraphs.`
+Return ONLY the motivation letter text (no preamble, no metadata). ${hasContext ? "Follow the candidate's instructions above for length and for what to include: if they asked for a short letter (or a character/word limit), keep it that short and OMIT any of the date, salutation, closing or signature that would not fit. Their length request wins over any structural convention in this prompt." : 'Include the date, salutation, paragraphs, closing, and signature line.'} Format as plain text with blank lines between paragraphs.`
         }]
       })
     })
