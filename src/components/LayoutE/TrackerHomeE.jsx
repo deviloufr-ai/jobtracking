@@ -11,7 +11,7 @@
 // the open row. Every view opens the same drawer, whose body reuses JobCard.
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { getStatus, getStatusLabel } from '../../hooks/useJobs'
+import { STATUSES, getStatus, getStatusLabel } from '../../hooks/useJobs'
 import { noteLines } from '../../utils/noteFormat'
 import { scoreColorClasses } from '../ScoreJob'
 import KanbanBoard from '../KanbanBoard'
@@ -127,6 +127,85 @@ function StageBar({ history, t, width = 188, onResizeStart, onResizeReset }) {
       )}
       <StepTooltip hover={hover} t={t} />
     </div>
+  )
+}
+
+// Inline status editor — the list's status pill is a dropdown. Clicking it opens
+// a status menu (portalled so the list's overflow can't clip it) and writes the
+// new status straight from the row via onStatusChange, without opening the drawer.
+function StatusEditor({ jobId, current, onStatusChange, t }) {
+  const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const btnRef = useRef(null)
+  const status = getStatus(current)
+
+  const toggle = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const rect = btnRef.current?.getBoundingClientRect()
+    if (rect) {
+      // Flip the menu up when there isn't room below (long lists / bottom rows).
+      const menuH = STATUSES.length * 34 + 8
+      const spaceBelow = window.innerHeight - rect.bottom
+      const top = spaceBelow < menuH + 12 ? rect.top - menuH - 4 : rect.bottom + 4
+      setPos({ top, left: rect.left })
+    }
+    setOpen(v => !v)
+  }
+
+  // Close on scroll (the list scrolls) and on Escape.
+  useEffect(() => {
+    if (!open) return
+    const close = () => setOpen(false)
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <>
+      {/* role="button" span (not a real <button>) so it can live inside the
+          row-open button without invalid nesting; click never bubbles to the row. */}
+      <span
+        ref={btnRef}
+        role="button"
+        tabIndex={0}
+        onClick={toggle}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggle(e) }}
+        title={t('table.changeStatus') || 'Change status'}
+        className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full cursor-pointer hover:opacity-80 transition-opacity ${status?.color || 'bg-gray-100 text-gray-500'}`}
+      >
+        {getStatusLabel(current, t)}
+        <span className="opacity-50">▾</span>
+      </span>
+      {open && typeof document !== 'undefined' && createPortal(
+        <>
+          <div className="fixed inset-0 z-[90]" onClick={(e) => { e.stopPropagation(); setOpen(false) }} />
+          <div
+            className="fixed bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-[200] min-w-[180px]"
+            style={{ top: pos.top, left: pos.left }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {STATUSES.map(s => (
+              <button
+                key={s.key}
+                onClick={(e) => { e.stopPropagation(); onStatusChange?.(jobId, s.key); setOpen(false) }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-50 text-left ${s.key === current ? 'font-semibold' : ''}`}
+              >
+                <span className={`w-2 h-2 rounded-full ${s.dot}`} />
+                {getStatusLabel(s.key, t)}
+                {s.key === current && <span className="ml-auto text-indigo-500">✓</span>}
+              </button>
+            ))}
+          </div>
+        </>,
+        document.body,
+      )}
+    </>
   )
 }
 
@@ -459,10 +538,13 @@ export default function TrackerHomeE({
                           <span className="block text-[12px] text-gray-400 truncate">{job.position}</span>
                         </span>
                         {!compact && <StageBar history={job.history} t={t} width={timelineColWidth} onResizeStart={startTimelineResize} onResizeReset={resetTimelineWidth} />}
-                        <span className="w-32 shrink-0">
-                          <span className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full ${getStatus(last?.status || job.status)?.color || 'bg-gray-100 text-gray-500'}`}>
-                            {getStatusLabel(last?.status || job.status, t)}
-                          </span>
+                        <span className="w-32 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <StatusEditor
+                            jobId={job.id}
+                            current={last?.status || job.status}
+                            onStatusChange={onStatusChange}
+                            t={t}
+                          />
                         </span>
                         {!compact && (
                           <span className="hidden md:block flex-1 min-w-0 truncate text-[12.5px] text-gray-400">{lastNote}</span>
