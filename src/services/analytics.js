@@ -51,6 +51,11 @@ function ensureInit() {
   if (initialized || DISABLED) return initialized
   try {
     mixpanel.init(MIXPANEL_TOKEN, {
+      // The Mixpanel project is on EU data residency, so ingestion MUST target the
+      // EU cluster. Without this the SDK posts to the US default (api-js.mixpanel.com)
+      // and every event is accepted-then-dropped — it never lands in the EU project
+      // (the "no events" symptom). Covers both /track and /engage.
+      api_host: 'https://api-eu.mixpanel.com',
       // Explicit, curated events only. Autocapture is left OFF on purpose: this is
       // a privacy-sensitive app (emails, CVs, recruiter names) and autocapture can
       // scrape input/text content. With autocapture off we also must NOT send
