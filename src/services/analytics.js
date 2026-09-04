@@ -64,6 +64,11 @@ function ensureInit() {
     })
     initialized = true
     registerBaseSuperProps()
+    // The npm module build (init_as_module) does NOT attach to window, unlike the
+    // CDN snippet. Expose the initialized instance so the integration can be
+    // verified/debugged from the console — e.g. `mixpanel.track('debug')` to
+    // confirm ingestion, or `mixpanel.get_distinct_id()` to check identity.
+    try { if (typeof window !== 'undefined') window.mixpanel = mixpanel } catch { /* ignore */ }
   } catch (err) {
     // Swallow — analytics must never take the app down.
     console.warn('Mixpanel init failed:', err?.message)
