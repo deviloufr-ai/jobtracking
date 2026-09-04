@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import AIPanelBoundary from './AIPanelBoundary'
 import { aiFetch } from '../services/apiKey'
 import { transcribeBlob, canRecordAudio } from '../services/localSpeech'
+import { trackMockInterviewCompleted } from '../services/analytics'
 import { useDragDock } from '../hooks/useDragDock'
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -476,6 +477,17 @@ Format as JSON with keys: hire_decision, score, strengths, concerns, weak_exampl
         analysis = { raw: analysisText }
         setFeedback(analysis)
       }
+
+      // Analytics — Voice Interview Coach session completed (time-to-value +
+      // retention signal). Voice-first tool, so live_voice unless voice is
+      // unavailable in this browser.
+      try {
+        trackMockInterviewCompleted({
+          applicationId: job.id,
+          interviewMode: voiceSupported ? 'live_voice' : 'practice',
+          questionsCoveredCount: messages.filter((m) => m.role === 'interviewer').length,
+        })
+      } catch { /* ignore */ }
 
       // Notify parent so they can save results and potentially close modal
       if (onInterviewComplete) {

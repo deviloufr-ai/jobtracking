@@ -1,5 +1,6 @@
 import { supabase, signInWithGoogle } from './supabase'
 import { Capacitor } from '@capacitor/core'
+import { trackGmailConnectionStarted, trackGmailConnected } from './analytics'
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
@@ -286,9 +287,14 @@ export async function connectGmail(hint = '') {
   // This resolves once the browser opens; the connected account appears when the
   // user returns and the 'jobtrackr:gmail-accounts-updated' event fires.
   if (Capacitor.isNativePlatform()) {
+    // Native hands off to the system browser — the account is adopted on return
+    // (adoptGoogleAccount fires gmail_connected).
+    trackGmailConnectionStarted({ authFlowResult: 'redirected' })
     await signInWithGoogle()
     return { pending: true }
   }
+
+  trackGmailConnectionStarted({ authFlowResult: 'initiated' })
 
   // If Google not loaded yet, wait for it (but only once)
   if (!window.google?.accounts?.oauth2) {
@@ -327,6 +333,7 @@ export async function connectGmail(hint = '') {
             if (!user) { reject(new Error('Impossible de récupérer le profil')); return }
 
             // Store tokens with refresh token for silent refresh
+            const wasConnected = !!accounts[user.email]
             accounts[user.email] = {
               token,
               refreshToken: tokens.refreshToken,
@@ -335,6 +342,9 @@ export async function connectGmail(hint = '') {
             }
             saveAccounts(accounts)
             console.log(`✅ Connected ${user.email} with refresh token support`)
+            // Activation event — only when this mailbox is newly connected (not a
+            // token reconnect for an already-linked account).
+            if (!wasConnected) trackGmailConnected({ emailAccountCount: Object.keys(accounts).length })
             resolve({ token, user })
           } catch (err) {
             reject(err)
@@ -361,6 +371,7 @@ export async function adoptGoogleAccount(accessToken, refreshTokenValue) {
     return null
   }
 
+  const wasConnected = !!accounts[user.email]
   accounts[user.email] = {
     token: accessToken,
     refreshToken: refreshTokenValue || accounts[user.email]?.refreshToken || null,
@@ -369,6 +380,9 @@ export async function adoptGoogleAccount(accessToken, refreshTokenValue) {
   }
   saveAccounts(accounts)
   console.log(`✅ Adopted Gmail account ${user.email} from native login`)
+  // Activation event — fire only the first time this mailbox is linked, so a
+  // native re-login with an already-connected account doesn't re-fire it.
+  if (!wasConnected) trackGmailConnected({ emailAccountCount: Object.keys(accounts).length })
 
   // Let the Gmail UI refresh its connected-account list.
   try { window.dispatchEvent(new CustomEvent('jobtrackr:gmail-accounts-updated')) } catch {}

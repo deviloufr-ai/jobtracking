@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import AIPanelBoundary from './AIPanelBoundary'
 import { resolveAutoLanguage, generateTailoredCV, suggestCvPoints } from '../services/cvGeneration'
+import { trackCvGenerationStarted, trackCvGenerated } from '../services/analytics'
 import { pushLocalPrefs, AUX_PREFS_SYNCED_EVENT } from '../services/profileSync'
 import CVSuggestions from './CVSuggestions'
 
@@ -679,13 +680,27 @@ function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSave
     const additions = additionsOverride ?? buildAdditions()
     setShowPointsPanel(false)
     setStep('generating')
+
+    // Analytics — Adaptive CV Studio run started. Input type reflects the strongest
+    // tailoring signal available for this run.
+    const cvInputType = job?.scoreDetails?.gaps?.length
+      ? 'ats_assessment'
+      : ((jd || '').trim() ? 'role_description' : 'resume_only')
+    try { trackCvGenerationStarted({ applicationId: job.id, cvInputType }) } catch { /* ignore */ }
+
+    // Prior ATS score for this candidature (if a CV was generated before) → delta.
+    const baselineScore = job?.cvSaved?.atsScore ?? undefined
+
     try {
       if (IS_DEV) {
         const mock = `# Alexandre Leblanc\nParis, France · alexandre@email.com · linkedin.com/in/devilalex\n\n## Profil\nProduct Manager Senior avec 18 ans d'expérience internationale en B2B SaaS, gaming et IoT. Expert en pilotage de roadmap produit orienté OKR, A/B testing et métriques de rétention. Trilingue FR/EN/JP.\n\n## Expérience\n\n### Senior Product Manager — Datachain\nMai 2023 – Juin 2025 | Remote (Tokyo)\n- Piloté l'implémentation d'un pont inter-chaînes Web3/DeFi — discovery, rollout et suivi d'adoption\n- Structuré les interviews clients, recherche concurrentielle et priorisation data-driven\n- Coordonné les équipes cross-fonctionnelles (Engineering, Product, Marketing)\n\n### Program Manager Ads — SmartNews\nJanvier 2021 – Mai 2023 | Remote (Tokyo)\n- Piloté les programmes produit globaux Ads (20M+ MAU)\n- Analyse data pour identifier pain points ; traduit les insights en requirements\n- Frameworks A/B testing et cohort analysis\n\n### Chef de Projet — Hakuhodo I-Studio\nJanvier 2017 – Janvier 2020 | Tokyo\n- Développement end-to-end de l'app IoT Pechat ; 0 à 120K unités vendues\n- Lancement US avec +15% revenue · Good Design Award 2019\n\n## Compétences\n- **Produit** : OKR, roadmap, A/B testing, NPS, DAU/MAU, funnel\n- **Tech** : SQL, Jira, Figma, Confluence, analytics\n- **Méthodo** : Agile/Scrum, RICE, user interviews\n\n## Formation\nArts & Métiers — Ingénieur généraliste (2012)\nJLPT N1 · Trilingue FR/EN/JP`
-        setGeneratedCV(mock); setEditableCV(mock); setAtsScore(94); setStep('preview'); return
+        setGeneratedCV(mock); setEditableCV(mock); setAtsScore(94); setStep('preview')
+        try { trackCvGenerated({ applicationId: job.id, atsScore: 94, baselineScore }) } catch { /* ignore */ }
+        return
       }
       const { cv, atsScore } = await generateTailoredCV({ cvText: srcCV.text, jobDescription: jd, company: job.company, position: job.position, language: lang, additions })
       setGeneratedCV(cv); setEditableCV(cv); setAtsScore(atsScore ?? null); setStep('preview')
+      try { trackCvGenerated({ applicationId: job.id, atsScore: atsScore ?? undefined, baselineScore }) } catch { /* ignore */ }
     } catch(e) { setJdError(e.message); setStep('ready_to_generate') }
   }
 

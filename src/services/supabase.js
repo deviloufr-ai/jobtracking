@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { Capacitor } from '@capacitor/core'
+import { onAuthChange as analyticsOnAuthChange } from './analytics'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -71,7 +72,12 @@ export const supabase = createClient(
 // (deduplicateService, useJobs) can read it without awaiting.
 let cachedAuthUserId = null
 supabase.auth.getSession().then(({ data }) => { cachedAuthUserId = data.session?.user?.id || null })
-supabase.auth.onAuthStateChange((_event, session) => { cachedAuthUserId = session?.user?.id || null })
+supabase.auth.onAuthStateChange((event, session) => {
+  cachedAuthUserId = session?.user?.id || null
+  // Mixpanel identity: identify on login / re-open (INITIAL_SESSION, SIGNED_IN),
+  // fire signup_completed for a brand-new account, reset() on SIGNED_OUT.
+  try { analyticsOnAuthChange(event, session) } catch { /* analytics must never break auth */ }
+})
 
 // Synchronous best-effort accessor (may be null before the session loads).
 export function getAuthUserId() {

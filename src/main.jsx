@@ -5,6 +5,11 @@ import Root from './Root.jsx'
 import { installNativeApiShim } from './services/nativeApi.js'
 import { initNativeAuthDeepLink } from './services/supabase.js'
 import { initPushNotifications } from './services/pushNotifications.js'
+import { initAnalytics } from './services/analytics.js'
+
+// Initialize Mixpanel on app boot. Identity + signup tracking is wired through
+// supabase.js's auth state listener; product events fire from their call sites.
+initAnalytics()
 
 // Route relative /api/* calls to the deployed backend when running inside the
 // native Capacitor shell. No-op on the web build.

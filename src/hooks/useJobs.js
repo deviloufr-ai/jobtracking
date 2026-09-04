@@ -10,6 +10,7 @@ import { deduplicateJobsViaEdgeFunction, formatDeduplicateResult } from '../serv
 import { GENERIC_POSITIONS_SET, isGenericPosition } from '../constants/positions'
 import { isJobBoard } from '../constants/jobBoards'
 import { runAtsCandidatureFix, debugAtsRecovery } from '../services/fixAtsCandidatures'
+import { trackApplicationTracked, trackOfferReceived } from '../services/analytics'
 
 const ENRICH_TTL_DAYS = 30
 
@@ -1802,6 +1803,17 @@ export function useJobs() {
 
     setJobs(prev => [job, ...prev])
 
+    // Analytics — funnel: the first tracked application (event fires only on the
+    // 0→1 transition). Source is inferred from the incoming payload's Gmail markers.
+    try {
+      const applicationSource = (data._gmailId || data._fromEmail || data._history) ? 'gmail_sync' : 'manual'
+      trackApplicationTracked({ applicationSource })
+      // A candidature created directly in the "offer" state is a recorded offer.
+      if (status === 'offer') {
+        trackOfferReceived({ applicationId: job.id, offerStatus: 'received', trackedApplicationsCount: jobs.length + 1 })
+      }
+    } catch { /* analytics must never break job creation */ }
+
     // Sync to coordinator if available, otherwise will sync on next batch
     const coordinator = getSyncCoordinator()
     if (coordinator) {
@@ -1833,6 +1845,14 @@ export function useJobs() {
 
     const updated = { ...job, ...data, updated_at: new Date().toISOString() }
     const final = data.history ? sortJobHistory(updated) : updated
+
+    // Analytics — offer recorded via a status update (e.g. a Gmail import that
+    // detected an offer). Only on the transition into 'offer'.
+    try {
+      if (data.status === 'offer' && job.status !== 'offer') {
+        trackOfferReceived({ applicationId: id, offerStatus: 'received', trackedApplicationsCount: jobs.length })
+      }
+    } catch { /* ignore */ }
 
     // Update local state
     setJobs(prev => prev.map(j => j.id !== id ? j : final))
@@ -1890,6 +1910,14 @@ export function useJobs() {
     })
 
     setJobs(prev => prev.map(j => j.id !== id ? j : newJob))
+
+    // Analytics — offer recorded via the status chip (job.status guard above
+    // guarantees this is a real transition into 'offer').
+    try {
+      if (status === 'offer') {
+        trackOfferReceived({ applicationId: id, offerStatus: 'received', trackedApplicationsCount: jobs.length })
+      }
+    } catch { /* ignore */ }
 
     const coordinator = getSyncCoordinator()
     if (coordinator) {

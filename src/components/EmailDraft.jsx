@@ -3,6 +3,12 @@ import { useDragDock } from '../hooks/useDragDock'
 import { detectLanguage } from '../utils/detectLanguage'
 import { isConnected, sendEmail, connectGmail, getCachedUser, getReplyContext } from '../services/gmail'
 import { withUserApiKey } from '../services/apiKey'
+import { trackFollowUpDrafted } from '../services/analytics'
+
+// Map the UI email type to the Mixpanel follow_up_type taxonomy.
+// 'relance' = chasing a silent application → inactivity_nudge;
+// 'remerciement' = replying to a rejection → reply_check.
+const FOLLOW_UP_TYPE = { relance: 'inactivity_nudge', remerciement: 'reply_check' }
 
 const IS_DEV = import.meta.env.DEV
 
@@ -303,6 +309,7 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
         ? `Merci pour votre retour concernant ma candidature au poste de ${job.position}.\n\nBien que cette nouvelle soit décevante, je reste très intéressé par ${job.company} et son approche produit, et resterais ouvert à de futures opportunités.\n\nSi vous aviez un retour constructif sur ma candidature, je suis preneur.`
         : `Je reviens vers vous concernant ma candidature au poste de ${job.position}, déposée il y a quelques semaines.\n\nJe reste très motivé par cette opportunité chez ${job.company}. Pourriez-vous me communiquer le statut de ma candidature ?`
       setDraft(`${hi}\n\n${body}\n\n${signature}`)
+      try { trackFollowUpDrafted({ applicationId: job.id, followUpType: FOLLOW_UP_TYPE[type] }) } catch { /* ignore */ }
       setLoading(false)
       return
     }
@@ -333,6 +340,7 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
         text = `${text}\n\n${signature}`
       }
       setDraft(text)
+      try { trackFollowUpDrafted({ applicationId: job.id, followUpType: FOLLOW_UP_TYPE[type] }) } catch { /* ignore */ }
     } catch (e) {
       setError(e.message)
     }
