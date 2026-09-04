@@ -11,6 +11,9 @@
 //   • CV profile picture      → localStorage `cv_profile_picture` (base64, ~KB)
 //   • CV-generation settings   → base CV id, ATS level, rules, custom rules
 //   • "Next steps" dismissals  → localStorage `jobtrackr_dismissed_actions`
+//   • Guided-tour completion   → localStorage `jobtrackr_tour_done` (so the
+//     interactive tour is taken once per ACCOUNT, not once per device — a fresh
+//     browser / the Android app / cleared storage no longer replays it)
 // These are attached at push time and restored to their own localStorage keys on
 // pull, so a fresh device inherits them without a schema change.
 import { supabase, isSupabaseConfigured } from './supabase'
@@ -25,6 +28,7 @@ export const AUX_PREFS_SYNCED_EVENT = 'jobtrackr-aux-prefs-synced'
 const PICTURE_KEY = 'cv_profile_picture'
 const THEME_KEY = 'jobtrackr_theme'
 const DISMISSED_KEY = 'jobtrackr_dismissed_actions'
+const TOUR_DONE_KEY = 'jobtrackr_tour_done'
 const CV_PREF_KEYS = [
   'jobtrackr_cv_base_id',
   'jobtrackr_cv_ats_level',
@@ -69,6 +73,11 @@ function collectAuxPrefs() {
     if (dismissed) aux.dismissedActions = dismissed
   } catch { /* ignore */ }
 
+  try {
+    const tourDone = localStorage.getItem(TOUR_DONE_KEY)
+    if (tourDone) aux.tourDone = tourDone
+  } catch { /* ignore */ }
+
   return Object.keys(aux).length ? aux : null
 }
 
@@ -90,6 +99,10 @@ function applyAuxPrefs(aux) {
     }
     if (typeof aux.dismissedActions === 'string') {
       localStorage.setItem(DISMISSED_KEY, aux.dismissedActions)
+    }
+    // Tour completion is account-wide: once done on any device, never replay.
+    if (typeof aux.tourDone === 'string') {
+      localStorage.setItem(TOUR_DONE_KEY, aux.tourDone)
     }
   } catch { /* quota / serialization — non-critical */ }
   try {

@@ -70,6 +70,7 @@ import OnboardingModal from './components/OnboardingModal'
 import ExtensionUpdateModal from './components/ExtensionUpdateModal'
 import GuidedTour from './components/GuidedTour'
 import BottomSheet from './components/BottomSheet'
+import { pushLocalPrefs, AUX_PREFS_SYNCED_EVENT, PROFILE_SYNCED_EVENT } from './services/profileSync'
 
 const ONBOARDED_KEY = 'jobtrackr_onboarded'
 const TOUR_DONE_KEY = 'jobtrackr_tour_done'
@@ -336,6 +337,26 @@ export default function App() {
     try { return !!localStorage.getItem(TOUR_DONE_KEY) } catch { return false }
   })
   const tourAutoStartedRef = useRef(false)
+  // Hold the auto-launch until the cross-device profile/aux pull has had a chance
+  // to restore a remote "tour done" flag. Without this, a fresh device (empty
+  // local flag) would fire the 700ms timer before pullProfile lands and replay a
+  // tour the user already took on another device. Settles on the pull's synced
+  // events, or a fallback timeout for new/offline users (and immediately when
+  // Supabase isn't configured — nothing to wait for).
+  const [tourGateReady, setTourGateReady] = useState(() => !isSupabaseConfigured())
+  useEffect(() => {
+    if (tourGateReady) return
+    let settled = false
+    const settle = () => { if (!settled) { settled = true; setTourGateReady(true) } }
+    window.addEventListener(AUX_PREFS_SYNCED_EVENT, settle)
+    window.addEventListener(PROFILE_SYNCED_EVENT, settle)
+    const id = setTimeout(settle, 4000) // don't wait forever (no remote profile / offline)
+    return () => {
+      window.removeEventListener(AUX_PREFS_SYNCED_EVENT, settle)
+      window.removeEventListener(PROFILE_SYNCED_EVENT, settle)
+      clearTimeout(id)
+    }
+  }, [tourGateReady])
 
   // Keep the experimental job-search flag live when toggled from Settings.
   useEffect(() => {
@@ -396,12 +417,12 @@ export default function App() {
     !showLandingPage &&
     !(gmailUser && jobs.length === 0 && !initialSyncDone)
   useEffect(() => {
-    if (!appVisible || showOnboarding || tourAutoStartedRef.current) return
+    if (!appVisible || showOnboarding || !tourGateReady || tourAutoStartedRef.current) return
     if (localStorage.getItem(TOUR_DONE_KEY)) return
     tourAutoStartedRef.current = true
     const id = setTimeout(() => setTourActive(true), 700)
     return () => clearTimeout(id)
-  }, [appVisible, showOnboarding])
+  }, [appVisible, showOnboarding, tourGateReady])
 
   const handleOnboardingAddKey = () => {
     dismissOnboarding()
@@ -414,6 +435,9 @@ export default function App() {
     localStorage.setItem(TOUR_DONE_KEY, '1')
     setTourDone(true)
     setTourActive(false)
+    // Remember completion at the ACCOUNT level (user_metadata via __aux), so the
+    // tour is taken once per user — not once per device / browser / reinstall.
+    pushLocalPrefs()
   }
   const startTour = () => {
     // Replay always begins on the Tracker home where the anchors live.
