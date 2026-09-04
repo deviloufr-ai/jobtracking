@@ -103,7 +103,7 @@ function parseCV(raw) {
 
 // ── Profile picture HTML snippet ───────────────────────────────────────────────
 const picHTML = (src, size = 80, border = 'rgba(255,255,255,0.35)') =>
-  src ? `<img src="${src}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;border:3px solid ${border};flex-shrink:0" />` : ''
+  src ? `<img src="${src}" style="width:${size}px;height:${size}px;min-width:${size}px;max-width:${size}px;border-radius:50%;object-fit:cover;border:3px solid ${border};flex-shrink:0;display:block" />` : ''
 
 // ── Group section items into experience sub-blocks ────────────────────────────
 // Each h3 starts a new block. Convention: p[0]=company, p[1]=dates, rest=desc, li=bullets
@@ -366,7 +366,7 @@ function renderMinimal(md, pic) {
   const header = `
     <div style="padding:22px 42px 16px;border-bottom:1.5px solid #d1d5db">
       <div style="display:flex;align-items:center;gap:16px">
-        ${pic ? `<div>${picHTML(pic, 112, '#d1d5db')}</div>` : ''}
+        ${pic ? `<div style="flex-shrink:0">${picHTML(pic, 112, '#d1d5db')}</div>` : ''}
         <div>
           <div style="font-size:18pt;font-weight:900;color:#000;margin:0;letter-spacing:-0.01em">${name}</div>
           ${contact ? `<div style="font-size:8.5pt;color:#6b7280;margin-top:3px;line-height:1.5">${contact}</div>` : ''}
