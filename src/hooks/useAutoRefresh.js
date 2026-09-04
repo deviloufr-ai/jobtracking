@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { isConnected, fetchJobEmails, fetchJobEmailsForAccount, getConnectedAccounts, getCachedUser } from '../services/gmail'
+import { isConnected, fetchJobEmails, fetchJobEmailsForAccount, getConnectedAccounts, getCachedUser, isInsufficientScopeError } from '../services/gmail'
 import { parseEmailsForJobs, validateAndCleanJobs } from '../services/claude'
 import { fetchCalendarEvents } from '../services/calendar'
 import { extractJobUrlsFromEmail, rankUrlsByJobRelevance } from '../services/positionChecker'
@@ -639,12 +639,13 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
       // Fetch from all connected accounts and merge, tagging each email with its account
       const connectedAccts = getConnectedAccounts()
       let allEmails = []
+      const scopeFailed = []
       if (connectedAccts.length > 1) {
         const perAccount = await Promise.all(
           connectedAccts.map(acct =>
             fetchJobEmailsForAccount(acct.email, 150, months, null, null, activeCompanies)
               .then(emails => emails.map(e => ({ ...e, _account: acct.email })))
-              .catch(() => [])
+              .catch(e => { if (isInsufficientScopeError(e)) scopeFailed.push(acct.email); return [] })
           )
         )
         // Deduplicate by id across accounts
@@ -656,6 +657,12 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
         }
       } else {
         allEmails = await fetchJobEmails(150, months, null, null, activeCompanies)
+        if (allEmails.scopeErrors?.length) scopeFailed.push(...allEmails.scopeErrors)
+      }
+      // A silent background refresh can't reconnect an account itself — tell the user
+      // once so a broken Gmail scope doesn't leave candidatures stuck with no signal.
+      if (scopeFailed.length && showToast) {
+        showToast(`⚠️ Reconnecte ${[...new Set(scopeFailed)].join(', ')} dans les réglages Gmail (accès Gmail manquant)`, 6000)
       }
       const [emails, calendarEvents] = await Promise.all([
         Promise.resolve(allEmails),

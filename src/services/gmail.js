@@ -6,6 +6,27 @@ const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
 const REDIRECT_URI = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
 
+// A Gmail token minted WITHOUT the gmail.readonly scope (e.g. an account that
+// only completed the Supabase sign-in consent, or one whose refresh token predates
+// the Gmail grant) fails EVERY Gmail query with HTTP 403 "Request had insufficient
+// authentication scopes". A silent refresh cannot ADD a missing scope, so this
+// never self-heals — the account needs an interactive re-consent. Surface it as a
+// typed error so callers prompt a reconnect instead of failing invisibly.
+export class GmailScopeError extends Error {
+  constructor(account) {
+    super('insufficient_gmail_scope')
+    this.name = 'GmailScopeError'
+    this.account = account || null
+  }
+}
+export function isInsufficientScopeError(e) {
+  if (e instanceof GmailScopeError) return true
+  const m = (e?.message || '').toLowerCase()
+  return m.includes('insufficient authentication scopes') ||
+    m.includes('insufficient_scope') ||
+    m.includes('insufficientpermissions')
+}
+
 // On the native build, CapacitorHttp (enabled in capacitor.config.json) patches
 // window.fetch and routes every non-GET request through native networking, which
 // drops the Authorization Bearer header — so a Gmail send (POST) would fail with
@@ -307,6 +328,10 @@ export async function connectGmail(hint = '') {
         client_id: CLIENT_ID,
         scope: SCOPES,
         hint,
+        // Force the consent screen on every (re)connect. Without it Google may reuse
+        // a prior grant that was missing gmail.readonly, so reconnecting a broken
+        // account would NOT re-request the missing scope and it stays unreadable.
+        prompt: 'consent',
         ux_mode: 'popup',
         callback: async (response) => {
           if (response.error) { reject(new Error(response.error)); return }
@@ -635,7 +660,8 @@ export async function fetchJobEmailsForAccount(accountEmail, maxResults = null, 
 
   // Smart period: 3 months on first import, 1 day on refreshes with lastSyncTime
   const actualMonths = months !== null ? months : (lastSyncTime ? 1/30 : 3)
-  return _fetchJobEmails(token, maxResults, actualMonths, dateRange, lastSyncTime, companies)
+  // Pass the account so a GmailScopeError names which account to reconnect.
+  return _fetchJobEmails(token, maxResults, actualMonths, dateRange, lastSyncTime, companies, accountEmail)
 }
 
 // Fetch from ALL connected accounts (merged + deduplicated)
@@ -654,9 +680,19 @@ export async function fetchJobEmails(maxResults = null, months = null, dateRange
     accountEntries.map(([email]) => ensureValidToken(email))
   )
 
-  // Fetch from all accounts in parallel using valid tokens
+  // Fetch from all accounts in parallel using valid tokens. Tolerate a per-account
+  // scope failure: keep the working accounts' emails and collect the broken ones so
+  // the caller can prompt a reconnect (throwing here would discard everything).
+  const scopeErrors = []
   const results = await Promise.all(
-    accountEntries.map(([email], i) => _fetchJobEmails(validTokens[i], maxResults, actualMonths, dateRange, lastSyncTime, companies))
+    accountEntries.map(async ([email], i) => {
+      try {
+        return await _fetchJobEmails(validTokens[i], maxResults, actualMonths, dateRange, lastSyncTime, companies, email)
+      } catch (e) {
+        if (isInsufficientScopeError(e)) { scopeErrors.push(email); return [] }
+        throw e
+      }
+    })
   )
 
   // Merge and deduplicate by email ID + data (prevents same email from multiple queries)
@@ -677,6 +713,9 @@ export async function fetchJobEmails(maxResults = null, months = null, dateRange
       merged.push(e)
     }
   }
+  // Report accounts whose Gmail scope is missing (side-channel on the array so no
+  // caller signature changes). Callers that care read merged.scopeErrors.
+  if (scopeErrors.length) merged.scopeErrors = scopeErrors
   return merged
 }
 
@@ -689,7 +728,7 @@ const GMAIL_CAT_MAP = {
   CATEGORY_FORUMS: 'forums',
 }
 
-async function _fetchJobEmails(token, maxResults, months, dateRange = null, lastSyncTime = null, companies = null) {
+async function _fetchJobEmails(token, maxResults, months, dateRange = null, lastSyncTime = null, companies = null, accountEmail = null) {
   // Build date filter: smart incremental sync if lastSyncTime provided
   let dateFilter
   let effectiveMonths = months
@@ -794,6 +833,9 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
 
   const allMessageIds = new Set()
   const allMessages = []
+  // Set when any query is rejected for a missing Gmail scope (403). A scope-denied
+  // token fails EVERY query, so this flags the whole account, not one query.
+  let scopeDenied = false
 
   // Per-page result cap. The old formula (effectiveMonths * 20) collapsed to just
   // 9 for the default 2-week window, so a single query fanning out across ~14 ATS
@@ -819,13 +861,21 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
         pageToken = data.nextPageToken
         if (!pageToken) break // no more pages for this query
       }
-    } catch (e) { console.warn('❌ Query failed:', q.slice(0, 60), e.message) }
+    } catch (e) {
+      if (isInsufficientScopeError(e)) scopeDenied = true
+      console.warn('❌ Query failed:', q.slice(0, 60), e.message)
+    }
   }
 
   for (let i = 0; i < queries.length; i += 6) {
     await Promise.all(queries.slice(i, i + 6).map(runQuery))
     if (i + 6 < queries.length) await new Promise(r => setTimeout(r, 100))
   }
+
+  // Every query failed for a missing Gmail scope → the account's token can't read
+  // mail at all. Throw so the caller can prompt a reconnect (an interactive
+  // re-consent) instead of the account silently contributing nothing.
+  if (scopeDenied && allMessages.length === 0) throw new GmailScopeError(accountEmail)
 
   if (!allMessages.length) return []
   const toFetch = allMessages.slice(0, maxResults)

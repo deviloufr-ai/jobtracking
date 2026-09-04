@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useDragDock } from '../hooks/useDragDock'
-import { connectGmail, disconnectGmail, refreshToken, fetchJobEmails, fetchJobEmailsForAccount, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, getConnectedAccounts } from '../services/gmail'
+import { connectGmail, disconnectGmail, refreshToken, fetchJobEmails, fetchJobEmailsForAccount, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, getConnectedAccounts, isInsufficientScopeError } from '../services/gmail'
 import { fetchCalendarEvents } from '../services/calendar'
 import { buildJobsFromEmails } from '../hooks/useAutoRefresh'
 import { clearEmailCache } from '../services/claude'
@@ -27,6 +27,9 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
   const [results, setResults] = useState([])
   const [selected, setSelected] = useState(new Set())
   const [error, setError] = useState(null)
+  // Accounts whose last scan failed for a missing Gmail scope — they need an
+  // interactive reconnect. Non-blocking: a partial scan (other accounts) still runs.
+  const [scopeFailedAccounts, setScopeFailedAccounts] = useState([])
   const [emailCount, setEmailCount] = useState(0)
   const [months, setMonths] = useState(14/30)
   const [dateMode, setDateMode] = useState('relative') // 'relative' | 'range'
@@ -85,6 +88,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
     try {
       setStep(STEPS.fetching)
       setError(null)
+      setScopeFailedAccounts([])
 
       // Clear email cache if force import is enabled
       if (forceImport) {
@@ -115,10 +119,17 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         ? existingJobs.map(job => job.company).filter(c => c && c.trim().length > 0)
         : null
 
-      // Fetch from selected account or ALL connected accounts
+      // Fetch from selected account or ALL connected accounts. Collect accounts
+      // whose Gmail scope is missing so we can prompt a reconnect (see fix A).
       let emails = []
+      const scopeFailed = []
       if (scanAccount) {
-        emails = await fetchJobEmailsForAccount(scanAccount, null, months, dateRange, null, companies)
+        try {
+          emails = await fetchJobEmailsForAccount(scanAccount, null, months, dateRange, null, companies)
+        } catch (e) {
+          if (isInsufficientScopeError(e)) { scopeFailed.push(scanAccount); emails = [] }
+          else throw e
+        }
       } else if (connectedAccounts.length > 1) {
         // Fetch from all accounts in parallel, deduplicate by id
         setStep(STEPS.fetching)
@@ -126,7 +137,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
           connectedAccounts.map(acct =>
             fetchJobEmailsForAccount(acct.email, null, months, dateRange, null, companies)
               .then(res => res.map(e => ({ ...e, _account: acct.email })))
-              .catch(() => [])
+              .catch(e => { if (isInsufficientScopeError(e)) scopeFailed.push(acct.email); return [] })
           )
         )
         const seen = new Set()
@@ -137,11 +148,19 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         }
       } else {
         emails = await fetchJobEmails(null, months, dateRange, null, companies)
+        if (emails.scopeErrors?.length) scopeFailed.push(...emails.scopeErrors)
       }
       setEmailCount(emails.length)
 
+      const uniqScopeFailed = [...new Set(scopeFailed)]
+      setScopeFailedAccounts(uniqScopeFailed)
+
       if (emails.length === 0) {
-        setError(t('gmailImport.errorNothingFound').replace('{months}', Math.round(months)))
+        // A scope failure is the actionable cause — tell the user to reconnect,
+        // not the generic "nothing found" (which sends them hunting in the wrong place).
+        setError(uniqScopeFailed.length
+          ? `Accès Gmail manquant pour ${uniqScopeFailed.join(', ')} — reconnecte ce compte (bouton Reconnecter ci-dessous) en autorisant la lecture Gmail, puis relance le scan.`
+          : t('gmailImport.errorNothingFound').replace('{months}', Math.round(months)))
         setStep(STEPS.idle)
         return
       }
@@ -352,7 +371,11 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
       setSelected(new Set(displayList.map((_, i) => i)))
       setStep(STEPS.review)
     } catch (e) {
-      if (e.message?.includes('401') || e.message === 'Non connecté à Gmail') {
+      if (isInsufficientScopeError(e)) {
+        const acct = e.account ? ` (${e.account})` : ''
+        setScopeFailedAccounts(prev => e.account ? [...new Set([...prev, e.account])] : prev)
+        setError(`Accès Gmail manquant${acct} — reconnecte ce compte (bouton Reconnecter) en autorisant la lecture Gmail, puis relance le scan.`)
+      } else if (e.message?.includes('401') || e.message === 'Non connecté à Gmail') {
         setError('Session expirée — cliquez sur "Reconnecter" puis relancez le scan.')
       } else {
         setError('Erreur lors du scan : ' + e.message)
@@ -692,6 +715,13 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
               </div>
 
               {error && <p className="text-xs text-red-500 bg-red-50 rounded-lg p-3 mb-4">{error}</p>}
+              {scopeFailedAccounts.length > 0 && (
+                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                  ⚠️ Accès Gmail manquant pour <strong>{scopeFailedAccounts.join(', ')}</strong>.
+                  Ses emails n'ont pas pu être lus. Reconnecte ce compte ci-dessous en
+                  autorisant « Consulter vos e-mails », puis relance le scan.
+                </div>
+              )}
               <div className="flex items-center justify-center gap-2 mb-4">
                 <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-700">
                   <div
@@ -764,6 +794,13 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
           {/* Review */}
           {step === STEPS.review && (
             <div>
+              {scopeFailedAccounts.length > 0 && (
+                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                  ⚠️ Le compte <strong>{scopeFailedAccounts.join(', ')}</strong> a été ignoré :
+                  accès Gmail manquant. Reconnecte-le (autorise « Consulter vos e-mails »)
+                  pour importer ses candidatures.
+                </div>
+              )}
               {results.length === 0 ? (
                 <div className="text-center py-6">
                   <div className="text-3xl mb-3">🤷</div>
