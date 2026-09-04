@@ -1213,6 +1213,7 @@ export default function App() {
           gmailUser={gmailUser}
           account={railAccount}
           onAccount={() => setShowGmail(true)}
+          onSignOut={session ? () => supabase.auth.signOut() : undefined}
           onTour={tourDone ? undefined : startTour}
           extensionInstalled={extensionInstalled}
           extensionUpdateAvailable={extUpdate.updateAvailable}
