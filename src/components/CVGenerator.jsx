@@ -366,7 +366,7 @@ function renderMinimal(md, pic) {
   const header = `
     <div style="padding:22px 42px 16px;border-bottom:1.5px solid #d1d5db">
       <div style="display:flex;align-items:center;gap:16px">
-        ${pic ? `<div>${picHTML(pic, 56, '#d1d5db')}</div>` : ''}
+        ${pic ? `<div>${picHTML(pic, 112, '#d1d5db')}</div>` : ''}
         <div>
           <div style="font-size:18pt;font-weight:900;color:#000;margin:0;letter-spacing:-0.01em">${name}</div>
           ${contact ? `<div style="font-size:8.5pt;color:#6b7280;margin-top:3px;line-height:1.5">${contact}</div>` : ''}
