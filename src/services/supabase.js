@@ -148,6 +148,14 @@ export async function signInWithGoogle() {
       // there's no router, so it just serves index.html and detectSessionInUrl
       // consumes the ?code= param. App.jsx strips the path after sign-in.
       redirectTo: `${window.location.origin}/auth/callback`,
+      // ALWAYS show the Google account chooser. signOut() clears only the
+      // Supabase session, not Google's own SSO cookie, so without this a
+      // re-login silently reuses whatever account is still active at Google —
+      // the user can never switch or "disconnect" the account. Same reasoning
+      // as the native flow below (which also needs `consent` for a Gmail
+      // refresh token; web gets Gmail scopes separately via GIS, so
+      // select_account alone is enough here — no forced re-consent each login).
+      queryParams: { prompt: 'select_account' },
     }
   })
 
