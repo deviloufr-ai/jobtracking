@@ -1,29 +1,96 @@
-## Ce que SmartJobTracker fait
+# SmartJobTracker
 
-### 🎯 Fonctionnalités principales
+AI-assisted job application tracker. Centralises applications across job boards and email,
+keeps their status current without manual entry, and helps you act on the ones that need you.
 
-- **Tableau de bord unifié** — toutes les candidatures en un seul endroit avec statut + chronologie
-- **Gmail intelligent** — import auto des emails des recruteurs (parser 2 étapes: règles + Claude fallback)
-- **Extension Firefox** — capture en 1 clic depuis les job boards (LinkedIn, Indeed, APEC, WTTJ...)
-- **Timeline enrichie** — enrichissement auto avec Google Calendar + liens de réunion (Zoom, Teams, etc)
-- **Générateur de CV** — CV personnalisé par offre en format STAR adapté
-- **Générateur STAR** — préparation d'entretien (Situation → Tâche → Action → Résultat)
-- **Brouillons d'emails** — génération automatique de remerciements + relances
-- **Réglages** — profil, objectifs, seuils d'archivage, tout configurable
+**Live**: https://smartjobtracker.com
 
-# React + Vite
+---
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## What it does
 
-Currently, two official plugins are available:
+- **Unified dashboard** — every application in one place, with status and a full timeline
+- **Gmail import** — recruiter emails parsed automatically (rules first, Claude as fallback), multi-account
+- **Calendar enrichment** — interviews, meeting links and invites matched back to the right application
+- **Firefox extension** — capture a posting in one click from LinkedIn, Indeed, APEC, WTTJ and others
+- **Android app** — same product, with native push notifications
+- **Job search across five sources** — Adzuna, France Travail, jSearch, RemoteOK, Welcome to the Jungle, with scoring
+- **Position checking** — detects when a posting disappears or is reposted
+- **CV and cover letter generation** — tailored per posting, STAR-formatted, PDF export
+- **STAR generator** — interview preparation from your own history
+- **Notifications** — follow-up due, interview tomorrow, offer received, auto-archive
+- **Multi-device sync** — sign in on any device and see the same data, offline-first
+- **French and English** interface
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+React 19 + Vite + Tailwind · Supabase (Postgres, Auth, Row-Level Security) · IndexedDB
+offline cache · Vercel serverless functions · Claude Haiku · Capacitor (Android) ·
+Firefox WebExtension · Vitest
 
-## Expanding the ESLint configuration
+Full technical documentation lives in Notion under **Documentation technique** —
+architecture, data model, setup and changelog. `CLAUDE.md` carries the working context.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+---
+
+## Getting started
+
+```bash
+npm install
+cp .env.example .env          # fill in the client-side values
+npm install -g supabase
+supabase migration up         # applies the schema
+npm run dev                   # http://localhost:5173
+```
+
+Add `http://localhost:5173` to Authorized JavaScript origins in the Google Cloud console,
+or OAuth will fail locally with no useful error.
+
+Server-side keys (`ANTHROPIC_API_KEY`, `GOOGLE_CLIENT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`)
+belong in the Vercel project settings, never in a local `.env`. See `.env.example` for the
+full list and what each one is for.
+
+## Commands
+
+| Command | Does |
+| --- | --- |
+| `npm run dev` | Dev server |
+| `npm run build` | Production build — run before every push |
+| `npm run preview` | Serve the build locally |
+| `npm run lint` | ESLint |
+| `npm test` | Vitest, single run |
+| `npm run test:watch` | Vitest, watch mode |
+
+Developed from PowerShell, where `&&` does not chain commands — use `;` instead.
+
+## Firefox extension
+
+```
+about:debugging  ->  This Firefox  ->  Load Temporary Add-on  ->  jobtrackr-extension/manifest.json
+```
+
+The folder keeps the project's former name.
+
+## Android
+
+```bash
+npm run build
+npx cap sync android
+npx cap open android
+```
+
+The Android app is a Capacitor shell pointed at the live site, so a web deploy updates it
+without a store release.
+
+---
+
+## Status and origin
+
+In production. Built by Alexandre Leblanc, originally as a technical test for Publidata,
+and since developed well beyond that scope.
+
+Note: the project has no semantic version and no git tags. `package.json` reads `0.0.0`;
+the `versionName` in `android/app/build.gradle` tracks the APK only. Version numbers found
+in older documents are prose, not releases.
