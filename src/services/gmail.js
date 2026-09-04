@@ -270,6 +270,48 @@ export function gmailMessageUrl(gmailId, receivedBy) {
   return { url, account, uncertain }
 }
 
+// "Open email" tap handler for the timeline links. On Android, launch the message's
+// mailbox in the NATIVE Gmail app (package com.google.android.gm); if Gmail isn't
+// installed or the intent isn't handled, fall back to the web URL after a short beat
+// so the tap never becomes a no-op. Returns true when it took over the tap (the
+// caller should preventDefault); returns false on web/iOS so the normal <a> opens.
+//
+// Caveat: Gmail's web message URL identifies the message via a URL #fragment, and an
+// intent:// URL can't carry a fragment (its own '#Intent;…' block occupies it), and
+// the Gmail Android app exposes no public per-message deep link — so the app opens to
+// the inbox. The browser fallback keeps the exact-message URL.
+export function openGmailNative(url) {
+  try {
+    if (typeof Capacitor === 'undefined' || Capacitor.getPlatform?.() !== 'android') return false
+    const bare = url.replace(/^https?:\/\//, '').replace(/#.*$/, '')
+    const intentUrl = `intent://${bare}#Intent;scheme=https;package=com.google.android.gm;end`
+
+    // If Gmail launches, the webview backgrounds (visibility → hidden); if nothing
+    // handles the intent we stay visible and open the web URL instead.
+    let left = false
+    const onHide = () => { left = true }
+    document.addEventListener('visibilitychange', onHide, { once: true })
+
+    const a = document.createElement('a')
+    a.href = intentUrl
+    a.target = '_blank'          // external → Capacitor never navigates the app's own frame
+    a.rel = 'noopener'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+
+    setTimeout(() => {
+      document.removeEventListener('visibilitychange', onHide)
+      if (!left && document.visibilityState === 'visible') {
+        window.open(url, '_blank', 'noopener,noreferrer')
+      }
+    }, 900)
+    return true
+  } catch {
+    return false
+  }
+}
+
 // Load Google OAuth script on page startup (not in connectGmail, to preserve user activation)
 function initGoogleScript() {
   if (document.getElementById('google-oauth-script')) return
