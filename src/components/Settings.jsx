@@ -131,7 +131,7 @@ const getCATEGORIES = (t) => [
 ]
 
 export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdateJob, initialTab }) {
-  const { settings, updateSetting, resetSettings } = useSettings()
+  const { settings, updateSetting, resetSettings, loading: settingsLoading } = useSettings()
   const { deduplicateViaServer } = useJobs()
   const { t, language, setLanguage, availableLanguages } = useLanguage()
   const { cvs } = useCVs()
@@ -193,6 +193,21 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
   const [profileSaved, setProfileSaved] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState(null)
+
+  // Automation tab — grey out "Save & Sync" while nothing changed, and give
+  // non-blocking inline feedback instead of a native alert(). updateSetting already
+  // persists+syncs each field live, so the baseline is "as loaded / last synced here".
+  const AUTOMATION_KEYS = ['archiveSentDays', 'archiveRejectedDays', 'autoRefreshHours', 'gmailPeriodDays', 'checkPositionAfterDays']
+  const snapshotAutomation = () => Object.fromEntries(AUTOMATION_KEYS.map(k => [k, settings[k]]))
+  const [savedAutomation, setSavedAutomation] = useState(null)
+  const [autoSaveState, setAutoSaveState] = useState(null) // null | 'saved' | 'error'
+  // Capture the baseline ONCE, after settings finish loading from IndexedDB
+  // (they start as SETTINGS_DEFAULTS, so a first-render snapshot would be wrong).
+  useEffect(() => {
+    if (!settingsLoading && !savedAutomation) setSavedAutomation(snapshotAutomation())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsLoading])
+  const automationDirty = !!savedAutomation && AUTOMATION_KEYS.some(k => settings[k] !== savedAutomation[k])
 
   const updateProfile = (key, value) => setProfile(p => ({ ...p, [key]: value }))
   const handleSaveProfile = () => {
@@ -665,27 +680,38 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                 <Row label={t('settingsAutomation.checkPositionAvailability')} hint={t('settingsAutomation.checkPositionAvailabilityHint')}>
                   <NumInput value={settings.checkPositionAfterDays} onChange={v => updateSetting('checkPositionAfterDays', v)} min={0} max={365} suffix="j" />
                 </Row>
-                <div className="flex justify-end mt-4">
+                <div className="flex items-center justify-end gap-3 mt-4">
+                  {autoSaveState === 'saved' && (
+                    <span className="text-xs font-medium text-green-600">{t('settingsAutomation.syncSuccess')}</span>
+                  )}
+                  {autoSaveState === 'error' && (
+                    <span className="text-xs font-medium text-red-600">{t('settingsAutomation.syncError')}</span>
+                  )}
                   <button
                     onClick={async () => {
                       try {
                         // Save settings to IndexedDB first
                         await indexeddb.saveSettings(settings)
                         console.log('✅ Automation settings saved locally')
-                        
+
                         // Force immediate sync to remote (no debounce)
                         const profile = loadLocalProfile() || {}
                         await pushProfile(profile, true)  // true = force sync
                         console.log('🔄 Automation settings synced to cloud')
-                        
-                        // Show success feedback
-                        alert(t('settingsAutomation.syncSuccess'))
+
+                        // Non-blocking feedback (no native alert) + clear the dirty
+                        // state so the button greys out until the next change.
+                        setSavedAutomation(snapshotAutomation())
+                        setAutoSaveState('saved')
+                        setTimeout(() => setAutoSaveState(null), 2500)
                       } catch (error) {
                         console.error('❌ Sync failed:', error)
-                        alert(t('settingsAutomation.syncError'))
+                        setAutoSaveState('error')
+                        setTimeout(() => setAutoSaveState(null), 4000)
                       }
                     }}
-                    className="text-sm font-semibold px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all"
+                    disabled={!automationDirty}
+                    className="text-sm font-semibold px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-indigo-600"
                   >
                     {t('settingsAutomation.saveAndSync')}
                   </button>
