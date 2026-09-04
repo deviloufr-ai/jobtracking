@@ -39,10 +39,47 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // served from the www origin, which Supabase's REST API allows. Resolved lazily
 // per call so it's a no-op on web, where CapacitorWebFetch is absent and plain
 // fetch is used (identical to the previous default).
-const supabaseFetch = (...args) =>
-  (typeof window !== 'undefined' && typeof window.CapacitorWebFetch === 'function')
-    ? window.CapacitorWebFetch(...args)
-    : fetch(...args)
+// ── Native-login diagnostic ring buffer ──────────────────────────────────────
+// A persisted trail of auth transitions + any /auth/v1 error the server returned.
+// On Android we can't read the console, and a "logs in → bounced back to login"
+// loop is caused by a silent SIGNED_OUT (a refresh the server rejected). This lets
+// the login screen surface the exact reason so it can be screenshotted.
+const AUTH_DIAG_KEY = 'jobtrackr_auth_diag'
+function recordAuthDiag(entry) {
+  try {
+    const arr = JSON.parse(localStorage.getItem(AUTH_DIAG_KEY) || '[]')
+    arr.push({ ...entry, at: new Date().toISOString() })
+    while (arr.length > 12) arr.shift()
+    localStorage.setItem(AUTH_DIAG_KEY, JSON.stringify(arr))
+  } catch { /* diagnostics must never throw into auth */ }
+}
+export function getAuthDiag() {
+  try { return JSON.parse(localStorage.getItem(AUTH_DIAG_KEY) || '[]') } catch { return [] }
+}
+export function clearAuthDiag() {
+  try { localStorage.removeItem(AUTH_DIAG_KEY) } catch { /* ignore */ }
+}
+
+const supabaseFetch = async (...args) => {
+  const useNative = typeof window !== 'undefined' && typeof window.CapacitorWebFetch === 'function'
+  const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '')
+  const isAuth = /\/auth\/v1\//.test(url)
+  const path = () => url.replace(/^https?:\/\/[^/]+/, '').replace(/\?.*$/, '')
+  try {
+    const res = await (useNative ? window.CapacitorWebFetch(...args) : fetch(...args))
+    // The refresh 400/401 that silently ends the session is exactly what we can't
+    // otherwise see on Android — capture its status + body.
+    if (isAuth && !res.ok) {
+      let body = ''
+      try { body = (await res.clone().text()).slice(0, 300) } catch { /* ignore */ }
+      recordAuthDiag({ kind: 'auth_http', status: res.status, path: path(), body })
+    }
+    return res
+  } catch (err) {
+    if (isAuth) recordAuthDiag({ kind: 'auth_throw', path: path(), message: err?.message || String(err) })
+    throw err
+  }
+}
 
 // createClient throws on an empty URL/key, which would crash the whole app at
 // import time and render a blank white screen (this bit the first Android build
@@ -74,6 +111,15 @@ let cachedAuthUserId = null
 supabase.auth.getSession().then(({ data }) => { cachedAuthUserId = data.session?.user?.id || null })
 supabase.auth.onAuthStateChange((event, session) => {
   cachedAuthUserId = session?.user?.id || null
+  // Trace every auth transition: the event, whether a session survived it, and the
+  // token expiry (a token exp far from the device clock = the refresh loop that
+  // bounces native users to login). Feeds the login-screen diagnostic.
+  recordAuthDiag({
+    kind: 'event',
+    event,
+    hasSession: !!session,
+    expiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : null,
+  })
   // Mixpanel identity: identify on login / re-open (INITIAL_SESSION, SIGNED_IN),
   // fire signup_completed for a brand-new account, reset() on SIGNED_OUT.
   try { analyticsOnAuthChange(event, session) } catch { /* analytics must never break auth */ }
@@ -254,6 +300,23 @@ export function initNativeAuthDeepLink() {
       }
     })
   })
+}
+
+// Tie the token-refresh timer to the app's foreground state. Supabase's mobile
+// guidance: the refresh scheduler must be started/stopped with the app lifecycle,
+// or it drifts across background→resume on native and the session can be dropped
+// (→ the user is bounced back to the login screen). No-op on the web build.
+export function initNativeAuthLifecycle() {
+  if (!Capacitor.isNativePlatform()) return
+  try { supabase.auth.startAutoRefresh() } catch { /* ignore */ }
+  import('@capacitor/app').then(({ App }) => {
+    App.addListener('appStateChange', ({ isActive }) => {
+      try {
+        if (isActive) supabase.auth.startAutoRefresh()
+        else supabase.auth.stopAutoRefresh()
+      } catch { /* ignore */ }
+    })
+  }).catch(() => { /* @capacitor/app unavailable — nothing to tie to */ })
 }
 
 // Sign out

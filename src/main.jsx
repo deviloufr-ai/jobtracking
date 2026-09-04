@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import Root from './Root.jsx'
 import { installNativeApiShim } from './services/nativeApi.js'
-import { initNativeAuthDeepLink } from './services/supabase.js'
+import { initNativeAuthDeepLink, initNativeAuthLifecycle } from './services/supabase.js'
 import { initPushNotifications } from './services/pushNotifications.js'
 import { initAnalytics } from './services/analytics.js'
 
@@ -18,6 +18,10 @@ installNativeApiShim()
 // Complete native Google sign-in when the OAuth redirect returns as a deep link.
 // No-op on the web build.
 initNativeAuthDeepLink()
+
+// Keep the token-refresh timer aligned with the app's foreground state on native,
+// so the session isn't dropped across background/resume. No-op on the web build.
+initNativeAuthLifecycle()
 
 // Register for Android FCM push and store the device token. No-op on the web.
 initPushNotifications()

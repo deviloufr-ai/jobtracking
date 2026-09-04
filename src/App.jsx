@@ -9,6 +9,38 @@ import { Capacitor } from '@capacitor/core'
 // The Firefox extension is irrelevant inside the native Android app — hide every
 // promo surface when running in the Capacitor shell.
 const IS_NATIVE = Capacitor.isNativePlatform()
+
+// Native-only overlay shown on the login screen ONLY when the auth trail shows a
+// "was signed in, then bounced to login" loop. Surfaces the exact SIGNED_OUT /
+// /auth/v1 error so it can be screenshotted (no console on Android). Invisible to
+// everyone else. Remove once the native login loop is diagnosed.
+function NativeAuthDiag() {
+  const [hidden, setHidden] = useState(false)
+  const diag = getAuthDiag()
+  const hadSession = diag.some(d => d.kind === 'event' && d.hasSession)
+  const lastEvent = [...diag].reverse().find(d => d.kind === 'event')
+  const bounced = hadSession && lastEvent && lastEvent.hasSession === false
+  if (hidden || !bounced) return null
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-[60] bg-black/90 text-green-300 font-mono text-[10px] leading-tight p-2 max-h-44 overflow-auto">
+      <div className="flex items-center justify-between text-white mb-1">
+        <span>auth diagnostic — screenshot me · now {new Date().toISOString()}</span>
+        <span className="flex gap-3">
+          <button className="underline" onClick={() => { clearAuthDiag(); setHidden(true) }}>clear</button>
+          <button className="underline" onClick={() => setHidden(true)}>hide</button>
+        </span>
+      </div>
+      {diag.slice(-10).map((d, i) => (
+        <div key={i} className="whitespace-pre-wrap break-all">
+          {(d.at || '').replace('T', ' ').replace('Z', '')} · {d.kind} · {d.event || (d.status != null ? `HTTP ${d.status}` : '')}
+          {d.hasSession === false ? ' · NO-SESSION' : d.hasSession ? ' · session' : ''}
+          {d.expiresAt ? ` · exp ${d.expiresAt.replace('T', ' ').replace('Z', '')}` : ''}
+          {d.path ? ` · ${d.path}` : ''}{d.body ? ` · ${d.body}` : ''}{d.message ? ` · ${d.message}` : ''}
+        </div>
+      ))}
+    </div>
+  )
+}
 import { useSettings } from './hooks/useSettings'
 import { useLanguage } from './hooks/useLanguage'
 import './styles/themes.css'
@@ -38,7 +70,7 @@ import { useAutoScore } from './hooks/useAutoScore'
 import { useAutoCheckPositions } from './hooks/useAutoCheckPositions'
 import { usePolling } from './hooks/usePolling'
 import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, autoReuseStoredTokens } from './services/gmail'
-import { supabase, signInWithGoogle, isSupabaseConfigured } from './services/supabase'
+import { supabase, signInWithGoogle, isSupabaseConfigured, getAuthDiag, clearAuthDiag } from './services/supabase'
 import { migrateToAuthIdentity } from './services/authMigration'
 import { reinitializeSyncCoordinator } from './services/syncCoordinator'
 import JobSearch from './components/JobSearch'
@@ -1083,6 +1115,7 @@ export default function App() {
     return (
       <ErrorBoundary>
         <LandingComponent onLogin={() => signInWithGoogle().catch(err => console.error('Sign-in failed:', err))} />
+        {IS_NATIVE && <NativeAuthDiag />}
       </ErrorBoundary>
     )
   }
