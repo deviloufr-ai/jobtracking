@@ -20,16 +20,16 @@ prose ("v0.7", "v1.0") are documentation artifacts. Do not trust them.
 
 | Layer | Choice |
 | --- | --- |
-| Frontend | React 19 + Vite 8 + Tailwind 3 — 64 components, 45 services, 25 hooks |
+| Frontend | React 19 + Vite 8 + Tailwind 3 — 69 components, 45 services, 25 hooks |
 | Auth & data | Supabase (Postgres + Auth + RLS) — 15 tables, 14 migration files |
 | Local cache | IndexedDB — offline-first, this is the read path |
-| Serverless | Vercel Functions in `/api/` — 12 endpoints |
+| Serverless | Vercel Functions in `/api/` — 13 endpoints |
 | AI | Claude Haiku 4.5 via the `/api/claude` proxy, model pinned by `VITE_CLAUDE_MODEL` |
 | Local ML | `@xenova/transformers` — in-browser inference |
 | Mobile | Capacitor 8 → Android, `com.smartjobtracker.app` |
 | Extension | Firefox MV3 in `jobtrackr-extension/` (folder name is legacy, left deliberately) |
 | Analytics | Vercel Analytics, mounted in `Root.jsx` |
-| Tests | Vitest + jsdom — 8 test files |
+| Tests | Vitest + jsdom — 11 test files |
 
 ## Architecture
 
@@ -61,6 +61,12 @@ The **Android app is a Capacitor shell pointed at the live site** (`capacitor.co
   one device is indistinguishable from a row another device has not yet received, and the row
   resurrects.
 - `syncCoordinator.js` sequences all of the above; `syncDiagnostic.js` is the debugging entry point.
+- **Rich per-job fields ride `jobs.extras` (jsonb, migration 007), not dedicated columns.** The
+  whitelist lives in `syncManager.js` `EXTRA_FIELDS`: generated CV/cover letter (`cvSaved`,
+  `letterSaved` + version history `letterVersions`), STAR answers, score, interview sessions,
+  compensation (`compensation`), the per-application contacts CRM (`contacts` + touchpoints), and
+  the saved negotiation draft (`negotiationSaved`). Adding a synced per-job field = add it here;
+  no migration needed. The poll unbundles `extras` back onto the job (`pollManager.js`).
 
 ### Gmail ingestion
 

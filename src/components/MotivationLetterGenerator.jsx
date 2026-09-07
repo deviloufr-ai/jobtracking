@@ -3,6 +3,7 @@ import AIPanelBoundary from './AIPanelBoundary'
 import { useCVs } from '../hooks/useCVs'
 import { aiFetch } from '../services/apiKey'
 import { useDragDock } from '../hooks/useDragDock'
+import { pushLetterVersion } from '../utils/letterVersions'
 
 export default function MotivationLetterGenerator(props) {
   return (
@@ -106,12 +107,10 @@ function MotivationLetterGeneratorPanel({ job, onClose, cvText, initialContent, 
 
   const saveLetter = () => {
     if (!letterText || !onSaveLetter) return
-    onSaveLetter(job.id, {
-      letterSaved: {
-        content: letterText,
-        savedAt: new Date().toISOString(),
-      }
-    })
+    // Keep a bounded version history so regenerating no longer discards the
+    // previous letter. letterSaved stays the current one for backward compat.
+    const { letterSaved, letterVersions } = pushLetterVersion(job, letterText)
+    onSaveLetter(job.id, { letterSaved, letterVersions })
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
   }

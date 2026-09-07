@@ -15,6 +15,9 @@ import CVGenerationSettings from '../CVGenerationSettings'
 import CommuteInfo from '../CommuteInfo'
 import MotivationLetterGenerator from '../MotivationLetterGenerator'
 import MockInterviewChatbot from '../MockInterviewChatbot'
+import CompensationEditor from '../CompensationEditor'
+import ContactsManager from '../ContactsManager'
+import LetterVersions from '../LetterVersions'
 import { isNoReply } from '../EmailDraft'
 import { getCompanyAddress, setCompanyAddress } from '../../services/commuteStore'
 import { searchCompanyAddress } from '../../services/googlePlaces'
@@ -290,6 +293,9 @@ export default function CandidatureDrawer({
               </div>
             )}
 
+            <CompensationEditor job={job} onUpdateJob={onUpdateJob} t={t} />
+            <ContactsManager job={job} onUpdateJob={onUpdateJob} t={t} />
+
             {invitePending && (
               <div className="mb-6 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3">
                 <span className="text-base leading-none mt-0.5" aria-hidden>📅</span>
@@ -462,6 +468,7 @@ export default function CandidatureDrawer({
                     {job.letterSaved.content}
                   </div>
                 </div>
+                <LetterVersions job={job} onUpdateJob={onUpdateJob} t={t} />
               </>
             ) : (
               <div className="text-center py-10">

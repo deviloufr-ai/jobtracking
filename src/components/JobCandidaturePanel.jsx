@@ -4,6 +4,9 @@ import { getStatus, getStatusLabel, STATUSES } from '../hooks/useJobs'
 import { gmailMessageUrl, openGmailNative } from '../services/gmail'
 import { ScoreBreakdown, scoreColorClasses } from './ScoreJob'
 import CVGenerationSettings from './CVGenerationSettings'
+import CompensationEditor from './CompensationEditor'
+import ContactsManager from './ContactsManager'
+import LetterVersions from './LetterVersions'
 
 // ATS keyword-coverage badge colors — mirrors the thresholds in CVGenerator's
 // badge (≥90 green, ≥75 blue, else amber). Distinct from scoreColorClasses,
@@ -408,6 +411,9 @@ export default function JobCandidaturePanel({
               </button>
             </div>
 
+            <CompensationEditor job={job} onUpdateJob={onUpdateJob} t={t} />
+            <ContactsManager job={job} onUpdateJob={onUpdateJob} t={t} />
+
           </div>
         )}
 
@@ -524,6 +530,7 @@ export default function JobCandidaturePanel({
                     {job.letterSaved.content}
                   </div>
                 </div>
+                <LetterVersions job={job} onUpdateJob={onUpdateJob} t={t} />
               </>
             ) : (
               <div className="text-center py-12">
