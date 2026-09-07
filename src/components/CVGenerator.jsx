@@ -67,10 +67,14 @@ function parseCV(raw) {
   for (const line of lines) {
     const l = line.trimEnd()
     if (l.startsWith('# ')) {
-      name = l.slice(2).trim()
+      // Escape here: name and section titles are emitted RAW by every template
+      // (unlike item text, which goes through fmt() at render). Without this, an
+      // AI-generated CV whose markdown was influenced by a malicious job posting
+      // could inject HTML/script into the header, executing in the app's origin.
+      name = escapeHtml(l.slice(2).trim())
     } else if (l.startsWith('## ')) {
       if (cur) sections.push(cur)
-      cur = { title: l.slice(3).trim(), items: [] }
+      cur = { title: escapeHtml(l.slice(3).trim()), items: [] }
     } else if (l.startsWith('### ')) {
       if (!cur) cur = { title: '', items: [] }
       cur.items.push({ type: 'h3', text: l.slice(4).trim() })
@@ -91,10 +95,13 @@ function parseCV(raw) {
   const cleanedContact = contact.map(line =>
     line.split(/\s*·\s*/).map(part => {
       if (!part) return part
-      if (/\+?\d[\d\s().-]{6,}\d/.test(part)) return cleanPhone(part)
-      if (part.toLowerCase().includes('linkedin')) return cleanLinkedIn(part)
-      if (part.includes('@')) return cleanEmail(part)
-      return part
+      let v
+      if (/\+?\d[\d\s().-]{6,}\d/.test(part)) v = cleanPhone(part)
+      else if (part.toLowerCase().includes('linkedin')) v = cleanLinkedIn(part)
+      else if (part.includes('@')) v = cleanEmail(part)
+      else v = part
+      // Escaped like name/title above — contact is emitted raw by the templates.
+      return escapeHtml(v)
     }).filter(Boolean).join(' · ')
   )
 
@@ -130,9 +137,9 @@ function groupBlocks(items) {
 // ── Simple renderer (used for "before" original CV panel) ─────────────────────
 function renderSimple(md) {
   return (md || '').split('\n').map(line => {
-    if (line.startsWith('# '))  return `<h1 style="font-size:16pt;font-weight:800;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:3px;margin:0 0 6px">${line.slice(2)}</h1>`
-    if (line.startsWith('## ')) return `<h2 style="font-size:10pt;font-weight:700;color:#4f46e5;margin:8px 0 2px;text-transform:uppercase;letter-spacing:0.08em">${line.slice(3)}</h2>`
-    if (line.startsWith('### ')) return `<h3 style="font-size:10pt;font-weight:700;color:#1e293b;margin:4px 0 1px">${line.slice(4)}</h3>`
+    if (line.startsWith('# '))  return `<h1 style="font-size:16pt;font-weight:800;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:3px;margin:0 0 6px">${fmt(line.slice(2))}</h1>`
+    if (line.startsWith('## ')) return `<h2 style="font-size:10pt;font-weight:700;color:#4f46e5;margin:8px 0 2px;text-transform:uppercase;letter-spacing:0.08em">${fmt(line.slice(3))}</h2>`
+    if (line.startsWith('### ')) return `<h3 style="font-size:10pt;font-weight:700;color:#1e293b;margin:4px 0 1px">${fmt(line.slice(4))}</h3>`
     if (line.startsWith('- ')) return `<div style="font-size:9.5pt;padding-left:12px;margin:1px 0;color:#334155">• ${fmt(line.slice(2))}</div>`
     if (!line.trim()) return '<div style="margin:1px 0"></div>'
     return `<p style="font-size:9.5pt;margin:1px 0;color:#334155">${fmt(line)}</p>`
