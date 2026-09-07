@@ -152,7 +152,13 @@ Deploy is automatic on push to `main`.
 
 ## Repository hygiene
 
-Twelve loose `.md` files at the repo root (`SYNC_FIXES`, `AUTOMATION_SYNC_FIX`,
-`CHECKLIST_COMPLETION`, `IMPLEMENTATION_SUMMARY`, `DEPLOYMENT_CHECKLIST`, …) are working
-notes, not documentation. `V1_RELEASE_NOTES.md` in particular still claims 30-second polling.
-Treat this file and the Notion documentation as authoritative; treat those as history.
+The old working-note `.md` files (`SYNC_FIXES`, `AUTOMATION_SYNC_FIX`, `CHECKLIST_COMPLETION`,
+`IMPLEMENTATION_SUMMARY`, `DEPLOYMENT_CHECKLIST`, `DEDUPLICATE_SETUP`, `LINKEDIN_POST`,
+`NOTIFICATIONS_V1`, `V1_RELEASE_NOTES`) have been moved to `docs/archive/` — they are history,
+not documentation (`V1_RELEASE_NOTES.md` in particular still claims 30-second polling). The repo
+root now keeps only `README.md`, this file, and the two setup guides (`SETUP_GUIDE.md`,
+`SUPABASE_SETUP.md`). Treat this file and the Notion documentation as authoritative.
+
+Lint is baselined: `eslint-suppressions.json` records the pre-existing violations so
+`npm run lint` passes while still failing on any NEW error. Regenerate with
+`npx eslint . --suppress-all`, or drop stale entries with `npx eslint . --prune-suppressions`.

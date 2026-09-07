@@ -19,6 +19,7 @@ import CompensationEditor from '../CompensationEditor'
 import ContactsManager from '../ContactsManager'
 import LetterVersions from '../LetterVersions'
 import { isNoReply } from '../EmailDraft'
+import { parseSender } from '../../utils/parseSender'
 import { getCompanyAddress, setCompanyAddress } from '../../services/commuteStore'
 import { searchCompanyAddress } from '../../services/googlePlaces'
 import { noteLines } from '../../utils/noteFormat'
@@ -114,10 +115,8 @@ export default function CandidatureDrawer({
   const recruiterContact = (() => {
     for (const h of history) {
       if (h.fromMe || !h.from) continue
-      const raw = h.from.trim()
-      const m = raw.match(/^([^<]+)<([^>]+)>/)
-      if (m && !isNoReply(m[2].trim())) return { name: m[1].trim(), email: m[2].trim() }
-      if (raw.includes('@') && !isNoReply(raw)) return { name: raw.split('@')[0], email: raw }
+      const p = parseSender(h.from)
+      if (p && !isNoReply(p.email)) return p
     }
     return null
   })()

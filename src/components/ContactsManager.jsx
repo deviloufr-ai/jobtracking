@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { isNoReply } from './EmailDraft'
 import { uid } from '../utils/uid'
+import { parseSender } from '../utils/parseSender'
 
 // Per-application networking mini-CRM. Managed contacts (name, role, email, phone,
 // LinkedIn, notes) with a touchpoint log and a "reconnect" nudge live on
@@ -14,20 +15,6 @@ const DAY = 86400000
 
 const genId = () => uid('ct')
 const initial = (s = '') => s.trim()[0]?.toUpperCase() || '?'
-
-// Strip surrounding quotes/whitespace a display name is often wrapped in, e.g.
-// the `"Anita Roy" <a@b>` form, so the saved contact name is clean.
-const cleanName = (n = '') => n.replace(/^["'\s]+|["'\s]+$/g, '').trim()
-
-// Parse "Name <email>" / "email" out of a timeline entry's `from`.
-function parseFrom(raw) {
-  if (!raw) return null
-  const s = raw.trim()
-  const m = s.match(/^([^<]+)<([^>]+)>/)
-  if (m) return { name: cleanName(m[1]), email: m[2].trim() }
-  if (s.includes('@')) return { name: s.split('@')[0], email: s }
-  return null
-}
 
 export default function ContactsManager({ job, onUpdateJob, t = (k) => k }) {
   const tx = (k, f) => { const v = t(k); return v && v !== k ? v : f }
@@ -46,7 +33,7 @@ export default function ContactsManager({ job, onUpdateJob, t = (k) => k }) {
     const seen = new Map()
     for (const h of (job.history || [])) {
       if (h.fromMe || !h.from) continue
-      const p = parseFrom(h.from)
+      const p = parseSender(h.from)
       if (!p || !p.email || isNoReply(p.email)) continue
       const key = p.email.toLowerCase()
       if (known.has(key) || seen.has(key)) continue
