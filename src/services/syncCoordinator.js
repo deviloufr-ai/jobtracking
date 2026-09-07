@@ -58,6 +58,26 @@ class SyncCoordinator {
       // Initialize IndexedDB if needed
       await indexeddb.initialized
 
+      // Profile + portable prefs FIRST, before the (potentially slow) full job
+      // sync below. This is a single tiny user_metadata read with no dependency
+      // on jobs, and it restores account-level prefs — crucially the guided-tour
+      // completion flag (__aux.tourDone) into localStorage. App.jsx auto-launches
+      // the tour behind a 4s gate; when a device's local flag is gone (cleared
+      // storage, fresh browser, re-login), the restore MUST land before that gate
+      // opens or the tour replays for a user who already took it. Doing it after
+      // a large full sync (>4s) lost that race. Remote wins if present (hydrates
+      // a fresh device); otherwise push this device's local profile + portable
+      // prefs up so they become the canonical copy. pushProfile re-reads the
+      // portable prefs and no-ops when there's genuinely nothing.
+      try {
+        const remoteProfile = await pullProfile(this.userId)
+        if (!remoteProfile) {
+          await pushProfile(loadLocalProfile() || {})
+        }
+      } catch (err) {
+        console.warn('Profile sync failed (non-critical):', err.message)
+      }
+
       // First poll = FULL fetch+merge of remote into the local cache (parity
       // with the retired legacy syncLocalJobsToSupabase fetch half).
       await this.doPoll({ fullSync: true })
@@ -83,19 +103,6 @@ class SyncCoordinator {
         await pushAllCVs(this.userId)
       } catch (err) {
         console.warn('CV bulk upload failed (non-critical):', err.message)
-      }
-
-      // Profile: remote wins if present (hydrates a fresh device); otherwise push
-      // this device's local profile + portable prefs (CV picture, CV-gen settings,
-      // dismissed actions) up so they become the canonical copy. pushProfile
-      // re-reads the portable prefs and no-ops when there's genuinely nothing.
-      try {
-        const remoteProfile = await pullProfile(this.userId)
-        if (!remoteProfile) {
-          await pushProfile(loadLocalProfile() || {})
-        }
-      } catch (err) {
-        console.warn('Profile sync failed (non-critical):', err.message)
       }
 
       // Subsequent polls are incremental.
