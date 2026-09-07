@@ -109,8 +109,15 @@ function parseCV(raw) {
 }
 
 // ── Profile picture HTML snippet ───────────────────────────────────────────────
-const picHTML = (src, size = 80, border = 'rgba(255,255,255,0.35)') =>
-  src ? `<img src="${src}" style="width:${size}px;height:${size}px;min-width:${size}px;max-width:${size}px;border-radius:50%;object-fit:cover;border:3px solid ${border};flex-shrink:0;display:block" />` : ''
+// `src` is interpolated into an <img src="..."> attribute, so accept only image
+// data URLs or http(s) URLs, and reject anything carrying quotes/brackets that
+// could break out of the attribute. Defense-in-depth for the dangerouslySetInnerHTML
+// render path (the pic normally comes from the user's own profile).
+const picHTML = (src, size = 80, border = 'rgba(255,255,255,0.35)') => {
+  const safe = typeof src === 'string' && /^(data:image\/|https?:)/i.test(src) && !/["'<>]/.test(src)
+  if (!safe) return ''
+  return `<img src="${src}" style="width:${size}px;height:${size}px;min-width:${size}px;max-width:${size}px;border-radius:50%;object-fit:cover;border:3px solid ${border};flex-shrink:0;display:block" />`
+}
 
 // ── Group section items into experience sub-blocks ────────────────────────────
 // Each h3 starts a new block. Convention: p[0]=company, p[1]=dates, rest=desc, li=bullets

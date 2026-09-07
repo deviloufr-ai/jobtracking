@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CLAUDE_MODEL } from '../constants/aiModel'
 import { withUserApiKey } from '../services/apiKey'
 
 const IS_DEV = import.meta.env.DEV
@@ -64,7 +65,7 @@ async function generateAIAdvice(company, position, status, notes, history) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(withUserApiKey({
-      model: 'claude-haiku-4-5-20251001',
+      model: CLAUDE_MODEL,
       max_tokens: 600,
       messages: [{
         role: 'user',

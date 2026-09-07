@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { CLAUDE_MODEL } from '../constants/aiModel'
 import AIPanelBoundary from './AIPanelBoundary'
 import { detectLanguage } from '../utils/detectLanguage'
 import { withUserApiKey } from '../services/apiKey'
@@ -138,7 +139,7 @@ Réponds UNIQUEMENT en JSON valide (sans backticks) :
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(withUserApiKey({
-          model: 'claude-haiku-4-5-20251001',
+          model: CLAUDE_MODEL,
           max_tokens: 1800,
           messages: [{ role: 'user', content: prompt }]
         }))

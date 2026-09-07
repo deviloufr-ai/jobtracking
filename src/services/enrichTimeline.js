@@ -1,5 +1,6 @@
 // Enriches a job's timeline using Gmail + Calendar data
 import { fetchJobEmails } from './gmail'
+import { CLAUDE_MODEL } from '../constants/aiModel'
 import { fetchCalendarEvents, isCalendarConnected } from './calendar'
 import { withUserApiKey } from './apiKey'
 
@@ -142,7 +143,7 @@ async function analyzeEmailsForTimeline(emails, companyName) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(withUserApiKey({
-      model: 'claude-haiku-4-5-20251001',
+      model: CLAUDE_MODEL,
       max_tokens: 1500,
       messages: [{
         role: 'user',

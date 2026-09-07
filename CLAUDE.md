@@ -91,8 +91,12 @@ without their own key is metered per IP in `shared_key_usage` (migration 003). P
 ## Environment variables
 
 Server-side (Vercel only, never in the client bundle):
-`ANTHROPIC_API_KEY`, `GOOGLE_CLIENT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`,
-`SHARED_KEY_TRIAL_LIMIT`, `SHARED_KEY_WINDOW_DAYS`, `ALLOWED_ORIGINS`
+`ANTHROPIC_API_KEY`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_MAPS_API_KEY`,
+`FRANCE_TRAVAIL_CLIENT_ID`, `FRANCE_TRAVAIL_SECRET`, `ADZUNA_APP_ID`, `ADZUNA_APP_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY`, `SHARED_KEY_TRIAL_LIMIT`, `SHARED_KEY_WINDOW_DAYS`,
+`ALLOWED_ORIGINS`
+(`GOOGLE_MAPS_API_KEY` powers `/api/jobs` commute; the France Travail + server-side
+Adzuna keys power job search. See `.env.example` for the full annotated list.)
 
 Client-side (compiled into the bundle — public by definition):
 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_GOOGLE_CLIENT_ID`,
@@ -110,9 +114,9 @@ Anything prefixed `VITE_` is public. Never move a secret behind that prefix.
 - `rejected` / `rejected_ats` / `cancelled` after **90 days** → auto-archived
 - Notes containing ` | ` are split into separate history entries (`splitPipeNotes`)
 - ATS rejections auto-detected: ashbyhq, greenhouse, lever, workable, teamtailor
-- **`mergeSameDateEntries` is NOT applied.** The function exists but is deliberately skipped
-  (`useJobs.js:2042`) because it concatenated history entries. Do not re-enable it without
-  fixing that first.
+- **`mergeSameDateEntries` is NOT applied.** The function (defined at `useJobs.js:777`) exists
+  but is deliberately skipped (see the "Skip mergeSameDateEntries" comment near `useJobs.js:2069`)
+  because it concatenated history entries. Do not re-enable it without fixing that first.
 
 ## Commands
 

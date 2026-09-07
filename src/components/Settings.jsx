@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { CLAUDE_MODEL } from '../constants/aiModel'
 import { useSettings, SETTINGS_DEFAULTS } from '../hooks/useSettings'
 import { useExtensionDetect } from '../hooks/useExtensionDetect'
 import { useExtensionUpdate } from '../hooks/useExtensionUpdate'
@@ -250,7 +251,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           apiKey: apiKey.trim(),
-          model: 'claude-haiku-4-5-20251001',
+          model: CLAUDE_MODEL,
           max_tokens: 100,
           system: 'You are a helpful assistant.',
           messages: [{ role: 'user', content: 'Simply say "OK" to confirm your API is working.' }],

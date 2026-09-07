@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { CLAUDE_MODEL } from '../constants/aiModel'
 import { useDragDock } from '../hooks/useDragDock'
 import { detectLanguage } from '../utils/detectLanguage'
 import { isConnected, sendEmail, connectGmail, getCachedUser, getReplyContext } from '../services/gmail'
@@ -320,7 +321,7 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(withUserApiKey({
-          model: 'claude-haiku-4-5-20251001',
+          model: CLAUDE_MODEL,
           max_tokens: 600,
           // Feed the recruiter's actual refusal message into the thank-you so it
           // can rebound on the specific reason given, and their name so it greets

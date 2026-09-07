@@ -2,6 +2,7 @@
 // Routed through the generic /api/claude proxy (instead of a dedicated serverless
 // function) to stay under Vercel's Hobby-plan 12-function limit.
 import { aiFetch } from './apiKey'
+import { CLAUDE_MODEL } from '../constants/aiModel'
 
 function buildPrompt({ cvText, jobDescription, company, position }) {
   return `You are an expert recruiter and CV screener. Analyze how well the candidate's CV matches the job description.
@@ -50,7 +51,7 @@ export async function scoreJobMatch({ cvText, jobDescription, company, position 
   // TrialExhaustedError so the "add your Claude key" prompt fires (plain fetch used
   // to swallow this into a generic error and the prompt never appeared).
   const res = await aiFetch('/api/claude', {
-    model: 'claude-haiku-4-5-20251001',
+    model: CLAUDE_MODEL,
     max_tokens: 1000,
     messages: [{ role: 'user', content: buildPrompt({ cvText, jobDescription, company, position }) }],
   })

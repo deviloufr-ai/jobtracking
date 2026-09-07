@@ -55,7 +55,17 @@ export function applyCors(req, res, methods = 'POST, OPTIONS') {
 }
 
 export function getClientIp(req) {
-  const xff = req.headers?.['x-forwarded-for']
+  const h = req.headers || {}
+  // Prefer platform-set headers over the raw X-Forwarded-For: a client can PREPEND
+  // its own XFF entry, and since the shared-key trial quota is keyed on this IP,
+  // trusting the leftmost XFF would let a caller reset their free quota at will.
+  // On Vercel, x-vercel-forwarded-for / x-real-ip are set by the edge and not
+  // client-spoofable, so they take precedence; XFF and the socket are fallbacks.
+  const vercel = h['x-vercel-forwarded-for']
+  if (typeof vercel === 'string' && vercel.length) return vercel.split(',')[0].trim()
+  const real = h['x-real-ip']
+  if (typeof real === 'string' && real.trim()) return real.trim()
+  const xff = h['x-forwarded-for']
   if (typeof xff === 'string' && xff.length) return xff.split(',')[0].trim()
   return req.socket?.remoteAddress || 'unknown'
 }
