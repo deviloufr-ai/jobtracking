@@ -7,11 +7,11 @@
 // viewers and the extension all still read `letterSaved`). Both fields ride the
 // jobs.extras jsonb blob (see syncManager EXTRA_FIELDS), so history syncs too.
 
+import { uid } from './uid'
+
 export const MAX_LETTER_VERSIONS = 10
 
-function genId() {
-  try { return crypto.randomUUID() } catch { return `lv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}` }
-}
+const genId = () => uid('lv')
 
 // Build the patch to persist when saving `content` as the current letter.
 // Returns { letterSaved, letterVersions } ready to hand to updateJob(id, patch).

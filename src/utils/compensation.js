@@ -25,15 +25,34 @@ export const CURRENCY_SYMBOLS = { EUR: '€', USD: '$', GBP: '£', CHF: 'CHF', C
 // Offer stages, in funnel order. Labels are resolved via t() in the UI.
 export const COMP_STAGES = ['expected', 'offered', 'negotiating', 'accepted', 'declined']
 
-// Coerce a user-entered numeric field to a finite number or null. Accepts the
-// French decimal comma and strips spaces / thousands separators and currency
-// glyphs so "65 000 €" and "65,5k" don't silently become NaN.
+// Coerce a user-entered numeric field to a finite number or null. The app is
+// bilingual FR/EN, so both "65 000 €" / "65,5k" (French) and "65,000" / "1,234.56"
+// (English) must parse correctly — a naive comma→dot swap turns "65,000" into 65.
 export function toNumber(value) {
   if (value === null || value === undefined || value === '') return null
   if (typeof value === 'number') return Number.isFinite(value) ? value : null
-  let s = String(value).trim().toLowerCase().replace(/[€$£\s]/g, '').replace(',', '.')
+  // Lowercase, drop currency glyphs and ALL whitespace (incl. the NBSP / narrow
+  // NBSP that fr-FR uses as a thousands separator).
+  let s = String(value).trim().toLowerCase().replace(/[€$£]/g, '').replace(/\s/g, '')
   let mult = 1
   if (s.endsWith('k')) { mult = 1000; s = s.slice(0, -1) }
+
+  const hasDot = s.includes('.')
+  const hasComma = s.includes(',')
+  if (hasDot && hasComma) {
+    // Both present: the rightmost separator is the decimal point, the other groups
+    // thousands. Handles "1,234.56" (EN) and "1.234,56" (FR) alike.
+    const dec = s.lastIndexOf('.') > s.lastIndexOf(',') ? '.' : ','
+    const thou = dec === '.' ? ',' : '.'
+    s = s.split(thou).join('').replace(dec, '.')
+  } else if (hasComma) {
+    // Comma alone: a decimal only when it introduces a 1-2 digit fraction ("65,5");
+    // a comma before a 3-digit group is thousands ("65,000" → 65000).
+    s = /,\d{1,2}$/.test(s) ? s.replace(',', '.') : s.split(',').join('')
+  } else if (hasDot) {
+    s = /\.\d{1,2}$/.test(s) ? s : s.split('.').join('')
+  }
+
   const n = parseFloat(s)
   return Number.isFinite(n) ? n * mult : null
 }
@@ -75,15 +94,18 @@ export function formatMoney(amount, currency = 'EUR') {
 }
 
 // A one-line summary of an offer, e.g. "65k € base · 75k € total". Empty string
-// when there's nothing to show.
-export function summarizeComp(comp) {
+// when there's nothing to show. `labels` lets callers localize the "base"/"total"
+// words (the app is French-primary); English words are the default.
+export function summarizeComp(comp, labels = {}) {
   if (!hasCompensation(comp)) return ''
+  const baseLabel = labels.base || 'base'
+  const totalLabel = labels.total || 'total'
   const cur = comp.currency || 'EUR'
   const base = annualBase(comp)
   const total = totalComp(comp)
   const bits = []
-  if (base !== null) bits.push(`${formatMoney(base, cur)} base`)
-  if (total !== null && total !== base) bits.push(`${formatMoney(total, cur)} total`)
+  if (base !== null) bits.push(`${formatMoney(base, cur)} ${baseLabel}`)
+  if (total !== null && total !== base) bits.push(`${formatMoney(total, cur)} ${totalLabel}`)
   return bits.join(' · ')
 }
 

@@ -108,7 +108,7 @@ export default function CompensationEditor({ job, onUpdateJob, t = (k) => k }) {
               <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{stageLabel(comp.stage)}</span>
             )}
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">{summarizeComp(comp)}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{summarizeComp(comp, { base: tx('comp.baseWord', 'base'), total: tx('comp.totalWord', 'total') })}</p>
           {comp.benefits && <p className="text-xs text-gray-400 mt-1.5 line-clamp-2">🎁 {comp.benefits}</p>}
           <div className="flex gap-2 mt-3">
             <button onClick={openEdit} className="text-xs font-semibold text-gray-600 border border-gray-200 rounded-lg px-2.5 py-1.5 hover:bg-gray-50 transition-colors">

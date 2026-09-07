@@ -1104,6 +1104,8 @@ export const fr = {
       declined: 'Refusée',
     },
     base: 'Fixe',
+    baseWord: 'fixe',
+    totalWord: 'total',
     basePeriod: 'Fixe par',
     perYear: 'par an',
     perMonth: 'par mois',

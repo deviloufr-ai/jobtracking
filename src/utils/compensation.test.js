@@ -14,6 +14,13 @@ describe('toNumber', () => {
     expect(toNumber('65,5k')).toBe(65500)
     expect(toNumber('65k')).toBe(65000)
   })
+  it('disambiguates comma/dot as decimal vs thousands (FR and EN)', () => {
+    expect(toNumber('65,000')).toBe(65000)   // EN thousands, not 65
+    expect(toNumber('1,234.56')).toBe(1234.56) // EN
+    expect(toNumber('1.234,56')).toBe(1234.56) // FR
+    expect(toNumber('65,5')).toBe(65.5)      // FR decimal
+    expect(toNumber('1,500,000')).toBe(1500000)
+  })
   it('returns null for empty / invalid input', () => {
     expect(toNumber('')).toBeNull()
     expect(toNumber(null)).toBeNull()

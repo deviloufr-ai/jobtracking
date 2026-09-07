@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { indexeddb } from '../services/indexeddb'
+import { deduplicateJobs } from '../hooks/useJobs'
 import { buildComparison, hasMixedCurrencies, formatMoney } from '../utils/compensation'
 
 // Cross-job offer comparison. Self-loads every job from the local IndexedDB cache
@@ -13,7 +14,13 @@ export default function OfferComparison({ currentJobId = null, onClose, t = (k) 
   useEffect(() => {
     let alive = true
     indexeddb.getAllJobs()
-      .then(jobs => { if (alive) setRows(buildComparison((jobs || []).filter(j => j.status !== 'archived'))) })
+      .then(jobs => {
+        if (!alive) return
+        // Fold physical duplicate rows the way the rest of the UI does, so an offer
+        // imported onto two rows isn't double-counted in the table or the 🏆 pick.
+        const deduped = deduplicateJobs(jobs || [])
+        setRows(buildComparison(deduped.filter(j => j.status !== 'archived')))
+      })
       .catch(() => { if (alive) setRows([]) })
     return () => { alive = false }
   }, [])

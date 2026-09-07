@@ -1107,6 +1107,8 @@ export const en = {
       declined: 'Declined',
     },
     base: 'Base',
+    baseWord: 'base',
+    totalWord: 'total',
     basePeriod: 'Base per',
     perYear: 'per year',
     perMonth: 'per month',

@@ -3,6 +3,7 @@ import AIPanelBoundary from './AIPanelBoundary'
 import { aiFetch } from '../services/apiKey'
 import { useDragDock } from '../hooks/useDragDock'
 import { summarizeComp, hasCompensation } from '../utils/compensation'
+import { CLAUDE_MODEL } from '../constants/aiModel'
 
 // Salary-negotiation assistant. Drafts a professional negotiation message (email
 // or call talking points) from the saved offer, which the user edits and sends
@@ -30,14 +31,15 @@ function describeComp(comp) {
 }
 
 // Detect a refusal / meta-commentary instead of an actual draft (Haiku does this
-// when handed unusable input). We only inspect the opening.
+// when handed unusable input). We only inspect the opening, and match phrases that
+// signal a refusal specifically — NOT generic wording like "please provide", which
+// legitimately appears in a real negotiation draft ("could you please provide…").
 function looksLikeRefusal(text) {
   const t = (text || '').trim()
   if (!t) return true
   const head = t.slice(0, 400).toLowerCase()
   return ['unable to complete', "i'm unable to", 'i am unable to', "i can't complete",
-    'cannot complete this', 'as an ai', "i can't write", 'i cannot write',
-    'please provide', 'provide more'].some(s => head.includes(s))
+    'cannot complete this', 'as an ai', "i can't write", 'i cannot write'].some(s => head.includes(s))
 }
 
 function buildNegotiationPrompt({ company, position, comp, target, context, language, wantsScript }) {
@@ -102,7 +104,7 @@ function NegotiationAssistantPanel({ job, onClose, onSave, t = (k) => k }) {
   const [saved, setSaved] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const offerSummary = summarizeComp(comp)
+  const offerSummary = summarizeComp(comp, { base: tx('comp.baseWord', 'base'), total: tx('comp.totalWord', 'total') })
 
   const generate = async () => {
     setLoading(true)
@@ -113,7 +115,7 @@ function NegotiationAssistantPanel({ job, onClose, onSave, t = (k) => k }) {
         target, context, language, wantsScript: format === 'script',
       })
       const res = await aiFetch('/api/claude', {
-        model: 'claude-haiku-4-5-20251001',
+        model: CLAUDE_MODEL,
         max_tokens: 2000,
         messages: [{ role: 'user', content: prompt }],
       })
