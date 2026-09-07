@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
+import { CLAUDE_MODEL } from '../constants/aiModel'
 import AIPanelBoundary from './AIPanelBoundary'
 import { aiFetch } from '../services/apiKey'
 import { transcribeBlob, canRecordAudio } from '../services/localSpeech'
+import { deliverText } from '../services/fileSave'
 import { trackMockInterviewCompleted } from '../services/analytics'
 import { useDragDock } from '../hooks/useDragDock'
 
@@ -173,7 +175,7 @@ function MockInterviewChatbotPanel({ job, cv, onClose, onInterviewComplete }) {
         : ''
       const cvContext = cv ? `\n\nCandidate CV:\n${cv.slice(0, 800)}` : ''
       const response = await aiFetch('/api/claude', {
-        model: 'claude-haiku-4-5-20251001',
+        model: CLAUDE_MODEL,
         max_tokens: 200,
         messages: [
           {
@@ -344,7 +346,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
       const systemPrompt = `${descContext}${cvContext}You are a senior recruiter at ${job.company} evaluating a candidate for this role. Ask natural, probing follow-up questions that uncover whether they're truly fit for this position. Connect their experience to the role's requirements. Push for specific details—ask about challenges they faced, decisions they made, and lessons learned. Be realistic and direct, like you'd be in a real interview. Don't be overly nice; ask questions that matter. Output ONLY plain text questions—no formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just conversational sentences you'd say in person.`
 
       const response = await aiFetch('/api/claude', {
-        model: 'claude-haiku-4-5-20251001',
+        model: CLAUDE_MODEL,
         max_tokens: 500,
         system: systemPrompt,
         messages: conversationHistory
@@ -413,7 +415,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
     generateFirstQuestion()
   }
 
-  const exportTranscript = () => {
+  const exportTranscript = async () => {
     const text = messages
       .map(
         (m) =>
@@ -421,10 +423,8 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
       )
       .join('\n\n')
 
-    const element = document.createElement('a')
-    element.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text)
-    element.download = `interview-${job.company}-${new Date().toISOString().split('T')[0]}.txt`
-    element.click()
+    // deliverText handles the native shell (share sheet); on web it's a download.
+    await deliverText(text, `interview-${job.company}-${new Date().toISOString().split('T')[0]}.txt`, 'text/plain')
   }
 
   const analyzeInterview = async () => {
@@ -439,7 +439,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
       const cvContext = cv ? `\n\nCandidate CV: ${cv.slice(0, 600)}` : ''
 
       const response = await aiFetch('/api/claude', {
-        model: 'claude-haiku-4-5-20251001',
+        model: CLAUDE_MODEL,
         max_tokens: 800,
         messages: [
           {

@@ -15,7 +15,11 @@ import CVGenerationSettings from '../CVGenerationSettings'
 import CommuteInfo from '../CommuteInfo'
 import MotivationLetterGenerator from '../MotivationLetterGenerator'
 import MockInterviewChatbot from '../MockInterviewChatbot'
+import CompensationEditor from '../CompensationEditor'
+import ContactsManager from '../ContactsManager'
+import LetterVersions from '../LetterVersions'
 import { isNoReply } from '../EmailDraft'
+import { parseSender } from '../../utils/parseSender'
 import { getCompanyAddress, setCompanyAddress } from '../../services/commuteStore'
 import { searchCompanyAddress } from '../../services/googlePlaces'
 import { noteLines } from '../../utils/noteFormat'
@@ -111,10 +115,8 @@ export default function CandidatureDrawer({
   const recruiterContact = (() => {
     for (const h of history) {
       if (h.fromMe || !h.from) continue
-      const raw = h.from.trim()
-      const m = raw.match(/^([^<]+)<([^>]+)>/)
-      if (m && !isNoReply(m[2].trim())) return { name: m[1].trim(), email: m[2].trim() }
-      if (raw.includes('@') && !isNoReply(raw)) return { name: raw.split('@')[0], email: raw }
+      const p = parseSender(h.from)
+      if (p && !isNoReply(p.email)) return p
     }
     return null
   })()
@@ -290,6 +292,9 @@ export default function CandidatureDrawer({
               </div>
             )}
 
+            <CompensationEditor job={job} onUpdateJob={onUpdateJob} t={t} />
+            <ContactsManager job={job} onUpdateJob={onUpdateJob} t={t} />
+
             {invitePending && (
               <div className="mb-6 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3">
                 <span className="text-base leading-none mt-0.5" aria-hidden>📅</span>
@@ -462,6 +467,7 @@ export default function CandidatureDrawer({
                     {job.letterSaved.content}
                   </div>
                 </div>
+                <LetterVersions job={job} onUpdateJob={onUpdateJob} t={t} />
               </>
             ) : (
               <div className="text-center py-10">

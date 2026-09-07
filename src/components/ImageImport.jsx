@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { CLAUDE_MODEL } from '../constants/aiModel'
 import { getStatus } from '../hooks/useJobs'
 import { withUserApiKey } from '../services/apiKey'
 import { useDragDock } from '../hooks/useDragDock'
@@ -20,7 +21,7 @@ async function analyzeJobImage(base64Image, mimeType) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(withUserApiKey({
-      model: 'claude-haiku-4-5-20251001',
+      model: CLAUDE_MODEL,
       max_tokens: 1500,
       messages: [{
         role: 'user',

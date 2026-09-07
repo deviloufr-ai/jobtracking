@@ -20,16 +20,16 @@ prose ("v0.7", "v1.0") are documentation artifacts. Do not trust them.
 
 | Layer | Choice |
 | --- | --- |
-| Frontend | React 19 + Vite 8 + Tailwind 3 — 64 components, 45 services, 25 hooks |
+| Frontend | React 19 + Vite 8 + Tailwind 3 — 69 components, 45 services, 25 hooks |
 | Auth & data | Supabase (Postgres + Auth + RLS) — 15 tables, 14 migration files |
 | Local cache | IndexedDB — offline-first, this is the read path |
-| Serverless | Vercel Functions in `/api/` — 12 endpoints |
+| Serverless | Vercel Functions in `/api/` — 12 endpoints (Hobby plan caps functions per deploy; add AI features via the shared `/api/claude` proxy, not new endpoints) |
 | AI | Claude Haiku 4.5 via the `/api/claude` proxy, model pinned by `VITE_CLAUDE_MODEL` |
 | Local ML | `@xenova/transformers` — in-browser inference |
 | Mobile | Capacitor 8 → Android, `com.smartjobtracker.app` |
 | Extension | Firefox MV3 in `jobtrackr-extension/` (folder name is legacy, left deliberately) |
 | Analytics | Vercel Analytics, mounted in `Root.jsx` |
-| Tests | Vitest + jsdom — 8 test files |
+| Tests | Vitest + jsdom — 11 test files |
 
 ## Architecture
 
@@ -50,6 +50,14 @@ Web / Android shell / Firefox extension
 The **Android app is a Capacitor shell pointed at the live site** (`capacitor.config.json`
 → `server.url`). A web deploy changes the Android app with no store release.
 
+File downloads (CV / cover-letter PDF, JSON export, interview transcript) go through
+`services/fileSave.js`: a normal browser download on web, but on native a
+Filesystem-write + Share-sheet, because the WebView has **no download manager** and a
+blob/`<a download>`/`jsPDF.save()` silently no-ops there. This needs `@capacitor/filesystem`
+and `@capacitor/share` compiled in — adding/removing any Capacitor plugin requires
+`npx cap sync android` **and an APK rebuild** (a plain web deploy is not enough for native
+plugin changes).
+
 ### Sync engine — the part most likely to break
 
 - Reads come from IndexedDB (`indexeddb.js`); the UI never waits on the network.
@@ -61,6 +69,12 @@ The **Android app is a Capacitor shell pointed at the live site** (`capacitor.co
   one device is indistinguishable from a row another device has not yet received, and the row
   resurrects.
 - `syncCoordinator.js` sequences all of the above; `syncDiagnostic.js` is the debugging entry point.
+- **Rich per-job fields ride `jobs.extras` (jsonb, migration 007), not dedicated columns.** The
+  whitelist lives in `syncManager.js` `EXTRA_FIELDS`: generated CV/cover letter (`cvSaved`,
+  `letterSaved` + version history `letterVersions`), STAR answers, score, interview sessions,
+  compensation (`compensation`), the per-application contacts CRM (`contacts` + touchpoints), and
+  the saved negotiation draft (`negotiationSaved`). Adding a synced per-job field = add it here;
+  no migration needed. The poll unbundles `extras` back onto the job (`pollManager.js`).
 
 ### Gmail ingestion
 
@@ -85,8 +99,12 @@ without their own key is metered per IP in `shared_key_usage` (migration 003). P
 ## Environment variables
 
 Server-side (Vercel only, never in the client bundle):
-`ANTHROPIC_API_KEY`, `GOOGLE_CLIENT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`,
-`SHARED_KEY_TRIAL_LIMIT`, `SHARED_KEY_WINDOW_DAYS`, `ALLOWED_ORIGINS`
+`ANTHROPIC_API_KEY`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_MAPS_API_KEY`,
+`FRANCE_TRAVAIL_CLIENT_ID`, `FRANCE_TRAVAIL_SECRET`, `ADZUNA_APP_ID`, `ADZUNA_APP_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY`, `SHARED_KEY_TRIAL_LIMIT`, `SHARED_KEY_WINDOW_DAYS`,
+`ALLOWED_ORIGINS`
+(`GOOGLE_MAPS_API_KEY` powers `/api/jobs` commute; the France Travail + server-side
+Adzuna keys power job search. See `.env.example` for the full annotated list.)
 
 Client-side (compiled into the bundle — public by definition):
 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_GOOGLE_CLIENT_ID`,
@@ -104,9 +122,9 @@ Anything prefixed `VITE_` is public. Never move a secret behind that prefix.
 - `rejected` / `rejected_ats` / `cancelled` after **90 days** → auto-archived
 - Notes containing ` | ` are split into separate history entries (`splitPipeNotes`)
 - ATS rejections auto-detected: ashbyhq, greenhouse, lever, workable, teamtailor
-- **`mergeSameDateEntries` is NOT applied.** The function exists but is deliberately skipped
-  (`useJobs.js:2042`) because it concatenated history entries. Do not re-enable it without
-  fixing that first.
+- **`mergeSameDateEntries` is NOT applied.** The function (defined at `useJobs.js:777`) exists
+  but is deliberately skipped (see the "Skip mergeSameDateEntries" comment near `useJobs.js:2069`)
+  because it concatenated history entries. Do not re-enable it without fixing that first.
 
 ## Commands
 
@@ -142,7 +160,13 @@ Deploy is automatic on push to `main`.
 
 ## Repository hygiene
 
-Twelve loose `.md` files at the repo root (`SYNC_FIXES`, `AUTOMATION_SYNC_FIX`,
-`CHECKLIST_COMPLETION`, `IMPLEMENTATION_SUMMARY`, `DEPLOYMENT_CHECKLIST`, …) are working
-notes, not documentation. `V1_RELEASE_NOTES.md` in particular still claims 30-second polling.
-Treat this file and the Notion documentation as authoritative; treat those as history.
+The old working-note `.md` files (`SYNC_FIXES`, `AUTOMATION_SYNC_FIX`, `CHECKLIST_COMPLETION`,
+`IMPLEMENTATION_SUMMARY`, `DEPLOYMENT_CHECKLIST`, `DEDUPLICATE_SETUP`, `LINKEDIN_POST`,
+`NOTIFICATIONS_V1`, `V1_RELEASE_NOTES`) have been moved to `docs/archive/` — they are history,
+not documentation (`V1_RELEASE_NOTES.md` in particular still claims 30-second polling). The repo
+root now keeps only `README.md`, this file, and the two setup guides (`SETUP_GUIDE.md`,
+`SUPABASE_SETUP.md`). Treat this file and the Notion documentation as authoritative.
+
+Lint is baselined: `eslint-suppressions.json` records the pre-existing violations so
+`npm run lint` passes while still failing on any NEW error. Regenerate with
+`npx eslint . --suppress-all`, or drop stale entries with `npx eslint . --prune-suppressions`.

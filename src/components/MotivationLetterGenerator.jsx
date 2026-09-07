@@ -3,6 +3,8 @@ import AIPanelBoundary from './AIPanelBoundary'
 import { useCVs } from '../hooks/useCVs'
 import { aiFetch } from '../services/apiKey'
 import { useDragDock } from '../hooks/useDragDock'
+import { pushLetterVersion } from '../utils/letterVersions'
+import { deliverFile } from '../services/fileSave'
 
 export default function MotivationLetterGenerator(props) {
   return (
@@ -106,12 +108,10 @@ function MotivationLetterGeneratorPanel({ job, onClose, cvText, initialContent, 
 
   const saveLetter = () => {
     if (!letterText || !onSaveLetter) return
-    onSaveLetter(job.id, {
-      letterSaved: {
-        content: letterText,
-        savedAt: new Date().toISOString(),
-      }
-    })
+    // Keep a bounded version history so regenerating no longer discards the
+    // previous letter. letterSaved stays the current one for backward compat.
+    const { letterSaved, letterVersions } = pushLetterVersion(job, letterText)
+    onSaveLetter(job.id, { letterSaved, letterVersions })
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
   }
@@ -153,7 +153,10 @@ function MotivationLetterGeneratorPanel({ job, onClose, cvText, initialContent, 
       y += paraGap
     }
 
-    doc.save(`lettre-motivation-${job.company}-${new Date().toISOString().split('T')[0]}.pdf`)
+    // Route through deliverFile so it also works in the native shell (share sheet)
+    // — jsPDF's doc.save() silently no-ops inside the Android/iOS WebView.
+    const blob = doc.output('blob')
+    await deliverFile(blob, `lettre-motivation-${job.company}-${new Date().toISOString().split('T')[0]}.pdf`, 'application/pdf')
   }
 
   return (

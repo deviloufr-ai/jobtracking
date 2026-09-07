@@ -3,6 +3,7 @@ import AIPanelBoundary from './AIPanelBoundary'
 import { resolveAutoLanguage, generateTailoredCV, suggestCvPoints } from '../services/cvGeneration'
 import { trackCvGenerationStarted, trackCvGenerated } from '../services/analytics'
 import { pushLocalPrefs, AUX_PREFS_SYNCED_EVENT } from '../services/profileSync'
+import { deliverFile } from '../services/fileSave'
 import CVSuggestions from './CVSuggestions'
 
 // html2pdf is heavy (jsPDF + html2canvas); load it lazily at export time so it
@@ -67,10 +68,14 @@ function parseCV(raw) {
   for (const line of lines) {
     const l = line.trimEnd()
     if (l.startsWith('# ')) {
-      name = l.slice(2).trim()
+      // Escape here: name and section titles are emitted RAW by every template
+      // (unlike item text, which goes through fmt() at render). Without this, an
+      // AI-generated CV whose markdown was influenced by a malicious job posting
+      // could inject HTML/script into the header, executing in the app's origin.
+      name = escapeHtml(l.slice(2).trim())
     } else if (l.startsWith('## ')) {
       if (cur) sections.push(cur)
-      cur = { title: l.slice(3).trim(), items: [] }
+      cur = { title: escapeHtml(l.slice(3).trim()), items: [] }
     } else if (l.startsWith('### ')) {
       if (!cur) cur = { title: '', items: [] }
       cur.items.push({ type: 'h3', text: l.slice(4).trim() })
@@ -91,10 +96,13 @@ function parseCV(raw) {
   const cleanedContact = contact.map(line =>
     line.split(/\s*·\s*/).map(part => {
       if (!part) return part
-      if (/\+?\d[\d\s().-]{6,}\d/.test(part)) return cleanPhone(part)
-      if (part.toLowerCase().includes('linkedin')) return cleanLinkedIn(part)
-      if (part.includes('@')) return cleanEmail(part)
-      return part
+      let v
+      if (/\+?\d[\d\s().-]{6,}\d/.test(part)) v = cleanPhone(part)
+      else if (part.toLowerCase().includes('linkedin')) v = cleanLinkedIn(part)
+      else if (part.includes('@')) v = cleanEmail(part)
+      else v = part
+      // Escaped like name/title above — contact is emitted raw by the templates.
+      return escapeHtml(v)
     }).filter(Boolean).join(' · ')
   )
 
@@ -102,8 +110,15 @@ function parseCV(raw) {
 }
 
 // ── Profile picture HTML snippet ───────────────────────────────────────────────
-const picHTML = (src, size = 80, border = 'rgba(255,255,255,0.35)') =>
-  src ? `<img src="${src}" style="width:${size}px;height:${size}px;min-width:${size}px;max-width:${size}px;border-radius:50%;object-fit:cover;border:3px solid ${border};flex-shrink:0;display:block" />` : ''
+// `src` is interpolated into an <img src="..."> attribute, so accept only image
+// data URLs or http(s) URLs, and reject anything carrying quotes/brackets that
+// could break out of the attribute. Defense-in-depth for the dangerouslySetInnerHTML
+// render path (the pic normally comes from the user's own profile).
+const picHTML = (src, size = 80, border = 'rgba(255,255,255,0.35)') => {
+  const safe = typeof src === 'string' && /^(data:image\/|https?:)/i.test(src) && !/["'<>]/.test(src)
+  if (!safe) return ''
+  return `<img src="${src}" style="width:${size}px;height:${size}px;min-width:${size}px;max-width:${size}px;border-radius:50%;object-fit:cover;border:3px solid ${border};flex-shrink:0;display:block" />`
+}
 
 // ── Group section items into experience sub-blocks ────────────────────────────
 // Each h3 starts a new block. Convention: p[0]=company, p[1]=dates, rest=desc, li=bullets
@@ -130,9 +145,9 @@ function groupBlocks(items) {
 // ── Simple renderer (used for "before" original CV panel) ─────────────────────
 function renderSimple(md) {
   return (md || '').split('\n').map(line => {
-    if (line.startsWith('# '))  return `<h1 style="font-size:16pt;font-weight:800;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:3px;margin:0 0 6px">${line.slice(2)}</h1>`
-    if (line.startsWith('## ')) return `<h2 style="font-size:10pt;font-weight:700;color:#4f46e5;margin:8px 0 2px;text-transform:uppercase;letter-spacing:0.08em">${line.slice(3)}</h2>`
-    if (line.startsWith('### ')) return `<h3 style="font-size:10pt;font-weight:700;color:#1e293b;margin:4px 0 1px">${line.slice(4)}</h3>`
+    if (line.startsWith('# '))  return `<h1 style="font-size:16pt;font-weight:800;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:3px;margin:0 0 6px">${fmt(line.slice(2))}</h1>`
+    if (line.startsWith('## ')) return `<h2 style="font-size:10pt;font-weight:700;color:#4f46e5;margin:8px 0 2px;text-transform:uppercase;letter-spacing:0.08em">${fmt(line.slice(3))}</h2>`
+    if (line.startsWith('### ')) return `<h3 style="font-size:10pt;font-weight:700;color:#1e293b;margin:4px 0 1px">${fmt(line.slice(4))}</h3>`
     if (line.startsWith('- ')) return `<div style="font-size:9.5pt;padding-left:12px;margin:1px 0;color:#334155">• ${fmt(line.slice(2))}</div>`
     if (!line.trim()) return '<div style="margin:1px 0"></div>'
     return `<p style="font-size:9.5pt;margin:1px 0;color:#334155">${fmt(line)}</p>`
@@ -781,9 +796,10 @@ function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSave
       }
     }
 
-    // Use html2pdf's own .save() so the browser download isn't aborted by an
-    // over-eager URL.revokeObjectURL (the previous blob path's bug — it only
-    // saved to the candidature, never downloaded).
+    // Produce a Blob and hand it to deliverFile: on the web that's a normal
+    // browser download; inside the Capacitor shell the WebView has no download
+    // manager, so deliverFile writes the file and opens the native share sheet
+    // instead (a bare html2pdf .save() silently no-ops there).
     //
     // Leave `element` detached and un-positioned: html2pdf mounts it in its own
     // off-screen container for capture. Do NOT set position:absolute/fixed on
@@ -791,7 +807,8 @@ function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSave
     // html2canvas would render a blank, 0-height page.
     try {
       const { default: html2pdf } = await import('html2pdf.js')
-      await html2pdf().set(options).from(element).save()
+      const blob = await html2pdf().set(options).from(element).outputPdf('blob')
+      await deliverFile(blob, options.filename || 'cv.pdf', 'application/pdf')
     } catch (err) {
       console.error('PDF export error:', err)
     }

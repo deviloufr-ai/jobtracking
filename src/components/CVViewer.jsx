@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { renderCV, TEMPLATES } from './CVGenerator'
 import { useDragDock } from '../hooks/useDragDock'
+import { deliverFile } from '../services/fileSave'
 
 // View a saved (adapted) CV — and, when onUpdate is provided, edit it in place:
 // switch the design/template live and tweak the Markdown content, then persist
@@ -82,7 +83,11 @@ export default function CVViewer({ job, onClose, inline = false, onUpdate = null
         },
       }
 
-      await html2pdf().set(opt).from(element).save()
+      // Produce a Blob and route it through deliverFile so it works both on the
+      // web (browser download) and in the Android/iOS shell (share sheet). A bare
+      // html2pdf .save() silently no-ops inside the native WebView.
+      const blob = await html2pdf().set(opt).from(element).outputPdf('blob')
+      await deliverFile(blob, `${filename}.pdf`, 'application/pdf')
     } catch (err) {
       console.error('PDF download error:', err)
     }

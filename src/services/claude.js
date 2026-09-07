@@ -1,9 +1,9 @@
 import { JOB_BOARD_NAMES, normalize, isJobBoard } from '../constants/jobBoards'
 import { signalTrialExhausted } from './apiKey'
+import { CLAUDE_MODEL as MODEL } from '../constants/aiModel'
 
 const IS_DEV = import.meta.env.DEV
 const CLAUDE_ENDPOINT = IS_DEV ? null : '/api/claude'
-const MODEL = import.meta.env.VITE_CLAUDE_MODEL || 'claude-haiku-4-5-20251001'
 
 // Request queue to prevent cascading rate limits
 let claudeRequestQueue = Promise.resolve()

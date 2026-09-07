@@ -4,6 +4,7 @@ import AdvicePanel from './AdvicePanel'
 import { STATUSES, getStatus, getStatusLabel } from '../hooks/useJobs'
 import { gmailMessageUrl } from '../services/gmail'
 import { isNoReply } from './EmailDraft'
+import { parseSender } from '../utils/parseSender'
 import UseCasePanel from './UseCasePanel'
 import RowActions from './RowActions'
 import MotivationLetterGenerator from './MotivationLetterGenerator'
@@ -222,10 +223,8 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
   const recruiterContact = (() => {
     for (const h of history) {
       if (h.fromMe || !h.from) continue
-      const raw = h.from.trim()
-      const fullMatch = raw.match(/^([^<]+)<([^>]+)>/)
-      if (fullMatch) return { name: fullMatch[1].trim(), email: fullMatch[2].trim() }
-      if (raw.includes('@')) return { name: raw.split('@')[0], email: raw }
+      const p = parseSender(h.from)
+      if (p) return p
     }
     return null
   })()
@@ -236,14 +235,12 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
     const seen = new Map() // email → contact
     for (const h of history) {
       if (h.fromMe || !h.from) continue
-      const raw = h.from.trim()
-      const fullMatch = raw.match(/^([^<]+)<([^>]+)>/)
-      const email = fullMatch ? fullMatch[2].trim() : (raw.includes('@') ? raw : null)
-      if (!email || isNoReply(email)) continue
-      if (!seen.has(email)) {
-        seen.set(email, { name: fullMatch ? fullMatch[1].trim() : raw.split('@')[0], email, date: h.date, receivedBy: h.receivedBy || null })
-      } else if (h.receivedBy && !seen.get(email).receivedBy) {
-        seen.get(email).receivedBy = h.receivedBy
+      const p = parseSender(h.from)
+      if (!p || isNoReply(p.email)) continue
+      if (!seen.has(p.email)) {
+        seen.set(p.email, { name: p.name, email: p.email, date: h.date, receivedBy: h.receivedBy || null })
+      } else if (h.receivedBy && !seen.get(p.email).receivedBy) {
+        seen.get(p.email).receivedBy = h.receivedBy
       }
     }
     return [...seen.values()]

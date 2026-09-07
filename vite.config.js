@@ -29,14 +29,19 @@ const emitVersionJson = () => ({
   },
 })
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react(), emitVersionJson()],
   define: {
     __COMMIT_COUNT__: JSON.stringify(commitCount),
     __COMMIT_HASH__: JSON.stringify(commitHash),
+    // Neutralize debug console.log() in PRODUCTION builds only (dev + tests keep
+    // them). This AST-aware define rewrites the call target to a no-op, so no debug
+    // logging ships to users. console.warn / console.error are deliberately left
+    // intact — they carry real diagnostics (sync status, degraded-mode fallbacks).
+    ...(mode === 'production' ? { 'console.log': '(function(){})' } : {}),
   },
   test: {
     environment: 'jsdom',
     include: ['src/**/*.{test,spec}.{js,jsx}'],
   },
-})
+}))
