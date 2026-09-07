@@ -3,6 +3,7 @@ import AIPanelBoundary from './AIPanelBoundary'
 import { resolveAutoLanguage, generateTailoredCV, suggestCvPoints } from '../services/cvGeneration'
 import { trackCvGenerationStarted, trackCvGenerated } from '../services/analytics'
 import { pushLocalPrefs, AUX_PREFS_SYNCED_EVENT } from '../services/profileSync'
+import { deliverFile } from '../services/fileSave'
 import CVSuggestions from './CVSuggestions'
 
 // html2pdf is heavy (jsPDF + html2canvas); load it lazily at export time so it
@@ -795,9 +796,10 @@ function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSave
       }
     }
 
-    // Use html2pdf's own .save() so the browser download isn't aborted by an
-    // over-eager URL.revokeObjectURL (the previous blob path's bug — it only
-    // saved to the candidature, never downloaded).
+    // Produce a Blob and hand it to deliverFile: on the web that's a normal
+    // browser download; inside the Capacitor shell the WebView has no download
+    // manager, so deliverFile writes the file and opens the native share sheet
+    // instead (a bare html2pdf .save() silently no-ops there).
     //
     // Leave `element` detached and un-positioned: html2pdf mounts it in its own
     // off-screen container for capture. Do NOT set position:absolute/fixed on
@@ -805,7 +807,8 @@ function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSave
     // html2canvas would render a blank, 0-height page.
     try {
       const { default: html2pdf } = await import('html2pdf.js')
-      await html2pdf().set(options).from(element).save()
+      const blob = await html2pdf().set(options).from(element).outputPdf('blob')
+      await deliverFile(blob, options.filename || 'cv.pdf', 'application/pdf')
     } catch (err) {
       console.error('PDF export error:', err)
     }

@@ -50,6 +50,14 @@ Web / Android shell / Firefox extension
 The **Android app is a Capacitor shell pointed at the live site** (`capacitor.config.json`
 → `server.url`). A web deploy changes the Android app with no store release.
 
+File downloads (CV / cover-letter PDF, JSON export, interview transcript) go through
+`services/fileSave.js`: a normal browser download on web, but on native a
+Filesystem-write + Share-sheet, because the WebView has **no download manager** and a
+blob/`<a download>`/`jsPDF.save()` silently no-ops there. This needs `@capacitor/filesystem`
+and `@capacitor/share` compiled in — adding/removing any Capacitor plugin requires
+`npx cap sync android` **and an APK rebuild** (a plain web deploy is not enough for native
+plugin changes).
+
 ### Sync engine — the part most likely to break
 
 - Reads come from IndexedDB (`indexeddb.js`); the UI never waits on the network.

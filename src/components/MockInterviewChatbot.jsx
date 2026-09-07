@@ -3,6 +3,7 @@ import { CLAUDE_MODEL } from '../constants/aiModel'
 import AIPanelBoundary from './AIPanelBoundary'
 import { aiFetch } from '../services/apiKey'
 import { transcribeBlob, canRecordAudio } from '../services/localSpeech'
+import { deliverText } from '../services/fileSave'
 import { trackMockInterviewCompleted } from '../services/analytics'
 import { useDragDock } from '../hooks/useDragDock'
 
@@ -414,7 +415,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
     generateFirstQuestion()
   }
 
-  const exportTranscript = () => {
+  const exportTranscript = async () => {
     const text = messages
       .map(
         (m) =>
@@ -422,10 +423,8 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
       )
       .join('\n\n')
 
-    const element = document.createElement('a')
-    element.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text)
-    element.download = `interview-${job.company}-${new Date().toISOString().split('T')[0]}.txt`
-    element.click()
+    // deliverText handles the native shell (share sheet); on web it's a download.
+    await deliverText(text, `interview-${job.company}-${new Date().toISOString().split('T')[0]}.txt`, 'text/plain')
   }
 
   const analyzeInterview = async () => {

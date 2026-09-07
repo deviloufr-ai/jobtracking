@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { CLAUDE_MODEL } from '../constants/aiModel'
+import { deliverFile } from '../services/fileSave'
 import { useSettings, SETTINGS_DEFAULTS } from '../hooks/useSettings'
 import { useExtensionDetect } from '../hooks/useExtensionDetect'
 import { useExtensionUpdate } from '../hooks/useExtensionUpdate'
@@ -321,14 +322,11 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
     setExtracting(false)
   }
 
-  function handleExport() {
+  async function handleExport() {
     const data = { jobs, exportedAt: new Date().toISOString(), version: '1.0' }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `jobtrackr-export-${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(a.href)
+    // deliverFile handles the native shell (share sheet); on web it's a download.
+    await deliverFile(blob, `jobtrackr-export-${new Date().toISOString().slice(0, 10)}.json`, 'application/json')
     setExportDone(true)
     setTimeout(() => setExportDone(false), 2000)
   }

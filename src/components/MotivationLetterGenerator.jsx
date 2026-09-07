@@ -4,6 +4,7 @@ import { useCVs } from '../hooks/useCVs'
 import { aiFetch } from '../services/apiKey'
 import { useDragDock } from '../hooks/useDragDock'
 import { pushLetterVersion } from '../utils/letterVersions'
+import { deliverFile } from '../services/fileSave'
 
 export default function MotivationLetterGenerator(props) {
   return (
@@ -152,7 +153,10 @@ function MotivationLetterGeneratorPanel({ job, onClose, cvText, initialContent, 
       y += paraGap
     }
 
-    doc.save(`lettre-motivation-${job.company}-${new Date().toISOString().split('T')[0]}.pdf`)
+    // Route through deliverFile so it also works in the native shell (share sheet)
+    // — jsPDF's doc.save() silently no-ops inside the Android/iOS WebView.
+    const blob = doc.output('blob')
+    await deliverFile(blob, `lettre-motivation-${job.company}-${new Date().toISOString().split('T')[0]}.pdf`, 'application/pdf')
   }
 
   return (
