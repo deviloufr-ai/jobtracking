@@ -23,7 +23,7 @@ prose ("v0.7", "v1.0") are documentation artifacts. Do not trust them.
 | Frontend | React 19 + Vite 8 + Tailwind 3 — 69 components, 45 services, 25 hooks |
 | Auth & data | Supabase (Postgres + Auth + RLS) — 15 tables, 14 migration files |
 | Local cache | IndexedDB — offline-first, this is the read path |
-| Serverless | Vercel Functions in `/api/` — 13 endpoints |
+| Serverless | Vercel Functions in `/api/` — 12 endpoints (Hobby plan caps functions per deploy; add AI features via the shared `/api/claude` proxy, not new endpoints) |
 | AI | Claude Haiku 4.5 via the `/api/claude` proxy, model pinned by `VITE_CLAUDE_MODEL` |
 | Local ML | `@xenova/transformers` — in-browser inference |
 | Mobile | Capacitor 8 → Android, `com.smartjobtracker.app` |

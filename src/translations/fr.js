@@ -1176,6 +1176,7 @@ export const fr = {
     copied: 'Copié dans le presse-papiers',
     generate: 'Générer le brouillon',
     generating: 'Génération…',
+    unusable: 'Impossible de rédiger un message avec ces informations. Ajoutez les montants de l’offre et ce que vous souhaitez demander, puis réessayez.',
   },
   letterVersions: {
     title: 'Historique des versions',

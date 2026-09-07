@@ -1179,6 +1179,7 @@ export const en = {
     copied: 'Copied to clipboard',
     generate: 'Generate draft',
     generating: 'Generating…',
+    unusable: 'Could not draft a message from these details. Add the offer figures and what you would like to ask for, then try again.',
   },
   letterVersions: {
     title: 'Version history',

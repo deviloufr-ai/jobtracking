@@ -8,6 +8,78 @@ import { summarizeComp, hasCompensation } from '../utils/compensation'
 // or call talking points) from the saved offer, which the user edits and sends
 // themselves. Draft-only, mirroring MotivationLetterGenerator's UX. The last saved
 // draft persists on job.negotiationSaved (synced via extras).
+//
+// The prompt is built client-side and sent through the shared /api/claude proxy
+// (CORS + the shared-key trial gate), rather than a dedicated endpoint — Vercel's
+// Hobby plan caps a deployment's serverless functions, and the generic proxy is
+// exactly what the mock-interview / scoring features already use for ad-hoc calls.
+
+// Format the structured compensation into a compact block for the prompt.
+function describeComp(comp) {
+  if (!comp || typeof comp !== 'object') return 'Not specified.'
+  const cur = comp.currency || 'EUR'
+  const period = comp.basePeriod === 'month' ? '/month' : '/year'
+  const lines = []
+  if (comp.base) lines.push(`- Base salary: ${comp.base} ${cur}${period}`)
+  if (comp.bonus) lines.push(`- Annual bonus (target): ${comp.bonus} ${cur}`)
+  if (comp.equity) lines.push(`- Equity (annualized): ${comp.equity} ${cur}`)
+  if (comp.benefits) lines.push(`- Benefits: ${String(comp.benefits).slice(0, 300)}`)
+  if (comp.remotePct != null && comp.remotePct !== '') lines.push(`- Remote: ${comp.remotePct}%`)
+  if (comp.location) lines.push(`- Location: ${String(comp.location).slice(0, 120)}`)
+  return lines.length ? lines.join('\n') : 'Not specified.'
+}
+
+// Detect a refusal / meta-commentary instead of an actual draft (Haiku does this
+// when handed unusable input). We only inspect the opening.
+function looksLikeRefusal(text) {
+  const t = (text || '').trim()
+  if (!t) return true
+  const head = t.slice(0, 400).toLowerCase()
+  return ['unable to complete', "i'm unable to", 'i am unable to', "i can't complete",
+    'cannot complete this', 'as an ai', "i can't write", 'i cannot write',
+    'please provide', 'provide more'].some(s => head.includes(s))
+}
+
+function buildNegotiationPrompt({ company, position, comp, target, context, language, wantsScript }) {
+  const hasContext = !!(context && context.trim())
+  const langLine = language === 'auto'
+    ? 'DETECT the language from the fields below (company, target, context) and write the ENTIRE response in THAT language. If unsure, default to French.'
+    : language === 'en' ? 'Write the ENTIRE response in ENGLISH.' : 'Write the ENTIRE response in FRENCH.'
+  return `You are an expert career coach who helps candidates negotiate job offers professionally and confidently, without being adversarial.
+
+${langLine}
+
+Write a ${wantsScript ? 'set of concise talking points (bullet list) for a live negotiation call' : 'polite, professional negotiation email'} for this candidate.
+
+ROLE: ${position || 'the role'} at ${company || 'the company'}
+
+CURRENT OFFER:
+${describeComp(comp)}
+
+WHAT THE CANDIDATE WANTS:
+${(target && target.trim()) ? target.trim().slice(0, 800) : 'A reasonable increase in total compensation, framed around their value and market rate.'}
+${hasContext ? `
+ADDITIONAL CONTEXT FROM THE CANDIDATE (honour this):
+"""
+${context.trim().slice(0, 1000)}
+"""
+` : ''}
+GUIDELINES:
+- Open by reaffirming genuine enthusiasm for the role and the company.
+- Anchor the ask on value delivered and market rate, not personal need.
+- Be specific about the number(s) requested, but stay collaborative and flexible.
+- Keep a warm, confident, respectful tone. Never threaten or issue ultimatums.
+- Acknowledge the whole package (base, bonus, equity, remote, benefits), not only base.
+- ${wantsScript ? 'Give 5-8 short bullet points the candidate can glance at during the call.' : 'Keep it to a short, scannable email (about 150-220 words), with a subject line.'}
+
+WRITE LIKE A HUMAN — this must NOT read as AI-generated:
+- NEVER use the em-dash or en-dash. Use a comma, period, or parentheses.
+- Vary sentence length. Avoid AI-cliche phrasing ("I am thrilled to", "leverage", "I am confident that", "furthermore").
+- No generic platitudes. Sound like a real, self-assured professional.
+
+Return ONLY the ${wantsScript ? 'talking points' : 'email (subject line included)'} as plain text, no preamble or meta-commentary.`
+}
+
 export default function NegotiationAssistant(props) {
   return (
     <AIPanelBoundary label="Negotiation" onClose={props.onClose}>
@@ -36,21 +108,25 @@ function NegotiationAssistantPanel({ job, onClose, onSave, t = (k) => k }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await aiFetch('/api/generate-negotiation', {
-        company: job.company,
-        position: job.position,
-        compensation: comp,
-        target,
-        context,
-        format,
-        language,
+      const prompt = buildNegotiationPrompt({
+        company: job.company, position: job.position, comp,
+        target, context, language, wantsScript: format === 'script',
+      })
+      const res = await aiFetch('/api/claude', {
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2000,
+        messages: [{ role: 'user', content: prompt }],
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.error || `Generation failed: ${res.status}`)
       }
       const data = await res.json()
-      setDraft(data.draft || '')
+      const text = data.content?.[0]?.text || ''
+      if (looksLikeRefusal(text)) {
+        throw new Error(tx('negotiation.unusable', 'Could not draft a message from these details. Add the offer figures and what you would like to ask for, then try again.'))
+      }
+      setDraft(text)
     } catch (err) {
       setError(err.message)
     } finally {
