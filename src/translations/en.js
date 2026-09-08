@@ -116,6 +116,18 @@ export const en = {
     filterClear: 'Show all interview types',
     noRoundYet: 'No round detected',
     roundBadgeTip: 'Interview type detected from the calendar/email',
+    details: 'Details',
+    journey: 'Interview journey',
+    trainTitle: 'Train to succeed — by interview level',
+    train: 'Train',
+    reached: 'reached',
+    best: 'best',
+    notPractised: 'Not practised',
+    practiceCount: '{n} practice sessions',
+    toolStar: 'STAR answers',
+    toolFreePractice: 'Free practice',
+    toolCv: 'Tailor CV',
+    toolNegotiate: 'Negotiation prep',
   },
 
   // Interview round / type labels (detected from the calendar & email content)
@@ -126,6 +138,16 @@ export const en = {
     panel: 'Panel / team',
     final: 'Final',
     interview: 'Interview',
+  },
+
+  // One-line focus shown on each training tile — what that interview level tests.
+  interviewFocus: {
+    screening: 'Motivation, background, availability & salary — the recruiter screen.',
+    technical: 'Role-specific skills, problem-solving & trade-offs on a real case.',
+    manager: 'Behavioral / STAR: ownership, priorities, conflict & impact.',
+    panel: 'Cross-functional collaboration, values & how you work with a team.',
+    final: 'Vision, long-term fit, motivation & closing (incl. negotiation).',
+    interview: 'A balanced mix of motivation, experience & role fit.',
   },
 
   // Extension

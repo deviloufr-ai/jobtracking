@@ -116,6 +116,18 @@ export const fr = {
     filterClear: 'Afficher tous les types d’entretien',
     noRoundYet: 'Type non détecté',
     roundBadgeTip: 'Type d’entretien détecté depuis le calendrier / l’email',
+    details: 'Détails',
+    journey: 'Parcours d’entretien',
+    trainTitle: 'S’entraîner pour réussir — par niveau d’entretien',
+    train: 'S’entraîner',
+    reached: 'atteint',
+    best: 'meilleur',
+    notPractised: 'Pas encore travaillé',
+    practiceCount: '{n} sessions d’entraînement',
+    toolStar: 'Réponses STAR',
+    toolFreePractice: 'Entraînement libre',
+    toolCv: 'Adapter le CV',
+    toolNegotiate: 'Préparer la négo',
   },
 
   // Libellés des tours / types d’entretien (détectés depuis le calendrier & l’email)
@@ -126,6 +138,16 @@ export const fr = {
     panel: 'Panel / équipe',
     final: 'Final',
     interview: 'Entretien',
+  },
+
+  // Focus (une ligne) affiché sur chaque tuile d’entraînement — ce que teste ce niveau.
+  interviewFocus: {
+    screening: 'Motivation, parcours, disponibilité & salaire — le call recruteur.',
+    technical: 'Compétences métier, résolution de problème & arbitrages sur un cas.',
+    manager: 'Comportemental / STAR : ownership, priorités, conflits & impact.',
+    panel: 'Collaboration transverse, valeurs & travail en équipe.',
+    final: 'Vision, adéquation long terme, motivation & closing (dont négo).',
+    interview: 'Un mix équilibré : motivation, expérience & adéquation au poste.',
   },
 
   // Extension

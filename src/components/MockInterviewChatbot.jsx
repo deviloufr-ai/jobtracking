@@ -44,7 +44,11 @@ export default function MockInterviewChatbot(props) {
   )
 }
 
-function MockInterviewChatbotPanel({ job, cv, onClose, onInterviewComplete }) {
+function MockInterviewChatbotPanel({ job, cv, round, roundName, roundFocus, onClose, onInterviewComplete }) {
+  // Optional interview-level steering: when the caller trains for a specific round
+  // (technical, manager, final…), roundFocus is the English instruction that makes
+  // the interviewer focus on that level's content/approach. Blank = general.
+  const focusLine = roundFocus ? `\n\nInterview focus — ${roundFocus}` : ''
   const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 672 })
   const [messages, setMessages] = useState([])
   const [isRecording, setIsRecording] = useState(false)
@@ -180,9 +184,9 @@ function MockInterviewChatbotPanel({ job, cv, onClose, onInterviewComplete }) {
         messages: [
           {
             role: 'user',
-            content: `You are a senior recruiter at ${job.company} evaluating a candidate for a ${job.position} role. Ask ONE probing opening question that reveals their fit for the role and their thought process.${descContext}${cvContext}
+            content: `You are a senior recruiter at ${job.company} evaluating a candidate for a ${job.position} role. Ask ONE probing opening question that reveals their fit for the role and their thought process.${descContext}${cvContext}${focusLine}
 
-Connect the candidate's experience to the role. Be direct and realistic—ask what you'd actually ask in a real interview. Output ONLY the question as plain text. No formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just a natural, conversational question you'd ask if talking to someone in person.`
+Connect the candidate's experience to the role. Be direct and realistic—ask what you'd actually ask in a real interview. Stay strictly within the interview focus above when one is given. Output ONLY the question as plain text. No formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just a natural, conversational question you'd ask if talking to someone in person.`
           }
         ]
       })
@@ -343,7 +347,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
       const cvContext = cv
         ? `Candidate background: ${cv.slice(0, 600)}\n\n`
         : ''
-      const systemPrompt = `${descContext}${cvContext}You are a senior recruiter at ${job.company} evaluating a candidate for this role. Ask natural, probing follow-up questions that uncover whether they're truly fit for this position. Connect their experience to the role's requirements. Push for specific details—ask about challenges they faced, decisions they made, and lessons learned. Be realistic and direct, like you'd be in a real interview. Don't be overly nice; ask questions that matter. Output ONLY plain text questions—no formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just conversational sentences you'd say in person.`
+      const systemPrompt = `${descContext}${cvContext}You are a senior recruiter at ${job.company} evaluating a candidate for this role.${focusLine ? ` ${focusLine.trim()} Keep every question within this focus.` : ''} Ask natural, probing follow-up questions that uncover whether they're truly fit for this position. Connect their experience to the role's requirements. Push for specific details—ask about challenges they faced, decisions they made, and lessons learned. Be realistic and direct, like you'd be in a real interview. Don't be overly nice; ask questions that matter. Output ONLY plain text questions—no formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just conversational sentences you'd say in person.`
 
       const response = await aiFetch('/api/claude', {
         model: CLAUDE_MODEL,
@@ -444,7 +448,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
         messages: [
           {
             role: 'user',
-            content: `You are a senior recruiter evaluating this candidate's interview performance for a ${job.position} role at ${job.company}. Be honest and realistic—score like you would in real hiring (don't inflate scores).${descContext}${cvContext}
+            content: `You are a senior recruiter evaluating this candidate's interview performance for a ${job.position} role at ${job.company}. Be honest and realistic—score like you would in real hiring (don't inflate scores).${descContext}${cvContext}${focusLine ? `${focusLine} Judge the answers against THIS interview level's expectations.` : ''}
 
 Interview transcript:
 ${transcript}
@@ -496,6 +500,7 @@ Format as JSON with keys: hire_decision, score, strengths, concerns, weak_exampl
           company: job.company,
           position: job.position,
           date: new Date().toISOString(),
+          round: round || null,
           score: analysis.score,
           hire_decision: analysis.hire_decision,
           transcript: messages.map((m) => ({ role: m.role, text: m.text })),
@@ -516,7 +521,7 @@ Format as JSON with keys: hire_decision, score, strengths, concerns, weak_exampl
         {/* Header */}
         <div onPointerDown={startDrag} className="flex items-center justify-between p-4 border-b border-gray-200 cursor-move select-none">
           <div>
-            <h2 className="text-lg font-bold text-gray-800">🎤 Mock Interview</h2>
+            <h2 className="text-lg font-bold text-gray-800">🎤 {roundName ? `${roundName} — mock interview` : 'Mock Interview'}</h2>
             <p className="text-xs text-gray-500">
               {job.company} – {job.position}
             </p>

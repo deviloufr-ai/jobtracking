@@ -24,6 +24,32 @@ export const INTERVIEW_ROUND_META = {
 // reads screening → technical → manager → panel → final regardless of match order.
 export const INTERVIEW_ROUND_ORDER = ['screening', 'technical', 'manager', 'panel', 'final', 'interview']
 
+// The interview LEVELS offered for focused training, in pipeline order. Each
+// level trains a different approach; the mock-interview AI is steered by the
+// matching `INTERVIEW_ROUND_PROMPT` so a technical practice drills problem-solving
+// while a manager practice drills behavioral/STAR, etc. `panel`/`interview` are
+// left out of the training ladder to keep the card focused on the four levels
+// candidates actually prepare for.
+export const INTERVIEW_TRAIN_LEVELS = ['screening', 'technical', 'manager', 'final']
+
+// English steering instruction injected into the mock-interview prompts so each
+// level focuses on the right approach/content. (Sent to the model only — the
+// interview language still auto-detects from the candidate's answers. The
+// user-facing one-line focus lives in translations as interviewFocus.<key>.)
+export const INTERVIEW_ROUND_PROMPT = {
+  screening: 'This is an INITIAL RECRUITER / HR SCREENING. Keep it conversational and high-level. Focus on: why this role and this company, a brief walkthrough of their background, availability / notice period, salary expectations, and overall culture fit. Do not go deep into technical detail.',
+  technical: 'This is a TECHNICAL / CASE interview. Probe role-specific hard skills and problem-solving. Ask them to reason through a concrete, realistic problem or case for this role, push on trade-offs, tools and methods, and how they would actually do the work. Expect depth and specifics.',
+  manager: 'This is a HIRING-MANAGER interview. Focus on behavioral and situational questions (STAR): ownership, prioritization, stakeholder management, handling conflict and ambiguity, and measurable impact. Push for specific past examples with concrete results.',
+  panel: 'This is a PANEL / TEAM interview. Assess cross-functional collaboration, breadth, values and working style. Ask team scenarios and how they work with peers and adjacent functions.',
+  final: 'This is a FINAL / LEADERSHIP round. Focus on vision, long-term fit and motivation, big-picture thinking, and closing signals. Test how they think about the company\'s direction and why they are the right long-term bet; you may lightly probe compensation expectations.',
+  interview: 'This is a general interview. Ask a balanced mix of motivation, experience and role-fit questions.',
+}
+
+// English AI steering text for a round key (falls back to the generic one).
+export function roundPrompt(key) {
+  return INTERVIEW_ROUND_PROMPT[key] || INTERVIEW_ROUND_PROMPT.interview
+}
+
 // Match rules, checked most-specific first so a "final technical round" reads as
 // technical and a bare "final round" as final. Each regex is bilingual FR/EN.
 const RULES = [
