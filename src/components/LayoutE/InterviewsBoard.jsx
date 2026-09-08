@@ -16,6 +16,7 @@ import { scoreColorClasses } from '../ScoreJob'
 import UpcomingMeetings from '../UpcomingMeetings'
 import MockInterviewChatbot from '../MockInterviewChatbot'
 import NegotiationAssistant from '../NegotiationAssistant'
+import InterviewExample from '../InterviewExample'
 import CandidatureDrawer from './CandidatureDrawer'
 
 const PALETTE = ['#4f46e5', '#2563eb', '#0d9488', '#d97706', '#db2777', '#7c3aed', '#dc2626', '#059669']
@@ -51,18 +52,14 @@ function StatTile({ icon, value, label, sub, accent = 'text-gray-900' }) {
   )
 }
 
-// One interview-level training tile: focused mock practice for a round.
-function TrainTile({ levelKey, reached, sessions, onTrain, t }) {
+// One interview-level training tile: a text example interview (Q + model answers)
+// AND a focused voice mock, both tailored to this level's approach.
+function TrainTile({ levelKey, reached, sessions, hasExample, onTrain, onExample, t }) {
   const meta = INTERVIEW_ROUND_META[levelKey]
   const done = sessionsForRound(sessions, levelKey)
   const best = bestMockScore(done)
   return (
-    <button
-      onClick={onTrain}
-      className={`group relative text-left rounded-xl border p-3 transition-all hover:shadow-md ${
-        reached ? 'border-current ' + meta.color : 'bg-white border-gray-200 hover:border-gray-300'
-      }`}
-    >
+    <div className={`relative rounded-xl border p-3 transition-all ${reached ? 'border-current ' + meta.color : 'bg-white border-gray-200'}`}>
       {reached && (
         <span className="absolute top-2 right-2 text-[9px] font-bold uppercase tracking-wide opacity-70">✓ {t('interviews.reached')}</span>
       )}
@@ -71,15 +68,24 @@ function TrainTile({ levelKey, reached, sessions, onTrain, t }) {
         <span className="text-[13px] font-bold text-gray-900">{roundLabel(levelKey, t)}</span>
       </div>
       <p className="text-[11px] text-gray-500 leading-snug mt-1 min-h-[2.4em] line-clamp-2">{t(`interviewFocus.${levelKey}`)}</p>
-      <div className="flex items-center justify-between mt-2">
-        <span className="text-[10px] font-medium text-gray-400">
-          {done.length > 0 ? `${done.length}× · ${t('interviews.best')} ${best}` : t('interviews.notPractised')}
-        </span>
-        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 group-hover:text-indigo-700">
-          🎤 {t('interviews.train')}
-        </span>
+      <div className="text-[10px] font-medium text-gray-400 mt-1.5">
+        {done.length > 0 ? `${done.length}× · ${t('interviews.best')} ${best}` : t('interviews.notPractised')}
       </div>
-    </button>
+      <div className="flex items-center gap-1.5 mt-2">
+        <button
+          onClick={onExample}
+          className="flex-1 inline-flex items-center justify-center gap-1 text-[11px] font-semibold px-2 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          📝 {t('interviews.example')}{hasExample ? ' ✓' : ''}
+        </button>
+        <button
+          onClick={onTrain}
+          className="flex-1 inline-flex items-center justify-center gap-1 text-[11px] font-semibold px-2 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+        >
+          🎤 {t('interviews.train')}
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -96,7 +102,7 @@ function ToolButton({ icon, label, onClick, tone = 'gray' }) {
   )
 }
 
-function CandidatureCard({ job, active, highlightRound, onOpen, onTrain, onSTAR, onGenerateCV, onNegotiate, onToggleFavorite, t }) {
+function CandidatureCard({ job, active, highlightRound, onOpen, onTrain, onExample, onSTAR, onGenerateCV, onNegotiate, onToggleFavorite, t }) {
   const history = job.history || []
   const effective = deriveStatusFromHistory(history) || job.status
   const status = getStatus(effective)
@@ -177,7 +183,9 @@ function CandidatureCard({ job, active, highlightRound, onOpen, onTrain, onSTAR,
               levelKey={levelKey}
               reached={reached.has(levelKey)}
               sessions={sessions}
+              hasExample={!!job.interviewExamples?.[levelKey]}
               onTrain={() => onTrain(job, levelKey)}
+              onExample={() => onExample(job, levelKey)}
               t={t}
             />
           ))}
@@ -195,7 +203,7 @@ function CandidatureCard({ job, active, highlightRound, onOpen, onTrain, onSTAR,
   )
 }
 
-function Section({ title, hint, accent, jobs, openId, highlightRound, onOpen, onTrain, onSTAR, onGenerateCV, onNegotiate, onToggleFavorite, t, defaultOpen = true }) {
+function Section({ title, hint, accent, jobs, openId, highlightRound, onOpen, onTrain, onExample, onSTAR, onGenerateCV, onNegotiate, onToggleFavorite, t, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen)
   if (jobs.length === 0) return null
   return (
@@ -217,6 +225,7 @@ function Section({ title, hint, accent, jobs, openId, highlightRound, onOpen, on
               highlightRound={highlightRound}
               onOpen={onOpen}
               onTrain={onTrain}
+              onExample={onExample}
               onSTAR={onSTAR}
               onGenerateCV={onGenerateCV}
               onNegotiate={onNegotiate}
@@ -251,6 +260,7 @@ export default function InterviewsBoard({
     try { return localStorage.getItem('jobtrackr_interviews_show_archived') === '1' } catch { return false }
   })
   const [mock, setMock] = useState(null)               // { job, round } focused practice
+  const [example, setExample] = useState(null)         // { job, round } text example interview
   const [negotiate, setNegotiate] = useState(null)     // job → negotiation prep
   const toggleArchived = () => setShowArchived(v => {
     const next = !v
@@ -261,6 +271,10 @@ export default function InterviewsBoard({
   const open = (j, tab = 'overview') => { setOpenTab(tab); setOpenId(j.id) }
   const close = () => setOpenId(null)
   const startTrain = (job, round) => setMock({ job, round })
+  const startExample = (job, round) => setExample({ job, round })
+  // Bind the example modal to the freshest job record so a just-saved example
+  // shows without reopening.
+  const exampleJob = example ? (jobs.find(j => j.id === example.job.id) || example.job) : null
 
   const drawerWidth = (typeof window !== 'undefined' && window.innerWidth >= 1536) ? 780 : 580
 
@@ -418,13 +432,13 @@ export default function InterviewsBoard({
         <>
           <Section title={t('interviews.sectionActive')} hint={t('interviews.sectionActiveHint')} accent="bg-purple-500"
             jobs={active} openId={openId} highlightRound={roundFilter}
-            onOpen={open} onTrain={startTrain} onSTAR={onSTAR} onGenerateCV={onGenerateCV} onNegotiate={setNegotiate} onToggleFavorite={onToggleFavorite} t={t} />
+            onOpen={open} onTrain={startTrain} onExample={startExample} onSTAR={onSTAR} onGenerateCV={onGenerateCV} onNegotiate={setNegotiate} onToggleFavorite={onToggleFavorite} t={t} />
           <Section title={t('interviews.sectionOutcome')} hint={t('interviews.sectionOutcomeHint')} accent="bg-green-500"
             jobs={outcome} openId={openId} highlightRound={roundFilter}
-            onOpen={open} onTrain={startTrain} onSTAR={onSTAR} onGenerateCV={onGenerateCV} onNegotiate={setNegotiate} onToggleFavorite={onToggleFavorite} t={t} />
+            onOpen={open} onTrain={startTrain} onExample={startExample} onSTAR={onSTAR} onGenerateCV={onGenerateCV} onNegotiate={setNegotiate} onToggleFavorite={onToggleFavorite} t={t} />
           <Section title={t('interviews.sectionPast')} hint={t('interviews.sectionPastHint')} accent="bg-gray-400"
             jobs={past} openId={openId} highlightRound={roundFilter}
-            onOpen={open} onTrain={startTrain} onSTAR={onSTAR} onGenerateCV={onGenerateCV} onNegotiate={setNegotiate} onToggleFavorite={onToggleFavorite} t={t}
+            onOpen={open} onTrain={startTrain} onExample={startExample} onSTAR={onSTAR} onGenerateCV={onGenerateCV} onNegotiate={setNegotiate} onToggleFavorite={onToggleFavorite} t={t}
             defaultOpen={false} />
         </>
       )}
@@ -439,6 +453,20 @@ export default function InterviewsBoard({
           roundFocus={mock.round ? roundPrompt(mock.round) : ''}
           onClose={() => setMock(null)}
           onInterviewComplete={saveMockSession}
+        />
+      )}
+
+      {/* Text example interview (questions + model answers) for a level. */}
+      {exampleJob && (
+        <InterviewExample
+          job={exampleJob}
+          round={example.round}
+          roundName={example.round ? roundLabel(example.round, t) : null}
+          roundFocus={example.round ? roundPrompt(example.round) : ''}
+          cv={exampleJob.cvSaved?.markdown || ''}
+          onClose={() => setExample(null)}
+          onSave={onUpdateJob}
+          t={t}
         />
       )}
 

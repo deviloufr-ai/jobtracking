@@ -122,6 +122,7 @@ export const fr = {
     journey: 'Parcours d’entretien',
     trainTitle: 'S’entraîner pour réussir — par niveau d’entretien',
     train: 'S’entraîner',
+    example: 'Exemple',
     reached: 'atteint',
     best: 'meilleur',
     notPractised: 'Pas encore travaillé',
@@ -140,6 +141,20 @@ export const fr = {
     panel: 'Panel / équipe',
     final: 'Final',
     interview: 'Entretien',
+  },
+
+  // Panneau exemple d’entretien (questions + réponses modèles par niveau)
+  interviewExample: {
+    title: 'exemple d’entretien',
+    subtitle: 'Questions probables pour cette étape, adaptées à cette candidature — avec une réponse modèle pour chacune. Préparez, puis entraînez-vous en entretien blanc.',
+    empty: 'Générez un jeu de questions et réponses d’exemple pour cette étape d’entretien.',
+    generate: 'Générer les questions',
+    generating: 'Préparation…',
+    failed: 'Impossible de générer les questions. Réessayez.',
+    assess: 'Ce qu’ils évaluent',
+    approach: 'Comment répondre',
+    answer: 'Réponse d’exemple',
+    saved: 'Enregistré sur cette candidature',
   },
 
   // Focus (une ligne) affiché sur chaque tuile d’entraînement — ce que teste ce niveau.

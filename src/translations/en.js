@@ -122,6 +122,7 @@ export const en = {
     journey: 'Interview journey',
     trainTitle: 'Train to succeed — by interview level',
     train: 'Train',
+    example: 'Example',
     reached: 'reached',
     best: 'best',
     notPractised: 'Not practised',
@@ -140,6 +141,20 @@ export const en = {
     panel: 'Panel / team',
     final: 'Final',
     interview: 'Interview',
+  },
+
+  // Text example-interview panel (questions + model answers per level)
+  interviewExample: {
+    title: 'example interview',
+    subtitle: 'Likely questions for this interview stage, tailored to this application — with a model answer for each. Prepare, then practise with a mock.',
+    empty: 'Generate a set of example questions and answers for this interview stage.',
+    generate: 'Generate questions',
+    generating: 'Preparing…',
+    failed: 'Could not generate example questions. Try again.',
+    assess: 'What they assess',
+    approach: 'How to answer',
+    answer: 'Example answer',
+    saved: 'Saved to this candidature',
   },
 
   // One-line focus shown on each training tile — what that interview level tests.

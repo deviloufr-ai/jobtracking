@@ -21,6 +21,9 @@ const EXTRA_FIELDS = [
   // negotiationSaved: the last saved negotiation draft ({ content, savedAt }).
   // All ride the existing jobs.extras jsonb blob — no schema migration needed.
   'compensation', 'contacts', 'letterVersions', 'negotiationSaved',
+  // interviewExamples: per-round cached example interviews (Q + model answers),
+  // keyed by round ({ screening, technical, … , general }). Rides jobs.extras.
+  'interviewExamples',
 ]
 
 // Collect the present extra fields off a full job record into a jsonb blob.
