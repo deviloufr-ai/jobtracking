@@ -24,8 +24,8 @@ android {
         // src/constants/appVersion.js together whenever a native change (new
         // plugin, permission, config) requires users to install a fresh APK —
         // the live-loaded web then prompts out-of-date installs to update.
-        versionCode 3
-        versionName "0.6.1"
+        versionCode 4
+        versionName "0.6.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
