@@ -158,6 +158,25 @@ export function deriveStatusFromHistory(history) {
   return best.status
 }
 
+// A candidature "has/had an interview process" — the filter behind the dedicated
+// Interviews board. True when the timeline ever reached the interview stage (an
+// `interview` entry, or its resolved-past form `done`), when the current
+// effective status is interview / done / offer (an offer implies the process
+// advanced past interviews), or when the user has practised a mock interview for
+// it (interviewSessions). Plain sent/reviewing leads and pre-interview ATS/early
+// rejections are excluded — they never reached an interview.
+const INTERVIEW_HISTORY_STAGES = new Set(['interview', 'done'])
+const INTERVIEW_EFFECTIVE_STATUSES = new Set(['interview', 'done', 'offer'])
+export function hasInterviewProcess(job) {
+  if (!job) return false
+  const history = Array.isArray(job.history) ? job.history : []
+  if (history.some(h => INTERVIEW_HISTORY_STAGES.has(h?.status))) return true
+  const effective = deriveStatusFromHistory(history) || job.status
+  if (INTERVIEW_EFFECTIVE_STATUSES.has(effective)) return true
+  if (Array.isArray(job.interviewSessions) && job.interviewSessions.length > 0) return true
+  return false
+}
+
 function normalizeCompany(name = '') {
   return name.toLowerCase()
     .replace(/\s+(sas|sasu|sarl|sa|srl|inc|ltd|llc|gmbh|bv|nv|ag|spa|oy|ab)\.?\s*$/i, '')

@@ -74,6 +74,7 @@ export const fr = {
     tabs: {
       home: 'Accueil',
       tracker: 'Candidatures',
+      interviews: 'Entretiens',
       analytics: 'Analyse',
       search: 'Recherche',
       cv: 'Mon CV',
@@ -85,6 +86,30 @@ export const fr = {
     lastSync: 'Dernière sync',
     connected: 'Connecté',
     signOut: 'Se déconnecter',
+  },
+
+  // Tableau Entretiens (vue dédiée entretiens & préparation, sous Candidatures)
+  interviews: {
+    title: 'Entretiens & préparation',
+    subtitle: 'Seules les candidatures arrivées en entretien — suivez-les, analysez les issues et entraînez-vous.',
+    statTotal: 'Dans ce tableau',
+    statActive: 'En cours',
+    statOffers: 'Offres & embauches',
+    statMock: 'Entretiens blancs',
+    bestScore: 'Meilleur score {score}/100',
+    noMockYet: 'Pas encore d’entraînement',
+    sectionActive: 'En cours',
+    sectionActiveHint: 'Entretiens en cours ou en attente de retour',
+    sectionOutcome: 'Offres & embauches',
+    sectionOutcomeHint: 'Arrivées à une offre ou au poste',
+    sectionPast: 'Entretiens passés',
+    sectionPastHint: 'Clôturées — à débriefer',
+    mockCta: 'S’entraîner',
+    mockPractisedTip: 'Entretiens blancs réalisés · meilleur score recruteur',
+    starCta: 'STAR',
+    starReady: 'STAR prêt',
+    emptyTitle: 'Pas encore d’entretien',
+    emptyBody: 'Dès qu’une candidature atteint l’étape entretien — ou que vous réalisez un entretien blanc — elle apparaît ici pour vous préparer et l’analyser.',
   },
 
   // Extension

@@ -74,6 +74,7 @@ export const en = {
     tabs: {
       home: 'Home',
       tracker: 'Applications',
+      interviews: 'Interviews',
       analytics: 'Analytics',
       search: 'Search',
       cv: 'My CV',
@@ -85,6 +86,30 @@ export const en = {
     lastSync: 'Last sync',
     connected: 'Connected',
     signOut: 'Sign out',
+  },
+
+  // Interviews board (dedicated interviews & prep view, below Applications)
+  interviews: {
+    title: 'Interviews & prep',
+    subtitle: 'Only the applications that reached an interview — track them, review outcomes, and practise.',
+    statTotal: 'In this board',
+    statActive: 'In process',
+    statOffers: 'Offers & hires',
+    statMock: 'Mock sessions',
+    bestScore: 'Best score {score}/100',
+    noMockYet: 'No practice yet',
+    sectionActive: 'In process',
+    sectionActiveHint: 'Currently interviewing or awaiting feedback',
+    sectionOutcome: 'Offers & hires',
+    sectionOutcomeHint: 'Reached an offer or got the job',
+    sectionPast: 'Past interviews',
+    sectionPastHint: 'Closed — worth a debrief',
+    mockCta: 'Practise',
+    mockPractisedTip: 'Mock interviews practised · best recruiter score',
+    starCta: 'STAR',
+    starReady: 'STAR ready',
+    emptyTitle: 'No interviews yet',
+    emptyBody: 'When an application reaches the interview stage — or you practise a mock interview — it shows up here so you can prep and review it.',
   },
 
   // Extension

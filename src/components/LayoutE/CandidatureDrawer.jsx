@@ -95,7 +95,7 @@ function InterviewFeedback({ session }) {
 
 export default function CandidatureDrawer({
   job, onClose, onEdit, onDelete, onUpdateJob, onAddStep, onUpdateHistory,
-  onGenerateCV, onViewSavedCV, onSTAR, onDraftEmail, t = (k) => k,
+  onGenerateCV, onViewSavedCV, onSTAR, onDraftEmail, initialTab, t = (k) => k,
 }) {
   const history = job.history || []
   const displayStatus = history.length ? (history[history.length - 1].status || job.status) : job.status
@@ -121,7 +121,7 @@ export default function CandidatureDrawer({
     return null
   })()
 
-  const [tab, setTab] = useState('overview')
+  const [tab, setTab] = useState(initialTab && TABS.some(([id]) => id === initialTab) ? initialTab : 'overview')
   const [showLetter, setShowLetter] = useState(false)
   const [showMock, setShowMock] = useState(false)
   const [sessionIdx, setSessionIdx] = useState(null)   // which interview session is shown inline (null = latest)

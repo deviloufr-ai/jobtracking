@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
-import { useJobs, getStatus, historyEntryKey } from './hooks/useJobs'
+import { useJobs, getStatus, historyEntryKey, hasInterviewProcess } from './hooks/useJobs'
 import { useExtensionImport } from './hooks/useExtensionImport'
 import { useExtensionDetect } from './hooks/useExtensionDetect'
 import { useExtensionUpdate } from './hooks/useExtensionUpdate'
@@ -77,6 +77,7 @@ import JobSearch from './components/JobSearch'
 import { getFlag, FLAGS, FLAGS_EVENT } from './services/featureFlags'
 import NavRail from './components/LayoutE/NavRail'
 import TrackerHomeE from './components/LayoutE/TrackerHomeE'
+import InterviewsBoard from './components/LayoutE/InterviewsBoard'
 import CVGenerator from './components/CVGenerator'
 import BatchCVModal from './components/BatchCVModal'
 import BulkActionBar from './components/BulkActionBar'
@@ -745,6 +746,9 @@ export default function App() {
 
   const archivedCount = useMemo(() => jobs.filter(j => j.status === 'archived').length, [jobs])
   const favCount = useMemo(() => jobs.filter(j => j.favorite).length, [jobs])
+  // Candidatures that have/had an interview process — badge + filter for the
+  // dedicated Interviews board (sits below Applications in the nav).
+  const interviewCount = useMemo(() => jobs.filter(hasInterviewProcess).length, [jobs])
 
   // The connected account shown in the nav rail footer: prefer the Gmail import
   // account, otherwise fall back to the signed-in Supabase account so the row
@@ -1006,6 +1010,7 @@ export default function App() {
   // ── nav tabs config ─────────────────────────────────────────────────────────
   const NAV_TABS = [
     { id: 'tracker',  label: t('nav.tabs.tracker'), icon: '📋', badge: jobs.length || null },
+    { id: 'interviews', label: t('nav.tabs.interviews'), icon: '🎤', badge: interviewCount || null },
     { id: 'analytics', label: t('nav.tabs.analytics'), icon: '📊', badge: null },
     // Job search is hidden unless the experimental flag is enabled.
     ...(searchEnabled ? [{ id: 'search', label: t('nav.tabs.search'), icon: '🔎', badge: null }] : []),
@@ -1018,6 +1023,7 @@ export default function App() {
   // nav slot). Desktop keeps NAV_TABS.
   const MOBILE_TABS = [
     { id: 'tracker',   label: t('nav.tabs.tracker'),   icon: '📋', badge: jobs.length || null },
+    { id: 'interviews', label: t('nav.tabs.interviews'), icon: '🎤', badge: interviewCount || null },
     { id: 'analytics', label: t('nav.tabs.analytics'), icon: '📊', badge: null },
     ...(searchEnabled ? [{ id: 'search', label: t('nav.tabs.search'), icon: '🔎', badge: null }] : []),
     { id: 'settings',  label: t('nav.tabs.settings'),  icon: '⚙️', badge: null },
@@ -1488,6 +1494,21 @@ export default function App() {
           <Analytics jobs={jobs} t={t} language={language} />
         ) : activeTab === 'search' && searchEnabled ? (
           <JobSearch onAddJob={(job) => { addJob(job); showToast(`${job.company} ajouté !`); setActiveTab('tracker') }} existingJobs={jobs} t={t} />
+        ) : activeTab === 'interviews' ? (
+          <InterviewsBoard
+            jobs={jobs}
+            onEdit={(j) => setModal(j)}
+            onDelete={(j) => setToDelete(j)}
+            onAddStep={addHistoryEntry}
+            onUpdateHistory={handleUpdateHistory}
+            onUpdateJob={updateJob}
+            onGenerateCV={handleGenerateCV}
+            onViewSavedCV={handleViewSavedCV}
+            onToggleFavorite={toggleFavorite}
+            onSTAR={(j) => setStarJob(j)}
+            onDraftEmail={(j, type) => setEmailDraft({ job: j, type })}
+            t={t}
+          />
         ) : layoutE ? (
           <TrackerHomeE
             jobs={jobs}
