@@ -12,18 +12,25 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#f6f7f9] flex items-center justify-center px-4"
+      style={{ backgroundImage: 'radial-gradient(130% 60% at 50% -10%, rgba(37,99,235,0.05), transparent 60%)' }}>
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-lg shadow-xl p-8">
+        <div className="bg-white rounded-2xl shadow-card-lg border border-gray-200 p-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">SmartJobTracker</h1>
-            <p className="text-gray-600">Multi-device job application tracker</p>
+            <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-brand-600 flex items-center justify-center shadow-ink">
+              <svg viewBox="0 0 64 64" className="w-7 h-7" fill="none" aria-hidden="true">
+                <polyline points="16,33 28,45 50,17" stroke="#fff" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="50" cy="17" r="5" fill="#fff" />
+              </svg>
+            </div>
+            <h1 className="font-display text-3xl font-bold text-gray-900 mb-1.5 tracking-tight">SmartJobTracker</h1>
+            <p className="text-gray-500">Multi-device job application tracker</p>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
               <p className="text-red-800 text-sm">{error}</p>
             </div>
           )}
@@ -32,7 +39,7 @@ export function LoginPage() {
           <button
             onClick={handleGoogleSignIn}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path

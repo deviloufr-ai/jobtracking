@@ -1,31 +1,72 @@
 /** @type {import('tailwindcss').Config} */
+
+// ── Redesign 2026 · "Clean & Friendly" ───────────────────────────────────────
+// Notion/Figma-flavoured modern light: pure-white surfaces on a soft cool-gray
+// canvas, comfortable rounded cards, and a friendly vivid-blue accent that also
+// serves as the primary action colour — flat, never a gradient (gradients were
+// the old "AI SaaS" tell). Because gray + slate are remapped at the token level,
+// every bg-white / text-gray-* / border-gray-* / bg-slate-50 across the app
+// picks up the clean neutral at once. Dark themes keep working — themes.css
+// overrides these classes via --theme-* variables regardless of light values.
+
+// Clean cool-neutral ("soft gray → slate"). Low chroma, a hair cool, friendly.
+const neutral = {
+  50:  '#f7f8fa',
+  100: '#eef0f4',
+  200: '#e3e6ec',  // hairline borders
+  300: '#d0d5de',
+  400: '#9ba2af',
+  500: '#6b7280',
+  600: '#4b5563',
+  700: '#374151',
+  800: '#1f242c',
+  900: '#12161c',
+  950: '#0b0e12',
+}
+
+// Vivid blue accent — clean, friendly, confident (brand-600 #2563eb). The
+// primary action colour and the single hue that anchors the whole UI.
+const blue = {
+  50:  '#eff6ff',
+  100: '#dbeafe',
+  200: '#bfdbfe',
+  300: '#93c5fd',
+  400: '#60a5fa',
+  500: '#3b82f6',
+  600: '#2563eb',
+  700: '#1d4ed8',
+  800: '#1e40af',
+  900: '#1e3a8a',
+  950: '#172554',
+}
+
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
       colors: {
-        brand: {
-          50:  '#eef2ff',
-          100: '#e0e7ff',
-          200: '#c7d2fe',
-          300: '#a5b4fc',
-          400: '#818cf8',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81',
-        }
+        brand: blue,
+        // Remap the app's two neutral families onto one clean cool-gray ramp.
+        gray: neutral,
+        slate: neutral,
+        ink: neutral,
       },
       fontFamily: {
-        // Inter is loaded in index.html but was never wired into Tailwind, so the
-        // app fell back to system fonts. Make `font-sans` (applied on <body>) Inter.
+        // Inter drives the UI; Plus Jakarta Sans gives headings + the wordmark a
+        // friendly, rounded voice without the "default Inter/Space Grotesk" look
+        // (loaded in index.html).
         sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
+        display: ['"Plus Jakarta Sans"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        'card':    '0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.08)',
-        'card-lg': '0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08)',
-        'glow':    '0 0 0 3px rgb(99 102 241 / 0.2)',
+        // Soft, cool-neutral, layered — friendly depth on white/gray surfaces.
+        'card':    '0 1px 2px 0 rgb(16 24 40 / 0.04), 0 1px 3px 0 rgb(16 24 40 / 0.07)',
+        'card-lg': '0 4px 12px -2px rgb(16 24 40 / 0.08), 0 12px 28px -8px rgb(16 24 40 / 0.10)',
+        'card-xl': '0 8px 24px -6px rgb(16 24 40 / 0.10), 0 32px 56px -20px rgb(16 24 40 / 0.16)',
+        // Accent shadow that sits under the blue buttons / logo mark.
+        'ink':     '0 1px 2px 0 rgb(37 99 235 / 0.12), 0 6px 16px -4px rgb(37 99 235 / 0.28)',
+        'glow':    '0 0 0 3px rgb(37 99 235 / 0.16)',
+        'hairline':'0 0 0 1px rgb(16 24 40 / 0.06)',
       },
       keyframes: {
         'fade-in':   { from: { opacity: '0', transform: 'translateY(4px)' }, to: { opacity: '1', transform: 'translateY(0)' } },

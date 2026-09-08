@@ -171,3 +171,100 @@ body.is-dark [class~="from-sky-50"] {
   background-image: none !important;
   background-color: rgba(255, 255, 255, 0.05) !important;
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   REDESIGN 2026 · "Clean & Friendly" — accent retint (LIGHT MODE ONLY)
+   ────────────────────────────────────────────────────────────────────────────
+   The old palette leaned on indigo/violet/purple accents + indigo→violet
+   gradients hardcoded across ~74 component files — the classic "AI-generated
+   SaaS" tell. Rather than editing every file, remap those utilities to the
+   friendly vivid-blue brand (#2563eb) and flatten the signature gradients to a
+   flat blue, in LIGHT MODE ONLY. Dark themes already remap these families
+   above, so every rule here is scoped `body:not(.is-dark)` and never touches a
+   dark theme.
+   Blue scale used: 50 #eff6ff · 100 #dbeafe · 200 #bfdbfe · 400 #60a5fa
+                    500 #3b82f6 · 600 #2563eb · 700 #1d4ed8
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* Soft accent fills → blue tints */
+body:not(.is-dark) .bg-indigo-50,
+body:not(.is-dark) .bg-violet-50,
+body:not(.is-dark) .bg-purple-50   { background-color: #eff6ff !important; }
+body:not(.is-dark) .bg-indigo-100,
+body:not(.is-dark) .bg-violet-100,
+body:not(.is-dark) .bg-purple-100  { background-color: #dbeafe !important; }
+
+/* Solid accent fills (stray CTAs / dots / active bars) → vivid blue */
+body:not(.is-dark) .bg-indigo-500,
+body:not(.is-dark) .bg-violet-500,
+body:not(.is-dark) .bg-purple-500  { background-color: #3b82f6 !important; }
+body:not(.is-dark) .bg-indigo-600,
+body:not(.is-dark) .bg-indigo-700,
+body:not(.is-dark) .bg-violet-600,
+body:not(.is-dark) .bg-violet-700,
+body:not(.is-dark) .bg-purple-600  { background-color: #2563eb !important; }
+
+/* Accent text → vivid blue */
+body:not(.is-dark) .text-indigo-400,
+body:not(.is-dark) .text-indigo-500,
+body:not(.is-dark) .text-violet-500,
+body:not(.is-dark) .text-purple-500 { color: #3b82f6 !important; }
+body:not(.is-dark) .text-indigo-600,
+body:not(.is-dark) .text-indigo-700,
+body:not(.is-dark) .text-violet-600,
+body:not(.is-dark) .text-violet-700,
+body:not(.is-dark) .text-purple-600,
+body:not(.is-dark) .text-purple-700 { color: #2563eb !important; }
+
+/* Accent borders + rings → vivid blue */
+body:not(.is-dark) .border-indigo-200,
+body:not(.is-dark) .border-indigo-300,
+body:not(.is-dark) .border-violet-200,
+body:not(.is-dark) .border-purple-200 { border-color: #bfdbfe !important; }
+body:not(.is-dark) .ring-indigo-200,
+body:not(.is-dark) .ring-violet-200    { --tw-ring-color: #bfdbfe !important; }
+body:not(.is-dark) .ring-indigo-400,
+body:not(.is-dark) .ring-indigo-500    { --tw-ring-color: #3b82f6 !important; }
+
+/* Hover accent states → vivid blue */
+body:not(.is-dark) .hover\:bg-indigo-50:hover,
+body:not(.is-dark) .hover\:bg-violet-50:hover,
+body:not(.is-dark) .hover\:bg-purple-50:hover   { background-color: #eff6ff !important; }
+body:not(.is-dark) .hover\:bg-indigo-100:hover  { background-color: #dbeafe !important; }
+body:not(.is-dark) .hover\:bg-indigo-600:hover,
+body:not(.is-dark) .hover\:bg-indigo-700:hover  { background-color: #1d4ed8 !important; }
+body:not(.is-dark) .hover\:text-indigo-600:hover,
+body:not(.is-dark) .hover\:text-indigo-700:hover,
+body:not(.is-dark) .hover\:text-violet-700:hover,
+body:not(.is-dark) .hover\:text-purple-700:hover { color: #2563eb !important; }
+
+/* Focus states on inputs not using .input-field → vivid blue */
+body:not(.is-dark) .focus\:border-indigo-400:focus,
+body:not(.is-dark) .focus\:border-indigo-500:focus { border-color: #60a5fa !important; }
+body:not(.is-dark) .focus\:ring-indigo-200:focus,
+body:not(.is-dark) .focus\:ring-indigo-500:focus   { --tw-ring-color: rgba(59, 130, 246, 0.30) !important; }
+
+/* Saturated indigo/violet/purple GRADIENTS (logo blobs, add buttons, FABs,
+   loaders, decorative CTAs) → flat vivid blue. This is the single biggest de-AI
+   move: it kills the purple-gradient look everywhere at once, whatever the
+   "to-" stop, and unifies them with the flat blue primary button. */
+body:not(.is-dark) [class~="from-indigo-500"],
+body:not(.is-dark) [class~="from-indigo-600"],
+body:not(.is-dark) [class~="from-violet-500"],
+body:not(.is-dark) [class~="from-violet-600"],
+body:not(.is-dark) [class~="from-purple-500"],
+body:not(.is-dark) [class~="from-purple-600"] {
+  background-image: none !important;
+  background-color: #2563eb !important; /* brand-600 */
+}
+
+/* Pastel indigo/violet/purple gradient panels (soft washes) → flat blue-50 */
+body:not(.is-dark) [class~="from-indigo-50"],
+body:not(.is-dark) [class~="from-indigo-100"],
+body:not(.is-dark) [class~="from-violet-50"],
+body:not(.is-dark) [class~="from-violet-100"],
+body:not(.is-dark) [class~="from-purple-50"],
+body:not(.is-dark) [class~="from-purple-100"] {
+  background-image: none !important;
+  background-color: #eff6ff !important;
+}

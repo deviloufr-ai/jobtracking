@@ -126,16 +126,16 @@ export default function NavRail({
   t = (k) => k,
 }) {
   return (
-    <aside className="hidden md:flex fixed top-0 left-0 bottom-0 z-30 w-[220px] flex-col bg-white border-r border-gray-100 shadow-[1px_0_8px_0_rgba(0,0,0,0.04)]">
+    <aside className="hidden md:flex fixed top-0 left-0 bottom-0 z-30 w-[220px] flex-col bg-white border-r border-gray-200">
       {/* Logo */}
-      <div className="flex items-center gap-2 px-4 h-14 shrink-0 border-b border-gray-100">
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
+      <div className="flex items-center gap-2.5 px-4 h-14 shrink-0 border-b border-gray-200">
+        <div className="w-8 h-8 rounded-xl bg-brand-600 flex items-center justify-center shadow-ink">
           <svg viewBox="0 0 64 64" className="w-5 h-5" fill="none" aria-hidden="true">
             <polyline points="16,33 28,45 50,17" stroke="#fff" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
             <circle cx="50" cy="17" r="5" fill="#fff" />
           </svg>
         </div>
-        <span className="font-bold text-gray-900 text-[15px] tracking-tight">SmartJobTracker</span>
+        <span className="font-display font-bold text-gray-900 text-[16px] tracking-tight">SmartJobTracker</span>
       </div>
 
       {/* Primary action */}

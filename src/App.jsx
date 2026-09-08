@@ -1299,13 +1299,13 @@ export default function App() {
 
             {/* Logo */}
             <div className="flex items-center gap-2 shrink-0">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
+              <div className="w-8 h-8 rounded-xl bg-brand-600 flex items-center justify-center shadow-ink">
                 <svg viewBox="0 0 64 64" className="w-5 h-5" fill="none" aria-hidden="true">
                   <polyline points="16,33 28,45 50,17" stroke="#fff" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
                   <circle cx="50" cy="17" r="5" fill="#fff" />
                 </svg>
               </div>
-              <span className="font-bold text-gray-900 text-[15px] tracking-tight hidden sm:block">SmartJobTracker</span>
+              <span className="font-display font-bold text-gray-900 text-[16px] tracking-tight hidden sm:block">SmartJobTracker</span>
             </div>
 
             {/* Divider — desktop only */}

@@ -4,18 +4,34 @@
 
 @layer base {
   body {
-    @apply font-sans antialiased text-slate-800;
+    @apply font-sans antialiased text-gray-800;
     /* Native controls (select/textarea/scrollbars) must follow the app theme, not
        the OS — otherwise light mode renders dark form fields under an OS dark pref. */
     color-scheme: light;
+    /* Clean, soft cool-gray canvas with the faintest blue lift at the top —
+       friendly and bright, no aurora wash, no beige. */
     background:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.12), transparent),
-      linear-gradient(180deg, #f8fafc 0%, #f1f5f9 50%, #eef2ff 100%);
+      radial-gradient(130% 60% at 50% -10%, rgba(37, 99, 235, 0.045), transparent 60%),
+      #f6f7f9;
+    background-attachment: fixed;
     min-height: 100vh;
   }
 
+  /* Friendly, rounded headings via Plus Jakarta Sans with comfortable tracking.
+     Scoped to real heading tags so body copy stays Inter. */
+  h1, h2, h3 {
+    font-family: theme('fontFamily.display');
+    letter-spacing: -0.011em;
+  }
+
   ::selection {
-    @apply bg-brand-200 text-brand-700;
+    @apply bg-brand-100 text-brand-700;
+  }
+
+  /* Soft, unobtrusive scrollbars. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(208 213 222) transparent;
   }
 }
 
@@ -28,42 +44,51 @@
   /* Horizontal scroll strips (mobile stats / quick filters) without a scrollbar */
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   .no-scrollbar::-webkit-scrollbar { display: none; }
+
+  .font-display { font-family: theme('fontFamily.display'); }
+
+  .rule { @apply border-gray-200; }
 }
 
 @layer components {
+  /* Was frosted glass; now a clean "soft card" — white surface, hairline border,
+     soft cool shadow, comfortable radius. The class name is kept so every
+     consumer (stat-card, modal-panel, …) upgrades at once. */
   .glass-panel {
-    @apply bg-white/75 backdrop-blur-xl border border-white/80 shadow-card rounded-2xl;
+    @apply bg-white border border-gray-200 shadow-card rounded-2xl;
   }
 
   .glass-header {
-    @apply bg-white/70 backdrop-blur-xl border-b border-slate-200/60 shadow-sm;
+    @apply bg-white/85 backdrop-blur-md border-b border-gray-200;
   }
 
+  /* Primary = flat, friendly vivid blue. No gradient. */
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white
-      bg-gradient-to-br from-brand-600 to-brand-700 rounded-xl
-      shadow-sm hover:shadow-glow hover:from-brand-500 hover:to-brand-600
-      active:scale-[0.98] transition-all duration-200 disabled:opacity-40 disabled:pointer-events-none;
+      bg-brand-600 rounded-xl shadow-ink
+      hover:bg-brand-700 active:scale-[0.98]
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white
+      transition-[background-color,transform] duration-150 disabled:opacity-40 disabled:pointer-events-none;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-3.5 py-2 text-sm font-medium text-slate-600
-      bg-white/90 border border-slate-200/80 rounded-xl
-      hover:bg-slate-50 hover:border-slate-300 hover:text-slate-800
-      active:scale-[0.98] transition-all duration-200;
+    @apply inline-flex items-center justify-center gap-2 px-3.5 py-2 text-sm font-medium text-gray-700
+      bg-white border border-gray-200 rounded-xl
+      hover:bg-gray-50 hover:border-gray-300 hover:text-gray-900
+      active:scale-[0.98] transition-all duration-150;
   }
 
   .btn-danger {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white
-      bg-gradient-to-br from-rose-500 to-rose-600 rounded-xl
-      hover:from-rose-400 hover:to-rose-500 active:scale-[0.98] transition-all duration-200;
+      bg-rose-500 rounded-xl
+      hover:bg-rose-600 active:scale-[0.98] transition-all duration-150;
   }
 
   .input-field {
-    @apply w-full border border-slate-200/90 bg-white/90 rounded-xl px-3.5 py-2.5 text-sm text-slate-800
-      placeholder:text-slate-400
+    @apply w-full border border-gray-200 bg-white rounded-xl px-3.5 py-2.5 text-sm text-gray-900
+      placeholder:text-gray-400
       focus:outline-none focus:ring-2 focus:ring-brand-500/25 focus:border-brand-400
-      transition-shadow duration-200;
+      transition-shadow duration-150;
   }
 
   .modal-overlay {
@@ -71,15 +96,15 @@
   }
 
   .modal-backdrop {
-    @apply absolute inset-0 bg-slate-900/50 backdrop-blur-md;
+    @apply absolute inset-0 bg-gray-900/40 backdrop-blur-sm;
   }
 
   .modal-panel {
-    @apply relative glass-panel shadow-card-lg w-full z-10 animate-fade-in overflow-hidden;
+    @apply relative bg-white border border-gray-200 rounded-2xl shadow-card-xl w-full z-10 animate-pop-in overflow-hidden;
   }
 
   .stat-card {
-    @apply glass-panel p-5 relative overflow-hidden transition-shadow duration-300 hover:shadow-card-lg;
+    @apply glass-panel p-5 relative overflow-hidden transition-shadow duration-200 hover:shadow-card-lg;
   }
 
   .badge-status {
