@@ -40,9 +40,9 @@ ${langLine}
 
 INTERVIEW STAGE — the questions MUST belong to THIS stage only: ${roundFocus || 'a general interview.'} Do not include questions from other interview types.
 
-Write a realistic 6-to-8 question example interview for this candidate, tailored to the role, company and the candidate's background below.${descCtx}${cvCtx}
+Write a realistic 6-question example interview for this candidate, tailored to the role, company and the candidate's background below.${descCtx}${cvCtx}
 
-For EACH question, write the interviewer's question, then a COMPLETE model answer spoken in the first person AS THIS CANDIDATE, grounded in their real background from the CV (use concrete details; where a specific figure or example is unknown, write a clearly bracketed placeholder like [your metric]). Each answer must be a full, ready-to-say spoken answer (about 4 to 8 natural sentences), NOT an outline. For behavioral questions use the STAR structure but written as flowing speech.
+For EACH question, write the interviewer's question, then a COMPLETE model answer spoken in the first person AS THIS CANDIDATE, grounded in their real background from the CV (use concrete details; where a specific figure or example is unknown, write a clearly bracketed placeholder like [your metric]). Each answer must be a full, ready-to-say spoken answer of about 4 to 6 natural sentences (keep each answer under ~110 words so the whole interview is complete), NOT an outline. For behavioral questions use the STAR structure but written as flowing speech.
 
 Write like real people talking. Output PLAIN TEXT ONLY — absolutely no JSON, no markdown, no code blocks, no backticks, no bullet points, no asterisks. Use EXACTLY this layout and these English field tags (keep the tags in English even if the content is in another language):
 
@@ -123,7 +123,7 @@ function InterviewExamplePanel({ job, round, roundName, roundFocus, cv, onClose,
       })
       const res = await aiFetch('/api/claude', {
         model: CLAUDE_MODEL,
-        max_tokens: 2000,
+        max_tokens: 4000, // proxy clamps trial keys to 4000; enough for 6 full answers
         messages: [{ role: 'user', content: prompt }],
       })
       if (!res.ok) {
@@ -134,6 +134,11 @@ function InterviewExamplePanel({ job, round, roundName, roundFocus, cv, onClose,
       const text = json.content?.[0]?.text || ''
       const parsed = parseExample(text)
       if (parsed && Array.isArray(parsed.questions) && parsed.questions.length) {
+        // If the model still hit the token ceiling, the last block's answer is
+        // likely cut off mid-sentence — drop it so we never show a partial answer.
+        if (json.stop_reason === 'max_tokens' && parsed.questions.length > 1) {
+          parsed.questions = parsed.questions.slice(0, -1)
+        }
         setData(parsed); setRaw('')
         persist({ data: parsed })
       } else if (text.trim()) {
