@@ -123,6 +123,8 @@ export const en = {
     trainTitle: 'Train to succeed — by interview level',
     train: 'Train',
     example: 'Example',
+    exampleSaved: 'Example saved — tap to view or regenerate',
+    examplesSaved: '{n} example(s) saved',
     reached: 'reached',
     best: 'best',
     notPractised: 'Not practised',
@@ -154,6 +156,8 @@ export const en = {
     assess: 'What they assess',
     approach: 'How to answer',
     answer: 'Example answer',
+    interviewer: 'Interviewer',
+    you: 'You',
     saved: 'Saved to this candidature',
   },
 

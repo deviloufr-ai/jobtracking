@@ -123,6 +123,8 @@ export const fr = {
     trainTitle: 'S’entraîner pour réussir — par niveau d’entretien',
     train: 'S’entraîner',
     example: 'Exemple',
+    exampleSaved: 'Exemple enregistré — cliquez pour voir ou régénérer',
+    examplesSaved: '{n} exemple(s) enregistré(s)',
     reached: 'atteint',
     best: 'meilleur',
     notPractised: 'Pas encore travaillé',
@@ -154,6 +156,8 @@ export const fr = {
     assess: 'Ce qu’ils évaluent',
     approach: 'Comment répondre',
     answer: 'Réponse d’exemple',
+    interviewer: 'Recruteur',
+    you: 'Vous',
     saved: 'Enregistré sur cette candidature',
   },
 

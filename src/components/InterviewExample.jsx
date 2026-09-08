@@ -16,33 +16,74 @@ import { CLAUDE_MODEL } from '../constants/aiModel'
 
 const storeKey = (round) => round || 'general'
 
+// Strip anything that reads as code/markup so the output is natural prose: code
+// fences, inline backticks, bold/italic markers, and leading bullet/heading marks.
+function cleanText(s = '') {
+  return String(s)
+    .replace(/```[a-z]*\n?/gi, '').replace(/```/g, '')  // code fences
+    .replace(/`([^`]+)`/g, '$1')                          // inline code
+    .replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1').replace(/_(.+?)_/g, '$1')
+    .replace(/^\s*[-*+]\s+/gm, '').replace(/^\s*#{1,6}\s+/gm, '')
+    .trim()
+}
+
 function buildPrompt({ company, position, description, cv, roundName, roundFocus, language }) {
   const langLine = language === 'fr' ? 'Write the ENTIRE response in FRENCH.'
     : language === 'en' ? 'Write the ENTIRE response in ENGLISH.'
     : 'DETECT the language from the role/company/description below and write the ENTIRE response in THAT language. If unsure, default to French.'
   const descCtx = description ? `\n\nJob description (excerpt):\n${String(description).slice(0, 900)}` : ''
   const cvCtx = cv ? `\n\nCandidate CV (excerpt):\n${String(cv).slice(0, 900)}` : ''
-  return `You are a senior interviewer at ${company || 'the company'} preparing the question list for a ${roundName || 'job'} interview for the role of ${position || 'this role'}.
+  return `You are a senior interviewer at ${company || 'the company'} running a ${roundName || 'job'} interview for the role of ${position || 'this role'}.
 
 ${langLine}
 
 INTERVIEW STAGE — the questions MUST belong to THIS stage only: ${roundFocus || 'a general interview.'} Do not include questions from other interview types.
 
-Produce 6 to 8 realistic questions this candidate is likely to be asked at this exact stage, tailored to the role, company and the candidate's background below.${descCtx}${cvCtx}
+Write a realistic 6-to-8 question example interview for this candidate, tailored to the role, company and the candidate's background below.${descCtx}${cvCtx}
 
-For EACH question give ALL of: the question itself; what the interviewer is really assessing; how to answer it well (1 to 3 short pointers); and a COMPLETE model answer written in the first person AS THIS CANDIDATE, grounded in their real background from the CV above (use concrete details, and where a specific figure/example is unknown write a clearly bracketed placeholder like [your metric]). The model answer must be a full, ready-to-say answer (about 4 to 8 sentences), not just an opener. For behavioral questions use the STAR structure.
+For EACH question, write the interviewer's question, then a COMPLETE model answer spoken in the first person AS THIS CANDIDATE, grounded in their real background from the CV (use concrete details; where a specific figure or example is unknown, write a clearly bracketed placeholder like [your metric]). Each answer must be a full, ready-to-say spoken answer (about 4 to 8 natural sentences), NOT an outline. For behavioral questions use the STAR structure but written as flowing speech.
 
-Return ONLY valid JSON, no markdown, no preamble, in exactly this shape:
-{"intro":"1-2 sentences on what this interview stage typically looks like at this company/role","questions":[{"q":"the question","assess":"what they're really evaluating","approach":"how to answer well","answer":"a complete first-person model answer for this candidate"}]}`
+Write like real people talking. Output PLAIN TEXT ONLY — absolutely no JSON, no markdown, no code blocks, no backticks, no bullet points, no asterisks. Use EXACTLY this layout and these English field tags (keep the tags in English even if the content is in another language):
+
+INTRO: <1-2 sentences on what this interview stage typically feels like here>
+===
+Q: <the interviewer's question, as they'd say it out loud>
+WHY: <one short line: what they're really assessing>
+A: <the candidate's full spoken answer>
+===
+Q: <next question>
+WHY: <...>
+A: <...>
+
+Repeat the Q / WHY / A block, separated by a line containing only === , for every question.`
 }
 
-// Best-effort JSON extraction (Haiku sometimes wraps JSON in prose / code fences).
+// Parse the delimiter-based plain-text example into { intro, questions:[{q,assess,answer}] }.
+// Robust to missing tags / extra blank lines; no JSON involved, so free-text answers
+// with quotes and line breaks can never break it. Also accepts a legacy JSON blob.
 function parseExample(text) {
   if (!text) return null
-  try { return JSON.parse(text) } catch { /* try to salvage */ }
-  const m = text.match(/\{[\s\S]*\}/)
-  if (m) { try { return JSON.parse(m[0]) } catch { /* fall through */ } }
-  return null
+  const src = String(text).trim()
+
+  // Legacy / accidental JSON — salvage it so old flows still render.
+  if (src.startsWith('{') || src.startsWith('```')) {
+    const m = src.match(/\{[\s\S]*\}/)
+    if (m) { try { return JSON.parse(m[0]) } catch { /* fall through to text parse */ } }
+  }
+
+  const intro = (src.match(/INTRO\s*:\s*([\s\S]*?)(?:\n===|\nQ\s*:|$)/i)?.[1] || '').trim()
+  const questions = []
+  // Split on lines that are only === , then pull Q/WHY/A out of each chunk.
+  for (const chunk of src.split(/\n\s*={3,}\s*\n/)) {
+    const q = chunk.match(/(?:^|\n)\s*Q\s*:\s*([\s\S]*?)(?:\n\s*(?:WHY|A)\s*:|$)/i)?.[1]
+    if (!q) continue
+    const assess = chunk.match(/(?:^|\n)\s*WHY\s*:\s*([\s\S]*?)(?:\n\s*A\s*:|$)/i)?.[1] || ''
+    const answer = chunk.match(/(?:^|\n)\s*A\s*:\s*([\s\S]*?)$/i)?.[1] || ''
+    questions.push({ q: cleanText(q), assess: cleanText(assess), answer: cleanText(answer) })
+  }
+  if (!questions.length) return null
+  return { intro: cleanText(intro), questions }
 }
 
 export default function InterviewExample(props) {
@@ -96,8 +137,9 @@ function InterviewExamplePanel({ job, round, roundName, roundFocus, cv, onClose,
         setData(parsed); setRaw('')
         persist({ data: parsed })
       } else if (text.trim()) {
-        setData(null); setRaw(text)
-        persist({ raw: text })
+        const cleaned = cleanText(text)
+        setData(null); setRaw(cleaned)
+        persist({ raw: cleaned })
       } else {
         throw new Error(tx('interviewExample.failed', 'Could not generate example questions. Try again.'))
       }
@@ -146,26 +188,33 @@ function InterviewExamplePanel({ job, round, roundName, roundFocus, cv, onClose,
             <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-sm text-indigo-900">{data.intro}</div>
           )}
 
+          {/* Natural interviewer ↔ candidate conversation. */}
           {data?.questions?.map((qq, i) => (
-            <div key={i} className="rounded-xl border border-gray-200 p-4">
-              <p className="text-sm font-semibold text-gray-900">{i + 1}. {qq.q}</p>
-              {qq.assess && (
-                <p className="text-xs text-gray-600 mt-2"><span className="font-semibold text-gray-700">🎯 {tx('interviewExample.assess', 'What they assess')}: </span>{qq.assess}</p>
-              )}
-              {qq.approach && (
-                <p className="text-xs text-gray-600 mt-1.5"><span className="font-semibold text-gray-700">✅ {tx('interviewExample.approach', 'How to answer')}: </span>{qq.approach}</p>
-              )}
+            <div key={i} className="space-y-2">
+              {/* Interviewer */}
+              <div className="flex items-start gap-2">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-sm" aria-hidden>🧑‍💼</span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{tx('interviewExample.interviewer', 'Interviewer')}</p>
+                  <div className="mt-0.5 rounded-2xl rounded-tl-sm bg-slate-100 px-3 py-2 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{qq.q}</div>
+                  {qq.assess && <p className="text-[11px] text-gray-400 mt-1 pl-1">💡 {qq.assess}</p>}
+                </div>
+              </div>
+              {/* Candidate */}
               {(qq.answer || qq.example) && (
-                <div className="mt-2 rounded-lg bg-green-50 border border-green-100 p-2.5">
-                  <p className="text-[11px] font-semibold text-green-800 mb-1">💬 {tx('interviewExample.answer', 'Example answer')}</p>
-                  <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">{qq.answer || qq.example}</p>
+                <div className="flex items-start gap-2 flex-row-reverse">
+                  <span className="shrink-0 w-7 h-7 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-sm" aria-hidden>🙋</span>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-indigo-400 text-right">{tx('interviewExample.you', 'You')}</p>
+                    <div className="mt-0.5 rounded-2xl rounded-tr-sm bg-indigo-50 border border-indigo-100 px-3 py-2 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{qq.answer || qq.example}</div>
+                  </div>
                 </div>
               )}
             </div>
           ))}
 
           {!data && raw && (
-            <div className="rounded-xl border border-gray-200 p-4 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{raw}</div>
+            <div className="rounded-xl border border-gray-200 p-4 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{cleanText(raw)}</div>
           )}
 
           {savedFlag && <p className="text-xs text-green-600">✅ {tx('interviewExample.saved', 'Saved to this candidature')}</p>}

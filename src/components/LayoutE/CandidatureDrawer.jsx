@@ -582,11 +582,17 @@ export default function CandidatureDrawer({
                     </button>
                     {showTranscript && (
                       <div className="mt-3 space-y-2">
-                        {active.transcript.map((m, i) => (
-                          <div key={i} className={`text-xs rounded-lg px-3 py-2 ${m.role === 'interviewer' ? 'bg-gray-50 text-gray-700' : 'bg-indigo-50 text-gray-800'}`}>
-                            <span className="font-semibold">{m.role === 'interviewer' ? 'Interviewer' : 'You'}: </span>{m.text}
-                          </div>
-                        ))}
+                        {active.transcript.map((m, i) => {
+                          const isInterviewer = m.role === 'interviewer'
+                          return (
+                            <div key={i} className={`flex items-start gap-2 ${isInterviewer ? '' : 'flex-row-reverse'}`}>
+                              <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs ${isInterviewer ? 'bg-gray-100 border border-gray-200' : 'bg-indigo-100 border border-indigo-200'}`} aria-hidden>{isInterviewer ? '🧑‍💼' : '🙋'}</span>
+                              <div className={`text-xs rounded-lg px-3 py-2 ${isInterviewer ? 'bg-gray-50 text-gray-700' : 'bg-indigo-50 text-gray-800'}`}>
+                                <span className="font-semibold">{isInterviewer ? 'Interviewer' : 'You'}: </span>{m.text}
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
                   </div>

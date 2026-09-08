@@ -74,9 +74,12 @@ function TrainTile({ levelKey, reached, sessions, hasExample, onTrain, onExample
       <div className="flex items-center gap-1.5 mt-2">
         <button
           onClick={onExample}
-          className="flex-1 inline-flex items-center justify-center gap-1 text-[11px] font-semibold px-2 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+          title={hasExample ? t('interviews.exampleSaved') : t('interviews.example')}
+          className={`flex-1 inline-flex items-center justify-center gap-1 text-[11px] font-semibold px-2 py-1.5 rounded-lg border transition-colors ${
+            hasExample ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+          }`}
         >
-          📝 {t('interviews.example')}{hasExample ? ' ✓' : ''}
+          {hasExample ? '✅' : '📝'} {t('interviews.example')}
         </button>
         <button
           onClick={onTrain}
@@ -111,6 +114,7 @@ function CandidatureCard({ job, active, highlightRound, onOpen, onTrain, onExamp
   const starReady = !!job.starSaved
   const journey = jobInterviewRounds(job)          // actual interview steps, chronological
   const reached = new Set(jobRoundKeys(job))       // levels this candidature has reached
+  const exampleCount = Object.keys(job.interviewExamples || {}).length
 
   return (
     <div className={`rounded-2xl border shadow-sm bg-white transition-all ${active ? 'border-indigo-300 ring-1 ring-inset ring-indigo-200' : 'border-gray-100 hover:shadow-md'}`}>
@@ -139,11 +143,16 @@ function CandidatureCard({ job, active, highlightRound, onOpen, onTrain, onExamp
       </div>
 
       {/* Practice summary */}
-      {(sessions.length > 0 || starReady) && (
+      {(sessions.length > 0 || starReady || exampleCount > 0) && (
         <div className="flex items-center gap-2 px-4 pb-3 flex-wrap">
           {sessions.length > 0 && (
             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
               🎤 {t('interviews.practiceCount').replace('{n}', sessions.length)}{best >= 0 ? ` · ${t('interviews.best')} ${best}` : ''}
+            </span>
+          )}
+          {exampleCount > 0 && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+              📝 {t('interviews.examplesSaved').replace('{n}', exampleCount)}
             </span>
           )}
           {starReady && (

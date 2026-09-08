@@ -546,24 +546,23 @@ Format as JSON with keys: hire_decision, score, strengths, concerns, weak_exampl
             </div>
           )}
 
-          {messages.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`flex ${
-                msg.role === 'interviewer' ? 'justify-start' : 'justify-end'
-              }`}
-            >
-              <div
-                className={`max-w-xs px-4 py-3 rounded-lg ${
-                  msg.role === 'interviewer'
-                    ? 'bg-indigo-100 text-indigo-900'
-                    : 'bg-green-100 text-green-900'
-                }`}
-              >
-                <p className="text-sm">{msg.text}</p>
+          {messages.map((msg, idx) => {
+            const isInterviewer = msg.role === 'interviewer'
+            return (
+              <div key={idx} className={`flex items-end gap-2 ${isInterviewer ? 'justify-start' : 'flex-row-reverse'}`}>
+                <span
+                  className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-base ${isInterviewer ? 'bg-indigo-100 border border-indigo-200' : 'bg-green-100 border border-green-200'}`}
+                  title={isInterviewer ? 'Interviewer' : 'You'}
+                  aria-hidden
+                >
+                  {isInterviewer ? '🧑‍💼' : '🙋'}
+                </span>
+                <div className={`max-w-xs px-4 py-3 rounded-2xl ${isInterviewer ? 'bg-indigo-100 text-indigo-900 rounded-bl-sm' : 'bg-green-100 text-green-900 rounded-br-sm'}`}>
+                  <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
 
           {isLoading && (
             <div className="flex justify-start">
