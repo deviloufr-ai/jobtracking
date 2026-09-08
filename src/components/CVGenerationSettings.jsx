@@ -65,6 +65,10 @@ export default function CVGenerationSettings({ t = (k) => k, defaultOpen = true,
   const handleBaseChange = (id) => {
     setBaseId(id)
     try { localStorage.setItem(BASE_CV_KEY, id) } catch {}
+    // Re-run useCVs()'s localStorage mirror so the extension immediately syncs the
+    // newly chosen "My CV" (the mirror keys off jobtrackr_cv_base_id, which we
+    // just wrote). cvsync triggers a reload → the mirror effect re-runs.
+    try { window.dispatchEvent(new CustomEvent('jobtrackr:cvsync')) } catch {}
     pushLocalPrefs()
   }
 

@@ -64,12 +64,21 @@ export function useCVs() {
         })
         .catch(err => console.error('Failed to save CVs:', err))
         .finally(() => { changeSourceRef.current = 'idle' })
-      // Mirror the most-recent CV into localStorage so the Firefox extension's
-      // sync.js (which can only read localStorage synchronously) can pick it up.
-      // CVs themselves live in IndexedDB; this is a lightweight read-only copy.
+      // Mirror the user's chosen "My CV" into localStorage so the browser
+      // extension's sync.js (which can only read localStorage synchronously)
+      // picks up the SAME CV the user selected in Settings → My CV — not just
+      // whatever was uploaded last. The choice lives in `jobtrackr_cv_base_id`
+      // (written by the Base CV picker); we resolve it here and fall back to the
+      // most-recent CV when it's missing/stale, matching the picker's own
+      // effectiveBaseId logic. CVs themselves live in IndexedDB; this is a
+      // lightweight read-only copy. A base-CV change dispatches `jobtrackr:cvsync`,
+      // which reloads `cvs` and re-runs this effect so the mirror stays in sync.
       try {
         if (cvs.length > 0) {
-          const base = [...cvs].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
+          const sorted = [...cvs].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          let chosenId = ''
+          try { chosenId = localStorage.getItem('jobtrackr_cv_base_id') || '' } catch {}
+          const base = sorted.find(c => c.id === chosenId) || sorted[0]
           localStorage.setItem('jobtrackr_base_cv', JSON.stringify({
             name: base.name || null,
             text: base.text || '',
