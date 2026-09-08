@@ -1,11 +1,12 @@
-// InterviewsBoard — a board dedicated to interviews & prep, sitting below the
-// Applications tracker in the nav. It lists ONLY candidatures that have or had an
-// interview process (see hasInterviewProcess in useJobs) as a BIG CARD each, with
-// the whole training toolkit inside: focused mock interviews per level (screening
-// / technical / manager / final — each steers the AI to that level's approach),
-// STAR prep, CV tailoring and salary-negotiation prep, plus the detected
-// interview journey. Cards open the same master-detail CandidatureDrawer for the
-// full timeline & results.
+// InterviewsBoard — dedicated interviews & prep board (nav tab below Applications),
+// listing ONLY candidatures that have/had an interview process (hasInterviewProcess).
+//
+// UX: master · detail. A quiet, scannable list on the left; everything for the
+// SELECTED candidature — the interview-round stepper and its training tools —
+// lives in one calm detail pane on the right (full-screen on mobile). The tools
+// are unchanged (per-round example + mock, STAR, CV, negotiation); they're just
+// surfaced one round at a time instead of a wall of controls per row. "Open full
+// details" still opens the complete CandidatureDrawer record.
 import { useState, useEffect, useMemo } from 'react'
 import { getStatus, getStatusLabel, deriveStatusFromHistory, hasInterviewProcess } from '../../hooks/useJobs'
 import {
@@ -25,71 +26,23 @@ const initials = (s = '') =>
   s.replace(/[^A-Za-z0-9 ]/g, '').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?'
 const shortDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '')
 
-// Effective status → which board section a candidature belongs to.
 const SECTION_OF = (status) => {
   if (status === 'offer' || status === 'done') return 'outcome'
   if (status === 'rejected' || status === 'rejected_ats' || status === 'cancelled' || status === 'archived') return 'past'
-  return 'active' // interview / waiting / anything still live
+  return 'active'
 }
 
 const scoreOf = (s) => s?.feedback?.score ?? s?.score
-// Best (highest) recruiter score across a set of mock-interview sessions.
 const bestMockScore = (sessions = []) =>
   sessions.reduce((m, s) => { const v = scoreOf(s); return typeof v === 'number' && v > m ? v : m }, -1)
-// Sessions practised for a specific interview level (by tagged round).
 const sessionsForRound = (sessions = [], key) => sessions.filter(s => (s.round || null) === key)
 
-function StatTile({ icon, value, label, sub, accent = 'text-gray-900' }) {
-  return (
-    <div className="flex-1 min-w-[120px] bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3">
-      <div className="flex items-center gap-2">
-        <span className="text-base leading-none">{icon}</span>
-        <span className={`text-2xl font-bold tabular-nums ${accent}`}>{value}</span>
-      </div>
-      <p className="text-[12px] font-medium text-gray-500 mt-1">{label}</p>
-      {sub && <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>}
-    </div>
-  )
-}
-
-// One interview-level training tile: a text example interview (Q + model answers)
-// AND a focused voice mock, both tailored to this level's approach.
-function TrainTile({ levelKey, reached, sessions, hasExample, onTrain, onExample, t }) {
-  const meta = INTERVIEW_ROUND_META[levelKey]
-  const done = sessionsForRound(sessions, levelKey)
-  const best = bestMockScore(done)
-  return (
-    <div className={`relative rounded-xl border p-3 transition-all ${reached ? 'border-current ' + meta.color : 'bg-white border-gray-200'}`}>
-      {reached && (
-        <span className="absolute top-2 right-2 text-[9px] font-bold uppercase tracking-wide opacity-70">✓ {t('interviews.reached')}</span>
-      )}
-      <div className="flex items-center gap-1.5">
-        <span className="text-base leading-none">{meta.icon}</span>
-        <span className="text-[13px] font-bold text-gray-900">{roundLabel(levelKey, t)}</span>
-      </div>
-      <p className="text-[11px] text-gray-500 leading-snug mt-1 min-h-[2.4em] line-clamp-2">{t(`interviewFocus.${levelKey}`)}</p>
-      <div className="text-[10px] font-medium text-gray-400 mt-1.5">
-        {done.length > 0 ? `${done.length}× · ${t('interviews.best')} ${best}` : t('interviews.notPractised')}
-      </div>
-      <div className="flex items-center gap-1.5 mt-2">
-        <button
-          onClick={onExample}
-          title={hasExample ? t('interviews.exampleSaved') : t('interviews.example')}
-          className={`flex-1 inline-flex items-center justify-center gap-1 text-[11px] font-semibold px-2 py-1.5 rounded-lg border transition-colors ${
-            hasExample ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          {hasExample ? '✅' : '📝'} {t('interviews.example')}
-        </button>
-        <button
-          onClick={onTrain}
-          className="flex-1 inline-flex items-center justify-center gap-1 text-[11px] font-semibold px-2 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-        >
-          🎤 {t('interviews.train')}
-        </button>
-      </div>
-    </div>
-  )
+// The round to prepare by default for a job: the first level not yet reached
+// (i.e. the next one to face), else the last reached, else the first level.
+const defaultPrepRound = (job) => {
+  const reached = jobRoundKeys(job).filter(k => INTERVIEW_TRAIN_LEVELS.includes(k))
+  const next = INTERVIEW_TRAIN_LEVELS.find(k => !reached.includes(k))
+  return next || reached[reached.length - 1] || INTERVIEW_TRAIN_LEVELS[0]
 }
 
 function ToolButton({ icon, label, onClick, tone = 'gray' }) {
@@ -105,46 +58,234 @@ function ToolButton({ icon, label, onClick, tone = 'gray' }) {
   )
 }
 
-function CandidatureCard({ job, active, highlightRound, onOpen, onTrain, onExample, onSTAR, onGenerateCV, onNegotiate, onToggleFavorite, t }) {
-  const history = job.history || []
-  const effective = deriveStatusFromHistory(history) || job.status
+// Compact 4-dot round progress shown on a list row.
+function RoundDots({ job, t }) {
+  const reached = new Set(jobRoundKeys(job))
+  return (
+    <span className="flex items-center gap-1 shrink-0">
+      {INTERVIEW_TRAIN_LEVELS.map(k => (
+        <span key={k} title={roundLabel(k, t)} className={`w-1.5 h-1.5 rounded-full ${reached.has(k) ? 'bg-indigo-500' : 'bg-gray-200'}`} />
+      ))}
+    </span>
+  )
+}
+
+function InterviewRow({ job, active, onSelect, onToggleFavorite, t }) {
+  const effective = deriveStatusFromHistory(job.history) || job.status
+  const status = getStatus(effective)
+  return (
+    <div className={`group flex items-center gap-2.5 pl-2 pr-1 py-2 rounded-xl transition-colors ${active ? 'bg-indigo-50 ring-1 ring-inset ring-indigo-200' : 'hover:bg-gray-50'}`}>
+      <button onClick={() => onSelect(job.id)} className="flex items-center gap-2.5 min-w-0 flex-1 text-left">
+        {typeof job.score === 'number' ? (
+          <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold border shrink-0 ${scoreColorClasses(job.score)}`}>{job.score}</span>
+        ) : (
+          <span className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[11px] font-bold shrink-0" style={{ background: colorFor(job.company) }}>{initials(job.company)}</span>
+        )}
+        <span className="min-w-0 flex-1">
+          <span className="block text-[13px] font-semibold tracking-tight text-gray-900 truncate">{job.company}</span>
+          <span className="flex items-center gap-1.5">
+            <span className={`inline-block w-1.5 h-1.5 rounded-full ${status?.dot || 'bg-gray-300'}`} />
+            <span className="block text-[11.5px] text-gray-400 truncate">{job.position}</span>
+          </span>
+        </span>
+        <RoundDots job={job} t={t} />
+      </button>
+      <button
+        onClick={() => onToggleFavorite?.(job.id)}
+        aria-label="favorite" aria-pressed={!!job.favorite}
+        className={`shrink-0 text-sm leading-none transition-opacity ${job.favorite ? 'text-amber-400' : 'text-gray-300 opacity-0 group-hover:opacity-100 hover:text-amber-300'}`}
+      >★</button>
+    </div>
+  )
+}
+
+function ListGroup({ title, jobs, accent, collapsible, open, onToggle, selectedId, onSelect, onToggleFavorite, t }) {
+  if (jobs.length === 0) return null
+  return (
+    <div className="mb-2">
+      <button
+        onClick={collapsible ? onToggle : undefined}
+        className={`w-full flex items-center gap-2 px-2 py-1.5 text-left ${collapsible ? 'group' : 'cursor-default'}`}
+      >
+        <span className={`w-1.5 h-3.5 rounded-full ${accent}`} />
+        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{title}</span>
+        <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">{jobs.length}</span>
+        {collapsible && <span className={`ml-auto text-gray-300 text-xs transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>}
+      </button>
+      {(!collapsible || open) && (
+        <div className="space-y-0.5">
+          {jobs.map(job => (
+            <InterviewRow key={job.id} job={job} active={selectedId === job.id} onSelect={onSelect} onToggleFavorite={onToggleFavorite} t={t} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function InterviewList({
+  active, outcome, past, selectedId, onSelect, onToggleFavorite,
+  roundKeysPresent, roundCounts, roundFilter, setRoundFilter, total,
+  archivedCount, showArchived, toggleArchived, t,
+}) {
+  const [showPast, setShowPast] = useState(false)
+  const groupProps = { selectedId, onSelect, onToggleFavorite, t }
+
+  return (
+    <div className="md:sticky md:top-2 md:self-start md:max-h-[calc(100vh-1.5rem)] md:overflow-y-auto no-scrollbar">
+      {/* Controls */}
+      {(roundKeysPresent.length > 0 || archivedCount > 0) && (
+        <div className="flex items-center gap-1.5 flex-wrap px-1 pb-2.5 mb-1 border-b border-gray-100">
+          {roundKeysPresent.length > 0 && (
+            <>
+              <button
+                onClick={() => setRoundFilter(null)}
+                className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border transition-colors ${roundFilter === null ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+              >
+                {t('interviews.filterAll')} <span className="opacity-60">{total}</span>
+              </button>
+              {roundKeysPresent.map(key => {
+                const meta = INTERVIEW_ROUND_META[key]
+                const on = roundFilter === key
+                return (
+                  <button key={key} onClick={() => setRoundFilter(on ? null : key)}
+                    className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border transition-colors ${on ? `${meta.color} border-current` : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                    <span>{meta.icon}</span>{roundLabel(key, t)} <span className="opacity-60">{roundCounts[key]}</span>
+                  </button>
+                )
+              })}
+            </>
+          )}
+          {archivedCount > 0 && (
+            <button onClick={toggleArchived}
+              className={`ml-auto inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border transition-colors ${showArchived ? 'bg-slate-700 text-white border-slate-700' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+              <span>🗄️</span>{showArchived ? t('interviews.hideArchived') : t('interviews.showArchived')} <span className="opacity-60">{archivedCount}</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      <ListGroup {...groupProps} title={t('interviews.sectionActive')} jobs={active} accent="bg-purple-500" />
+      <ListGroup {...groupProps} title={t('interviews.sectionOutcome')} jobs={outcome} accent="bg-green-500" />
+      <ListGroup {...groupProps} title={t('interviews.sectionPast')} jobs={past} accent="bg-gray-400" collapsible open={showPast} onToggle={() => setShowPast(v => !v)} />
+    </div>
+  )
+}
+
+// Horizontal round stepper. Reached levels filled + dated; click a node to pick
+// the round to prepare (highlighted).
+function InterviewStepper({ job, prepRound, onPick, t }) {
+  const reached = new Set(jobRoundKeys(job))
+  const dateFor = {}
+  for (const r of jobInterviewRounds(job)) dateFor[r.key] = r.date // chronological → most recent wins
+  return (
+    <div className="flex items-start">
+      {INTERVIEW_TRAIN_LEVELS.map((k, i) => {
+        const isReached = reached.has(k)
+        const selected = prepRound === k
+        return (
+          <div key={k} className="flex-1 flex flex-col items-center min-w-0">
+            <div className="relative w-full flex items-center justify-center h-6">
+              {i > 0 && <span className={`absolute top-1/2 -translate-y-1/2 left-0 w-1/2 h-0.5 ${isReached || reached.has(INTERVIEW_TRAIN_LEVELS[i - 1]) ? 'bg-indigo-300' : 'bg-gray-200'}`} />}
+              {i < INTERVIEW_TRAIN_LEVELS.length - 1 && <span className={`absolute top-1/2 -translate-y-1/2 right-0 w-1/2 h-0.5 ${reached.has(INTERVIEW_TRAIN_LEVELS[i + 1]) && isReached ? 'bg-indigo-300' : 'bg-gray-200'}`} />}
+              <button
+                onClick={() => onPick(k)}
+                aria-pressed={selected}
+                title={roundLabel(k, t)}
+                className={`relative z-[1] w-6 h-6 rounded-full flex items-center justify-center text-[11px] transition-all ${
+                  selected ? 'bg-indigo-600 text-white ring-2 ring-indigo-200'
+                    : isReached ? 'bg-indigo-500 text-white' : 'bg-white border border-gray-300 text-gray-400 hover:border-indigo-300'
+                }`}
+              >
+                {isReached ? '✓' : i + 1}
+              </button>
+            </div>
+            <button onClick={() => onPick(k)} className={`mt-1 text-[10px] leading-tight text-center truncate w-full px-0.5 ${selected ? 'text-indigo-700 font-semibold' : 'text-gray-500'}`}>
+              {roundLabel(k, t)}
+            </button>
+            <span className="text-[9px] tabular-nums text-gray-300 h-3">{dateFor[k] ? shortDate(dateFor[k]) : ''}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function InterviewDetail({ job, prepRound, onPickRound, onOpenFull, onTrain, onExample, onSTAR, onGenerateCV, onNegotiate, onToggleFavorite, t }) {
+  const effective = deriveStatusFromHistory(job.history) || job.status
   const status = getStatus(effective)
   const sessions = job.interviewSessions || []
   const best = bestMockScore(sessions)
-  const starReady = !!job.starSaved
-  const journey = jobInterviewRounds(job)          // actual interview steps, chronological
-  const reached = new Set(jobRoundKeys(job))       // levels this candidature has reached
   const exampleCount = Object.keys(job.interviewExamples || {}).length
+  const hasExample = !!job.interviewExamples?.[prepRound]
+  const roundSessions = sessionsForRound(sessions, prepRound)
+  const roundBest = bestMockScore(roundSessions)
 
   return (
-    <div className={`rounded-2xl border shadow-sm bg-white transition-all ${active ? 'border-indigo-300 ring-1 ring-inset ring-indigo-200' : 'border-gray-100 hover:shadow-md'}`}>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 pb-3">
+      <div className="flex items-center gap-3 p-4 border-b border-gray-50">
         {typeof job.score === 'number' ? (
-          <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold border shrink-0 ${scoreColorClasses(job.score)}`}>{job.score}</span>
+          <span className={`w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold border shrink-0 ${scoreColorClasses(job.score)}`}>{job.score}</span>
         ) : (
-          <span className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: colorFor(job.company) }}>{initials(job.company)}</span>
+          <span className="w-11 h-11 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: colorFor(job.company) }}>{initials(job.company)}</span>
         )}
-        <button onClick={() => onOpen(job, 'overview')} className="min-w-0 flex-1 text-left">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-[15px] font-bold tracking-tight text-gray-900 truncate">{job.company}</span>
+            <span className="text-[16px] font-bold tracking-tight text-gray-900 truncate">{job.company}</span>
             <span className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${status?.color || 'bg-gray-100 text-gray-500'}`}>{getStatusLabel(effective, t)}</span>
           </div>
-          <div className="text-[12.5px] text-gray-500 truncate">{job.position}</div>
-        </button>
-        <button
-          onClick={() => onToggleFavorite?.(job.id)}
-          aria-label="favorite" aria-pressed={!!job.favorite}
-          className={`shrink-0 text-lg leading-none transition-transform hover:scale-110 ${job.favorite ? 'text-amber-400' : 'text-gray-300 hover:text-amber-300'}`}
-        >★</button>
-        <button onClick={() => onOpen(job, 'overview')} className="shrink-0 text-[12px] font-semibold text-indigo-600 hover:text-indigo-700 hover:underline">
-          {t('interviews.details')} ›
+          <div className="text-[13px] text-gray-500 truncate">{job.position}</div>
+        </div>
+        <button onClick={() => onToggleFavorite?.(job.id)} aria-label="favorite" aria-pressed={!!job.favorite}
+          className={`shrink-0 text-lg leading-none transition-transform hover:scale-110 ${job.favorite ? 'text-amber-400' : 'text-gray-300 hover:text-amber-300'}`}>★</button>
+        <button onClick={() => onOpenFull(job)} className="shrink-0 text-[12px] font-semibold text-indigo-600 hover:text-indigo-700 hover:underline whitespace-nowrap">
+          {t('interviews.openFull')} ›
         </button>
       </div>
 
-      {/* Practice summary */}
-      {(sessions.length > 0 || starReady || exampleCount > 0) && (
-        <div className="flex items-center gap-2 px-4 pb-3 flex-wrap">
+      {/* Round stepper */}
+      <div className="px-4 pt-4 pb-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2.5">{t('interviews.journey')}</p>
+        <InterviewStepper job={job} prepRound={prepRound} onPick={onPickRound} t={t} />
+      </div>
+
+      {/* Prepare selected round */}
+      <div className="mx-4 my-3 rounded-xl border border-indigo-100 bg-indigo-50/40 p-3.5">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-base leading-none">{INTERVIEW_ROUND_META[prepRound]?.icon}</span>
+          <span className="text-[13px] font-bold text-gray-900">{t('interviews.prepare').replace('{round}', roundLabel(prepRound, t))}</span>
+        </div>
+        <p className="text-[12px] text-gray-500 leading-snug mb-3">{t(`interviewFocus.${prepRound}`)}</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={() => onExample(job, prepRound)}
+            className={`inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-lg border transition-colors ${hasExample ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
+            {hasExample ? '✅' : '📝'} {t('interviews.example')}
+          </button>
+          <button onClick={() => onTrain(job, prepRound)}
+            className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+            🎤 {t('interviews.train')}
+          </button>
+          {roundSessions.length > 0 && (
+            <span className="text-[11px] text-gray-400">{roundSessions.length}× · {t('interviews.best')} {roundBest}</span>
+          )}
+        </div>
+      </div>
+
+      {/* More tools */}
+      <div className="px-4 pb-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">{t('interviews.moreTools')}</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <ToolButton icon="🎯" label={t('interviews.toolStar')} tone="indigo" onClick={() => onSTAR?.(job)} />
+          <ToolButton icon="🎤" label={t('interviews.toolFreePractice')} onClick={() => onTrain(job, null)} />
+          <ToolButton icon="📄" label={t('interviews.toolCv')} onClick={() => onGenerateCV?.(job)} />
+          <ToolButton icon="🤝" label={t('interviews.toolNegotiate')} tone="green" onClick={() => onNegotiate?.(job)} />
+        </div>
+      </div>
+
+      {/* Your prep summary */}
+      {(sessions.length > 0 || exampleCount > 0) && (
+        <div className="flex items-center gap-2 flex-wrap px-4 pb-4 pt-1 border-t border-gray-50">
           {sessions.length > 0 && (
             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
               🎤 {t('interviews.practiceCount').replace('{n}', sessions.length)}{best >= 0 ? ` · ${t('interviews.best')} ${best}` : ''}
@@ -155,96 +296,9 @@ function CandidatureCard({ job, active, highlightRound, onOpen, onTrain, onExamp
               📝 {t('interviews.examplesSaved').replace('{n}', exampleCount)}
             </span>
           )}
-          {starReady && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">🎯 {t('interviews.starReady')}</span>
-          )}
         </div>
       )}
-
-      {/* Interview journey — the rounds actually detected from calendar/email */}
-      <div className="px-4 pb-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">{t('interviews.journey')}</p>
-        {journey.length === 0 ? (
-          <p className="text-[12px] text-gray-400 italic">{t('interviews.noRoundYet')}</p>
-        ) : (
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {journey.map((r, i) => {
-              const meta = INTERVIEW_ROUND_META[r.key]
-              const on = highlightRound === r.key
-              return (
-                <span key={i} className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${meta.color} ${on ? 'ring-1 ring-inset ring-current' : ''}`}>
-                  <span>{meta.icon}</span>{roundLabel(r.key, t, r.number)}
-                  <span className="opacity-60 tabular-nums">· {shortDate(r.date)}</span>
-                </span>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Train to succeed — focused practice per interview level */}
-      <div className="px-4 pb-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">{t('interviews.trainTitle')}</p>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-          {INTERVIEW_TRAIN_LEVELS.map(levelKey => (
-            <TrainTile
-              key={levelKey}
-              levelKey={levelKey}
-              reached={reached.has(levelKey)}
-              sessions={sessions}
-              hasExample={!!job.interviewExamples?.[levelKey]}
-              onTrain={() => onTrain(job, levelKey)}
-              onExample={() => onExample(job, levelKey)}
-              t={t}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* More prep tools */}
-      <div className="flex items-center gap-2 flex-wrap px-4 pb-4 pt-1 border-t border-gray-50">
-        <ToolButton icon="🎯" label={t('interviews.toolStar')} tone="indigo" onClick={() => onSTAR?.(job)} />
-        <ToolButton icon="🎤" label={t('interviews.toolFreePractice')} onClick={() => onTrain(job, null)} />
-        <ToolButton icon="📄" label={t('interviews.toolCv')} onClick={() => onGenerateCV?.(job)} />
-        <ToolButton icon="🤝" label={t('interviews.toolNegotiate')} tone="green" onClick={() => onNegotiate?.(job)} />
-      </div>
     </div>
-  )
-}
-
-function Section({ title, hint, accent, jobs, openId, highlightRound, onOpen, onTrain, onExample, onSTAR, onGenerateCV, onNegotiate, onToggleFavorite, t, defaultOpen = true }) {
-  const [open, setOpen] = useState(defaultOpen)
-  if (jobs.length === 0) return null
-  return (
-    <section className="mb-5">
-      <button onClick={() => setOpen(v => !v)} className="w-full flex items-center gap-2 px-1 mb-2.5 text-left group">
-        <span className={`w-1.5 h-4 rounded-full ${accent}`} />
-        <h2 className="text-sm font-bold text-gray-800">{title}</h2>
-        <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{jobs.length}</span>
-        {hint && <span className="text-[11px] text-gray-400 hidden sm:inline">· {hint}</span>}
-        <span className={`ml-auto text-gray-300 group-hover:text-gray-500 transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
-      </button>
-      {open && (
-        <div className="space-y-3">
-          {jobs.map(job => (
-            <CandidatureCard
-              key={job.id}
-              job={job}
-              active={openId === job.id}
-              highlightRound={highlightRound}
-              onOpen={onOpen}
-              onTrain={onTrain}
-              onExample={onExample}
-              onSTAR={onSTAR}
-              onGenerateCV={onGenerateCV}
-              onNegotiate={onNegotiate}
-              onToggleFavorite={onToggleFavorite}
-              t={t}
-            />
-          ))}
-        </div>
-      )}
-    </section>
   )
 }
 
@@ -262,32 +316,32 @@ export default function InterviewsBoard({
   onDraftEmail,
   t = (k) => k,
 }) {
-  const [openId, setOpenId] = useState(null)
+  const [openId, setOpenId] = useState(null)          // full-details drawer
   const [openTab, setOpenTab] = useState('overview')
-  const [roundFilter, setRoundFilter] = useState(null) // null = all interview types
+  const [roundFilter, setRoundFilter] = useState(null)
   const [showArchived, setShowArchived] = useState(() => {
     try { return localStorage.getItem('jobtrackr_interviews_show_archived') === '1' } catch { return false }
   })
-  const [mock, setMock] = useState(null)               // { job, round } focused practice
-  const [example, setExample] = useState(null)         // { job, round } text example interview
-  const [negotiate, setNegotiate] = useState(null)     // job → negotiation prep
+  const [selectedId, setSelectedId] = useState(null)  // master-detail selection
+  const [mobileOpen, setMobileOpen] = useState(false) // mobile: detail overlay
+  const [prepPick, setPrepPick] = useState(null)      // { id, round } user's round choice for the selected job
+  const [mock, setMock] = useState(null)              // { job, round } focused practice
+  const [example, setExample] = useState(null)        // { job, round } text example
+  const [negotiate, setNegotiate] = useState(null)    // job → negotiation prep
+
   const toggleArchived = () => setShowArchived(v => {
     const next = !v
     try { localStorage.setItem('jobtrackr_interviews_show_archived', next ? '1' : '0') } catch {}
     return next
   })
   const openJob = jobs.find(j => j.id === openId) || null
-  const open = (j, tab = 'overview') => { setOpenTab(tab); setOpenId(j.id) }
+  const openFull = (j) => { setOpenTab('overview'); setOpenId(j.id) }
   const close = () => setOpenId(null)
   const startTrain = (job, round) => setMock({ job, round })
   const startExample = (job, round) => setExample({ job, round })
-  // Bind the example modal to the freshest job record so a just-saved example
-  // shows without reopening.
   const exampleJob = example ? (jobs.find(j => j.id === example.job.id) || example.job) : null
 
-  const drawerWidth = (typeof window !== 'undefined' && window.innerWidth >= 1536) ? 780 : 580
-
-  // Esc closes the drawer.
+  // Esc closes the full-details drawer.
   useEffect(() => {
     if (!openJob) return
     const onKey = e => { if (e.key === 'Escape') setOpenId(null) }
@@ -307,16 +361,15 @@ export default function InterviewsBoard({
       })
     const isArchived = (j) => (deriveStatusFromHistory(j.history) || j.status) === 'archived'
     const archivedCount = all.filter(isArchived).length
-    // Hide archived candidatures unless the toggle is on.
     const list = showArchived ? all : all.filter(j => !isArchived(j))
     const counts = {}
     let mockSessions = 0
     let bestScore = -1
     for (const job of list) {
       for (const key of jobRoundKeys(job)) counts[key] = (counts[key] || 0) + 1
-      const sessions = job.interviewSessions || []
-      mockSessions += sessions.length
-      const b = bestMockScore(sessions)
+      const s = job.interviewSessions || []
+      mockSessions += s.length
+      const b = bestMockScore(s)
       if (b > bestScore) bestScore = b
     }
     const visible = roundFilter ? list.filter(j => jobRoundKeys(j).includes(roundFilter)) : list
@@ -342,89 +395,56 @@ export default function InterviewsBoard({
   const empty = stats.total === 0
   const roundKeysPresent = INTERVIEW_ROUND_ORDER.filter(k => roundCounts[k] > 0)
 
-  // Persist a completed focused mock session onto the job, tagged with its round.
+  // Derived selection: honour the user's pick, else fall back to the first visible
+  // candidature — so we never need a setState-in-effect to keep it valid.
+  const visibleList = [...active, ...outcome, ...past]
+  const selectedJob = visibleList.find(j => j.id === selectedId) || visibleList[0] || null
+  // Derived prep round: the user's pick for THIS job, else the sensible default.
+  const prepRound = selectedJob
+    ? ((prepPick && prepPick.id === selectedJob.id) ? prepPick.round : defaultPrepRound(selectedJob))
+    : null
+  const pickRound = (r) => selectedJob && setPrepPick({ id: selectedJob.id, round: r })
+
+  const selectRow = (id) => { setSelectedId(id); setMobileOpen(true) }
+
   const saveMockSession = (result) => {
     const job = jobs.find(j => j.id === (mock?.job?.id)) || mock?.job
     if (!job) { setMock(null); return }
     const session = {
-      type: 'interview',
-      date: new Date().toISOString(),
-      round: mock.round || null,
-      score: result.score,
-      hire_decision: result.hire_decision,
-      feedback: result.feedback,
-      transcript: result.transcript,
+      type: 'interview', date: new Date().toISOString(), round: mock.round || null,
+      score: result.score, hire_decision: result.hire_decision, feedback: result.feedback, transcript: result.transcript,
     }
     onUpdateJob?.(job.id, { interviewSessions: [...(job.interviewSessions || []), session], updated_at: new Date().toISOString() })
     setMock(null)
   }
 
+  const detailProps = selectedJob && {
+    job: selectedJob, prepRound, onPickRound: pickRound, onOpenFull: openFull,
+    onTrain: startTrain, onExample: startExample, onSTAR, onGenerateCV, onNegotiate: setNegotiate, onToggleFavorite, t,
+  }
+
   return (
-    <div
-      className={`w-full min-w-0 transition-[padding] duration-300 ${openJob ? 'md:pr-[var(--drawer-pad)]' : ''}`}
-      style={openJob ? { '--drawer-pad': `${drawerWidth + 16}px`, '--drawer-w': `${drawerWidth}px` } : undefined}
-    >
-      <div className="mb-4">
+    <div className="w-full min-w-0">
+      {/* Heading + slim summary */}
+      <div className="mb-3">
         <h1 className="text-xl font-bold tracking-tight text-gray-900 flex items-center gap-2"><span>🎤</span>{t('interviews.title')}</h1>
         <p className="text-sm text-gray-500 mt-0.5">{t('interviews.subtitle')}</p>
       </div>
-
       {!empty && (
-        <div className="flex flex-wrap gap-3 mb-5">
-          <StatTile icon="🎤" value={stats.total} label={t('interviews.statTotal')} />
-          <StatTile icon="⏳" value={stats.active} label={t('interviews.statActive')} accent="text-purple-700" />
-          <StatTile icon="🎉" value={stats.offers} label={t('interviews.statOffers')} accent="text-green-700" />
-          <StatTile
-            icon="💪"
-            value={stats.mockSessions}
-            label={t('interviews.statMock')}
-            sub={stats.bestScore >= 0 ? t('interviews.bestScore').replace('{score}', stats.bestScore) : t('interviews.noMockYet')}
-            accent="text-indigo-700"
-          />
+        <div className="flex items-center gap-x-4 gap-y-1 flex-wrap text-[12.5px] text-gray-500 mb-3">
+          <span><b className="text-gray-900 font-semibold">{stats.total}</b> {t('interviews.statTotal')}</span>
+          <span className="text-gray-300">·</span>
+          <span><b className="text-purple-700 font-semibold">{stats.active}</b> {t('interviews.statActive')}</span>
+          <span><b className="text-green-700 font-semibold">{stats.offers}</b> {t('interviews.statOffers')}</span>
+          {stats.mockSessions > 0 && (
+            <><span className="text-gray-300">·</span><span>🎤 {stats.mockSessions}{stats.bestScore >= 0 ? ` · ${t('interviews.best')} ${stats.bestScore}` : ''}</span></>
+          )}
         </div>
       )}
 
-      <div className="mb-5 [&:empty]:hidden">
+      <div className="mb-4 [&:empty]:hidden">
         <UpcomingMeetings jobs={jobs} t={t} />
       </div>
-
-      {!empty && (roundKeysPresent.length > 0 || stats.archivedCount > 0) && (
-        <div className="flex items-center gap-2 flex-wrap mb-4">
-          {roundKeysPresent.length > 0 && (
-            <>
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mr-1">{t('interviews.filterLabel')}</span>
-              <button
-                onClick={() => setRoundFilter(null)}
-                className={`inline-flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-full border transition-colors ${roundFilter === null ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
-              >
-                {t('interviews.filterAll')} <span className="opacity-60">{stats.total}</span>
-              </button>
-              {roundKeysPresent.map(key => {
-                const meta = INTERVIEW_ROUND_META[key]
-                const on = roundFilter === key
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setRoundFilter(on ? null : key)}
-                    className={`inline-flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-full border transition-colors ${on ? `${meta.color} border-current` : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
-                  >
-                    <span>{meta.icon}</span>{roundLabel(key, t)} <span className="opacity-60">{roundCounts[key]}</span>
-                  </button>
-                )
-              })}
-            </>
-          )}
-          {/* Show / hide archived candidatures (hidden by default). */}
-          {stats.archivedCount > 0 && (
-            <button
-              onClick={toggleArchived}
-              className={`ml-auto inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-full border transition-colors ${showArchived ? 'bg-slate-700 text-white border-slate-700' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
-            >
-              <span>🗄️</span>{showArchived ? t('interviews.hideArchived') : t('interviews.showArchived')} <span className="opacity-60">{stats.archivedCount}</span>
-            </button>
-          )}
-        </div>
-      )}
 
       {empty ? (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm text-center py-16 px-6">
@@ -438,21 +458,37 @@ export default function InterviewsBoard({
           <button onClick={() => setRoundFilter(null)} className="mt-3 text-sm text-indigo-600 hover:underline">{t('interviews.filterClear')}</button>
         </div>
       ) : (
-        <>
-          <Section title={t('interviews.sectionActive')} hint={t('interviews.sectionActiveHint')} accent="bg-purple-500"
-            jobs={active} openId={openId} highlightRound={roundFilter}
-            onOpen={open} onTrain={startTrain} onExample={startExample} onSTAR={onSTAR} onGenerateCV={onGenerateCV} onNegotiate={setNegotiate} onToggleFavorite={onToggleFavorite} t={t} />
-          <Section title={t('interviews.sectionOutcome')} hint={t('interviews.sectionOutcomeHint')} accent="bg-green-500"
-            jobs={outcome} openId={openId} highlightRound={roundFilter}
-            onOpen={open} onTrain={startTrain} onExample={startExample} onSTAR={onSTAR} onGenerateCV={onGenerateCV} onNegotiate={setNegotiate} onToggleFavorite={onToggleFavorite} t={t} />
-          <Section title={t('interviews.sectionPast')} hint={t('interviews.sectionPastHint')} accent="bg-gray-400"
-            jobs={past} openId={openId} highlightRound={roundFilter}
-            onOpen={open} onTrain={startTrain} onExample={startExample} onSTAR={onSTAR} onGenerateCV={onGenerateCV} onNegotiate={setNegotiate} onToggleFavorite={onToggleFavorite} t={t}
-            defaultOpen={false} />
-        </>
+        <div className="md:grid md:grid-cols-[minmax(300px,340px)_1fr] md:gap-5 md:items-start">
+          {/* Master list */}
+          <InterviewList
+            active={active} outcome={outcome} past={past}
+            selectedId={selectedJob?.id} onSelect={selectRow} onToggleFavorite={onToggleFavorite}
+            roundKeysPresent={roundKeysPresent} roundCounts={roundCounts} roundFilter={roundFilter} setRoundFilter={setRoundFilter}
+            total={stats.total} archivedCount={stats.archivedCount} showArchived={showArchived} toggleArchived={toggleArchived}
+            t={t}
+          />
+          {/* Detail (desktop) */}
+          <div className="hidden md:block">
+            {detailProps && <InterviewDetail {...detailProps} />}
+          </div>
+        </div>
       )}
 
-      {/* Focused mock-interview practice, launched from a card's train tile. */}
+      {/* Detail (mobile full-screen overlay) */}
+      {mobileOpen && detailProps && (
+        <div className="md:hidden fixed inset-0 z-40 bg-slate-50 overflow-y-auto animate-slide-up">
+          <div className="sticky top-0 z-10 flex items-center gap-2 px-3 h-12 bg-white/95 backdrop-blur border-b border-gray-100">
+            <button onClick={() => setMobileOpen(false)} className="flex items-center gap-1 text-sm font-semibold text-indigo-600">
+              ‹ {t('interviews.back')}
+            </button>
+          </div>
+          <div className="p-3">
+            <InterviewDetail {...detailProps} />
+          </div>
+        </div>
+      )}
+
+      {/* Focused / free mock practice */}
       {mock && (
         <MockInterviewChatbot
           job={mock.job}
@@ -465,7 +501,7 @@ export default function InterviewsBoard({
         />
       )}
 
-      {/* Text example interview (questions + model answers) for a level. */}
+      {/* Text example interview */}
       {exampleJob && (
         <InterviewExample
           job={exampleJob}
@@ -479,16 +515,16 @@ export default function InterviewsBoard({
         />
       )}
 
-      {/* Salary-negotiation prep. */}
+      {/* Negotiation prep */}
       {negotiate && (
         <NegotiationAssistant job={negotiate} onClose={() => setNegotiate(null)} onSave={onUpdateJob} t={t} />
       )}
 
-      {/* Master-detail drawer — same component the tracker uses. */}
+      {/* Full-details drawer */}
       {openJob && (
         <>
           <div className="fixed inset-0 bg-black/30 z-40 md:hidden" onClick={close} />
-          <aside className="fixed top-0 right-0 bottom-0 z-40 w-full md:w-[var(--drawer-w)] bg-white border-l border-gray-100 shadow-2xl flex flex-col animate-slide-up md:animate-none">
+          <aside className="fixed top-0 right-0 bottom-0 z-40 w-full md:w-[600px] xl:w-[780px] bg-white border-l border-gray-100 shadow-2xl flex flex-col animate-slide-up md:animate-none">
             <div className="flex-1 overflow-y-auto">
               <CandidatureDrawer
                 key={`${openJob.id}:${openTab}`}
