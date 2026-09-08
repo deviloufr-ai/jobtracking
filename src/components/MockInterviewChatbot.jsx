@@ -7,17 +7,20 @@ import { deliverText } from '../services/fileSave'
 import { trackMockInterviewCompleted } from '../services/analytics'
 import { useDragDock } from '../hooks/useDragDock'
 import { Capacitor } from '@capacitor/core'
+import { SpeechRecognition as NativeSpeech } from '@capacitor-community/speech-recognition'
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
 const speechSynthesis = window.speechSynthesis
 
-// The Android Capacitor WebView implements neither Web Speech recognition nor a
-// working getUserMedia mic grant — the latter would need a RECORD_AUDIO manifest
-// permission plus a WebChromeClient hook compiled into the APK. So voice practice
-// can't run inside the native shell: canRecordAudio() reports true (the JS objects
-// exist) but the actual mic request rejects, leaving a "Record Answer" button that
-// only errors. Detect the shell and drive the fully-functional typed flow instead;
-// voice still works on the website in Chrome/Edge.
+// Voice input has three backends, chosen at runtime:
+//   • Native Android shell   → Android's own speech-to-text via the
+//     @capacitor-community/speech-recognition plugin (NativeSpeech). No 200 MB
+//     model download, and the plugin manages the RECORD_AUDIO permission itself.
+//     The WebView exposes neither Web Speech recognition nor a usable getUserMedia
+//     mic grant, so this is the only path that works inside the app.
+//   • Chrome/Edge on the web → the Web Speech API (SpeechRecognition below).
+//   • Firefox/Safari on web  → record the mic and transcribe with a local WASM
+//     Whisper model (localSpeech.js).
 const isNativeShell = Boolean(Capacitor?.isNativePlatform?.())
 
 // Detect language from text
@@ -91,8 +94,11 @@ function MockInterviewChatbotPanel({ job, cv, round, roundName, roundFocus, onCl
 
   // Native Web Speech API (Chrome/Edge). When absent we fall back to recording
   // the mic and transcribing with a local WASM Whisper model (Firefox/Safari).
+  // Web Speech API (Chrome/Edge) — desktop/web only; absent in the native WebView.
   const nativeSpeechSupported = !isNativeShell && Boolean(SpeechRecognition)
-  const voiceSupported = !isNativeShell && (Boolean(SpeechRecognition) || canRecordAudio())
+  // Voice is offered when we have a backend: the native plugin, the Web Speech API,
+  // or mic recording for the WASM fallback.
+  const voiceSupported = isNativeShell || nativeSpeechSupported || canRecordAudio()
 
   // Build (or rebuild) the speech recognition instance.
   // Returns the instance, or null if the browser can't provide one.
@@ -169,6 +175,10 @@ function MockInterviewChatbotPanel({ job, cv, round, roundName, roundFocus, onCl
         /* noop */
       }
       mediaStreamRef.current?.getTracks().forEach((t) => t.stop())
+      if (isNativeShell) {
+        try { NativeSpeech.removeAllListeners() } catch { /* noop */ }
+        try { NativeSpeech.stop() } catch { /* noop */ }
+      }
     }
   }, [])
 
@@ -253,8 +263,80 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
   }
 
   const startListening = () => {
+    if (isNativeShell) return startNativeSpeechListening()
     if (nativeSpeechSupported) return startNativeListening()
     return startRecordingFallback()
+  }
+
+  // --- Native Android speech-to-text (Capacitor plugin) ---
+  // Uses the OS SpeechRecognizer: live partial results, no model download. The
+  // recognizer ends the session itself after a pause, so we drive the UI from its
+  // events and also expose the manual "Submit Answer" button.
+  const startNativeSpeechListening = async () => {
+    try {
+      const { available } = await NativeSpeech.available()
+      if (!available) {
+        setError('Speech recognition isn’t available on this device. You can type your answer instead.')
+        return
+      }
+      let perm = await NativeSpeech.checkPermissions()
+      if (perm.speechRecognition !== 'granted') {
+        perm = await NativeSpeech.requestPermissions()
+      }
+      if (perm.speechRecognition !== 'granted') {
+        setError('Microphone permission was denied. Allow it in settings, or type your answer instead.')
+        return
+      }
+
+      finalTranscriptRef.current = ''
+      setTranscript('')
+      setError(null)
+
+      await NativeSpeech.removeAllListeners()
+      await NativeSpeech.addListener('partialResults', (data) => {
+        const text = data?.matches?.[0]
+        if (text) {
+          finalTranscriptRef.current = text
+          setTranscript(text)
+        }
+      })
+      // The engine stops on its own after silence — mirror that in the UI so the
+      // button flips back from "Submit Answer" to "Record Answer".
+      await NativeSpeech.addListener('listeningState', (data) => {
+        if (data?.status === 'stopped') setIsRecording(false)
+      })
+
+      await NativeSpeech.start({
+        language: detectedLanguage,
+        maxResults: 2,
+        partialResults: true,
+        popup: false
+      })
+      setIsRecording(true)
+    } catch (err) {
+      setError(`Voice input couldn’t start: ${err?.message || err}. You can type your answer instead.`)
+      setIsRecording(false)
+    }
+  }
+
+  const stopNativeSpeechListening = async () => {
+    try {
+      await NativeSpeech.stop()
+    } catch {
+      /* already stopped by the engine */
+    }
+    try {
+      await NativeSpeech.removeAllListeners()
+    } catch {
+      /* noop */
+    }
+    setIsRecording(false)
+    const text = (finalTranscriptRef.current || transcript).trim()
+    if (!text) {
+      setError('No speech detected. Please try again or type your answer.')
+      return
+    }
+    submitAnswer(text)
   }
 
   // --- Native Web Speech path (Chrome/Edge) ---
@@ -400,6 +482,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
   }
 
   const stopListening = () => {
+    if (isNativeShell) return stopNativeSpeechListening()
     if (!nativeSpeechSupported) {
       // Fallback path: stop the recorder; transcription runs in onstop.
       mediaRecorderRef.current?.stop()
@@ -813,7 +896,7 @@ Format as JSON with keys: hire_decision, score, strengths, concerns, weak_exampl
 
           <p className="text-xs text-gray-400 text-center">
             {isNativeShell
-              ? '💡 Type your answers below. Voice practice runs on the website (smartjobtracker.com in Chrome), not inside the app.'
+              ? '💡 Tap “Record Answer” and speak — Android transcribes it live. Then “Submit Answer”, or just type below.'
               : nativeSpeechSupported
               ? '💡 Tip: Speak after clicking "Record Answer", then "Submit Answer" when done.'
               : '💡 Voice runs a private in-browser model — first use downloads it (~200 MB, once), then each answer takes a few seconds. Prefer speed? Just type below.'}
