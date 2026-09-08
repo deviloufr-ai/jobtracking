@@ -9,7 +9,7 @@
 //
 //   Do NOT tie this to the git commit count — the CI APK-refresh commits bump
 //   the count without being a real release, which would nag users falsely.
-export const APP_VERSION = '0.6.0'
+export const APP_VERSION = '0.6.1'
 
 // Minimum Android APK build (versionCode) the current web app needs. With
 // server.url the app loads the live web, so pure web changes never require a new
