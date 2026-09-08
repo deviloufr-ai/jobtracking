@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core'
 import { useAppUpdate } from '../hooks/useAppUpdate'
-import { ANDROID_APK_URL } from '../constants/appVersion'
+import { ANDROID_APK_DOWNLOAD_URL } from '../constants/appVersion'
 
 const isEN = typeof navigator !== 'undefined' && navigator.language.startsWith('en')
 const tr = (fr, en) => (isEN ? en : fr)
@@ -14,14 +14,15 @@ export default function AppUpdateBanner() {
 
   const isNative = !!(Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform())
 
-  const handleAction = async () => {
+  const handleAction = () => {
     if (isNative) {
-      try {
-        const { Browser } = await import('@capacitor/browser')
-        await Browser.open({ url: ANDROID_APK_URL })
-      } catch {
-        window.open(ANDROID_APK_URL, '_blank')
-      }
+      // Navigate the main frame to the apex APK URL. Its host differs from the app
+      // host, so Capacitor's Bridge hands it to the system browser (ACTION_VIEW),
+      // which downloads it — a Chrome Custom Tab (Browser.open) silently drops APK
+      // downloads, and a same-host URL just no-ops in the WebView. See the comment
+      // on ANDROID_APK_DOWNLOAD_URL. The Bridge cancels the WebView's own load, so
+      // the app stays put.
+      window.location.href = ANDROID_APK_DOWNLOAD_URL
     } else {
       window.location.reload()
     }

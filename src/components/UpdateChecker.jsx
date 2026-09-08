@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Capacitor } from '@capacitor/core'
-import { APP_VERSION, VERSION_MANIFEST_URL, ANDROID_APK_URL } from '../constants/appVersion'
+import { APP_VERSION, VERSION_MANIFEST_URL, ANDROID_APK_DOWNLOAD_URL } from '../constants/appVersion'
 import { compareVersions } from '../constants/extension'
 
 const isEN = typeof navigator !== 'undefined' && navigator.language.startsWith('en')
@@ -39,14 +39,11 @@ export default function UpdateChecker() {
     }
   }
 
-  const doUpdate = async () => {
+  const doUpdate = () => {
     if (isNative) {
-      try {
-        const { Browser } = await import('@capacitor/browser')
-        await Browser.open({ url: ANDROID_APK_URL })
-      } catch {
-        window.open(ANDROID_APK_URL, '_blank')
-      }
+      // System-browser hand-off via the apex host — see ANDROID_APK_DOWNLOAD_URL and
+      // AppUpdateBanner. A Custom Tab / same-host URL can't download the APK.
+      window.location.href = ANDROID_APK_DOWNLOAD_URL
     } else {
       window.location.reload()
     }

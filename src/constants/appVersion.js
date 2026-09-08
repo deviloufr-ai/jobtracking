@@ -28,3 +28,12 @@ export const VERSION_MANIFEST_URL = 'https://www.smartjobtracker.com/version.jso
 
 // Where the installable Android APK lives (served by Vercel from public/).
 export const ANDROID_APK_URL = 'https://www.smartjobtracker.com/smartjobtracker.apk'
+
+// APK URL used specifically for the in-app "Download update" action on Android.
+// It MUST be on a different host than capacitor.config server.url (www...), because
+// Capacitor's Bridge.launchIntent only hands a URL to the system browser (ACTION_VIEW,
+// which has a real download manager) when its host differs from the app host; a
+// same-host URL stays in the WebView, which can't download, and a Chrome Custom Tab
+// (@capacitor/browser) silently blocks APK downloads. The apex host is a different
+// host and 308-redirects to the canonical www APK, so the system browser downloads it.
+export const ANDROID_APK_DOWNLOAD_URL = 'https://smartjobtracker.com/smartjobtracker.apk'
