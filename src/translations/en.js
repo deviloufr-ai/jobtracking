@@ -114,6 +114,8 @@ export const en = {
     filterAll: 'All',
     filterEmpty: 'No candidature with this interview type.',
     filterClear: 'Show all interview types',
+    showArchived: 'Show archived',
+    hideArchived: 'Hide archived',
     noRoundYet: 'No round detected',
     roundBadgeTip: 'Interview type detected from the calendar/email',
     details: 'Details',

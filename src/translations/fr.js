@@ -114,6 +114,8 @@ export const fr = {
     filterAll: 'Tous',
     filterEmpty: 'Aucune candidature avec ce type d’entretien.',
     filterClear: 'Afficher tous les types d’entretien',
+    showArchived: 'Afficher les archivées',
+    hideArchived: 'Masquer les archivées',
     noRoundYet: 'Type non détecté',
     roundBadgeTip: 'Type d’entretien détecté depuis le calendrier / l’email',
     details: 'Détails',

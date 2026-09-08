@@ -247,8 +247,16 @@ export default function InterviewsBoard({
   const [openId, setOpenId] = useState(null)
   const [openTab, setOpenTab] = useState('overview')
   const [roundFilter, setRoundFilter] = useState(null) // null = all interview types
+  const [showArchived, setShowArchived] = useState(() => {
+    try { return localStorage.getItem('jobtrackr_interviews_show_archived') === '1' } catch { return false }
+  })
   const [mock, setMock] = useState(null)               // { job, round } focused practice
   const [negotiate, setNegotiate] = useState(null)     // job → negotiation prep
+  const toggleArchived = () => setShowArchived(v => {
+    const next = !v
+    try { localStorage.setItem('jobtrackr_interviews_show_archived', next ? '1' : '0') } catch {}
+    return next
+  })
   const openJob = jobs.find(j => j.id === openId) || null
   const open = (j, tab = 'overview') => { setOpenTab(tab); setOpenId(j.id) }
   const close = () => setOpenId(null)
@@ -265,7 +273,7 @@ export default function InterviewsBoard({
   }, [openJob])
 
   const { active, outcome, past, stats, roundCounts } = useMemo(() => {
-    const list = jobs
+    const all = jobs
       .filter(hasInterviewProcess)
       .sort((a, b) => {
         const fav = (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0)
@@ -274,6 +282,10 @@ export default function InterviewsBoard({
         const lb = new Date((b.history || []).at(-1)?.date || b.date || 0)
         return lb - la
       })
+    const isArchived = (j) => (deriveStatusFromHistory(j.history) || j.status) === 'archived'
+    const archivedCount = all.filter(isArchived).length
+    // Hide archived candidatures unless the toggle is on.
+    const list = showArchived ? all : all.filter(j => !isArchived(j))
     const counts = {}
     let mockSessions = 0
     let bestScore = -1
@@ -299,9 +311,10 @@ export default function InterviewsBoard({
         mockSessions,
         bestScore,
         visible: visible.length,
+        archivedCount,
       },
     }
-  }, [jobs, roundFilter])
+  }, [jobs, roundFilter, showArchived])
 
   const empty = stats.total === 0
   const roundKeysPresent = INTERVIEW_ROUND_ORDER.filter(k => roundCounts[k] > 0)
@@ -352,28 +365,41 @@ export default function InterviewsBoard({
         <UpcomingMeetings jobs={jobs} t={t} />
       </div>
 
-      {!empty && roundKeysPresent.length > 0 && (
+      {!empty && (roundKeysPresent.length > 0 || stats.archivedCount > 0) && (
         <div className="flex items-center gap-2 flex-wrap mb-4">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mr-1">{t('interviews.filterLabel')}</span>
-          <button
-            onClick={() => setRoundFilter(null)}
-            className={`inline-flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-full border transition-colors ${roundFilter === null ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
-          >
-            {t('interviews.filterAll')} <span className="opacity-60">{stats.total}</span>
-          </button>
-          {roundKeysPresent.map(key => {
-            const meta = INTERVIEW_ROUND_META[key]
-            const on = roundFilter === key
-            return (
+          {roundKeysPresent.length > 0 && (
+            <>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mr-1">{t('interviews.filterLabel')}</span>
               <button
-                key={key}
-                onClick={() => setRoundFilter(on ? null : key)}
-                className={`inline-flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-full border transition-colors ${on ? `${meta.color} border-current` : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                onClick={() => setRoundFilter(null)}
+                className={`inline-flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-full border transition-colors ${roundFilter === null ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
               >
-                <span>{meta.icon}</span>{roundLabel(key, t)} <span className="opacity-60">{roundCounts[key]}</span>
+                {t('interviews.filterAll')} <span className="opacity-60">{stats.total}</span>
               </button>
-            )
-          })}
+              {roundKeysPresent.map(key => {
+                const meta = INTERVIEW_ROUND_META[key]
+                const on = roundFilter === key
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setRoundFilter(on ? null : key)}
+                    className={`inline-flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-full border transition-colors ${on ? `${meta.color} border-current` : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                  >
+                    <span>{meta.icon}</span>{roundLabel(key, t)} <span className="opacity-60">{roundCounts[key]}</span>
+                  </button>
+                )
+              })}
+            </>
+          )}
+          {/* Show / hide archived candidatures (hidden by default). */}
+          {stats.archivedCount > 0 && (
+            <button
+              onClick={toggleArchived}
+              className={`ml-auto inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-full border transition-colors ${showArchived ? 'bg-slate-700 text-white border-slate-700' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+            >
+              <span>🗄️</span>{showArchived ? t('interviews.hideArchived') : t('interviews.showArchived')} <span className="opacity-60">{stats.archivedCount}</span>
+            </button>
+          )}
         </div>
       )}
 

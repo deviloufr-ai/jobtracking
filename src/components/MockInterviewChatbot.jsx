@@ -48,7 +48,11 @@ function MockInterviewChatbotPanel({ job, cv, round, roundName, roundFocus, onCl
   // Optional interview-level steering: when the caller trains for a specific round
   // (technical, manager, final…), roundFocus is the English instruction that makes
   // the interviewer focus on that level's content/approach. Blank = general.
-  const focusLine = roundFocus ? `\n\nInterview focus — ${roundFocus}` : ''
+  // Worded as a hard constraint so the AI truly runs THIS interview type and does
+  // not drift into other stages' questions.
+  const focusLine = roundFocus
+    ? `\n\nINTERVIEW STAGE — You are conducting ONLY this specific interview stage: ${roundName ? `the "${roundName}" round. ` : ''}${roundFocus} Every question you ask must belong to this stage and match this focus; do NOT ask questions that belong to a different interview type (e.g. do not ask deep technical questions in a recruiter screen, or vice-versa).`
+    : ''
   const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 672 })
   const [messages, setMessages] = useState([])
   const [isRecording, setIsRecording] = useState(false)
