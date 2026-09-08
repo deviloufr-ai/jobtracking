@@ -6,9 +6,19 @@ import { transcribeBlob, canRecordAudio } from '../services/localSpeech'
 import { deliverText } from '../services/fileSave'
 import { trackMockInterviewCompleted } from '../services/analytics'
 import { useDragDock } from '../hooks/useDragDock'
+import { Capacitor } from '@capacitor/core'
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
 const speechSynthesis = window.speechSynthesis
+
+// The Android Capacitor WebView implements neither Web Speech recognition nor a
+// working getUserMedia mic grant — the latter would need a RECORD_AUDIO manifest
+// permission plus a WebChromeClient hook compiled into the APK. So voice practice
+// can't run inside the native shell: canRecordAudio() reports true (the JS objects
+// exist) but the actual mic request rejects, leaving a "Record Answer" button that
+// only errors. Detect the shell and drive the fully-functional typed flow instead;
+// voice still works on the website in Chrome/Edge.
+const isNativeShell = Boolean(Capacitor?.isNativePlatform?.())
 
 // Detect language from text
 function detectLanguage(text) {
@@ -81,8 +91,8 @@ function MockInterviewChatbotPanel({ job, cv, round, roundName, roundFocus, onCl
 
   // Native Web Speech API (Chrome/Edge). When absent we fall back to recording
   // the mic and transcribing with a local WASM Whisper model (Firefox/Safari).
-  const nativeSpeechSupported = Boolean(SpeechRecognition)
-  const voiceSupported = nativeSpeechSupported || canRecordAudio()
+  const nativeSpeechSupported = !isNativeShell && Boolean(SpeechRecognition)
+  const voiceSupported = !isNativeShell && (Boolean(SpeechRecognition) || canRecordAudio())
 
   // Build (or rebuild) the speech recognition instance.
   // Returns the instance, or null if the browser can't provide one.
@@ -214,8 +224,11 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
   }
 
   const speakText = (text) => {
+    // Text-to-speech is a nice-to-have. Some WebViews (incl. the native shell)
+    // expose no speechSynthesis — skip it silently rather than surfacing a
+    // blocking error on every interviewer question.
     if (!speechSynthesis) {
-      setError('Text-to-speech not supported')
+      setIsSpeaking(false)
       return
     }
     speechSynthesis.cancel()
@@ -799,7 +812,9 @@ Format as JSON with keys: hire_decision, score, strengths, concerns, weak_exampl
           )}
 
           <p className="text-xs text-gray-400 text-center">
-            {nativeSpeechSupported
+            {isNativeShell
+              ? '💡 Type your answers below. Voice practice runs on the website (smartjobtracker.com in Chrome), not inside the app.'
+              : nativeSpeechSupported
               ? '💡 Tip: Speak after clicking "Record Answer", then "Submit Answer" when done.'
               : '💡 Voice runs a private in-browser model — first use downloads it (~200 MB, once), then each answer takes a few seconds. Prefer speed? Just type below.'}
           </p>
