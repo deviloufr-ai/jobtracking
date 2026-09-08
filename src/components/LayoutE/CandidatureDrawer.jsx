@@ -8,6 +8,7 @@
 // real generators. Self-contained (classic JobRow/JobCandidaturePanel untouched).
 import { useState, useEffect, useRef, Fragment } from 'react'
 import { STATUSES, getStatus, getStatusLabel, historyEntryKey } from '../../hooks/useJobs'
+import { classifyInterviewRound, isInterviewEntry, INTERVIEW_ROUND_META, roundLabel } from '../../utils/interviewRounds'
 import { gmailMessageUrl, openGmailNative } from '../../services/gmail'
 import { scoreColorClasses, ScoreBreakdown } from '../ScoreJob'
 import CVViewer from '../CVViewer'
@@ -98,6 +99,15 @@ export default function CandidatureDrawer({
   onGenerateCV, onViewSavedCV, onSTAR, onDraftEmail, initialTab, t = (k) => k,
 }) {
   const history = job.history || []
+  // Round/type of each interview step (screening / technical / final …), keyed by
+  // entry so the timeline can badge it. Numbered chronologically so generic
+  // untyped rounds still read as a sequence ("Interview 2").
+  const interviewRoundByEntry = (() => {
+    const m = new Map()
+    const steps = history.filter(h => h?.date && isInterviewEntry(h)).slice().sort((a, b) => new Date(a.date) - new Date(b.date))
+    steps.forEach((h, i) => m.set(historyEntryKey(h), { key: classifyInterviewRound(`${h.note || ''} ${h.title || ''}`), number: i + 1 }))
+    return m
+  })()
   const displayStatus = history.length ? (history[history.length - 1].status || job.status) : job.status
   const source = job.source || job.platform || job.site || null
   const emailCount = history.filter(h => h.source === 'email').length
@@ -337,6 +347,16 @@ export default function CandidatureDrawer({
                         <>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full ${getStatus(h.status)?.color || 'bg-gray-100 text-gray-500'}`}>{getStatusLabel(h.status, t)}</span>
+                            {(() => {
+                              const info = interviewRoundByEntry.get(entryKey)
+                              if (!info) return null
+                              const meta = INTERVIEW_ROUND_META[info.key]
+                              return (
+                                <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${meta.color}`} title={t('interviews.roundBadgeTip')}>
+                                  <span>{meta.icon}</span>{roundLabel(info.key, t, info.number)}
+                                </span>
+                              )
+                            })()}
                             <span className="text-xs text-gray-400">{fullDate(h.date)}</span>
                             <div className="ml-auto flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button onClick={() => { setEditIdx(entryKey); setEditForm({ status: h.status, date: h.date, note: h.note || '' }) }} aria-label="edit step" className={`${iconBtn} w-6 h-6`}>✎</button>

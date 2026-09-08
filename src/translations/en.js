@@ -110,6 +110,22 @@ export const en = {
     starReady: 'STAR ready',
     emptyTitle: 'No interviews yet',
     emptyBody: 'When an application reaches the interview stage — or you practise a mock interview — it shows up here so you can prep and review it.',
+    filterLabel: 'Interview type',
+    filterAll: 'All',
+    filterEmpty: 'No candidature with this interview type.',
+    filterClear: 'Show all interview types',
+    noRoundYet: 'No round detected',
+    roundBadgeTip: 'Interview type detected from the calendar/email',
+  },
+
+  // Interview round / type labels (detected from the calendar & email content)
+  interviewRounds: {
+    screening: 'Initial screen',
+    technical: 'Technical',
+    manager: 'Manager',
+    panel: 'Panel / team',
+    final: 'Final',
+    interview: 'Interview',
   },
 
   // Extension

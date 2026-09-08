@@ -8,6 +8,7 @@
 // interview feature works unchanged.
 import { useState, useEffect, useMemo } from 'react'
 import { getStatus, getStatusLabel, deriveStatusFromHistory, hasInterviewProcess } from '../../hooks/useJobs'
+import { INTERVIEW_ROUND_META, INTERVIEW_ROUND_ORDER, jobRoundKeys, roundLabel } from '../../utils/interviewRounds'
 import { scoreColorClasses } from '../ScoreJob'
 import UpcomingMeetings from '../UpcomingMeetings'
 import CandidatureDrawer from './CandidatureDrawer'
@@ -45,27 +46,7 @@ function StatTile({ icon, value, label, sub, accent = 'text-gray-900' }) {
   )
 }
 
-// Compact horizontal timeline of the interview-relevant steps (dots + dates).
-function MiniTimeline({ history = [] }) {
-  const steps = history.filter(h => h?.date && ['interview', 'done', 'waiting', 'offer'].includes(h.status))
-  if (steps.length === 0) return null
-  return (
-    <ol className="hidden lg:flex items-start w-max shrink-0">
-      {steps.map((h, i) => (
-        <li key={i} className="relative shrink-0 flex flex-col items-center">
-          <div className="relative h-2 w-full flex items-center justify-center px-3">
-            {i > 0 && <span className="absolute top-1/2 -translate-y-1/2 left-0 w-1/2 h-0.5 bg-gray-200" />}
-            {i < steps.length - 1 && <span className="absolute top-1/2 -translate-y-1/2 left-1/2 w-1/2 h-0.5 bg-gray-200" />}
-            <span className={`relative z-[1] w-2 h-2 rounded-full ${getStatus(h.status)?.dot || 'bg-gray-400'}`} />
-          </div>
-          <span className="mt-1 px-1.5 text-[9px] leading-none tabular-nums text-gray-400 whitespace-nowrap">{shortDate(h.date)}</span>
-        </li>
-      ))}
-    </ol>
-  )
-}
-
-function InterviewRow({ job, active, onOpen, onPrep, onSTAR, onToggleFavorite, t }) {
+function InterviewRow({ job, active, highlightRound, onOpen, onPrep, onSTAR, onToggleFavorite, t }) {
   const history = job.history || []
   const effective = deriveStatusFromHistory(history) || job.status
   const status = getStatus(effective)
@@ -73,6 +54,7 @@ function InterviewRow({ job, active, onOpen, onPrep, onSTAR, onToggleFavorite, t
   const best = bestMockScore(sessions)
   const starReady = !!job.starSaved
   const last = history.at(-1)
+  const rounds = jobRoundKeys(job) // interview types this candidature covers
 
   return (
     <div
@@ -103,22 +85,45 @@ function InterviewRow({ job, active, onOpen, onPrep, onSTAR, onToggleFavorite, t
           <span className="block text-[12px] text-gray-400 truncate">{job.position}</span>
         </span>
 
-        <MiniTimeline history={history} />
+        {/* Interview types detected from the calendar/email — the "content split".
+            Chips in pipeline order; the one matching the active filter is ringed. */}
+        <span className="hidden md:flex items-center gap-1 flex-1 min-w-0 overflow-hidden">
+          {rounds.length === 0 ? (
+            <span className="text-[11px] text-gray-300 italic truncate">{t('interviews.noRoundYet')}</span>
+          ) : (
+            <>
+              {rounds.slice(0, 4).map(key => {
+                const meta = INTERVIEW_ROUND_META[key]
+                const on = highlightRound === key
+                return (
+                  <span
+                    key={key}
+                    title={roundLabel(key, t)}
+                    className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full shrink-0 ${meta.color} ${on ? 'ring-1 ring-inset ring-current' : ''}`}
+                  >
+                    <span>{meta.icon}</span><span className="hidden xl:inline">{roundLabel(key, t)}</span>
+                  </span>
+                )
+              })}
+              {rounds.length > 4 && <span className="text-[11px] text-gray-400 shrink-0">+{rounds.length - 4}</span>}
+            </>
+          )}
+        </span>
 
-        <span className="flex items-center gap-1.5 flex-1 min-w-0">
+        <span className="flex items-center gap-1.5 shrink-0">
           <span className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${status?.color || 'bg-gray-100 text-gray-500'}`}>
             {getStatusLabel(effective, t)}
           </span>
           {sessions.length > 0 && (
             <span
               title={t('interviews.mockPractisedTip')}
-              className="inline-flex items-center gap-1 text-[11px] font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full shrink-0"
+              className="hidden lg:inline-flex items-center gap-1 text-[11px] font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full shrink-0"
             >
               🎤 {sessions.length}{best >= 0 ? ` · ${best}` : ''}
             </span>
           )}
           {starReady && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full shrink-0">
+            <span className="hidden lg:inline-flex items-center gap-1 text-[11px] font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full shrink-0">
               🎯 {t('interviews.starReady')}
             </span>
           )}
@@ -158,7 +163,7 @@ function InterviewRow({ job, active, onOpen, onPrep, onSTAR, onToggleFavorite, t
   )
 }
 
-function Section({ title, hint, accent, jobs, openId, onOpen, onPrep, onSTAR, onToggleFavorite, t, defaultOpen = true }) {
+function Section({ title, hint, accent, jobs, openId, highlightRound, onOpen, onPrep, onSTAR, onToggleFavorite, t, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen)
   if (jobs.length === 0) return null
   return (
@@ -180,6 +185,7 @@ function Section({ title, hint, accent, jobs, openId, onOpen, onPrep, onSTAR, on
               key={job.id}
               job={job}
               active={openId === job.id}
+              highlightRound={highlightRound}
               onOpen={onOpen}
               onPrep={onPrep}
               onSTAR={onSTAR}
@@ -209,6 +215,7 @@ export default function InterviewsBoard({
 }) {
   const [openId, setOpenId] = useState(null)
   const [openTab, setOpenTab] = useState('overview')
+  const [roundFilter, setRoundFilter] = useState(null) // null = all interview types
   const openJob = jobs.find(j => j.id === openId) || null
   const open = (j, tab = 'overview') => { setOpenTab(tab); setOpenId(j.id) }
   const close = () => setOpenId(null)
@@ -227,7 +234,7 @@ export default function InterviewsBoard({
     return () => window.removeEventListener('keydown', onKey)
   }, [openJob])
 
-  const { active, outcome, past, stats } = useMemo(() => {
+  const { active, outcome, past, stats, roundCounts } = useMemo(() => {
     const list = jobs
       .filter(hasInterviewProcess)
       // Favorites first, then most recent activity.
@@ -238,32 +245,43 @@ export default function InterviewsBoard({
         const lb = new Date((b.history || []).at(-1)?.date || b.date || 0)
         return lb - la
       })
-    const buckets = { active: [], outcome: [], past: [] }
+    // Count candidatures per interview type across the WHOLE set (so the filter
+    // chips stay stable regardless of the active filter).
+    const counts = {}
     let mockSessions = 0
     let bestScore = -1
     for (const job of list) {
-      const effective = deriveStatusFromHistory(job.history) || job.status
-      buckets[SECTION_OF(effective)].push(job)
+      for (const key of jobRoundKeys(job)) counts[key] = (counts[key] || 0) + 1
       const sessions = job.interviewSessions || []
       mockSessions += sessions.length
       const b = bestMockScore(sessions)
       if (b > bestScore) bestScore = b
     }
+    // Apply the interview-type filter, then bucket by pipeline stage.
+    const visible = roundFilter ? list.filter(j => jobRoundKeys(j).includes(roundFilter)) : list
+    const buckets = { active: [], outcome: [], past: [] }
+    for (const job of visible) {
+      const effective = deriveStatusFromHistory(job.history) || job.status
+      buckets[SECTION_OF(effective)].push(job)
+    }
     return {
       active: buckets.active,
       outcome: buckets.outcome,
       past: buckets.past,
+      roundCounts: counts,
       stats: {
         total: list.length,
-        active: buckets.active.length,
-        offers: buckets.outcome.length,
+        active: list.filter(j => SECTION_OF(deriveStatusFromHistory(j.history) || j.status) === 'active').length,
+        offers: list.filter(j => SECTION_OF(deriveStatusFromHistory(j.history) || j.status) === 'outcome').length,
         mockSessions,
         bestScore,
+        visible: visible.length,
       },
     }
-  }, [jobs])
+  }, [jobs, roundFilter])
 
   const empty = stats.total === 0
+  const roundKeysPresent = INTERVIEW_ROUND_ORDER.filter(k => roundCounts[k] > 0)
 
   return (
     <div
@@ -298,11 +316,49 @@ export default function InterviewsBoard({
         <UpcomingMeetings jobs={jobs} t={t} />
       </div>
 
+      {/* Split by content — filter candidatures by the interview TYPE they cover,
+          detected from the calendar/email (screening, technical, final, …). */}
+      {!empty && roundKeysPresent.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap mb-4">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mr-1">{t('interviews.filterLabel')}</span>
+          <button
+            onClick={() => setRoundFilter(null)}
+            className={`inline-flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-full border transition-colors ${
+              roundFilter === null ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            {t('interviews.filterAll')} <span className="opacity-60">{stats.total}</span>
+          </button>
+          {roundKeysPresent.map(key => {
+            const meta = INTERVIEW_ROUND_META[key]
+            const on = roundFilter === key
+            return (
+              <button
+                key={key}
+                onClick={() => setRoundFilter(on ? null : key)}
+                className={`inline-flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-full border transition-colors ${
+                  on ? `${meta.color} border-current` : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <span>{meta.icon}</span>{roundLabel(key, t)} <span className="opacity-60">{roundCounts[key]}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {empty ? (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm text-center py-16 px-6">
           <div className="text-4xl mb-3">🎤</div>
           <p className="text-gray-700 font-semibold">{t('interviews.emptyTitle')}</p>
           <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">{t('interviews.emptyBody')}</p>
+        </div>
+      ) : stats.visible === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm text-center py-14 px-6">
+          <p className="text-gray-600 font-medium">{t('interviews.filterEmpty')}</p>
+          <button onClick={() => setRoundFilter(null)} className="mt-3 text-sm text-indigo-600 hover:underline">
+            {t('interviews.filterClear')}
+          </button>
         </div>
       ) : (
         <>
@@ -312,6 +368,7 @@ export default function InterviewsBoard({
             accent="bg-purple-500"
             jobs={active}
             openId={openId}
+            highlightRound={roundFilter}
             onOpen={open}
             onPrep={(j) => open(j, 'interview')}
             onSTAR={onSTAR}
@@ -324,6 +381,7 @@ export default function InterviewsBoard({
             accent="bg-green-500"
             jobs={outcome}
             openId={openId}
+            highlightRound={roundFilter}
             onOpen={open}
             onPrep={(j) => open(j, 'interview')}
             onSTAR={onSTAR}
@@ -336,6 +394,7 @@ export default function InterviewsBoard({
             accent="bg-gray-400"
             jobs={past}
             openId={openId}
+            highlightRound={roundFilter}
             onOpen={open}
             onPrep={(j) => open(j, 'interview')}
             onSTAR={onSTAR}

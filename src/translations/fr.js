@@ -110,6 +110,22 @@ export const fr = {
     starReady: 'STAR prêt',
     emptyTitle: 'Pas encore d’entretien',
     emptyBody: 'Dès qu’une candidature atteint l’étape entretien — ou que vous réalisez un entretien blanc — elle apparaît ici pour vous préparer et l’analyser.',
+    filterLabel: 'Type d’entretien',
+    filterAll: 'Tous',
+    filterEmpty: 'Aucune candidature avec ce type d’entretien.',
+    filterClear: 'Afficher tous les types d’entretien',
+    noRoundYet: 'Type non détecté',
+    roundBadgeTip: 'Type d’entretien détecté depuis le calendrier / l’email',
+  },
+
+  // Libellés des tours / types d’entretien (détectés depuis le calendrier & l’email)
+  interviewRounds: {
+    screening: 'Préqualification',
+    technical: 'Technique',
+    manager: 'Manager',
+    panel: 'Panel / équipe',
+    final: 'Final',
+    interview: 'Entretien',
   },
 
   // Extension
