@@ -177,6 +177,23 @@ export function hasInterviewProcess(job) {
   return false
 }
 
+// An interview candidature that has LEFT the active pipeline — won (offer/hired),
+// lost (rejected/cancelled), or shelved (archived). `done` is a resolved-past
+// interview. Everything else with an interview process is still in progress.
+const INTERVIEW_RESOLVED_STATUSES = new Set(['offer', 'done', 'rejected', 'rejected_ats', 'cancelled', 'archived'])
+
+// A candidature that reached an interview AND is still IN PROGRESS — mirrors the
+// "En cours" bucket on the Interviews board (SECTION_OF === 'active'). Drives the
+// Interviews tab badge, so its number means "N interview processes still live"
+// (an interview coming up / awaiting the next round), NOT "N interviews ever" —
+// past, rejected and offer-closed candidatures still list in the board but don't
+// inflate the badge.
+export function isActiveInterview(job) {
+  if (!hasInterviewProcess(job)) return false
+  const effective = deriveStatusFromHistory(job?.history) || job?.status
+  return !INTERVIEW_RESOLVED_STATUSES.has(effective)
+}
+
 function normalizeCompany(name = '') {
   return name.toLowerCase()
     .replace(/\s+(sas|sasu|sarl|sa|srl|inc|ltd|llc|gmbh|bv|nv|ag|spa|oy|ab)\.?\s*$/i, '')

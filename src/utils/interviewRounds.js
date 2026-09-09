@@ -77,21 +77,6 @@ export function isInterviewEntry(h) {
   return !!h && (h.status === 'interview' || h.status === 'test' || h.status === 'done')
 }
 
-// Does the job have an UPCOMING interview — a scheduled interview/test step dated
-// today or later? Drives the "future interviews" badge on the Interviews tab.
-// `done` is excluded: it is the resolved-PAST form, never something still ahead.
-// A step dated today counts as upcoming regardless of the stored time-of-day, so
-// an interview happening later today still shows in the badge.
-export function hasUpcomingInterview(job, now = Date.now()) {
-  const startOfToday = new Date(now)
-  startOfToday.setHours(0, 0, 0, 0)
-  const t0 = startOfToday.getTime()
-  return (job?.history || []).some(h =>
-    (h?.status === 'interview' || h?.status === 'test') &&
-    h?.date && new Date(h.date).getTime() >= t0
-  )
-}
-
 // Chronological list of a job's interview steps, each tagged with its round key,
 // a 1-based ordinal (for numbering generic "Interview N" rounds), its date/note,
 // and a resolved label. Used by the board and the drawer to split by content.
