@@ -96,6 +96,12 @@ without their own key is metered per IP in `shared_key_usage` (migration 003). P
 `SHARED_KEY_TRIAL_LIMIT` calls in `SHARED_KEY_WINDOW_DAYS`, the endpoint returns
 `402 {code:'TRIAL_EXHAUSTED'}` and the app prompts for a personal key.
 
+**Web search** (Claude `web_search_20250305` server tool) is wired into
+`/api/generate-motivation-letter` to ground the letter in real company facts, but ONLY for
+callers using their OWN key (`req.body.apiKey` present) — it is billed per search and the
+trial gate meters requests, not searches, so the shared-key path stays search-free. The
+handler loops on `stop_reason:'pause_turn'` to let the server tool finish.
+
 ## Environment variables
 
 Server-side (Vercel only, never in the client bundle):

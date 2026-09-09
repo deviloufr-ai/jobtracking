@@ -13,26 +13,42 @@ const LETTER_MODEL = process.env.LETTER_MODEL || 'claude-haiku-4-5-20251001'
 const CV_CHARS = 8000
 const JD_CHARS = 6000
 
-async function callClaude(apiKey, { maxTokens, prompt }) {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: LETTER_MODEL,
-      max_tokens: maxTokens,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  })
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}))
-    throw new Error(err?.error?.message || `Claude API ${response.status}`)
+// A single logical Claude turn, with OPTIONAL server-side tools (e.g. web_search).
+// Anthropic runs server tools itself; for long-running ones it can return
+// stop_reason "pause_turn", meaning "not done — send this turn back to continue".
+// We echo the assistant content and re-request until the turn finishes (bounded).
+// Returns the concatenated text of the final assistant turn.
+async function callClaude(apiKey, { maxTokens, prompt, tools }) {
+  const messages = [{ role: 'user', content: prompt }]
+  let lastText = ''
+  for (let i = 0; i < 5; i++) {
+    const body = { model: LETTER_MODEL, max_tokens: maxTokens, messages }
+    if (tools) body.tools = tools
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(body),
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}))
+      throw new Error(err?.error?.message || `Claude API ${response.status}`)
+    }
+    const data = await response.json()
+    const content = data.content || []
+    const text = content.filter(b => b.type === 'text').map(b => b.text).join('').trim()
+    if (text) lastText = text
+    // Server tool still working — continue the same turn (echo the content back).
+    if (data.stop_reason === 'pause_turn') {
+      messages.push({ role: 'assistant', content })
+      continue
+    }
+    break
   }
-  const data = await response.json()
-  return data.content?.[0]?.text || ''
+  return lastText
 }
 
 // Detect when the model returned a refusal / meta-commentary instead of an actual
@@ -88,10 +104,16 @@ function languageInstruction(language) {
     : 'Write the ENTIRE letter in ENGLISH.'
 }
 
-function buildLetterPrompt({ cvText, jobDescription, company, position, language, context }) {
+function buildLetterPrompt({ cvText, jobDescription, company, position, language, context, webSearch }) {
   const hasContext = !!(context && context.trim())
+  const searchBlock = webSearch ? `
+=== COMPANY RESEARCH (web search available) ===
+You have a web_search tool. Run up to 3 searches to find CURRENT, VERIFIABLE facts about "${company}" — what it builds, its mission/market, a recent product or milestone. Weave ONE or TWO concrete, accurate details naturally into the opening or body so the letter is unmistakably about THIS company.
+Rules: only state facts you actually found in the results; attribute nothing you did not see. If searches return nothing usable about this specific company, do NOT invent — connect to the role's stated mission/requirements from the posting instead. Never fabricate figures, news, or quotes.
+=== END COMPANY RESEARCH ===
+` : ''
   return `You are an expert recruiter and professional letter writer. Write a compelling motivation letter (cover letter) for this job application.
-${hasContext ? `
+${searchBlock}${hasContext ? `
 === TOP PRIORITY: CANDIDATE'S INSTRUCTIONS ===
 The candidate provided the following specific instructions. These OVERRIDE the generic guidance below and MUST be reflected clearly in the letter (priorities to emphasize, tone, availability, specific points). Do not ignore or water them down:
 """
@@ -146,7 +168,7 @@ Return ONLY the motivation letter text (no preamble, no metadata). ${hasContext 
 // it catches the generic, cliché, or requirement-missing draft that a single shot
 // produces. Costs one extra Claude call but NOT an extra free-trial credit (the
 // quota is charged once per request, not per Claude call).
-function buildPolishPrompt({ draft, jobDescription, company, position, language, context }) {
+function buildPolishPrompt({ draft, jobDescription, company, position, language, context, webSearch }) {
   const hasContext = !!(context && context.trim())
   return `You are a senior hiring manager reviewing a DRAFT cover letter before it is sent. Critique it against the checklist, then return an IMPROVED version.
 
@@ -154,7 +176,9 @@ ${languageInstruction(language)}
 
 CHECKLIST — fix every item that fails:
 1. SPECIFIC, not generic: it names 1-2 concrete achievements from the candidate and ties them to THIS posting's actual requirements. A letter that could be sent to any company FAILS — make it unmistakably about this role.
-2. GROUNDED: no invented company facts, products, news, or figures. Remove or generalise anything not supported by the draft's own content.
+2. GROUNDED: ${webSearch
+    ? 'the company details in this draft were gathered via web search — KEEP them, do not strip them. Only remove empty superlatives or marketing fluff that state nothing concrete.'
+    : 'no invented company facts, products, news, or figures. Remove or generalise anything not supported by the draft\'s own content.'}
 3. HUMAN voice: no em-dashes/en-dashes; no AI-cliché phrasing ("thrilled to", "leverage", "passion for", "I am confident that", "spearheaded", "robust", "in today's fast-paced world"); varied sentence length; no rule-of-three lists on every line; consecutive paragraphs don't all open the same way.
 4. VALUE-forward: leads with what the candidate brings to THEM, not what they want.
 5. TIGHT: ${hasContext ? "respect the candidate's length instructions" : 'about 250-350 words, 3-4 paragraphs'}; cut filler.
@@ -195,11 +219,19 @@ export default async function handler(req, res) {
     res.status(400).json({ error: 'cvText and jobDescription required' }); return
   }
 
+  // Web search is gated to callers using their OWN Claude key: it is billed
+  // per-search on top of tokens, and the shared-key trial meters requests (not
+  // searches) per IP — so letting the free-trial path search would multiply cost
+  // uncontrollably. The basic web_search_20250305 variant works on Haiku 4.5 and
+  // on any Sonnet id set via LETTER_MODEL. max_uses caps the searches per letter.
+  const webSearchTools = userKey ? [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }] : null
+
   try {
-    // 1) First draft.
+    // 1) First draft (grounded with real company facts when web search is on).
     const draft = await callClaude(apiKey, {
       maxTokens: 3000,
-      prompt: buildLetterPrompt({ cvText, jobDescription, company, position, language, context }),
+      prompt: buildLetterPrompt({ cvText, jobDescription, company, position, language, context, webSearch: !!webSearchTools }),
+      tools: webSearchTools,
     })
 
     // Guard against storing a refusal as the letter (see looksLikeRefusal). This
@@ -220,7 +252,7 @@ export default async function handler(req, res) {
     try {
       const polished = await callClaude(apiKey, {
         maxTokens: 3000,
-        prompt: buildPolishPrompt({ draft, jobDescription, company, position, language, context }),
+        prompt: buildPolishPrompt({ draft, jobDescription, company, position, language, context, webSearch: !!webSearchTools }),
       })
       if (polished && polished.trim() && !looksLikeRefusal(polished)) letter = polished
     } catch { /* keep the first draft */ }
