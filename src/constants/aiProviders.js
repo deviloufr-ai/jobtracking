@@ -28,11 +28,11 @@ export const AI_PROVIDERS = {
     label: 'Gemini (Google)',
     keyStorage: 'jobtrackr_ai_key_gemini',
     settingsModelKey: 'aiModelGemini',
-    defaultModel: 'gemini-2.5-flash',
+    defaultModel: 'gemini-3.6-flash',
     needsBaseUrl: false,
     free: true,
     keyPlaceholder: 'AIza...',
-    modelPlaceholder: 'gemini-2.5-flash',
+    modelPlaceholder: 'gemini-3.6-flash',
     keysUrl: 'https://aistudio.google.com/app/apikey',
   },
   openai: {

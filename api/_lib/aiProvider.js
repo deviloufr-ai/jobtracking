@@ -28,7 +28,7 @@ export const PROVIDER_LABELS = {
 // keeps its own default (each endpoint passes the model it wants), so it's absent
 // here on purpose.
 const PROVIDER_DEFAULT_MODEL = {
-  gemini: 'gemini-2.5-flash',
+  gemini: 'gemini-3.6-flash',
   openai: 'gpt-4o-mini',
 }
 
