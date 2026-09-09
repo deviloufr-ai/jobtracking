@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   sentJobs, hasResponse, maxStageReached, responseRate, interviewRate,
-  applicationDate, mondayOf,
+  applicationDate, mondayOf, STAGE_RANK,
 } from './metrics'
 
 const iso = d => new Date(d).toISOString().split('T')[0]
@@ -72,5 +72,31 @@ describe('date helpers', () => {
     expect(m.getDay()).toBe(1)   // Monday
     expect(m.getDate()).toBe(3)
     expect(m.getMonth()).toBe(7) // August (0-indexed)
+  })
+})
+
+describe('done (completed interview) is not counted as an offer', () => {
+  it('ranks done at the interview level, below offer', () => {
+    expect(STAGE_RANK.done).toBe(STAGE_RANK.interview)
+    expect(STAGE_RANK.done).toBeLessThan(STAGE_RANK.offer)
+  })
+  it('a completed interview reaches interview (>=3) but NOT offer (>=4)', () => {
+    // Past interview auto-converts to status "done" across the app.
+    const doneJob = { status: 'done', history: [{ status: 'sent', date: '2026-01-01' }, { status: 'done', date: '2026-01-05' }] }
+    expect(maxStageReached(doneJob)).toBe(3)
+    expect(maxStageReached(doneJob) >= 3).toBe(true)  // counts as an interview
+    expect(maxStageReached(doneJob) >= 4).toBe(false) // does NOT count as an offer
+  })
+  it('a real offer still reaches the offer stage', () => {
+    const offerJob = { status: 'offer', history: [{ status: 'interview', date: '2026-01-01' }, { status: 'offer', date: '2026-01-10' }] }
+    expect(maxStageReached(offerJob) >= 4).toBe(true)
+  })
+  it('interviewRate counts completed interviews; a done-only pipeline yields 0 offers at >=4', () => {
+    const jobs = [
+      { status: 'done', history: [{ status: 'sent', date: '2026-01-01' }, { status: 'done', date: '2026-01-05' }] },
+      { status: 'sent', history: [{ status: 'sent', date: '2026-01-02' }] },
+    ]
+    expect(interviewRate(jobs)).toBe(50)                                   // 1 of 2 reached interview
+    expect(jobs.filter(j => maxStageReached(j) >= 4).length).toBe(0)       // 0 offers
   })
 })

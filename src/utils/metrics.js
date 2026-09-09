@@ -8,9 +8,12 @@
 export const DAY = 86400000
 
 // Funnel stage ordering. waiting sits alongside reviewing (both = "in review").
+// `done` is a COMPLETED interview (past-dated interviews auto-convert to it), so it
+// ranks WITH interview (3), NOT above offer — otherwise a finished interview would
+// be counted as an offer in the funnel (reachedOffer = maxStageReached >= 4).
 // Terminal states (rejected/cancelled/archived) rank 0 on their own, but a job
 // that reached a stage still counts for it via its dated history entries.
-export const STAGE_RANK = { todo: 0, sent: 1, reviewing: 2, waiting: 2, interview: 3, offer: 4, done: 5 }
+export const STAGE_RANK = { todo: 0, sent: 1, reviewing: 2, waiting: 2, interview: 3, done: 3, offer: 4 }
 
 // Statuses that prove an employer replied (as opposed to a still-silent "sent").
 export const RESPONSE_STATUSES = new Set(['reviewing', 'waiting', 'interview', 'offer', 'done', 'rejected', 'rejected_ats'])

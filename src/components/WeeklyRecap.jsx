@@ -8,7 +8,8 @@ import { getStatusLabel } from '../hooks/useJobs'
 // meaningful status changes recorded in each job's timeline during the window —
 // the initial todo/sent seeds are ignored so the recap reflects real movement.
 const RESPONSE = new Set(['reviewing', 'waiting'])
-const OFFERISH = new Set(['offer', 'done'])
+// `done` is a COMPLETED interview, not an offer — count it with interviews below.
+const OFFERISH = new Set(['offer'])
 const REJECT = new Set(['rejected', 'rejected_ats', 'cancelled'])
 
 export function computeWeeklyRecap(jobs, weekStart) {
@@ -37,7 +38,7 @@ export function computeWeeklyRecap(jobs, weekStart) {
       if (!inWindow(h.date)) continue
       const s = h.status
       if (RESPONSE.has(s)) responses++
-      else if (s === 'interview') interviews++
+      else if (s === 'interview' || s === 'done') interviews++
       else if (OFFERISH.has(s)) offers++
       else if (REJECT.has(s)) rejections++
       else continue // todo / sent seeds — not a status change worth surfacing
