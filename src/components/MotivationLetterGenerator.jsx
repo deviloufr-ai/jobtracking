@@ -5,6 +5,7 @@ import { aiFetch } from '../services/apiKey'
 import { useDragDock } from '../hooks/useDragDock'
 import { pushLetterVersion } from '../utils/letterVersions'
 import { deliverFile } from '../services/fileSave'
+import { enabledLearnedRulesText } from '../services/learnedRules'
 
 export default function MotivationLetterGenerator(props) {
   return (
@@ -93,7 +94,8 @@ function MotivationLetterGeneratorPanel({ job, onClose, cvText, initialContent, 
         company: job.company,
         position: job.position,
         language,
-        context
+        context,
+        learnedRules: enabledLearnedRulesText('letter'),
       })
 
       if (!response.ok) {

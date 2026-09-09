@@ -104,8 +104,14 @@ function languageInstruction(language) {
     : 'Write the ENTIRE letter in ENGLISH.'
 }
 
-function buildLetterPrompt({ cvText, jobDescription, company, position, language, context, webSearch }) {
+function buildLetterPrompt({ cvText, jobDescription, company, position, language, context, webSearch, learnedRules }) {
   const hasContext = !!(context && context.trim())
+  const learnedBlock = learnedRules ? `
+=== LESSONS FROM THIS CANDIDATE'S PAST REJECTIONS (apply these) ===
+Distilled from the candidate's own rejected applications. Apply each where it helps, without fabricating anything:
+${learnedRules}
+=== END LESSONS ===
+` : ''
   const searchBlock = webSearch ? `
 === COMPANY RESEARCH (web search available) ===
 You have a web_search tool. Run up to 3 searches to find CURRENT, VERIFIABLE facts about "${company}" — what it builds, its mission/market, a recent product or milestone. Weave ONE or TWO concrete, accurate details naturally into the opening or body so the letter is unmistakably about THIS company.
@@ -113,7 +119,7 @@ Rules: only state facts you actually found in the results; attribute nothing you
 === END COMPANY RESEARCH ===
 ` : ''
   return `You are an expert recruiter and professional letter writer. Write a compelling motivation letter (cover letter) for this job application.
-${searchBlock}${hasContext ? `
+${searchBlock}${learnedBlock}${hasContext ? `
 === TOP PRIORITY: CANDIDATE'S INSTRUCTIONS ===
 The candidate provided the following specific instructions. These OVERRIDE the generic guidance below and MUST be reflected clearly in the letter (priorities to emphasize, tone, availability, specific points). Do not ignore or water them down:
 """
@@ -214,10 +220,12 @@ export default async function handler(req, res) {
     if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
   }
 
-  const { cvText, jobDescription, company, position, language, context } = req.body
+  const { cvText, jobDescription, company, position, language, context, learnedRules } = req.body
   if (!cvText || !jobDescription) {
     res.status(400).json({ error: 'cvText and jobDescription required' }); return
   }
+  // Toggled-on lessons from the candidate's past rejections (rejection analysis).
+  const userLearnedRules = typeof learnedRules === 'string' ? learnedRules.trim().slice(0, 2000) : ''
 
   // Web search is gated to callers using their OWN Claude key: it is billed
   // per-search on top of tokens, and the shared-key trial meters requests (not
@@ -230,7 +238,7 @@ export default async function handler(req, res) {
     // 1) First draft (grounded with real company facts when web search is on).
     const draft = await callClaude(apiKey, {
       maxTokens: 3000,
-      prompt: buildLetterPrompt({ cvText, jobDescription, company, position, language, context, webSearch: !!webSearchTools }),
+      prompt: buildLetterPrompt({ cvText, jobDescription, company, position, language, context, webSearch: !!webSearchTools, learnedRules: userLearnedRules }),
       tools: webSearchTools,
     })
 

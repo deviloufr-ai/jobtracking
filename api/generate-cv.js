@@ -54,7 +54,7 @@ async function callClaude(apiKey, { maxTokens, prompt }) {
   return data.content?.[0]?.text || ''
 }
 
-function buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules, rules, additions }) {
+function buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules, rules, additions, learnedRules }) {
   // Authoritative contact details from the candidate's profile. When present,
   // these OVERRIDE whatever contact info is in the original CV text (the model
   // tends to corrupt verbatim tokens like emails/LinkedIn URLs when rewriting).
@@ -158,12 +158,26 @@ interview). If the named role is not found, attach the point to the closest role
 ${additions.map((a, i) => `${i + 1}. Under role "${a.role}"${a.company ? ` (${a.company})` : ''}: ${a.bullet}`).join('\n')}
 ` : ''
 
+  // Lessons distilled from the candidate's OWN past rejections (rejection
+  // analysis), which the candidate has toggled ON. Applied like custom rules —
+  // subordinate to the hard safety constraints (no fabrication, ATS structure).
+  const learnedRulesBlock = learnedRules ? `
+═══════════════════════════════════════════════════════════════════════════════
+📉 LESSONS FROM THIS CANDIDATE'S PAST REJECTIONS (apply — these come from real outcomes):
+═══════════════════════════════════════════════════════════════════════════════
+${learnedRules}
+
+Apply each lesson above where it legitimately helps this CV. They NEVER override the
+hard constraints: no fabrication, factual fidelity to the original CV, ATS-parse
+structure, verbatim contact details.
+` : ''
+
   return `You are an expert CV writer and ATS specialist. Adapt this CV for the "${position}" role at "${company}".
 
 ${languageInstruction}
 
 ${atsGuidance}
-${rulesBlock}${contactBlock}${customRulesBlock}${additionsBlock}
+${rulesBlock}${contactBlock}${customRulesBlock}${learnedRulesBlock}${additionsBlock}
 ═══════════════════════════════════════════════════════════════════════════════
 PRIMARY OBJECTIVE — ATS KEYWORD-COVERAGE SCORE ≥ ${targetScore} / 100:
 ═══════════════════════════════════════════════════════════════════════════════
@@ -554,7 +568,7 @@ export default async function handler(req, res) {
     if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
   }
 
-  const { cvText, jobDescription, company, position, language, atsLevel, contact, customRules, rules, mode, additions, knownGaps } = req.body
+  const { cvText, jobDescription, company, position, language, atsLevel, contact, customRules, rules, mode, additions, knownGaps, learnedRules } = req.body
   if (!cvText || !jobDescription) {
     res.status(400).json({ error: 'cvText and jobDescription required' }); return
   }
@@ -575,6 +589,8 @@ export default async function handler(req, res) {
   // Candidate's own generation rules (optional free text) — trim + hard-cap so a
   // pasted blob can't blow up the prompt. Empty string ⇒ block is omitted.
   const userRules = typeof customRules === 'string' ? customRules.trim().slice(0, 2000) : ''
+  // Toggled-on lessons from the candidate's past rejections (rejection analysis).
+  const userLearnedRules = typeof learnedRules === 'string' ? learnedRules.trim().slice(0, 2000) : ''
 
   // Toggleable rules checklist. Anything not explicitly false ⇒ ON, so an absent
   // or partial object preserves the previous (all-on) behavior. noFabrication
@@ -649,7 +665,7 @@ export default async function handler(req, res) {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       const cv = await callClaude(apiKey, {
         maxTokens: 8000,
-        prompt: buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules: userRules, rules: activeRules, additions: safeAdditions }),
+        prompt: buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules: userRules, rules: activeRules, additions: safeAdditions, learnedRules: userLearnedRules }),
       })
 
       const { score, verdict, gaps, impactScore, impactGaps } = await scoreCV(apiKey, { cv, jobDescription, company, position })

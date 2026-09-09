@@ -5,6 +5,7 @@
 // entry points always produce a CV the exact same way.
 import { aiFetch } from './apiKey'
 import { detectLanguage } from '../utils/detectLanguage'
+import { enabledLearnedRulesText } from './learnedRules'
 
 const IS_DEV = import.meta.env.DEV
 
@@ -158,6 +159,7 @@ export async function generateTailoredCV({ cvText, jobDescription, company, posi
     contact: loadProfileContact(),
     customRules: loadCustomRules(),
     rules: loadRules(),
+    learnedRules: enabledLearnedRulesText('cv'),
     additions,
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)

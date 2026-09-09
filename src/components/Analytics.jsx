@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import WeeklyRecap from './WeeklyRecap'
+import RejectionInsights from './RejectionInsights'
 import {
   DAY, parseDate, applicationDate, mondayOf,
   maxStageReached, hasResponse, sentJobs, responseRate as computeResponseRate,
@@ -329,6 +330,9 @@ export default function Analytics({ jobs, t = (k) => k, language = 'en' }) {
           </div>
         </Card>
       )}
+
+      {/* Deep AI rejection analysis + the lessons it feeds back into generation */}
+      <RejectionInsights jobs={jobs} t={t} language={language} />
     </div>
   )
 }
