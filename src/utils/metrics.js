@@ -83,3 +83,42 @@ export function interviewRate(jobs) {
   const sent = sentJobs(jobs)
   return pct(sent.filter(j => maxStageReached(j) >= 3).length, sent.length)
 }
+
+// Employer rejections (NOT candidate-cancelled). A job counts as rejected if its
+// current status is a rejection OR any history entry is — so an auto-archived old
+// rejection (status became "archived" after 90d) still counts via its history.
+// `ats` = it was an ATS auto-filter rejection (rejected_ats) rather than a human no.
+export function rejectionInfo(job) {
+  let rejected = false, ats = false
+  const mark = (s) => { if (s === 'rejected_ats') { rejected = true; ats = true } else if (s === 'rejected') { rejected = true } }
+  mark(job.status)
+  for (const h of job.history || []) mark(h.status)
+  return { rejected, ats }
+}
+
+// Break rejections down by the FURTHEST stage reached before the no, so the funnel
+// leak is legible: died before any reply, after a screen, or after an interview.
+// maxStageReached ignores rejection statuses (rank 0), so it reports the real peak.
+// Returns counts + a per-source tally (top sources first) for "where to stop applying".
+export function rejectionBreakdown(jobs) {
+  const byStage = { noResponse: 0, afterScreen: 0, afterInterview: 0 }
+  const byType = { ats: 0, human: 0 }
+  const sources = new Map()
+  let total = 0
+  for (const job of sentJobs(jobs)) {
+    const { rejected, ats } = rejectionInfo(job)
+    if (!rejected) continue
+    total++
+    const stage = maxStageReached(job)
+    if (stage >= 3) byStage.afterInterview++
+    else if (stage === 2) byStage.afterScreen++
+    else byStage.noResponse++
+    if (ats) byType.ats++; else byType.human++
+    const src = (job.source || job.platform || job.site || '').trim() || 'unknown'
+    sources.set(src, (sources.get(src) || 0) + 1)
+  }
+  const bySource = [...sources.entries()]
+    .map(([source, count]) => ({ source, count }))
+    .sort((a, b) => b.count - a.count)
+  return { total, byStage, byType, bySource }
+}

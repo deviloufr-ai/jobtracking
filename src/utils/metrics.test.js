@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   sentJobs, hasResponse, maxStageReached, responseRate, interviewRate,
-  applicationDate, mondayOf, STAGE_RANK,
+  applicationDate, mondayOf, STAGE_RANK, rejectionBreakdown,
 } from './metrics'
 
 const iso = d => new Date(d).toISOString().split('T')[0]
@@ -98,5 +98,39 @@ describe('done (completed interview) is not counted as an offer', () => {
     ]
     expect(interviewRate(jobs)).toBe(50)                                   // 1 of 2 reached interview
     expect(jobs.filter(j => maxStageReached(j) >= 4).length).toBe(0)       // 0 offers
+  })
+})
+
+describe('rejectionBreakdown', () => {
+  const jobs = [
+    // auto-rejected before any reply (ATS)
+    { status: 'rejected_ats', source: 'linkedin', history: [{ status: 'sent', date: '2026-01-01' }, { status: 'rejected_ats', date: '2026-01-02' }] },
+    // human rejection before reply
+    { status: 'rejected', source: 'indeed', history: [{ status: 'sent', date: '2026-01-01' }, { status: 'rejected', date: '2026-01-10' }] },
+    // rejected after a screen (reviewing reached)
+    { status: 'rejected', source: 'linkedin', history: [{ status: 'sent', date: '2026-01-01' }, { status: 'reviewing', date: '2026-01-03' }, { status: 'rejected', date: '2026-01-09' }] },
+    // rejected after an interview
+    { status: 'rejected', source: 'apec', history: [{ status: 'sent', date: '2026-01-01' }, { status: 'interview', date: '2026-01-05' }, { status: 'rejected', date: '2026-01-12' }] },
+    // auto-archived old rejection — signal only in history
+    { status: 'archived', source: 'indeed', history: [{ status: 'sent', date: '2025-01-01' }, { status: 'rejected', date: '2025-02-01' }] },
+    // candidate-cancelled — NOT an employer rejection
+    { status: 'cancelled', source: 'linkedin', history: [{ status: 'sent', date: '2026-01-01' }] },
+    // still active — not rejected
+    { status: 'interview', source: 'apec', history: [{ status: 'interview', date: '2026-01-06' }] },
+  ]
+  const r = rejectionBreakdown(jobs)
+
+  it('counts only employer rejections (incl. archived-after-rejection, excl. cancelled/active)', () => {
+    expect(r.total).toBe(5)
+  })
+  it('buckets by furthest stage reached before the no', () => {
+    expect(r.byStage).toEqual({ noResponse: 3, afterScreen: 1, afterInterview: 1 })
+  })
+  it('splits ATS auto-rejections from human ones', () => {
+    expect(r.byType).toEqual({ ats: 1, human: 4 })
+  })
+  it('tallies rejections by source, most first', () => {
+    expect(r.bySource[0]).toEqual({ source: 'linkedin', count: 2 })
+    expect(r.bySource.find(s => s.source === 'indeed').count).toBe(2)
   })
 })

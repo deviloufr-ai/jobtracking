@@ -21,6 +21,16 @@ export const fr = {
       title: 'Candidatures par semaine',
       subtitle: '12 dernières semaines',
     },
+    rejections: {
+      title: 'Où les candidatures sont refusées',
+      total: '{n} refus',
+      noResponse: 'Avant toute réponse',
+      afterScreen: 'Après présélection',
+      afterInterview: 'Après entretien',
+      ats: 'Refus auto (ATS)',
+      human: 'Humain',
+      bySource: 'Par source',
+    },
   },
   weeklyRecap: {
     title: 'Bilan hebdomadaire',

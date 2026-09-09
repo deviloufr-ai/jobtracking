@@ -3,6 +3,7 @@ import WeeklyRecap from './WeeklyRecap'
 import {
   DAY, parseDate, applicationDate, mondayOf,
   maxStageReached, hasResponse, sentJobs, responseRate as computeResponseRate,
+  rejectionBreakdown,
 } from '../utils/metrics'
 
 // ── Pure aggregation ──────────────────────────────────────────────────────────
@@ -116,6 +117,7 @@ export function computeAnalytics(jobs, weeks = 12) {
     stageTimes,
     funnel,
     weekly: buckets,
+    rejections: rejectionBreakdown(jobs),
   }
 }
 
@@ -142,6 +144,13 @@ function MetricCard({ label, value, suffix, hint, color = '#6366f1' }) {
 }
 
 const FUNNEL_COLORS = { sent: '#3b82f6', reviewing: '#f59e0b', interview: '#8b5cf6', offer: '#10b981' }
+
+// Rejection stages, in funnel order: how far the application got before the "no".
+const REJECTION_STAGE_ROWS = [
+  { key: 'noResponse', color: '#94a3b8' },     // died before any reply (ATS/ghost)
+  { key: 'afterScreen', color: '#f59e0b' },    // got a look, no interview
+  { key: 'afterInterview', color: '#8b5cf6' }, // interviewed, didn't convert
+]
 
 export default function Analytics({ jobs, t = (k) => k, language = 'en' }) {
   const a = useMemo(() => computeAnalytics(jobs), [jobs])
@@ -253,6 +262,59 @@ export default function Analytics({ jobs, t = (k) => k, language = 'en' }) {
           </div>
         </Card>
       </div>
+
+      {/* Rejection breakdown — where applications die, so the leak is legible */}
+      {a.rejections.total > 0 && (
+        <Card>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t('analytics.rejections.title')}</span>
+            <span className="text-[11px] text-gray-400">{t('analytics.rejections.total').replace('{n}', a.rejections.total)}</span>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-5 mt-1">
+            {/* Stage bars */}
+            <div className="flex flex-col gap-3">
+              {REJECTION_STAGE_ROWS.map(({ key, color }) => {
+                const count = a.rejections.byStage[key]
+                const pct = a.rejections.total > 0 ? (count / a.rejections.total) * 100 : 0
+                return (
+                  <div key={key}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                        <span className="text-xs text-gray-500">{t(`analytics.rejections.${key}`)}</span>
+                      </div>
+                      <span className="text-sm font-bold text-gray-700">{count}</span>
+                    </div>
+                    <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            {/* ATS vs human + top sources */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-4 text-xs">
+                <span className="text-gray-500">🤖 {t('analytics.rejections.ats')} <b className="text-gray-700">{a.rejections.byType.ats}</b></span>
+                <span className="text-gray-500">👤 {t('analytics.rejections.human')} <b className="text-gray-700">{a.rejections.byType.human}</b></span>
+              </div>
+              {a.rejections.bySource.length > 0 && (
+                <div>
+                  <span className="text-[11px] text-gray-400 uppercase tracking-wide">{t('analytics.rejections.bySource')}</span>
+                  <div className="flex flex-col gap-1 mt-1.5">
+                    {a.rejections.bySource.slice(0, 4).map(s => (
+                      <div key={s.source} className="flex items-center justify-between text-xs">
+                        <span className="text-gray-600 truncate capitalize">{s.source}</span>
+                        <span className="font-semibold text-gray-700">{s.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   )
 }

@@ -21,6 +21,16 @@ export const en = {
       title: 'Applications per week',
       subtitle: 'last 12 weeks',
     },
+    rejections: {
+      title: 'Where applications get rejected',
+      total: '{n} rejections',
+      noResponse: 'Before any reply',
+      afterScreen: 'After screening',
+      afterInterview: 'After interview',
+      ats: 'ATS auto',
+      human: 'Human',
+      bySource: 'By source',
+    },
   },
   weeklyRecap: {
     title: 'Weekly recap',
