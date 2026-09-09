@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
-import { useJobs, getStatus, historyEntryKey, hasInterviewProcess } from './hooks/useJobs'
+import { useJobs, getStatus, historyEntryKey } from './hooks/useJobs'
+import { hasUpcomingInterview } from './utils/interviewRounds'
 import { useExtensionImport } from './hooks/useExtensionImport'
 import { useExtensionDetect } from './hooks/useExtensionDetect'
 import { useExtensionUpdate } from './hooks/useExtensionUpdate'
@@ -746,9 +747,10 @@ export default function App() {
 
   const archivedCount = useMemo(() => jobs.filter(j => j.status === 'archived').length, [jobs])
   const favCount = useMemo(() => jobs.filter(j => j.favorite).length, [jobs])
-  // Candidatures that have/had an interview process — badge + filter for the
-  // dedicated Interviews board (sits below Applications in the nav).
-  const interviewCount = useMemo(() => jobs.filter(hasInterviewProcess).length, [jobs])
+  // Candidatures with an UPCOMING interview (scheduled today or later) — drives the
+  // Interviews tab badge. The board itself still lists every past/present interview
+  // (hasInterviewProcess); the badge counts only what is still ahead.
+  const interviewCount = useMemo(() => jobs.filter(hasUpcomingInterview).length, [jobs])
 
   // The connected account shown in the nav rail footer: prefer the Gmail import
   // account, otherwise fall back to the signed-in Supabase account so the row
