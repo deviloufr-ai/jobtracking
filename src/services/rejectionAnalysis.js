@@ -11,14 +11,47 @@
 import { aiFetch, getUserApiKey } from './apiKey'
 import { CLAUDE_MODEL } from '../constants/aiModel'
 
-function extractJSON(rawText) {
-  let jsonText = rawText || '{}'
-  if (jsonText.includes('```json')) {
-    jsonText = jsonText.split('```json')[1]?.split('```')[0] || rawText
-  } else if (jsonText.includes('```')) {
-    jsonText = jsonText.split('```')[1]?.split('```')[0] || rawText
+// Close an open string + any unbalanced [ ] { } at the end of a truncated JSON
+// blob (the model hit max_tokens mid-object). Best-effort: enough to recover the
+// summary + the findings/rules that DID complete, rather than throwing it all away.
+function closeTruncatedJson(t) {
+  const stack = []
+  let inStr = false, esc = false
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i]
+    if (esc) { esc = false; continue }
+    if (c === '\\') { esc = true; continue }
+    if (c === '"') { inStr = !inStr; continue }
+    if (inStr) continue
+    if (c === '{') stack.push('}')
+    else if (c === '[') stack.push(']')
+    else if (c === '}' || c === ']') stack.pop()
   }
-  return JSON.parse(jsonText.trim())
+  let out = t
+  if (inStr) out += '"'                      // close a value cut mid-string
+  out = out.replace(/\s+$/, '')
+  out = out.replace(/,\s*$/, '')             // dangling comma
+  out = out.replace(/"[^"]*"\s*:\s*$/, '')   // dangling "key": with no value
+  out = out.replace(/,\s*$/, '')
+  while (stack.length) out += stack.pop()
+  return out
+}
+
+// Robust JSON extraction from model output: tolerate a ```json fence, preamble or
+// trailing prose, and a truncated tail. Exported for tests.
+export function parseAnalysisJson(rawText) {
+  let t = (rawText || '').trim()
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  if (fence) t = fence[1].trim()
+  const start = t.indexOf('{')
+  if (start === -1) throw new Error('No JSON object in the response')
+  t = t.slice(start)
+  try { return JSON.parse(t) } catch { /* try narrowing / salvage below */ }
+  const lastClose = t.lastIndexOf('}')
+  if (lastClose > 0) {
+    try { return JSON.parse(t.slice(0, lastClose + 1)) } catch { /* salvage below */ }
+  }
+  return JSON.parse(closeTruncatedJson(t))
 }
 
 function buildPrompt(evidence, language) {
@@ -55,7 +88,9 @@ Respond with ONLY a JSON object (no markdown, no preamble) with this exact struc
   "cvRules": ["<concise, reusable rule to apply when generating THIS candidate's CVs, drawn from the findings>"],
   "letterRules": ["<concise, reusable rule to apply when generating THIS candidate's cover letters>"]
 }
-Keep findings to the 3-6 highest-leverage. cvRules/letterRules: at most 5 each, each a single actionable sentence a CV/letter generator can follow (e.g. "Lead the profile with quantified P&L/impact, not tools" or "Mirror the exact seniority title from the posting"). If the leak is clearly after-interview, say so in the summary and keep cvRules/letterRules minimal.`
+Keep findings to the 3-6 highest-leverage. cvRules/letterRules: at most 5 each, each a single actionable sentence a CV/letter generator can follow (e.g. "Lead the profile with quantified P&L/impact, not tools" or "Mirror the exact seniority title from the posting"). If the leak is clearly after-interview, say so in the summary and keep cvRules/letterRules minimal.
+
+OUTPUT FORMAT (strict): return ONLY the JSON object, MINIFIED onto a single line, with NO literal newline characters inside any string value (write flowing text, no line breaks). Keep each "summary" under ~400 characters and every "detail"/"evidence" string under ~200 characters so the whole object fits well within the token budget and is never truncated.`
 }
 
 function normalize(parsed) {
@@ -77,6 +112,16 @@ function normalize(parsed) {
   }
 }
 
+// Parse + normalize the model's text into the analysis result, turning any
+// remaining parse failure into a clear, retryable message (the call is stochastic).
+function toResult(text) {
+  try {
+    return normalize(parseAnalysisJson(text))
+  } catch {
+    throw new Error('The analysis response was malformed. Please try again.')
+  }
+}
+
 export async function analyzeRejections({ evidence, language = 'en' }) {
   const userKey = getUserApiKey()
   const tools = userKey ? [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }] : undefined
@@ -86,7 +131,7 @@ export async function analyzeRejections({ evidence, language = 'en' }) {
   for (let i = 0; i < 6; i++) {
     const res = await aiFetch('/api/claude', {
       model: CLAUDE_MODEL,
-      max_tokens: 3000,
+      max_tokens: 4000, // shared-key path clamps to 4000; give the analysis full headroom
       messages,
       ...(tools ? { tools } : {}),
     })
@@ -99,9 +144,9 @@ export async function analyzeRejections({ evidence, language = 'en' }) {
       continue
     }
     const text = content.filter(b => b.type === 'text').map(b => b.text).join('')
-    return normalize(extractJSON(text))
+    return toResult(text)
   }
   // Loop exhausted (shouldn't happen) — parse whatever we last got.
   const text = (lastData?.content || []).filter(b => b.type === 'text').map(b => b.text).join('')
-  return normalize(extractJSON(text))
+  return toResult(text)
 }
