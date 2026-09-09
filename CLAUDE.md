@@ -102,9 +102,12 @@ Server-side (Vercel only, never in the client bundle):
 `ANTHROPIC_API_KEY`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_MAPS_API_KEY`,
 `FRANCE_TRAVAIL_CLIENT_ID`, `FRANCE_TRAVAIL_SECRET`, `ADZUNA_APP_ID`, `ADZUNA_APP_KEY`,
 `SUPABASE_SERVICE_ROLE_KEY`, `SHARED_KEY_TRIAL_LIMIT`, `SHARED_KEY_WINDOW_DAYS`,
-`ALLOWED_ORIGINS`
+`ALLOWED_ORIGINS`, `CV_MODEL`, `LETTER_MODEL`
 (`GOOGLE_MAPS_API_KEY` powers `/api/jobs` commute; the France Travail + server-side
-Adzuna keys power job search. See `.env.example` for the full annotated list.)
+Adzuna keys power job search. `CV_MODEL` / `LETTER_MODEL` are OPTIONAL model overrides
+for `/api/generate-cv` and `/api/generate-motivation-letter` — both default to
+`claude-haiku-4-5-20251001`; set to a Sonnet id for higher-quality (costlier)
+generation. See `.env.example` for the full annotated list.)
 
 Client-side (compiled into the bundle — public by definition):
 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_GOOGLE_CLIENT_ID`,

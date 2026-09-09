@@ -769,6 +769,8 @@ export const en = {
   cvGeneratorUI: {
     back: 'Back',
     sourceCV: 'Source CV:',
+    impactLabel: 'Impact',
+    impactScoreHint: 'Recruiter impact / readability of this CV for a human (separate from the ATS keyword score). A high ATS with a low Impact means keyword-complete but generic.',
     photo: 'Photo',
     sideBySide: 'Side by side',
     before: 'Before',

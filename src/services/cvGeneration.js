@@ -162,7 +162,7 @@ export async function generateTailoredCV({ cvText, jobDescription, company, posi
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const data = await res.json()
-  return { cv: data.cv, atsScore: data.atsScore ?? null, verdict: data.verdict ?? null }
+  return { cv: data.cv, atsScore: data.atsScore ?? null, impactScore: data.impactScore ?? null, verdict: data.verdict ?? null }
 }
 
 // "Points manquants" — ask the server for the missing points that would make the
@@ -229,7 +229,7 @@ export async function generateCVForJob({ job, cvText, language = 'auto', templat
     }
   }
 
-  const { cv, atsScore } = await generateTailoredCV({
+  const { cv, atsScore, impactScore } = await generateTailoredCV({
     cvText,
     jobDescription: jd,
     company: job.company,
@@ -238,5 +238,5 @@ export async function generateCVForJob({ job, cvText, language = 'auto', templat
     additions,
   })
   const name = cvCandidateName(cv) || loadProfileContact()?.name || 'CV'
-  return { markdown: cv, atsScore, template, filename: `${name} - ${job.position}` }
+  return { markdown: cv, atsScore, impactScore, template, filename: `${name} - ${job.position}` }
 }

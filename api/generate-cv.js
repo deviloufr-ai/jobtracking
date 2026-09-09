@@ -17,6 +17,13 @@ const ATS_LEVELS = {
 const DEFAULT_ATS_LEVEL = 'max'
 const MAX_ATTEMPTS = 2 // 1 initial generation + up to 1 refinement pass (fewer passes → far fewer output tokens)
 
+// Generation model. Default Haiku 4.5 — cheap, keeps the free-trial path
+// affordable. Set CV_MODEL on the server (Vercel env) to a stronger model
+// (e.g. a Sonnet id) for materially better bullet writing and JD↔CV synthesis,
+// at higher per-call cost on EVERY request billed to this key (free-trial calls
+// included). Nothing changes until CV_MODEL is set.
+const GEN_MODEL = process.env.CV_MODEL || 'claude-haiku-4-5-20251001'
+
 // Per-level guidance injected into the generation prompt. Higher levels push
 // harder on reusing the posting's exact wording; all levels forbid fabrication.
 const ATS_GUIDANCE = {
@@ -34,7 +41,7 @@ async function callClaude(apiKey, { maxTokens, prompt }) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
+      model: GEN_MODEL,
       max_tokens: maxTokens,
       messages: [{ role: 'user', content: prompt }],
     }),
@@ -113,9 +120,16 @@ single column, no tables/icons), and keep the contact details verbatim. If a
 rule would break one of those, apply it only as far as the constraint allows.
 ` : ''
 
+  const impactFeedback = (feedback && Array.isArray(feedback.impactGaps) && feedback.impactGaps.length) ? `
+
+A human recruiter would also find the CV under-powered for these SPECIFIC reasons — fix each while keeping every statement truthful:
+${feedback.impactGaps.map(g => `- ${g}`).join('\n')}
+- Lead the first bullets of the most relevant roles with the quantified OUTCOME, not the tools/keywords.
+- Keep keywords present (see above) but woven into real, impactful statements — never a stuffed list.
+` : ''
   const feedbackBlock = feedback ? `
 ═══════════════════════════════════════════════════════════════════════════════
-⚠️ REVISION REQUIRED — the previous draft scored ${feedback.score}/100 on ATS keyword coverage (target ≥ ${targetScore}).
+⚠️ REVISION REQUIRED — the previous draft scored ${feedback.score}/100 on ATS keyword coverage (target ≥ ${targetScore})${feedback.impactScore != null ? `, and ${feedback.impactScore}/100 on recruiter impact` : ''}.
 ═══════════════════════════════════════════════════════════════════════════════
 An ATS keyword screener found these must-have terms from the job description MISSING or under-represented in the CV:
 ${(feedback.gaps || []).map(g => `- ${g}`).join('\n')}
@@ -124,7 +138,7 @@ Work EVERY missing term above into the CV WITHOUT inventing experience the candi
 - Surface real, relevant experience already in the original CV that legitimately involves each term (it may be buried in an older role).
 - Use the EXACT wording from the job description (same terms, same casing) wherever the candidate truthfully has that experience.
 - Front-load these terms in the Profile, the Skills section, and the first bullet of the most relevant roles.
-- If a term is a genuine hard requirement the candidate lacks, use the closest truthful equivalent from their real experience instead — never fabricate.
+- If a term is a genuine hard requirement the candidate lacks, use the closest truthful equivalent from their real experience instead — never fabricate.${impactFeedback}
 ` : ''
 
   // Points the candidate explicitly selected in the "Points manquants" panel.
@@ -347,7 +361,7 @@ Priority order (in order):
 // injects. (The in-app "Job Match Score" in scoreJob.js still measures fit — a
 // deliberately different number.)
 function buildScorePrompt({ cv, jobDescription, company, position }) {
-  return `You are an Applicant Tracking System (ATS) keyword screener. Score how well the candidate's CV COVERS the must-have keywords, skills and requirements of the job posting — exactly as an automated ATS filter would, by matching the posting's terminology against the CV text.
+  return `You are an Applicant Tracking System (ATS) keyword screener AND, separately, an experienced human recruiter. Grade the candidate's CV on TWO independent axes, defined below.
 
 CANDIDATE CV:
 ${cv}
@@ -355,17 +369,27 @@ ${cv}
 JOB DESCRIPTION (${company} - ${position}):
 ${jobDescription}
 
-METHOD (follow exactly):
+AXIS 1 — ATS KEYWORD COVERAGE (this is "score"):
 1. Extract the must-have keywords/skills/requirements from the job description: hard skills, tools, methodologies, domain terms, the role title and its key responsibilities. Aim for the 12-20 most important.
 2. For each, check whether the CV contains it — as the exact term, a very close variant, or an unmistakable synonym.
 3. score = round(100 × matched / total). This is a COVERAGE percentage: it reflects ONLY keyword/requirement presence. Do NOT deduct points for the candidate's seniority, years of experience, industry background, or overall desirability.
 4. "gaps" = the specific must-have keywords/terms from the posting that are MISSING or under-represented in the CV — the exact wording that should be added. Highest-impact missing terms first. Return [] if coverage is essentially complete.
 
+AXIS 2 — RECRUITER IMPACT (this is "impactScore"):
+A keyword-complete CV can still read as generic keyword-stuffing that a human recruiter bounces in a 6-second scan. Independently of coverage, grade how compelling the CV is to a human:
+- Do the FIRST THREE bullets of the most recent role lead with concrete, quantified OUTCOMES (not responsibilities/keyword lists)?
+- Is the Profile specific to THIS role (seniority + operating model + signature results), not a generic summary?
+- Does the top third convey clear seniority/impact in a fast scan?
+- Is the writing free of filler, templated "Led X, drove Y, resulting in Z%" repetition, and keyword-stuffing?
+impactScore = 0-100. "impactGaps" = the specific, actionable rewrites that would make it more compelling to a human (e.g. "lead the first bullet of <role> with the quantified result, not the tool list"). Highest-impact first. Return [] if the CV already reads as strong to a recruiter.
+
 Respond with ONLY a JSON object (no markdown, no preamble) with this exact structure:
 {
   "score": <number 0-100 — keyword-coverage percentage>,
   "verdict": "<STRONG_MATCH|GOOD_MATCH|PARTIAL_MATCH|WEAK_MATCH>",
-  "gaps": ["<missing JD keyword/term to surface, exact wording>", "<gap>"]
+  "gaps": ["<missing JD keyword/term to surface, exact wording>", "<gap>"],
+  "impactScore": <number 0-100 — recruiter-impact/readability>,
+  "impactGaps": ["<specific rewrite to raise human impact>", "<impact gap>"]
 }`
 }
 
@@ -390,10 +414,12 @@ async function scoreCV(apiKey, { cv, jobDescription, company, position }) {
       score: typeof parsed.score === 'number' ? parsed.score : 0,
       verdict: parsed.verdict || 'PARTIAL_MATCH',
       gaps: Array.isArray(parsed.gaps) ? parsed.gaps : [],
+      impactScore: typeof parsed.impactScore === 'number' ? parsed.impactScore : null,
+      impactGaps: Array.isArray(parsed.impactGaps) ? parsed.impactGaps : [],
     }
   } catch {
     // If scoring fails to parse, don't block the generation — treat as unknown.
-    return { score: null, verdict: null, gaps: [] }
+    return { score: null, verdict: null, gaps: [], impactScore: null, impactGaps: [] }
   }
 }
 
@@ -608,6 +634,7 @@ export default async function handler(req, res) {
     let bestCV = ''
     let bestScore = -1
     let bestVerdict = null
+    let bestImpact = null
     let feedback = null
 
     // When the candidate confirmed "Points manquants" (additions), the gaps the
@@ -625,7 +652,7 @@ export default async function handler(req, res) {
         prompt: buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules: userRules, rules: activeRules, additions: safeAdditions }),
       })
 
-      const { score, verdict, gaps } = await scoreCV(apiKey, { cv, jobDescription, company, position })
+      const { score, verdict, gaps, impactScore, impactGaps } = await scoreCV(apiKey, { cv, jobDescription, company, position })
 
       // Scoring unavailable (parse failure) — return this draft as-is.
       if (score === null) {
@@ -639,17 +666,22 @@ export default async function handler(req, res) {
         bestCV = cv
         bestScore = score
         bestVerdict = verdict
+        bestImpact = impactScore
       }
 
+      // The loop is GATED on coverage only (impact is bounded by immovable factors
+      // and would stall the loop) — but impact gaps ride along in the feedback so a
+      // refine pass triggered by low coverage also lifts the human read.
       if (score >= targetScore) break
 
-      // Below target — feed the gaps back into the next generation pass.
-      feedback = { score, gaps }
+      // Below target — feed the gaps (keyword + impact) into the next pass.
+      feedback = { score, gaps, impactScore, impactGaps }
     }
 
     res.status(200).json({
       cv: enforceContactLine(bestCV, contact),
       atsScore: bestScore < 0 ? null : bestScore,
+      impactScore: bestImpact,
       verdict: bestVerdict,
       targetScore,
     })

@@ -496,6 +496,7 @@ function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSave
   const [generatedCV, setGeneratedCV] = useState(savedCV?.markdown || '')
   const [editableCV, setEditableCV] = useState(savedCV?.markdown || '')
   const [atsScore, setAtsScore]     = useState(savedCV?.atsScore ?? null)
+  const [impactScore, setImpactScore] = useState(savedCV?.impactScore ?? null)
   const [isEditing, setIsEditing]   = useState(false)
   const [viewMode, setViewMode]     = useState('split')
   const [template, setTemplate]     = useState(savedCV?.template || 'standard')
@@ -713,8 +714,8 @@ function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSave
         try { trackCvGenerated({ applicationId: job.id, atsScore: 94, baselineScore }) } catch { /* ignore */ }
         return
       }
-      const { cv, atsScore } = await generateTailoredCV({ cvText: srcCV.text, jobDescription: jd, company: job.company, position: job.position, language: lang, additions })
-      setGeneratedCV(cv); setEditableCV(cv); setAtsScore(atsScore ?? null); setStep('preview')
+      const { cv, atsScore, impactScore } = await generateTailoredCV({ cvText: srcCV.text, jobDescription: jd, company: job.company, position: job.position, language: lang, additions })
+      setGeneratedCV(cv); setEditableCV(cv); setAtsScore(atsScore ?? null); setImpactScore(impactScore ?? null); setStep('preview')
       try { trackCvGenerated({ applicationId: job.id, atsScore: atsScore ?? undefined, baselineScore }) } catch { /* ignore */ }
     } catch(e) { setJdError(e.message); setStep('ready_to_generate') }
   }
@@ -736,6 +737,7 @@ function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSave
           filename,
           savedAt: new Date().toISOString(),
           atsScore: atsScore ?? null, // ATS keyword-coverage score, surfaced in the candidature panel
+          impactScore: impactScore ?? null, // recruiter-impact/readability score (separate from ATS coverage)
         }
       })
       setSaved(true)
@@ -860,6 +862,21 @@ function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSave
               }`}
             >
               🎯 ATS {Math.round(atsScore)}%
+            </span>
+          )}
+          {/* Recruiter-impact score — how compelling the CV is to a HUMAN, separate
+              from ATS keyword coverage. A high ATS % with a low impact % means the CV
+              is keyword-complete but reads as generic; work the impact gaps. */}
+          {step === 'preview' && impactScore !== null && (
+            <span
+              title={t('cvGeneratorUI.impactScoreHint') || "Lisibilité / impact pour un recruteur humain (distinct du score ATS)"}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${
+                impactScore >= 80 ? 'bg-green-100 text-green-700 border-green-300'
+                : impactScore >= 60 ? 'bg-blue-100 text-blue-700 border-blue-300'
+                : 'bg-amber-100 text-amber-700 border-amber-300'
+              }`}
+            >
+              👤 {t('cvGeneratorUI.impactLabel') || 'Impact'} {Math.round(impactScore)}%
             </span>
           )}
         </div>

@@ -1009,6 +1009,8 @@ export const fr = {
   cvGeneratorUI: {
     back: '← Retour',
     sourceCV: 'CV source :',
+    impactLabel: 'Impact',
+    impactScoreHint: "Impact / lisibilité de ce CV pour un recruteur humain (distinct du score ATS mots-clés). Un ATS élevé avec un Impact faible = complet en mots-clés mais générique.",
     photo: '📷 Photo',
     sideBySide: '⬛⬛ Côte à côte',
     before: '◀ Avant',

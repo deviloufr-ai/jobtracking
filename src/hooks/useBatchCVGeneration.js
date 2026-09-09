@@ -30,11 +30,11 @@ export function useBatchCVGeneration({ onUpdateJob, t = (k) => k }) {
       if (cancelRef.current) break
       setResults(prev => ({ ...prev, [job.id]: { status: 'running' } }))
       try {
-        const { markdown, atsScore, filename } = await generateCVForJob({
+        const { markdown, atsScore, impactScore, filename } = await generateCVForJob({
           job, cvText: baseCV.text, language, template, skillsMode,
         })
         onUpdateJob(job.id, {
-          cvSaved: { markdown, template, filename, savedAt: new Date().toISOString(), atsScore: atsScore ?? null },
+          cvSaved: { markdown, template, filename, savedAt: new Date().toISOString(), atsScore: atsScore ?? null, impactScore: impactScore ?? null },
         })
         setResults(prev => ({ ...prev, [job.id]: { status: 'done', atsScore } }))
       } catch (err) {

@@ -26,15 +26,19 @@ function MotivationLetterGeneratorPanel({ job, onClose, cvText, initialContent, 
   const [saved, setSaved] = useState(false)
   const editorRef = useRef(null)
 
-  // Use job-specific CV if available, otherwise allow selecting from uploaded CVs
+  // Prefer the CV tailored for THIS job (job.cvSaved.markdown) — it already has the
+  // best JD-aligned, keyword-matched bullets, so the letter and CV tell one
+  // consistent story. Fall back to the passed-in cvText (callers already pass the
+  // tailored CV), then a selected/first uploaded CV when no tailored CV exists.
   const effectiveCV = useMemo(() => {
+    if (job?.cvSaved?.markdown && job.cvSaved.markdown.trim()) return job.cvSaved.markdown
     if (cvText && cvText.trim()) return cvText
     if (selectedCVId) {
       const selected = cvs.find(c => c.id === selectedCVId)
       return selected?.text || ''
     }
     return cvs.length > 0 ? cvs[0]?.text || '' : ''
-  }, [cvText, cvs, selectedCVId])
+  }, [job?.cvSaved?.markdown, cvText, cvs, selectedCVId])
 
   const generateLetter = async () => {
     const finalCVText = effectiveCV
