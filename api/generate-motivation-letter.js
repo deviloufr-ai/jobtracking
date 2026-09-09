@@ -1,4 +1,5 @@
 import { applyCors, getClientIp, rateLimit, enforceSharedKeyQuota } from './_lib/http.js'
+import { resolveAiCredentials, callAiMessages, missingKeyMessage } from './_lib/aiProvider.js'
 
 // Generation model. Default Haiku 4.5 — cheap, keeps the free-trial path
 // affordable. Set LETTER_MODEL on the server (Vercel env) to a stronger model
@@ -18,26 +19,21 @@ const JD_CHARS = 6000
 // stop_reason "pause_turn", meaning "not done — send this turn back to continue".
 // We echo the assistant content and re-request until the turn finishes (bounded).
 // Returns the concatenated text of the final assistant turn.
-async function callClaude(apiKey, { maxTokens, prompt, tools }) {
+async function callClaude(cred, { maxTokens, prompt, tools }) {
   const messages = [{ role: 'user', content: prompt }]
   let lastText = ''
   for (let i = 0; i < 5; i++) {
-    const body = { model: LETTER_MODEL, max_tokens: maxTokens, messages }
-    if (tools) body.tools = tools
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify(body),
+    // `cred` already carries model/provider/key/baseUrl. Web-search server tools
+    // are Anthropic-only — never forward them to Gemini / an OpenAI-compatible one.
+    const { status, data } = await callAiMessages({
+      ...cred,
+      max_tokens: maxTokens,
+      messages,
+      tools: cred.provider === 'anthropic' ? tools : undefined,
     })
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}))
-      throw new Error(err?.error?.message || `Claude API ${response.status}`)
+    if (status < 200 || status >= 300) {
+      throw new Error(data?.error?.message || data?.error || `AI API ${status}`)
     }
-    const data = await response.json()
     const content = data.content || []
     const text = content.filter(b => b.type === 'text').map(b => b.text).join('').trim()
     if (text) lastText = text
@@ -212,10 +208,9 @@ export default async function handler(req, res) {
   const { ok, retryAfter } = rateLimit({ key: `motivation-letter:${getClientIp(req)}`, limit: 20, windowMs: 60_000 })
   if (!ok) { res.setHeader('Retry-After', String(retryAfter)); res.status(429).json({ error: 'Too many requests. Please slow down.' }); return }
 
-  const userKey = req.body?.apiKey?.trim()
-  const apiKey = userKey || process.env.ANTHROPIC_API_KEY
-  if (!apiKey) { res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' }); return }
-  if (!userKey) {
+  const cred = resolveAiCredentials(req, LETTER_MODEL)
+  if (cred.missingKey) { res.status(401).json({ error: missingKeyMessage(cred) }); return }
+  if (cred.usesSharedKey) {
     const quota = await enforceSharedKeyQuota(req)
     if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
   }
@@ -227,16 +222,17 @@ export default async function handler(req, res) {
   // Toggled-on lessons from the candidate's past rejections (rejection analysis).
   const userLearnedRules = typeof learnedRules === 'string' ? learnedRules.trim().slice(0, 2000) : ''
 
-  // Web search is gated to callers using their OWN Claude key: it is billed
-  // per-search on top of tokens, and the shared-key trial meters requests (not
-  // searches) per IP — so letting the free-trial path search would multiply cost
-  // uncontrollably. The basic web_search_20250305 variant works on Haiku 4.5 and
-  // on any Sonnet id set via LETTER_MODEL. max_uses caps the searches per letter.
-  const webSearchTools = userKey ? [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }] : null
+  // Web search fires ONLY on the user's OWN Claude key: it's an Anthropic server
+  // tool billed per-search on top of tokens, and the shared-key trial meters
+  // requests (not searches) per IP. So the free-trial path AND every non-Claude
+  // provider stay search-free. Works on Haiku 4.5 / any Sonnet id via LETTER_MODEL.
+  const webSearchTools = (cred.provider === 'anthropic' && !cred.usesSharedKey)
+    ? [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }]
+    : null
 
   try {
     // 1) First draft (grounded with real company facts when web search is on).
-    const draft = await callClaude(apiKey, {
+    const draft = await callClaude(cred, {
       maxTokens: 3000,
       prompt: buildLetterPrompt({ cvText, jobDescription, company, position, language, context, webSearch: !!webSearchTools, learnedRules: userLearnedRules }),
       tools: webSearchTools,
@@ -258,7 +254,7 @@ export default async function handler(req, res) {
     // keep the (already valid) first draft rather than failing the request.
     let letter = draft
     try {
-      const polished = await callClaude(apiKey, {
+      const polished = await callClaude(cred, {
         maxTokens: 3000,
         prompt: buildPolishPrompt({ draft, jobDescription, company, position, language, context, webSearch: !!webSearchTools }),
       })

@@ -1,4 +1,5 @@
 import { applyCors, getClientIp, rateLimit, enforceSharedKeyQuota } from './_lib/http.js'
+import { resolveAiCredentials, callAiMessages, missingKeyMessage } from './_lib/aiProvider.js'
 
 // ATS optimization level (set in Settings → My CV). Each level maps to the
 // target ATS keyword-COVERAGE score the generated CV must reach and how
@@ -32,25 +33,18 @@ const ATS_GUIDANCE = {
   max: `ATS OPTIMIZATION LEVEL — MAXIMUM: Aggressively mirror the job description's exact must-have keywords, skills and title wording everywhere the candidate genuinely qualifies. Front-load them in the Profile, the Skills section and the first bullet of the most relevant roles to maximise the ATS keyword match. NEVER fabricate experience the candidate doesn't have.`,
 }
 
-async function callClaude(apiKey, { maxTokens, prompt }) {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: GEN_MODEL,
-      max_tokens: maxTokens,
-      messages: [{ role: 'user', content: prompt }],
-    }),
+// `cred` is the resolved provider/key/model/baseUrl (resolveAiCredentials). For
+// the Anthropic path its model is GEN_MODEL (CV_MODEL env); other providers use
+// the user's chosen model.
+async function callClaude(cred, { maxTokens, prompt }) {
+  const { status, data } = await callAiMessages({
+    ...cred,
+    max_tokens: maxTokens,
+    messages: [{ role: 'user', content: prompt }],
   })
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}))
-    throw new Error(err?.error?.message || `Claude API ${response.status}`)
+  if (status < 200 || status >= 300) {
+    throw new Error(data?.error?.message || data?.error || `AI API ${status}`)
   }
-  const data = await response.json()
   return data.content?.[0]?.text || ''
 }
 
@@ -417,8 +411,8 @@ function extractJSON(rawText) {
   return JSON.parse(jsonText.trim())
 }
 
-async function scoreCV(apiKey, { cv, jobDescription, company, position }) {
-  const raw = await callClaude(apiKey, {
+async function scoreCV(cred, { cv, jobDescription, company, position }) {
+  const raw = await callClaude(cred, {
     maxTokens: 600,
     prompt: buildScorePrompt({ cv, jobDescription, company, position }),
   })
@@ -476,8 +470,8 @@ Respond with ONLY a JSON object (no markdown, no preamble) with this exact struc
 }`
 }
 
-async function suggestPoints(apiKey, { cvText, jobDescription, company, position, languageInstruction, knownGaps }) {
-  const raw = await callClaude(apiKey, {
+async function suggestPoints(cred, { cvText, jobDescription, company, position, languageInstruction, knownGaps }) {
+  const raw = await callClaude(cred, {
     maxTokens: 1500,
     prompt: buildSuggestPrompt({ cvText, jobDescription, company, position, languageInstruction, knownGaps }),
   })
@@ -556,14 +550,13 @@ export default async function handler(req, res) {
   const { ok, retryAfter } = rateLimit({ key: `generate-cv:${getClientIp(req)}`, limit: 20, windowMs: 60_000 })
   if (!ok) { res.setHeader('Retry-After', String(retryAfter)); res.status(429).json({ error: 'Too many requests. Please slow down.' }); return }
 
-  const userKey = req.body?.apiKey?.trim()
-  const apiKey = userKey || process.env.ANTHROPIC_API_KEY
-  if (!apiKey) { res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' }); return }
+  const cred = resolveAiCredentials(req, GEN_MODEL)
+  if (cred.missingKey) { res.status(401).json({ error: missingKeyMessage(cred) }); return }
   // Suggest mode ("Points manquants") is a small pre-generation helper that runs
   // before EVERY generation — don't charge it against the shared-key free trial
   // (it would halve the number of free CVs). Still rate-limited above. The actual
   // generation call still consumes a trial credit.
-  if (!userKey && req.body?.mode !== 'suggest') {
+  if (cred.usesSharedKey && req.body?.mode !== 'suggest') {
     const quota = await enforceSharedKeyQuota(req)
     if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
   }
@@ -609,7 +602,7 @@ export default async function handler(req, res) {
   let level = ATS_LEVELS[atsLevel] ? atsLevel : DEFAULT_ATS_LEVEL
   // Free-trial (shared) key: don't burn extra refinement rounds chasing the
   // 'max' 90 target on our dime — cap at 'balanced' so the loop exits sooner.
-  if (!userKey && ATS_LEVELS[level].target > ATS_LEVELS.balanced.target) level = 'balanced'
+  if (cred.usesSharedKey && ATS_LEVELS[level].target > ATS_LEVELS.balanced.target) level = 'balanced'
   const targetScore = ATS_LEVELS[level].target
   const atsGuidance = ATS_GUIDANCE[level]
 
@@ -635,7 +628,7 @@ export default async function handler(req, res) {
   // rate-limit + shared-key quota as generation.
   if (mode === 'suggest') {
     try {
-      const suggestions = await suggestPoints(apiKey, {
+      const suggestions = await suggestPoints(cred, {
         cvText, jobDescription, company, position, languageInstruction,
         knownGaps: Array.isArray(knownGaps) ? knownGaps.slice(0, 20).map(g => String(g).slice(0, 200)) : [],
       })
@@ -663,12 +656,12 @@ export default async function handler(req, res) {
     // Generate → self-score → refine until the CV clears targetScore, keeping
     // the highest-scoring draft seen across attempts.
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      const cv = await callClaude(apiKey, {
+      const cv = await callClaude(cred, {
         maxTokens: 8000,
         prompt: buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules: userRules, rules: activeRules, additions: safeAdditions, learnedRules: userLearnedRules }),
       })
 
-      const { score, verdict, gaps, impactScore, impactGaps } = await scoreCV(apiKey, { cv, jobDescription, company, position })
+      const { score, verdict, gaps, impactScore, impactGaps } = await scoreCV(cred, { cv, jobDescription, company, position })
 
       // Scoring unavailable (parse failure) — return this draft as-is.
       if (score === null) {

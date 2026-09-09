@@ -1,4 +1,5 @@
 import { applyCors, getClientIp, rateLimit, enforceSharedKeyQuota } from './_lib/http.js'
+import { resolveAiCredentials, callAiMessages, missingKeyMessage } from './_lib/aiProvider.js'
 
 export default async function handler(req, res) {
   if (applyCors(req, res, 'POST, OPTIONS')) return
@@ -11,51 +12,47 @@ export default async function handler(req, res) {
     const { base64, filename } = req.body
     if (!base64) { res.status(400).json({ error: 'No PDF data' }); return }
 
-    // Use Claude to extract text from PDF (supports PDF natively)
-    const userKey = req.body?.apiKey?.trim()
-    const apiKey = userKey || process.env.ANTHROPIC_API_KEY
-    if (!apiKey) { res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' }); return }
-    if (!userKey) {
+    // Extract text from the PDF natively. Claude and Gemini accept the base64
+    // document as an inline block; an OpenAI-compatible provider can't parse a
+    // PDF this way, so the adapter drops the block and the request will fail —
+    // guard it with a clear message rather than sending an empty prompt.
+    const cred = resolveAiCredentials(req, 'claude-haiku-4-5-20251001')
+    if (cred.missingKey) { res.status(401).json({ error: missingKeyMessage(cred) }); return }
+    if (cred.provider === 'openai') {
+      res.status(422).json({ error: 'PDF import needs Claude or Gemini. Switch provider in Settings, or paste the CV text manually.', code: 'PDF_UNSUPPORTED_PROVIDER' })
+      return
+    }
+    if (cred.usesSharedKey) {
       const quota = await enforceSharedKeyQuota(req)
       if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
     }
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4000,
-        messages: [{
-          role: 'user',
-          content: [
-            {
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: 'application/pdf',
-                data: base64
-              }
-            },
-            {
-              type: 'text',
-              text: `Extrait TOUT le texte de ce CV en préservant exactement la structure : sections, titres, listes, dates, noms d'entreprises. Retourne uniquement le texte brut structuré, sans commentaires.`
+    const { status, data } = await callAiMessages({
+      ...cred,
+      max_tokens: 4000,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'document',
+            source: {
+              type: 'base64',
+              media_type: 'application/pdf',
+              data: base64
             }
-          ]
-        }]
-      })
+          },
+          {
+            type: 'text',
+            text: `Extrait TOUT le texte de ce CV en préservant exactement la structure : sections, titres, listes, dates, noms d'entreprises. Retourne uniquement le texte brut structuré, sans commentaires.`
+          }
+        ]
+      }]
     })
 
-    if (!response.ok) {
-      const err = await response.json()
-      throw new Error(err?.error?.message || `Claude API ${response.status}`)
+    if (status < 200 || status >= 300) {
+      throw new Error(data?.error?.message || data?.error || `AI API ${status}`)
     }
 
-    const data = await response.json()
     const text = data.content?.[0]?.text || ''
 
     res.status(200).json({

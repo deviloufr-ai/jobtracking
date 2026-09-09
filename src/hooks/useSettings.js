@@ -19,6 +19,13 @@ export const SETTINGS_DEFAULTS = {
   checkPositionEnabled: true,
   theme: 'light',
   debugLogsEnabled: false,
+  // AI provider selection (synced across devices; the API keys themselves stay
+  // per-device in localStorage — see services/apiKey.js). Empty model ⇒ the
+  // provider's default. Needs migration 015 to sync (graceful/local until then).
+  aiProvider: 'anthropic',
+  aiModelGemini: '',
+  aiModelOpenai: '',
+  aiBaseUrl: '',
 }
 
 // Load from localStorage as fallback (for migration period)

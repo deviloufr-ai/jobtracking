@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { CLAUDE_MODEL } from '../constants/aiModel'
 import { deliverFile } from '../services/fileSave'
 import { useSettings, SETTINGS_DEFAULTS } from '../hooks/useSettings'
 import { useExtensionDetect } from '../hooks/useExtensionDetect'
@@ -20,7 +19,8 @@ import { getFlag, setFlag, FLAGS } from '../services/featureFlags'
 import { loadLocalProfile, pushProfile, pushLocalPrefs, PROFILE_SYNCED_EVENT } from '../services/profileSync'
 import { runSyncDiagnostic } from '../services/syncDiagnostic'
 import { runCalendarDiagnostic } from '../services/calendarDiagnostic'
-import { withUserApiKey } from '../services/apiKey'
+import { withUserApiKey, getProviderKey, setProviderKey } from '../services/apiKey'
+import { AI_PROVIDERS, AI_PROVIDER_IDS, DEFAULT_AI_PROVIDER } from '../constants/aiProviders'
 import { Capacitor } from '@capacitor/core'
 
 const PROFILE_KEY = 'jobtrackr_profile'
@@ -182,13 +182,32 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
   const [serverDedupResult, setServerDedupResult] = useState(null)
   const [serverDedupError, setServerDedupError] = useState(null)
 
-  // API Key state
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('jobtrackr_claude_api_key') || '')
+  // AI provider + key state. The provider choice + model live in synced settings;
+  // each provider's key stays per-device in localStorage (services/apiKey.js).
+  const aiProvider = AI_PROVIDERS[settings.aiProvider] ? settings.aiProvider : DEFAULT_AI_PROVIDER
+  const providerMeta = AI_PROVIDERS[aiProvider]
+  const activeModel = providerMeta.settingsModelKey
+    ? ((settings[providerMeta.settingsModelKey] || '').trim() || providerMeta.defaultModel)
+    : providerMeta.defaultModel
+  // Init from the active provider's stored key. getProviderKey() with no arg
+  // reads the synced provider from the localStorage settings mirror, so this is
+  // correct even before the React settings state finishes loading from IndexedDB.
+  const [apiKey, setApiKey] = useState(() => getProviderKey() || '')
   const [apiKeySaved, setApiKeySaved] = useState(false)
   const [apiKeyVisible, setApiKeyVisible] = useState(false)
   const [apiKeyTested, setApiKeyTested] = useState(false)
   const [apiKeyTestLoading, setApiKeyTestLoading] = useState(false)
   const [apiKeyTestError, setApiKeyTestError] = useState(null)
+  // Switch provider: persist the choice (syncs) and swap the key field to that
+  // provider's stored key. Done in the change handler (not an effect) so the key
+  // reload is an explicit user action, not a cascading render.
+  const handleProviderChange = (newProvider) => {
+    updateSetting('aiProvider', newProvider)
+    setApiKey(getProviderKey(newProvider) || '')
+    setApiKeySaved(false)
+    setApiKeyTested(false)
+    setApiKeyTestError(null)
+  }
 
   // Profile state
   const [profile, setProfile] = useState(loadProfile)
@@ -230,7 +249,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
       setApiKeyTestError(t('settingsAPI.errorEmpty'))
       return
     }
-    localStorage.setItem('jobtrackr_claude_api_key', apiKey)
+    setProviderKey(aiProvider, apiKey)
     setApiKeySaved(true)
     setApiKeyTestError(null)
     setTimeout(() => setApiKeySaved(false), 2000)
@@ -251,8 +270,10 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          provider: aiProvider,
           apiKey: apiKey.trim(),
-          model: CLAUDE_MODEL,
+          model: activeModel,
+          ...(providerMeta.needsBaseUrl ? { baseUrl: (settings.aiBaseUrl || '').trim() } : {}),
           max_tokens: 100,
           system: 'You are a helpful assistant.',
           messages: [{ role: 'user', content: 'Simply say "OK" to confirm your API is working.' }],
@@ -276,7 +297,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
 
   const handleClearApiKey = () => {
     setApiKey('')
-    localStorage.removeItem('jobtrackr_claude_api_key')
+    setProviderKey(aiProvider, '')
     setApiKeySaved(true)
     setApiKeyTestError(null)
     setTimeout(() => setApiKeySaved(false), 2000)
@@ -731,14 +752,28 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                   </div>
                 </Card>
 
-                <Card title={t('settingsAPI.claudeAPIKey')}>
-                  <Row label={t('settingsAPI.yourAPIKey')} hint={t('settingsAPI.yourAPIKeyHint')} wide>
+                <Card title={t('settingsAPI.providerCardTitle')}>
+                  <Row label={t('settingsAPI.provider')} hint={t('settingsAPI.providerHint')} wide>
+                    <select
+                      value={aiProvider}
+                      onChange={e => handleProviderChange(e.target.value)}
+                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all"
+                    >
+                      {AI_PROVIDER_IDS.map(id => (
+                        <option key={id} value={id}>
+                          {AI_PROVIDERS[id].label}{AI_PROVIDERS[id].free ? ` — ${t('settingsAPI.freeTierNote')}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </Row>
+
+                  <Row label={t('settingsAPI.yourAPIKey')} hint={providerMeta.keysUrl ? '' : t('settingsAPI.yourAPIKeyHint')} wide>
                     <div className="flex gap-2">
                       <input
                         type={apiKeyVisible ? 'text' : 'password'}
                         value={apiKey}
                         onChange={e => setApiKey(e.target.value)}
-                        placeholder="sk-ant-..."
+                        placeholder={providerMeta.keyPlaceholder}
                         className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all font-mono text-xs"
                       />
                       <button
@@ -750,6 +785,38 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                       </button>
                     </div>
                   </Row>
+
+                  {providerMeta.keysUrl && (
+                    <p className="text-xs text-gray-500 -mt-1 mb-1">
+                      <a href={providerMeta.keysUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+                        {t('settingsAPI.getKey')} ↗
+                      </a>
+                    </p>
+                  )}
+
+                  {providerMeta.needsBaseUrl && (
+                    <Row label={t('settingsAPI.baseUrl')} hint={t('settingsAPI.baseUrlHint')} wide>
+                      <input
+                        type="text"
+                        value={settings.aiBaseUrl || ''}
+                        onChange={e => updateSetting('aiBaseUrl', e.target.value)}
+                        placeholder={providerMeta.baseUrlPlaceholder}
+                        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all font-mono text-xs"
+                      />
+                    </Row>
+                  )}
+
+                  {providerMeta.settingsModelKey && (
+                    <Row label={t('settingsAPI.model')} hint={t('settingsAPI.modelHint')} wide>
+                      <input
+                        type="text"
+                        value={settings[providerMeta.settingsModelKey] || ''}
+                        onChange={e => updateSetting(providerMeta.settingsModelKey, e.target.value)}
+                        placeholder={providerMeta.modelPlaceholder}
+                        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all font-mono text-xs"
+                      />
+                    </Row>
+                  )}
 
                   <div className="flex gap-2 pt-2">
                     <button

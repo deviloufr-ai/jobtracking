@@ -1,4 +1,5 @@
 import { applyCors, getClientIp, rateLimit, enforceSharedKeyQuota } from './_lib/http.js'
+import { resolveAiCredentials, callAiMessages, missingKeyMessage } from './_lib/aiProvider.js'
 
 export default async function handler(req, res) {
   if (applyCors(req, res, 'POST, OPTIONS')) return
@@ -10,10 +11,9 @@ export default async function handler(req, res) {
   const { ok, retryAfter } = rateLimit({ key: `extract-profile:${getClientIp(req)}`, limit: 20, windowMs: 60_000 })
   if (!ok) { res.setHeader('Retry-After', String(retryAfter)); res.status(429).json({ error: 'Too many requests. Please slow down.' }); return }
 
-  const userKey = req.body?.apiKey?.trim()
-  const apiKey = userKey || process.env.ANTHROPIC_API_KEY
-  if (!apiKey) { res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' }); return }
-  if (!userKey) {
+  const cred = resolveAiCredentials(req, 'claude-haiku-4-5-20251001')
+  if (cred.missingKey) { res.status(401).json({ error: missingKeyMessage(cred) }); return }
+  if (cred.usesSharedKey) {
     const quota = await enforceSharedKeyQuota(req)
     if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
   }
@@ -55,26 +55,15 @@ Réponds UNIQUEMENT en JSON valide sans backticks :
 }`
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1200,
-        messages: [{ role: 'user', content: prompt }]
-      })
+    const { status, data } = await callAiMessages({
+      ...cred,
+      max_tokens: 1200,
+      messages: [{ role: 'user', content: prompt }],
     })
-
-    if (!response.ok) {
-      const err = await response.json()
-      throw new Error(err?.error?.message || `Claude API ${response.status}`)
+    if (status < 200 || status >= 300) {
+      throw new Error(data?.error?.message || data?.error || `AI API ${status}`)
     }
 
-    const data = await response.json()
     const raw = (data.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim()
     const start = raw.indexOf('{'), end = raw.lastIndexOf('}')
     const profile = JSON.parse(start !== -1 ? raw.slice(start, end + 1) : '{}')

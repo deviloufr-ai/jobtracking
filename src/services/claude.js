@@ -1,5 +1,5 @@
 import { JOB_BOARD_NAMES, normalize, isJobBoard } from '../constants/jobBoards'
-import { signalTrialExhausted } from './apiKey'
+import { signalTrialExhausted, getActiveAiConfig } from './apiKey'
 import { CLAUDE_MODEL as MODEL } from '../constants/aiModel'
 
 const IS_DEV = import.meta.env.DEV
@@ -201,8 +201,11 @@ function cachedSystem(text, enabled = true) {
 async function callClaude(systemPrompt, userContent, retries = 3) {
   if (!CLAUDE_ENDPOINT) return JSON.stringify(MOCK_PARSE_RESULT)
 
-  // Get user's API key from localStorage if available
-  const userApiKey = typeof window !== 'undefined' ? localStorage.getItem('jobtrackr_claude_api_key') : null
+  // Resolve the active provider (Claude / Gemini / OpenAI-compatible) + its key,
+  // model and base URL. Falls back to Anthropic + the shared key off-window.
+  const ai = typeof window !== 'undefined'
+    ? getActiveAiConfig()
+    : { provider: 'anthropic', apiKey: null, model: MODEL, baseUrl: null }
 
   // Queue requests to prevent cascading rate limits
   return claudeRequestQueue = claudeRequestQueue.then(async () => {
@@ -225,13 +228,15 @@ async function callClaude(systemPrompt, userContent, retries = 3) {
 
         try {
           const body = {
-            model: MODEL,
+            provider: ai.provider,
+            model: ai.model || MODEL,
             max_tokens: 2000,
             system: systemPrompt,
             messages: [{ role: 'user', content: userContent }],
           }
-          // Include user's API key if available
-          if (userApiKey) body.apiKey = userApiKey
+          // Include the active provider's key + base URL when configured.
+          if (ai.apiKey) body.apiKey = ai.apiKey
+          if (ai.baseUrl) body.baseUrl = ai.baseUrl
 
           const res = await fetch(CLAUDE_ENDPOINT, {
             method: 'POST',

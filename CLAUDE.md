@@ -24,7 +24,7 @@ prose ("v0.7", "v1.0") are documentation artifacts. Do not trust them.
 | Auth & data | Supabase (Postgres + Auth + RLS) — 15 tables, 14 migration files |
 | Local cache | IndexedDB — offline-first, this is the read path |
 | Serverless | Vercel Functions in `/api/` — 12 endpoints (Hobby plan caps functions per deploy; add AI features via the shared `/api/claude` proxy, not new endpoints) |
-| AI | Claude Haiku 4.5 via the `/api/claude` proxy, model pinned by `VITE_CLAUDE_MODEL` |
+| AI | Claude Haiku 4.5 (default) via the `/api/claude` proxy, OR a user-chosen Google Gemini / OpenAI-compatible provider (Groq, OpenRouter…). Claude model pinned by `VITE_CLAUDE_MODEL`; provider abstraction in `api/_lib/aiProvider.js` |
 | Local ML | `@xenova/transformers` — in-browser inference |
 | Mobile | Capacitor 8 → Android, `com.smartjobtracker.app` |
 | Extension | Firefox MV3 in `jobtrackr-extension/` (folder name is legacy, left deliberately) |
@@ -100,7 +100,25 @@ without their own key is metered per IP in `shared_key_usage` (migration 003). P
 `/api/generate-motivation-letter` to ground the letter in real company facts, but ONLY for
 callers using their OWN key (`req.body.apiKey` present) — it is billed per search and the
 trial gate meters requests, not searches, so the shared-key path stays search-free. The
-handler loops on `stop_reason:'pause_turn'` to let the server tool finish.
+handler loops on `stop_reason:'pause_turn'` to let the server tool finish. (Web search is
+Anthropic-only — the multi-provider adapter below doesn't carry it, so it fires only on the
+Claude path.)
+
+### AI provider selection
+
+The app speaks Anthropic's Messages shape everywhere. `api/_lib/aiProvider.js` (import-only,
+no function-count cost) translates a request to **Gemini** or any **OpenAI-compatible** endpoint
+and the response back to `{ content: [{ text }] }`, so no endpoint or component changes its
+prompt-building or `.content[0].text` parsing. Every AI endpoint (`/api/claude` + the 5 CV/letter
+helpers) resolves credentials via `resolveAiCredentials` and calls `callAiMessages`. **Only Claude
+has a shared project key** (the free trial above); Gemini/OpenAI require the user's own key — no
+shared fallback, and no per-call cost clamp (they're the user's key). On the client, one wrapper
+(`services/apiKey.js` `withUserApiKey`) injects `{ provider, model, baseUrl, apiKey }` into every
+request body. **Keys are per-device** (localStorage, per provider — anthropic reuses
+`jobtrackr_claude_api_key`); the **provider + model + base URL sync** via `user_settings`
+(`aiProvider`/`aiModelGemini`/`aiModelOpenai`/`aiBaseUrl`, migration 015 — add to
+`fieldConversion.js` `SETTINGS_TO_SUPABASE` only after the columns exist). PDF import (`parse-pdf`)
+needs Claude or Gemini; it 422s on an OpenAI-compatible provider.
 
 ## Environment variables
 

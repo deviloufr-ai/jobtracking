@@ -132,6 +132,10 @@ export const SETTINGS_TO_SUPABASE = {
   checkPositionEnabled: 'check_position_enabled',
   gmailPeriodDays: 'gmail_period_days', // migration 010
   theme: 'theme',                       // migration 010
+  aiProvider: 'ai_provider',            // migration 015
+  aiModelGemini: 'ai_model_gemini',     // migration 015
+  aiModelOpenai: 'ai_model_openai',     // migration 015
+  aiBaseUrl: 'ai_base_url',             // migration 015
 }
 
 // Build a user_settings row for an upsert(onConflict: 'user_id'). Only maps keys
