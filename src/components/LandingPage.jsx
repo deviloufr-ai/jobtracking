@@ -1,881 +1,357 @@
+import { Icon } from './landingIcons'
+
+const GROUPS = [
+  {
+    icon: 'layers',
+    title: 'Tout suivre',
+    lead: 'Toute votre recherche au même endroit, tenue à jour pour vous.',
+    items: [
+      ['Synchro Gmail', 'Offres, réponses et refus détectés tout seuls — sans rien saisir.'],
+      ['Google Agenda', 'Les entretiens apparaissent avec le lien de visio et un rappel J-1.'],
+      ['Une timeline claire', 'Chaque étape par candidature, en trois vues : tableau, kanban, plateformes.'],
+      ['Quoi faire maintenant', 'Une liste courte et priorisée : qui relancer, quoi préparer aujourd’hui.'],
+      ['Alertes utiles', 'Nouveaux emails, relances en retard, entretiens qui approchent.'],
+    ],
+  },
+  {
+    icon: 'fileText',
+    title: 'Candidater mieux',
+    lead: 'Une candidature plus solide, en une fraction du temps.',
+    items: [
+      ['CV Studio', 'Un CV réécrit pour chaque offre, vérifié ATS, export PDF en un clic.'],
+      ['Lettres & relances', 'Des brouillons qui sonnent humain — c’est vous qui envoyez.'],
+      ['Recherche d’offres intégrée', 'Parcourez les jobboards, voyez le temps de trajet, ajoutez en un clic.'],
+      ['Extension navigateur', 'Scannez une page de résultats : chaque offre est notée face à votre CV.'],
+    ],
+  },
+  {
+    icon: 'mic',
+    title: 'Réussir l’entretien',
+    lead: 'Arriver préparé plutôt que d’improviser.',
+    items: [
+      ['Entretien blanc vocal', 'Vous répondez à voix haute ; l’IA joue le recruteur et vous note.'],
+      ['Réponses STAR', 'Trois anecdotes prêtes à l’emploi, adaptées à chaque poste.'],
+      ['Espace Entretiens', 'Un onglet dédié à chaque candidature arrivée en entretien.'],
+      ['Contacts', 'Recruteurs et mises en relation réunis, avec des rappels pour relancer.'],
+    ],
+  },
+  {
+    icon: 'scale',
+    title: 'Décrocher l’offre',
+    lead: 'Trancher avec de vrais chiffres, pas au feeling.',
+    items: [
+      ['Suivi de rémunération', 'Fixe, variable, equity et avantages, côte à côte.'],
+      ['Comparaison d’offres', 'Classez les offres concurrentes par package total.'],
+      ['Assistant négociation', 'Un email ou un script d’appel ancré sur vos chiffres réels.'],
+      ['Analytics', 'Taux de réponse, dynamique et récap hebdo — découpés à votre façon.'],
+    ],
+  },
+]
+
+const NEW = [
+  { icon: 'search', title: 'Recherche d’offres intégrée', desc: 'Trouvez des postes sur de vrais jobboards et ajoutez-les sans quitter l’app.' },
+  { icon: 'mic', title: 'Espace Entretiens', desc: 'Un lieu pour chaque entretien, avec la préparation à portée de main.' },
+  { icon: 'scale', title: 'Offres & négociation', desc: 'Suivez la rému, comparez les offres et rédigez votre demande.' },
+  { icon: 'sparkles', title: 'Votre propre IA', desc: 'Claude, Gemini ou une clé compatible OpenAI — au choix.' },
+]
+
+const WHO = [
+  { icon: 'zap', title: 'Candidat en recherche active', desc: 'Vous envoyez 20 à 50 candidatures par mois et jonglez avec réponses, entretiens et offres. Excel a lâché depuis longtemps.' },
+  { icon: 'repeat', title: 'En reconversion', desc: 'Nouveau secteur, nouveau départ. Il vous faut une stratégie claire, de la prépa réelle et un retour honnête sur votre CV.' },
+  { icon: 'target', title: 'Senior en repositionnement', desc: '10 ans et plus d’expérience, quelques postes premium en vue. Vous voulez du signal précis, pas du bruit.' },
+]
+
 export default function LandingPage({ onLogin }) {
   return (
-    <div style={{
-      background: '#0c0f16',
-      color: '#eef0f6',
-      fontFamily: "'Inter', sans-serif",
-      lineHeight: 1.55,
-      minHeight: '100vh'
-    }}>
+    <div className="sjt">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap');
 
         * { box-sizing: border-box; }
 
-        .page {
-          max-width: 1040px;
-          margin: 0 auto;
-          padding: 0 28px;
+        .sjt {
+          --paper:#f7f3ec; --card:#fffdf8; --ink:#1e1a15; --body:#4f473d;
+          --muted:#8a8175; --line:#e8e1d4; --line-2:#ddd3c2;
+          --accent:#b04a24; --accent-dark:#8f3a1a; --accent-soft:#f4e5da;
+          background:var(--paper); color:var(--body);
+          font-family:'Inter', system-ui, -apple-system, sans-serif;
+          line-height:1.6; min-height:100vh; -webkit-font-smoothing:antialiased;
         }
+        .sjt ::selection { background:var(--accent-soft); }
+        .serif { font-family:'Fraunces', Georgia, 'Times New Roman', serif; font-optical-sizing:auto; }
+        .wrap { max-width:1080px; margin:0 auto; padding:0 24px; }
 
-        .nav {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 26px 0;
-          border-bottom: 1px solid #2b3242;
+        .nav { display:flex; align-items:center; justify-content:space-between; padding:22px 0; }
+        .brand { display:flex; align-items:center; gap:11px; font-weight:600; font-size:17px; color:var(--ink); letter-spacing:-0.01em; }
+        .brand-mark { width:28px; height:28px; border-radius:8px; background:var(--accent); color:#fff; display:grid; place-items:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+
+        .btn { font-family:inherit; font-weight:600; font-size:15px; padding:12px 20px; border-radius:11px; text-decoration:none; display:inline-flex; align-items:center; gap:9px; cursor:pointer; border:1px solid transparent; transition:transform .15s ease, background .15s ease, border-color .15s ease; }
+        .btn-primary { background:var(--accent); color:#fff; box-shadow:0 1px 2px rgba(30,26,21,.12); }
+        .btn-primary:hover { background:var(--accent-dark); transform:translateY(-1px); }
+        .btn-ghost { background:transparent; color:var(--ink); border-color:var(--line-2); }
+        .btn-ghost:hover { border-color:var(--ink); }
+        .nav .btn { padding:10px 16px; font-size:14px; }
+
+        .kick { font-size:12.5px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--accent); margin-bottom:14px; }
+        .pill { display:inline-flex; align-items:center; gap:8px; font-size:13px; font-weight:600; letter-spacing:.02em; color:var(--accent-dark); background:var(--accent-soft); padding:6px 13px; border-radius:999px; }
+
+        .hero { padding:38px 0 22px; }
+        .hero h1 { font-weight:500; font-size:clamp(37px,5.4vw,60px); line-height:1.04; letter-spacing:-0.022em; color:var(--ink); margin:22px 0 0; max-width:800px; }
+        .hl { background:linear-gradient(transparent 60%, var(--accent-soft) 60%); padding:0 .04em; }
+        .lede { margin:20px 0 0; font-size:18px; color:var(--body); max-width:610px; }
+        .ctas { margin-top:30px; display:flex; gap:12px; flex-wrap:wrap; }
+        .free { margin:18px 0 0; font-size:14px; color:var(--muted); max-width:580px; }
+
+        .flow { margin-top:44px; background:var(--card); border:1px solid var(--line); border-radius:18px; padding:26px 28px 24px; box-shadow:0 1px 3px rgba(30,26,21,.05); }
+        .flow-label { font-size:13px; color:var(--muted); margin-bottom:22px; }
+        .flow-steps { position:relative; display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+        .flow-steps::before { content:""; position:absolute; top:16px; left:6%; right:6%; height:2px; background:var(--line-2); }
+        .flow-fill { position:absolute; top:16px; left:6%; height:2px; background:var(--accent); width:0; animation:grow 2.2s cubic-bezier(.6,.02,.3,1) forwards .35s; }
+        @keyframes grow { to { width:44%; } }
+        .fstep { position:relative; z-index:1; }
+        .fnode { width:34px; height:34px; border-radius:50%; border:2px solid var(--line-2); background:var(--paper); display:grid; place-items:center; font-size:12.5px; font-weight:600; color:var(--muted); }
+        .fstep.on .fnode { border-color:var(--accent); background:var(--accent); color:#fff; }
+        .fstep h4 { margin:13px 0 3px; font-size:14.5px; font-weight:600; color:var(--ink); }
+        .fstep p { margin:0; font-size:12.5px; color:var(--muted); line-height:1.45; max-width:180px; }
+
+        .section { padding:54px 0; border-top:1px solid var(--line); }
+        .head { max-width:660px; margin-bottom:36px; }
+        .head h2 { font-weight:500; font-size:clamp(27px,3.4vw,35px); line-height:1.12; letter-spacing:-0.018em; color:var(--ink); margin:0; }
+        .head p { margin:13px 0 0; font-size:16.5px; color:var(--body); }
+
+        .steps { display:grid; grid-template-columns:repeat(4,1fr); gap:22px; }
+        .step .n { font-family:'Fraunces',serif; font-size:34px; font-weight:500; color:var(--accent); line-height:1; }
+        .step h3 { margin:14px 0 6px; font-size:16px; font-weight:600; color:var(--ink); }
+        .step p { margin:0; font-size:14px; color:var(--body); }
+
+        .groups { display:grid; grid-template-columns:repeat(2,1fr); gap:18px; }
+        .group { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:28px; box-shadow:0 1px 3px rgba(30,26,21,.04); }
+        .group-top { display:flex; align-items:center; gap:13px; margin-bottom:6px; }
+        .group-ic { width:42px; height:42px; border-radius:12px; background:var(--accent-soft); color:var(--accent-dark); display:grid; place-items:center; flex-shrink:0; }
+        .group h3 { margin:0; font-family:'Fraunces',serif; font-size:21px; font-weight:600; letter-spacing:-0.01em; color:var(--ink); }
+        .group .lead { margin:0 0 18px; font-size:14px; color:var(--muted); }
+        .flist { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:13px; }
+        .flist li { display:flex; gap:11px; align-items:flex-start; font-size:14px; color:var(--body); line-height:1.5; }
+        .flist .li-ic { color:var(--accent); flex-shrink:0; margin-top:3px; }
+        .flist b { color:var(--ink); font-weight:600; }
+
+        .new-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+        .newcard { position:relative; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:24px 22px; }
+        .newcard .nc-ic { color:var(--accent); margin-bottom:15px; }
+        .newcard h3 { margin:0 0 7px; font-size:15.5px; font-weight:600; color:var(--ink); }
+        .newcard p { margin:0; font-size:13.5px; color:var(--muted); line-height:1.5; }
+        .badge { position:absolute; top:15px; right:15px; font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--accent-dark); background:var(--accent-soft); border-radius:6px; padding:3px 7px; }
+
+        .android { display:flex; align-items:center; gap:22px; flex-wrap:wrap; background:var(--card); border:1px solid var(--line); border-radius:18px; padding:26px 28px; box-shadow:0 1px 3px rgba(30,26,21,.04); }
+        .android-ic { width:56px; height:56px; border-radius:14px; background:var(--accent-soft); color:var(--accent-dark); display:grid; place-items:center; flex-shrink:0; }
+        .android .txt { flex:1; min-width:220px; }
+        .android .txt b { display:block; font-family:'Fraunces',serif; font-size:18px; font-weight:600; color:var(--ink); margin-bottom:4px; }
+        .android .txt span { font-size:14px; color:var(--muted); }
+
+        .who { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+        .who-card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:28px; }
+        .who-ic { width:42px; height:42px; border-radius:12px; background:var(--accent-soft); color:var(--accent-dark); display:grid; place-items:center; margin-bottom:16px; }
+        .who-card h3 { margin:0 0 9px; font-family:'Fraunces',serif; font-size:18px; font-weight:600; color:var(--ink); }
+        .who-card p { margin:0; font-size:14px; color:var(--body); }
+
+        footer { border-top:1px solid var(--line); padding:44px 0 56px; }
+        .foot { display:grid; grid-template-columns:1.6fr 1fr 1fr; gap:36px; }
+        .foot h4 { font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 14px; }
+        .foot .origin { font-size:14px; color:var(--body); line-height:1.7; max-width:440px; }
+        .foot .stack { font-size:14px; color:var(--body); line-height:1.9; }
+        .foot-links { display:flex; flex-direction:column; gap:10px; font-size:14px; }
+        .foot-links a { color:var(--body); text-decoration:none; display:inline-flex; align-items:center; gap:7px; }
+        .foot-links a:hover { color:var(--accent); }
+
+        @media (max-width:860px) {
+          .flow-steps { grid-template-columns:1fr 1fr; row-gap:26px; }
+          .flow-steps::before, .flow-fill { display:none; }
+          .fstep p { max-width:none; }
+          .steps { grid-template-columns:1fr 1fr; }
+          .groups { grid-template-columns:1fr; }
+          .new-grid { grid-template-columns:1fr 1fr; }
+          .who { grid-template-columns:1fr; }
+          .foot { grid-template-columns:1fr; gap:28px; }
         }
-
-        .wordmark {
-          font-family: 'Space Grotesk', sans-serif;
-          font-weight: 700;
-          font-size: 19px;
-          letter-spacing: 0.5px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
-        .dot {
-          width: 10px;
-          height: 10px;
-          border-radius: 2px;
-          background: #7b7bf7;
-          transform: rotate(45deg);
-        }
-
-        .hero {
-          padding: 64px 0 56px;
-        }
-
-        .eyebrow {
-          font-family: 'IBM Plex Mono', monospace;
-          font-size: 12px;
-          letter-spacing: 2px;
-          text-transform: uppercase;
-          color: #7b7bf7;
-          margin-bottom: 18px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
-        .eyebrow::before {
-          content: "";
-          display: block;
-          width: 26px;
-          height: 1px;
-          background: #7b7bf7;
-        }
-
-        .hero h1 {
-          font-family: 'Space Grotesk', sans-serif;
-          font-size: 50px;
-          font-weight: 700;
-          line-height: 1.12;
-          letter-spacing: -1px;
-          max-width: 760px;
-          margin: 0;
-        }
-
-        .hero h1 em {
-          font-style: normal;
-          color: #7b7bf7;
-        }
-
-        .lede {
-          margin-top: 20px;
-          font-size: 17px;
-          color: #9aa3ba;
-          max-width: 580px;
-        }
-
-        .ctas {
-          margin-top: 32px;
-          display: flex;
-          gap: 12px;
-          flex-wrap: wrap;
-        }
-
-        .btn {
-          font-family: 'Inter', sans-serif;
-          font-weight: 600;
-          font-size: 14px;
-          padding: 12px 22px;
-          border-radius: 8px;
-          text-decoration: none;
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          transition: transform .15s ease, border-color .15s ease;
-          border: none;
-          cursor: pointer;
-        }
-
-        .btn-primary {
-          background: #7b7bf7;
-          color: #0c0f16;
-        }
-
-        .btn-primary:hover {
-          transform: translateY(-1px);
-        }
-
-        .btn-secondary {
-          background: transparent;
-          color: #eef0f6;
-          border: 1px solid #2b3242;
-        }
-
-        .btn-secondary:hover {
-          border-color: #7b7bf7;
-        }
-
-        .badge {
-          font-family: 'IBM Plex Mono', monospace;
-          font-size: 10px;
-          letter-spacing: 1px;
-          text-transform: uppercase;
-          color: #0c0f16;
-          background: #f4a73c;
-          border-radius: 4px;
-          padding: 2px 7px;
-          font-weight: 700;
-        }
-
-        .pipeline {
-          margin-top: 56px;
-          background: #161b26;
-          border: 1px solid #2b3242;
-          border-radius: 14px;
-          padding: 28px 28px 22px;
-          overflow: hidden;
-          position: relative;
-        }
-
-        .pipeline-label {
-          font-family: 'IBM Plex Mono', monospace;
-          font-size: 11px;
-          letter-spacing: 1.5px;
-          text-transform: uppercase;
-          color: #6b7488;
-          margin-bottom: 24px;
-        }
-
-        .pipeline-track {
-          position: relative;
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 0;
-        }
-
-        .pipeline-track::before {
-          content: "";
-          position: absolute;
-          top: 17px;
-          left: 5%;
-          right: 5%;
-          height: 2px;
-          background: #2b3242;
-          z-index: 0;
-        }
-
-        .stage {
-          position: relative;
-          z-index: 1;
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-        }
-
-        .node {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          border: 2px solid #2b3242;
-          background: #0c0f16;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-family: 'IBM Plex Mono', monospace;
-          font-size: 12px;
-          font-weight: 600;
-          color: #9aa3ba;
-          margin-bottom: 14px;
-        }
-
-        .stage.active .node {
-          border-color: #7b7bf7;
-          color: #7b7bf7;
-          background: rgba(123,123,247,0.14);
-        }
-
-        .stage-title {
-          font-weight: 600;
-          font-size: 14px;
-          margin-bottom: 4px;
-        }
-
-        .stage-desc {
-          font-size: 12.5px;
-          color: #6b7488;
-          line-height: 1.45;
-          max-width: 180px;
-        }
-
-        .runner {
-          position: absolute;
-          top: 13px;
-          width: 10px;
-          height: 10px;
-          border-radius: 50%;
-          background: #7b7bf7;
-          box-shadow: 0 0 0 4px rgba(123,123,247,0.12);
-          animation: run 9s linear infinite;
-        }
-
-        @keyframes run {
-          0% { left: 5%; opacity: 0; }
-          8% { opacity: 1; }
-          92% { opacity: 1; }
-          100% { left: 95%; opacity: 0; }
-        }
-
-        section { padding: 56px 0; }
-
-        .section-head {
-          margin-bottom: 32px;
-        }
-
-        .kicker {
-          font-family: 'IBM Plex Mono', monospace;
-          font-size: 12px;
-          letter-spacing: 2px;
-          text-transform: uppercase;
-          color: #6b7488;
-          margin-bottom: 10px;
-        }
-
-        .section-head h2 {
-          font-family: 'Space Grotesk', sans-serif;
-          font-size: 30px;
-          font-weight: 700;
-          letter-spacing: -0.5px;
-          margin: 0;
-        }
-
-        .section-head p {
-          margin-top: 10px;
-          color: #9aa3ba;
-          max-width: 600px;
-          font-size: 15px;
-        }
-
-        .problem-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 1px;
-          background: #2b3242;
-          border: 1px solid #2b3242;
-          border-radius: 12px;
-          overflow: hidden;
-        }
-
-        .problem-item {
-          background: #161b26;
-          padding: 22px;
-        }
-
-        .problem-item .num {
-          font-family: 'IBM Plex Mono', monospace;
-          font-size: 12px;
-          color: #f4a73c;
-          margin-bottom: 10px;
-        }
-
-        .problem-item h3 {
-          font-size: 15px;
-          font-weight: 600;
-          margin-bottom: 6px;
-          margin-top: 0;
-        }
-
-        .problem-item p {
-          font-size: 13px;
-          color: #9aa3ba;
-          margin: 0;
-        }
-
-        .spotlight-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 16px;
-        }
-
-        .spotlight {
-          background: #161b26;
-          border: 1px solid #2b3242;
-          border-radius: 14px;
-          padding: 26px;
-          transition: border-color .15s ease;
-        }
-
-        .spotlight:hover { border-color: #7b7bf7; }
-
-        .spotlight-head {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          margin-bottom: 14px;
-        }
-
-        .spotlight-head .s-icon { font-size: 26px; }
-
-        .spotlight-head h3 {
-          font-family: 'Space Grotesk', sans-serif;
-          font-size: 18px;
-          font-weight: 700;
-          margin: 0;
-          flex: 1;
-        }
-
-        .spotlight > p {
-          font-size: 13.5px;
-          color: #9aa3ba;
-          margin: 0 0 16px;
-          line-height: 1.55;
-        }
-
-        .spotlight ul {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .spotlight li {
-          font-size: 12.5px;
-          color: #c3cad9;
-          padding-left: 18px;
-          position: relative;
-          line-height: 1.45;
-        }
-
-        .spotlight li::before {
-          content: "\\2192";
-          position: absolute;
-          left: 0;
-          color: #7b7bf7;
-        }
-
-        .feature-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 14px;
-        }
-
-        .feature {
-          background: #161b26;
-          border: 1px solid #2b3242;
-          border-radius: 12px;
-          padding: 20px;
-          transition: border-color .15s ease;
-        }
-
-        .feature:hover { border-color: #7b7bf7; }
-
-        .feature .icon {
-          width: 34px;
-          height: 34px;
-          border-radius: 8px;
-          background: rgba(123,123,247,0.14);
-          color: #7b7bf7;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin-bottom: 14px;
-          font-size: 18px;
-        }
-
-        .feature h3 {
-          font-size: 14.5px;
-          font-weight: 600;
-          margin-bottom: 6px;
-          margin-top: 0;
-        }
-
-        .feature p {
-          font-size: 12.5px;
-          color: #9aa3ba;
-          line-height: 1.5;
-          margin: 0;
-        }
-
-        .rule { border: none; border-top: 1px solid #2b3242; }
-
-        footer { border-top: 1px solid #2b3242; padding: 40px 0 48px; }
-
-        .footer-grid {
-          display: grid;
-          grid-template-columns: 1.4fr 1fr 1fr;
-          gap: 36px;
-        }
-
-        .footer-grid h4 {
-          font-family: 'IBM Plex Mono', monospace;
-          font-size: 11px;
-          letter-spacing: 2px;
-          text-transform: uppercase;
-          color: #6b7488;
-          margin-bottom: 12px;
-          margin-top: 0;
-        }
-
-        .footer-grid .origin {
-          font-size: 13.5px;
-          color: #9aa3ba;
-          line-height: 1.7;
-          max-width: 420px;
-        }
-
-        .footer-links { display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; }
-        .footer-links a { color: #eef0f6; text-decoration: none; }
-        .footer-links a:hover { color: #7b7bf7; }
-
-        @media (max-width: 800px) {
-          .hero h1 { font-size: 36px; }
-          .pipeline-track { grid-template-columns: 1fr 1fr; row-gap: 28px; }
-          .pipeline-track::before { display: none; }
-          .problem-grid { grid-template-columns: 1fr; }
-          .spotlight-grid { grid-template-columns: 1fr; }
-          .feature-grid { grid-template-columns: repeat(2, 1fr); }
+        @media (max-width:520px) {
+          .steps, .new-grid { grid-template-columns:1fr; }
+          .nav .brand span.full { display:none; }
         }
       `}</style>
 
-      <div className="page">
+      <div className="wrap">
         {/* NAV */}
-        <div className="nav">
-          <div className="wordmark">
-            <span className="dot"></span>
-            SmartJobTracker
+        <nav className="nav">
+          <div className="brand">
+            <span className="brand-mark">S</span>
+            <span className="full">SmartJobTracker</span>
           </div>
-          <button onClick={onLogin} className="btn btn-primary">
-            Se connecter avec Google
-          </button>
-        </div>
+          <button onClick={onLogin} className="btn btn-primary">Se connecter avec Google</button>
+        </nav>
 
         {/* HERO */}
-        <section className="hero">
-          <div className="eyebrow">Copilote IA pour la recherche d'emploi</div>
-          <h1>Gérez 50 candidatures en parallèle sans y passer vos soirées.</h1>
-          <p className="lede">SmartJobTracker synchronise vos emails, détecte les statuts, adapte vos CV, rédige vos relances et vous entraîne à l'oral — pour garder le contrôle sur 15 à 50 candidatures en parallèle, sans y passer vos soirées.</p>
-          <p style={{ marginTop: '12px', fontSize: '14px', color: '#7b7bf7' }}>💡 Démarrez gratuitement — 15 actions IA offertes. Ensuite, ajoutez votre propre clé API Anthropic (gratuite) pour continuer.</p>
+        <header className="hero">
+          <span className="pill">Votre recherche d’emploi, enfin organisée</span>
+          <h1 className="serif">Toutes vos candidatures, au <span className="hl">même endroit, au calme</span>.</h1>
+          <p className="lede">SmartJobTracker lit votre boîte mail, suit chaque candidature, adapte votre CV, vous entraîne à l’oral et vous aide à peser l’offre — pour gérer 15 à 50 candidatures en parallèle sans y passer vos soirées.</p>
           <div className="ctas">
-            <button className="btn btn-primary" onClick={onLogin}>
-              Se connecter avec Google
-            </button>
-            <a href="https://github.com/deviloufr-ai/jobtracking" target="_blank" rel="noreferrer" className="btn btn-secondary">
-              Code source sur GitHub
+            <button onClick={onLogin} className="btn btn-primary">Se connecter avec Google</button>
+            <a href="https://github.com/deviloufr-ai/jobtracking" target="_blank" rel="noreferrer" className="btn btn-ghost">
+              <Icon name="github" size={17} /> Voir le code
             </a>
           </div>
+          <p className="free">Gratuit pour commencer — 15 actions IA offertes. Ensuite, branchez votre propre clé API gratuite (Claude, Gemini ou OpenAI). Vos données restent les vôtres.</p>
 
-          {/* SIGNATURE PIPELINE */}
-          <div className="pipeline">
-            <div className="pipeline-label">Le cœur du produit — chaque candidature suit ce pipeline, automatiquement tenu à jour</div>
-            <div className="pipeline-track">
-              <div className="runner"></div>
-              <div className="stage active">
-                <div className="node">01</div>
-                <div className="stage-title">Envoyée</div>
-                <div className="stage-desc">Détectée et créée automatiquement depuis Gmail, sans saisie.</div>
-              </div>
-              <div className="stage active">
-                <div className="node">02</div>
-                <div className="stage-title">En cours</div>
-                <div className="stage-desc">Statut mis à jour à chaque échange — accusés, relances, refus ATS.</div>
-              </div>
-              <div className="stage">
-                <div className="node">03</div>
-                <div className="stage-title">Entretien</div>
-                <div className="stage-desc">CV adapté, réponses STAR et entretien blanc vocal — prêt le jour J.</div>
-              </div>
-              <div className="stage">
-                <div className="node">04</div>
-                <div className="stage-title">Offre</div>
-                <div className="stage-desc">Objectif atteint. L'historique reste pour analyser votre stratégie.</div>
-              </div>
+          {/* LIFECYCLE */}
+          <div className="flow">
+            <div className="flow-label">Chaque candidature suit le même pipeline simple — tenu à jour pour vous.</div>
+            <div className="flow-steps">
+              <div className="flow-fill" />
+              {[
+                ['01', 'Envoyée', 'Repérée dans Gmail et créée toute seule — aucune saisie.', true],
+                ['02', 'En cours', 'Le statut évolue à chaque réponse, relance et refus.', true],
+                ['03', 'Entretien', 'CV adapté, réponses STAR et entretien blanc vocal — prêt le jour J.', false],
+                ['04', 'Offre', 'Comparez, négociez, décidez. L’historique reste pour la suite.', false],
+              ].map(([n, title, desc, on]) => (
+                <div key={n} className={`fstep${on ? ' on' : ''}`}>
+                  <div className="fnode">{n}</div>
+                  <h4>{title}</h4>
+                  <p>{desc}</p>
+                </div>
+              ))}
             </div>
           </div>
-        </section>
+        </header>
 
-        <hr className="rule" />
-
-        {/* ANDROID APP */}
-        <section>
-          <div className="section-head">
-            <div className="kicker">Application Android</div>
-            <h2>Emportez votre recherche dans votre poche.</h2>
-            <p>La même application, en natif sur Android : suivi, timeline, relances et coach — synchronisés avec la version web.</p>
+        {/* HOW IT WORKS */}
+        <section className="section">
+          <div className="head">
+            <div className="kick">Comment ça marche</div>
+            <h2 className="serif">Du chaos de la boîte mail à une prochaine action claire.</h2>
           </div>
-          <div style={{ background: '#161b26', border: '1px solid #2b3242', borderRadius: '14px', padding: '28px', display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
-            <div style={{ fontSize: '46px', lineHeight: 1 }}>🤖</div>
-            <div style={{ flex: 1, minWidth: '220px' }}>
-              <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '18px', fontWeight: 700, marginBottom: '6px' }}>SmartJobTracker pour Android</div>
-              <div style={{ fontSize: '13.5px', color: '#9aa3ba', lineHeight: 1.55 }}>Téléchargez le fichier .apk et installez-le directement. Autorisez « sources inconnues » à l'installation. <span style={{ color: '#6b7488' }}>≈ 6 Mo · Android 7+</span></div>
-            </div>
-            <a href="/smartjobtracker.apk" download className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>⬇ Télécharger l'APK</a>
-          </div>
-        </section>
-
-        <hr className="rule" />
-
-        {/* PROBLEM */}
-        <section>
-          <div className="section-head">
-            <div className="kicker">Le problème</div>
-            <h2>Chercher un emploi sans outil adapté, c'est un deuxième emploi.</h2>
-            <p>Au-delà de 20 candidatures actives, les outils classiques ne tiennent plus la charge — et c'est le candidat qui compense.</p>
-          </div>
-          <div className="problem-grid">
+          <div className="steps">
             {[
-              { num: '01 / Dispersion', title: 'Cinq canaux, zéro hub', desc: 'LinkedIn, jobboards, emails directs, réseau, candidatures spontanées — aucune vue d\'ensemble.' },
-              { num: '02 / Contexte perdu', title: '"Où en étais-je avec eux ?"', desc: 'Impossible de retrouver l\'historique d\'une candidature sans rouvrir 10 emails.' },
-              { num: '03 / Emails noyés', title: 'Refus ATS invisibles', desc: 'Confirmations, relances et refus automatiques se perdent dans la boîte de réception.' },
-              { num: '04 / Pas de priorités', title: 'Quoi faire aujourd\'hui ?', desc: 'Aucun signal pour savoir qui relancer, quel entretien préparer, ce qui est mort.' },
-              { num: '05 / CV rigide', title: 'Le même CV partout', desc: 'Envoyé tel quel, sans adaptation à la fiche de poste — au détriment du taux de réponse.' },
-              { num: '06 / Oral non préparé', title: 'Entretien improvisé', desc: 'Aucun entraînement, aucun feedback avant de se retrouver face au recruteur.' }
-            ].map((item, i) => (
-              <div key={i} className="problem-item">
-                <div className="num">{item.num}</div>
-                <h3>{item.title}</h3>
-                <p>{item.desc}</p>
+              ['1', 'Ajouter', 'Connectez Gmail, prenez une capture, utilisez l’extension, ou cherchez des offres dans l’app.'],
+              ['2', 'Organiser', 'Les candidatures se rangent seules. Statuts, réponses et refus détectés automatiquement.'],
+              ['3', 'Préparer', 'Adaptez un CV, rédigez la relance et entraînez-vous à l’oral, à voix haute.'],
+              ['4', 'Décider', 'Comparez les offres, préparez la négociation et voyez ce qui marche vraiment.'],
+            ].map(([n, title, desc]) => (
+              <div key={n} className="step">
+                <div className="n serif">{n}</div>
+                <h3>{title}</h3>
+                <p>{desc}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <hr className="rule" />
-
-        {/* WHAT'S NEW — SPOTLIGHT */}
-        <section>
-          <div className="section-head">
-            <div className="kicker">Nouveautés</div>
-            <h2>Quatre nouveaux modules qui font le gros du travail à votre place.</h2>
-            <p>Depuis la v0.5, SmartJobTracker ne se contente plus de suivre : il rédige, adapte, entraîne et synchronise.</p>
+        {/* FEATURE GROUPS */}
+        <section className="section">
+          <div className="head">
+            <div className="kick">Ce que vous obtenez</div>
+            <h2 className="serif">Un seul outil pour tout le parcours.</h2>
+            <p>De la première candidature à l’offre signée — organiser, rédiger, s’entraîner et décider, sans jamais ouvrir un tableur.</p>
           </div>
-          <div className="spotlight-grid">
-            {[
-              {
-                icon: '🎤',
-                title: 'Coach d\'entretien vocal',
-                desc: 'Un entretien blanc où vous répondez à la voix. L\'IA joue le recruteur, pose des questions tirées de la fiche de poste et de votre CV, puis note votre prestation.',
-                points: [
-                  'Reconnaissance vocale in-browser (Whisper WASM) — marche aussi sur Firefox & Safari',
-                  'Persona recruteur adapté au poste et à votre parcours',
-                  'Analyse et score en fin de session',
-                  'Onglet Pratique pour suivre vos progrès dans le temps'
-                ]
-              },
-              {
-                icon: '📄',
-                title: 'CV Studio adaptatif',
-                desc: 'Un CV réécrit pour chaque offre, directement depuis la candidature. Score ATS auto-vérifié jusqu\'à ≥ 90 %, export PDF en un clic.',
-                points: [
-                  '5 templates repensés, marges aérées, coupures de page propres',
-                  'Score de correspondance + couverture ATS, forces et manques détaillés',
-                  'Règles de génération ajustables (langue, ton, niveau ATS, zéro info inventée)',
-                  'Génération en lot pour toutes les candidatures sans CV'
-                ]
-              },
-              {
-                icon: '✉️',
-                title: 'Rédaction IA : emails & lettres',
-                desc: 'Des relances et des remerciements post-refus prêts à envoyer, et des lettres de motivation qui sonnent humain. Vous gardez la main — aucun envoi automatique.',
-                points: [
-                  'Remerciement envoyé en réponse dans le fil du refus, langue détectée',
-                  'Le recruteur salué par son nom quand il est connu',
-                  'Composeur d\'email complet avec bloc signature',
-                  'Lettre de motivation avec zone de contexte optionnelle'
-                ]
-              },
-              {
-                icon: '☁️',
-                title: 'Comptes réels & multi-appareils',
-                desc: 'Connexion Google, données isolées par compte, synchronisées en temps réel. Retrouvez tout sur le téléphone, la tablette et l\'ordi.',
-                points: [
-                  'Candidatures, CV, lettres, scores et données d\'entretien synchronisés',
-                  'Suppressions propagées entre appareils',
-                  'Profil et CV de base disponibles partout',
-                  'Isolation par compte (Supabase RLS) — rien n\'est vendu ni partagé'
-                ]
-              }
-            ].map((item, i) => (
-              <div key={i} className="spotlight">
-                <div className="spotlight-head">
-                  <span className="s-icon">{item.icon}</span>
-                  <h3>{item.title}</h3>
-                  <span className="badge">Nouveau</span>
+          <div className="groups">
+            {GROUPS.map((g) => (
+              <div key={g.title} className="group">
+                <div className="group-top">
+                  <span className="group-ic"><Icon name={g.icon} size={22} /></span>
+                  <h3>{g.title}</h3>
                 </div>
-                <p>{item.desc}</p>
-                <ul>
-                  {item.points.map((pt, j) => <li key={j}>{pt}</li>)}
+                <p className="lead">{g.lead}</p>
+                <ul className="flist">
+                  {g.items.map(([t, d]) => (
+                    <li key={t}>
+                      <span className="li-ic"><Icon name="check" size={17} strokeWidth={2} /></span>
+                      <span><b>{t}</b> — {d}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             ))}
           </div>
         </section>
 
-        <hr className="rule" />
-
-        {/* FEATURES */}
-        <section>
-          <div className="section-head">
-            <div className="kicker">Fonctionnalités</div>
-            <h2>Tout le produit, d'un coup d'œil.</h2>
-            <p>Organiser, enrichir, rédiger, s'entraîner et suivre ses progrès — sans jamais ouvrir un tableur.</p>
+        {/* NEW */}
+        <section className="section">
+          <div className="head">
+            <div className="kick">Nouveau</div>
+            <h2 className="serif">Tout frais de l’atelier.</h2>
+            <p>Les dernières nouveautés vous emmènent jusqu’à la signature — trouver le poste, préparer l’entretien, conclure.</p>
           </div>
-          <div className="feature-grid">
-            {[
-              { icon: '📋', title: 'Tableau de bord + 3 vues', desc: 'Vue Table, tableau Kanban en glisser-déposer, et vue Plateformes qui regroupe par job board. Filtres statut/période/mots-clés et recherche instantanée.' },
-              { icon: '📧', title: 'Gmail synchronisé', desc: 'Connectez-vous une fois : l\'IA détecte offres, accusés, relances et refus ATS, et met tout à jour sans la moindre saisie.' },
-              { icon: '📅', title: 'Calendrier synchronisé', desc: 'Google Calendar intégré. Les entretiens apparaissent seuls avec les liens Zoom/Teams. Rappel J-1, rien n\'est oublié.' },
-              { icon: '⏰', title: 'Historique consolidé', desc: '10 statuts métier, détection auto des refus ATS (Ashby, Greenhouse, Lever, Workday, Teamtailor...). Une timeline datée par candidature.' },
-              { icon: '⚡', title: 'Quoi faire maintenant', desc: 'Un moteur qui vous dit qui relancer, quel entretien préparer, où avancer. Actions classées par urgence pour rester focalisé.' },
-              { icon: '🎤', title: 'Coach d\'entretien vocal', desc: 'Entretien blanc à la voix, persona recruteur, questions tirées de la fiche de poste et de votre CV, analyse et score à la fin.' },
-              { icon: '📄', title: 'CV adapté par candidature', desc: 'CV réécrit pour chaque offre, 5 templates, score ATS auto-vérifié ≥ 90 %, aperçu et export PDF en un clic.' },
-              { icon: '✉️', title: 'Emails & lettres IA', desc: 'Relances et remerciements post-refus prêts à envoyer, lettres de motivation qui sonnent humain. Aucun envoi automatique.' },
-              { icon: '⭐', title: 'Préparation STAR', desc: '3 réponses STAR générées par fiche de poste, plus un onglet Pratique pour suivre votre progression d\'entretien.' },
-              { icon: '📊', title: 'Analytics + récap hebdo', desc: 'Tendances (candidatures/semaine, taux de réponse, velocity) et une carte récap chaque semaine : ajouts, réponses, entretiens, offres.' },
-              { icon: '☁️', title: 'Sur tous vos appareils', desc: 'Comptes Google et synchronisation temps réel des candidatures, CV, lettres, scores et données d\'entretien.' },
-              { icon: '🎯', title: '4 façons d\'ajouter', desc: 'Gmail, capture d\'écran (LinkedIn, job boards), extension Firefox ou ajout manuel — tous les chemins mènent au pipeline.' },
-              { icon: '🧩', title: 'Extension Firefox', desc: 'Scannez une page de résultats entière : chaque offre est scorée contre votre CV, vous validez, tout arrive dans le pipeline.' },
-              { icon: '🔀', title: 'Actions groupées', desc: 'Sélection multiple, fusion automatique des doublons, génération de CV en lot. Nettoyez et organisez en quelques clics.' },
-              { icon: '🎨', title: '8 thèmes', desc: 'Clair, sombre, et 6 ambiances (midnight, nocturne, ocean, forest, sunset, minimal). Synchronisé partout.' },
-              { icon: '🔔', title: 'Notifications utiles', desc: 'Alertes pour les nouveaux emails, les relances en retard, les entretiens imminents. Desktop ou in-app, à votre choix.' }
-            ].map((item, i) => (
-              <div key={i} className="feature">
-                <div className="icon">{item.icon}</div>
-                <h3>{item.title}</h3>
-                <p>{item.desc}</p>
+          <div className="new-grid">
+            {NEW.map((c) => (
+              <div key={c.title} className="newcard">
+                <span className="badge">Nouveau</span>
+                <div className="nc-ic"><Icon name={c.icon} size={24} /></div>
+                <h3>{c.title}</h3>
+                <p>{c.desc}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <hr className="rule" />
-
-        {/* HOW IT WORKS */}
-        <section>
-          <div className="section-head">
-            <div className="kicker">Comment ça marche</div>
-            <h2>Un workflow en 4 étapes pour dominer votre recherche.</h2>
+        {/* ANDROID */}
+        <section className="section">
+          <div className="head">
+            <div className="kick">Android</div>
+            <h2 className="serif">Emportez-la partout.</h2>
+            <p>La même app, en natif sur Android et synchronisée avec le web. Installez l’APK directement — autorisez les « sources inconnues » à l’invite.</p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
-            {[
-              {
-                step: '1',
-                title: 'Importer',
-                desc: 'Gmail, capture d\'écran, extension Firefox ou ajout manuel — les candidatures arrivent dans votre pipeline.'
-              },
-              {
-                step: '2',
-                title: 'Enrichir',
-                desc: 'L\'IA analyse vos emails, détecte les statuts, consolide l\'historique, adapte vos CV et prépare vos relances.'
-              },
-              {
-                step: '3',
-                title: 'Agir & s\'entraîner',
-                desc: 'Suivez les recommandations, envoyez les brouillons, passez un entretien blanc vocal et corrigez le tir.'
-              },
-              {
-                step: '4',
-                title: 'Réussir',
-                desc: 'Décrochez l\'offre. L\'historique reste : analyse de votre stratégie, amélioration continue.'
-              }
-            ].map((item, i) => (
-              <div key={i} style={{
-                background: '#161b26',
-                border: '1px solid #2b3242',
-                borderRadius: '12px',
-                padding: '24px',
-                textAlign: 'center'
-              }}>
-                <div style={{
-                  fontSize: '36px',
-                  fontWeight: '700',
-                  color: '#7b7bf7',
-                  marginBottom: '12px'
-                }}>
-                  {item.step}
-                </div>
-                <div style={{
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  marginBottom: '8px',
-                  color: '#eef0f6'
-                }}>
-                  {item.title}
-                </div>
-                <div style={{
-                  fontSize: '14px',
-                  color: '#9aa3ba',
-                  lineHeight: 1.5
-                }}>
-                  {item.desc}
-                </div>
+          <div className="android">
+            <span className="android-ic"><Icon name="smartphone" size={28} /></span>
+            <div className="txt">
+              <b>SmartJobTracker pour Android</b>
+              <span>Téléchargement direct · Android 7+ · synchronisé avec le web</span>
+            </div>
+            <a href="/smartjobtracker.apk" download className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>
+              <Icon name="download" size={17} /> Télécharger l’APK
+            </a>
+          </div>
+        </section>
+
+        {/* WHO */}
+        <section className="section">
+          <div className="head">
+            <div className="kick">Pour qui</div>
+            <h2 className="serif">Fait pour une vraie recherche active.</h2>
+          </div>
+          <div className="who">
+            {WHO.map((w) => (
+              <div key={w.title} className="who-card">
+                <span className="who-ic"><Icon name={w.icon} size={22} /></span>
+                <h3>{w.title}</h3>
+                <p>{w.desc}</p>
               </div>
             ))}
           </div>
         </section>
-
-        <hr className="rule" />
-
-        {/* AI CAPABILITIES */}
-        <section>
-          <div className="section-head">
-            <div className="kicker">L'IA à votre service</div>
-            <h2>Du parsing d'email au coaching d'entretien, sur toute la chaîne.</h2>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
-            {[
-              { icon: '📧', level: 'Capture', title: 'Parsing emails', desc: 'Analyse par lots, extraction structurée des offres, filtre pré-parse pour économiser les tokens.' },
-              { icon: '🏷️', level: 'Classement', title: 'Détection statut', desc: 'Identifie refus ATS, accusés, étapes de process et entreprises, même sur les boîtes multi-tenants.' },
-              { icon: '📄', level: 'Candidature', title: 'CV adaptatif', desc: 'Réécrit le CV selon la fiche de poste et s\'auto-vérifie jusqu\'à un score ATS ≥ 90 %.' },
-              { icon: '💌', level: 'Relance', title: 'Emails contextualisés', desc: 'Rédige relances et remerciements à partir du message du recruteur (pas d\'envoi automatique).' },
-              { icon: '📝', level: 'Motivation', title: 'Lettres humaines', desc: 'Génère des lettres qui ne sonnent pas robot, avec zone de contexte optionnelle.' },
-              { icon: '🎤', level: 'Oral', title: 'Coach d\'entretien', desc: 'Entretien blanc vocal, questions sur mesure, analyse et score en fin de session.' },
-              { icon: '⭐', level: 'Prépa', title: 'Réponses STAR', desc: 'Génère 3 anecdotes STAR prêtes pour l\'entretien, par fiche de poste.' },
-              { icon: '🔍', level: 'Analyse', title: 'Analyse d\'offre', desc: 'Scrape la fiche de poste, extrait les mots-clés et alimente le scoring et la prépa.' }
-            ].map((item, i) => (
-              <div key={i} style={{
-                background: '#161b26',
-                border: '1px solid #2b3242',
-                borderRadius: '12px',
-                padding: '20px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                  <div style={{ fontSize: '28px' }}>{item.icon}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '12px', color: '#6b7488', fontWeight: '600', marginBottom: '4px' }}>
-                      {item.level}
-                    </div>
-                    <div style={{ fontSize: '15px', fontWeight: '600', marginBottom: '6px', color: '#eef0f6' }}>
-                      {item.title}
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#9aa3ba' }}>
-                      {item.desc}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <hr className="rule" />
-
-        {/* NUMBERS */}
-        <section>
-          <div className="section-head">
-            <div className="kicker">Conçu pour la réalité</div>
-            <h2>Les chiffres d'une recherche active intense.</h2>
-            <p>SmartJobTracker ne vous limite pas — c'est pensé pour gérer la vraie charge d'une recherche parallèle massive.</p>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
-            {[
-              { value: '50+', label: 'candidatures actives en parallèle, sans perte d\'information' },
-              { value: '10', label: 'statuts métier granulaires pour classifier chaque étape' },
-              { value: '3', label: 'vues du pipeline : table, kanban, plateformes' },
-              { value: '5', label: 'templates de CV adaptés à la fiche de poste' },
-              { value: '90%+', label: 'score ATS visé et auto-vérifié sur chaque CV généré' },
-              { value: '8', label: 'thèmes clair/sombre, synchronisés sur tous vos appareils' },
-              { value: '1 clic', label: 'pour exporter votre CV adapté en PDF' },
-              { value: '∞', label: 'historique consolidé, jamais perdu' }
-            ].map((card, i) => (
-              <div key={i} style={{ border: '1px solid #2b3242', borderRadius: '12px', padding: '22px 20px', textAlign: 'left' }}>
-                <div style={{ fontFamily: '\'IBM Plex Mono\', monospace', fontSize: '28px', fontWeight: '600', color: '#7b7bf7', marginBottom: '8px' }}>
-                  {card.value}
-                </div>
-                <div style={{ fontSize: '12.5px', color: '#9aa3ba', lineHeight: '1.45' }}>
-                  {card.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* USE CASES */}
-        <hr className="rule" />
-        <section>
-          <div className="section-head">
-            <div className="kicker">Pour qui?</div>
-            <h2>Fait pour les recherches actives, dès 15 candidatures parallèles.</h2>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-            {[
-              {
-                icon: '🚀',
-                title: 'Candidat en recherche active',
-                desc: 'Vous envoyez 20-50 candidatures/mois, gérez les relances, les entretiens, les offres. Excel vous a déjà laissé tomber.'
-              },
-              {
-                icon: '📚',
-                title: 'Junior en transition',
-                desc: 'Vous changez de secteur ou démarrez votre carrière. Besoin d\'une stratégie claire, de prep intensive, de feedback sur votre CV et vos entretiens.'
-              },
-              {
-                icon: '🎯',
-                title: 'Senior en repositionnement',
-                desc: 'Vous avez 10+ ans d\'expérience, vous visez 5-10 opportunités haut de gamme. Besoin d\'une analyse précise, pas du bruit.'
-              }
-            ].map((item, i) => (
-              <div key={i} style={{
-                background: '#161b26',
-                border: '1px solid #2b3242',
-                borderRadius: '12px',
-                padding: '28px'
-              }}>
-                <div style={{ fontSize: '36px', marginBottom: '12px' }}>{item.icon}</div>
-                <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '10px', color: '#eef0f6' }}>
-                  {item.title}
-                </div>
-                <div style={{ fontSize: '14px', color: '#9aa3ba', lineHeight: '1.6' }}>
-                  {item.desc}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <hr className="rule" />
 
         {/* FOOTER */}
         <footer>
-          <div className="footer-grid">
+          <div className="foot">
             <div>
-              <h4>Origine du projet</h4>
-              <p className="origin">Construit par <b>Alexandre Leblanc</b> — PM Senior, 18 ans d'expérience (gaming, AdTech, Web3, mobile), trilingue FR/EN/JP. SmartJobTracker est né d'une frustration personnelle en recherche active d'emploi, et est devenu la meilleure démonstration de ce qu'un PM peut livrer seul à l'intersection du product thinking, du no-code/low-code et de l'IA générative. Projet personnel, en développement continu depuis avril 2026, en production depuis la v0.5.</p>
+              <h4>À propos de SmartJobTracker</h4>
+              <p className="origin">Créé par <b>Alexandre Leblanc</b> — product manager senior lassé de gérer sa propre recherche d’emploi dans un tableur. Ce qui a commencé comme un remède personnel est devenu un vrai produit, et la démonstration de ce qu’un PM peut livrer seul à l’intersection du product thinking, du low-code et de l’IA. Projet personnel, en développement continu.</p>
             </div>
             <div>
-              <h4>Stack technique</h4>
-              <div style={{ fontSize: '13.5px', color: '#9aa3ba', lineHeight: 1.9 }}>
-                React · Tailwind · Vite<br/>
-                Vercel Serverless<br/>
-                Claude (Anthropic) + Whisper (voix)<br/>
-                Gmail & Calendar API<br/>
-                Supabase (comptes + sync, RLS)<br/>
-                Extension Firefox
+              <h4>Construit avec</h4>
+              <div className="stack">
+                React · Tailwind · Vite<br />
+                Vercel serverless<br />
+                Claude, Gemini ou OpenAI (votre clé)<br />
+                Gmail &amp; Agenda<br />
+                Supabase (comptes + synchro)
               </div>
             </div>
             <div>
-              <h4>Légal & Accès</h4>
-              <div className="footer-links">
-                <a href="https://smartjobtracker.com" target="_blank" rel="noreferrer">→ smartjobtracker.com</a>
-                <a href="https://github.com/deviloufr-ai/jobtracking" target="_blank" rel="noreferrer">→ github.com/deviloufr-ai/jobtracking</a>
-                <a href="/privacy-policy.html" target="_blank" rel="noreferrer">→ Politique de confidentialité</a>
-                <a href="/terms-of-service.html" target="_blank" rel="noreferrer">→ Conditions d'utilisation</a>
+              <h4>Liens</h4>
+              <div className="foot-links">
+                <a href="https://smartjobtracker.com" target="_blank" rel="noreferrer"><Icon name="arrow" size={15} /> smartjobtracker.com</a>
+                <a href="https://github.com/deviloufr-ai/jobtracking" target="_blank" rel="noreferrer"><Icon name="arrow" size={15} /> GitHub</a>
+                <a href="/privacy-policy.html" target="_blank" rel="noreferrer"><Icon name="arrow" size={15} /> Politique de confidentialité</a>
+                <a href="/terms-of-service.html" target="_blank" rel="noreferrer"><Icon name="arrow" size={15} /> Conditions d’utilisation</a>
               </div>
             </div>
           </div>
