@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import WeeklyRecap from './WeeklyRecap'
 import RejectionInsights from './RejectionInsights'
+import SegmentAnalytics from './SegmentAnalytics'
 import {
   DAY, parseDate, applicationDate, mondayOf,
   maxStageReached, hasResponse, sentJobs, responseRate as computeResponseRate,
@@ -277,6 +278,9 @@ export default function Analytics({ jobs, t = (k) => k, language = 'en' }) {
           </div>
         </Card>
       </div>
+
+      {/* Cross-cut: slice the funnel by sector / platform / location / salary */}
+      <SegmentAnalytics jobs={jobs} t={t} />
 
       {/* Rejection breakdown — where applications die, so the leak is legible */}
       {a.rejections.total > 0 && (
