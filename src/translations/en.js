@@ -2,7 +2,8 @@ export const en = {
   analytics: {
     empty: 'No applications yet. Once you start applying and tracking responses, your metrics will appear here.',
     metrics: {
-      totalApps: 'Applications',
+      totalApps: 'Companies',
+      fromApps: '{n} applications',
       responseRate: 'Response rate',
       avgTimeToInterview: 'Avg. time to interview',
       interviewRate: 'Interview rate',
@@ -11,6 +12,7 @@ export const en = {
     },
     funnel: {
       title: 'Conversion funnel',
+      subtitle: 'one per company',
       sent: 'Applied',
       reviewing: 'Responded',
       interview: 'Interview',

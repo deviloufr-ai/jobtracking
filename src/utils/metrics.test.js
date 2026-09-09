@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   sentJobs, hasResponse, maxStageReached, responseRate, interviewRate,
   applicationDate, mondayOf, STAGE_RANK, rejectionBreakdown,
+  normalizeCompany, groupByCompany,
 } from './metrics'
 
 const iso = d => new Date(d).toISOString().split('T')[0]
@@ -132,5 +133,64 @@ describe('rejectionBreakdown', () => {
   it('tallies rejections by source, most first', () => {
     expect(r.bySource[0]).toEqual({ source: 'linkedin', count: 2 })
     expect(r.bySource.find(s => s.source === 'indeed').count).toBe(2)
+  })
+})
+
+describe('normalizeCompany', () => {
+  it('collapses legal suffixes, TLDs and punctuation to one key', () => {
+    const k = normalizeCompany('Doctolib')
+    expect(normalizeCompany('Doctolib SAS')).toBe(k)
+    expect(normalizeCompany('doctolib.com')).toBe(k)
+    expect(normalizeCompany('  DOCTOLIB  ')).toBe(k)
+  })
+  it('is empty for a missing name', () => {
+    expect(normalizeCompany(undefined)).toBe('')
+    expect(normalizeCompany('')).toBe('')
+  })
+})
+
+describe('groupByCompany — one row per company at its furthest stage', () => {
+  it('merges two roles at the same company into one, keeping the furthest stage', () => {
+    const jobs = [
+      { id: '1', company: 'Doctolib', status: 'rejected', history: [{ status: 'sent', date: '2026-01-01' }, { status: 'rejected', date: '2026-01-05' }] },
+      { id: '2', company: 'Doctolib SAS', status: 'interview', history: [{ status: 'sent', date: '2026-01-02' }, { status: 'interview', date: '2026-01-06' }] },
+    ]
+    const g = groupByCompany(jobs)
+    expect(g).toHaveLength(1)
+    expect(maxStageReached(g[0])).toBe(3) // reached interview via the second role
+    // Counts as ONE company that reached interview, not two applications.
+    expect(interviewRate(g)).toBe(100)
+  })
+  it('keeps distinct companies separate', () => {
+    const jobs = [
+      { id: '1', company: 'Alan', status: 'sent', history: [] },
+      { id: '2', company: 'Qonto', status: 'sent', history: [] },
+    ]
+    expect(groupByCompany(jobs)).toHaveLength(2)
+  })
+  it('keeps rows with no company name standalone (each its own bucket)', () => {
+    const jobs = [
+      { id: '1', status: 'sent', history: [] },
+      { id: '2', status: 'sent', history: [] },
+    ]
+    expect(groupByCompany(jobs)).toHaveLength(2)
+  })
+  it('a company is "sent" if any of its rows left todo', () => {
+    const jobs = [
+      { id: '1', company: 'Alan', status: 'todo', history: [] },
+      { id: '2', company: 'Alan', status: 'sent', history: [{ status: 'sent', date: '2026-01-02' }] },
+    ]
+    const g = groupByCompany(jobs)
+    expect(g).toHaveLength(1)
+    expect(sentJobs(g)).toHaveLength(1)
+  })
+  it('a rejection on any role marks the merged company as rejected', () => {
+    const jobs = [
+      { id: '1', company: 'Alan', status: 'rejected', source: 'linkedin', history: [{ status: 'sent', date: '2026-01-01' }, { status: 'rejected', date: '2026-01-05' }] },
+      { id: '2', company: 'alan.com', status: 'interview', source: 'apec', history: [{ status: 'interview', date: '2026-01-06' }] },
+    ]
+    const r = rejectionBreakdown(groupByCompany(jobs))
+    expect(r.total).toBe(1) // one company, not two rows
+    expect(r.byStage.afterInterview).toBe(1) // furthest stage reached before the no
   })
 })

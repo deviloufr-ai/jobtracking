@@ -68,6 +68,56 @@ export function sentJobs(jobs) {
   return (jobs || []).filter(j => j.status !== 'todo')
 }
 
+// Company-name normalization — mirrors the server dedup (api/deduplicate.js) so
+// "Doctolib", "Doctolib SAS" and "doctolib.com" collapse to the same company.
+// Strips legal suffixes, common TLDs, generic words and punctuation.
+export function normalizeCompany(name) {
+  return (name || '').toLowerCase()
+    .replace(/\s+(sas|sasu|sarl|sa|srl|inc|ltd|llc|gmbh|bv|nv|ag|spa|oy|ab)\.?\s*$/i, '')
+    .replace(/\.(io|com|fr|co|net|org|eu|de|uk|be|ch|ca|us|tech|dev)\s*$/i, '')
+    .replace(/\b(technologies|digital|solutions|group|labs|studio|hq|services|consulting|innovation|ventures|project|projects)\b/gi, '')
+    .replace(/[^a-z0-9]/g, '')
+}
+
+// Collapse every row of the same company into ONE synthetic job at the company's
+// furthest state, so a funnel counts each company once — multiple roles or
+// re-applications at a company = one company. Rows with no usable company name
+// stay standalone (each keyed by its own id). The merge folds every row's history
+// AND its current status (as a dated entry) into one history array, so the shared
+// metric fns (maxStageReached, hasResponse, rejectionInfo, applicationDate) work on
+// the result unchanged; the synthetic status is non-todo whenever any row left
+// todo, so sentJobs() still counts the company as sent.
+export function groupByCompany(jobs) {
+  const groups = new Map()
+  for (const job of jobs || []) {
+    const norm = normalizeCompany(job.company)
+    const key = norm || `__ungrouped__:${job.id ?? Math.random()}`
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(job)
+  }
+  const merged = []
+  for (const rows of groups.values()) {
+    if (rows.length === 1) { merged.push(rows[0]); continue }
+    const history = []
+    let source = ''
+    for (const r of rows) {
+      for (const h of r.history || []) history.push(h)
+      history.push({ status: r.status, date: r.date })
+      if (!source) source = r.source || r.platform || r.site || ''
+    }
+    const firstSent = rows.find(r => r.status !== 'todo')
+    merged.push({
+      id: rows.map(r => r.id).join('+'),
+      company: rows[0].company,
+      status: firstSent ? firstSent.status : 'todo',
+      date: rows[0].date,
+      history,
+      source,
+    })
+  }
+  return merged
+}
+
 function pct(part, whole) {
   return whole > 0 ? Math.round((part / whole) * 100) : 0
 }

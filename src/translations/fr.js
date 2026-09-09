@@ -2,7 +2,8 @@ export const fr = {
   analytics: {
     empty: "Aucune candidature pour l'instant. Dès que vous postulez et suivez les réponses, vos statistiques apparaîtront ici.",
     metrics: {
-      totalApps: 'Candidatures',
+      totalApps: 'Entreprises',
+      fromApps: '{n} candidatures',
       responseRate: 'Taux de réponse',
       avgTimeToInterview: 'Délai moyen avant entretien',
       interviewRate: "Taux d'entretien",
@@ -11,6 +12,7 @@ export const fr = {
     },
     funnel: {
       title: 'Tunnel de conversion',
+      subtitle: 'une par entreprise',
       sent: 'Postulé',
       reviewing: 'Répondu',
       interview: 'Entretien',

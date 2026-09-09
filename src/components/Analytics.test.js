@@ -104,6 +104,21 @@ describe('computeAnalytics', () => {
     expect(reviewingToInterview.median).toBe(8) // median(5, 11) = 8
   })
 
+  it('counts the funnel by company (one per company) but the weekly trend by application', () => {
+    // Two roles at the same company, both reaching interview, plus one at another
+    // company. Funnel = 2 companies interviewed; weekly trend = 3 applications.
+    const a = computeAnalytics([
+      { id: '1', company: 'Doctolib', status: 'interview', date: daysAgo(10), history: [{ date: daysAgo(10), status: 'sent' }, { date: daysAgo(6), status: 'interview' }] },
+      { id: '2', company: 'Doctolib SAS', status: 'interview', date: daysAgo(9), history: [{ date: daysAgo(9), status: 'sent' }, { date: daysAgo(5), status: 'interview' }] },
+      { id: '3', company: 'Qonto', status: 'sent', date: daysAgo(8), history: [{ date: daysAgo(8), status: 'sent' }] },
+    ])
+    expect(a.total).toBe(2)                 // 2 companies (Doctolib collapses)
+    expect(a.totalApplications).toBe(3)     // 3 applications
+    expect(a.reachedInterview).toBe(1)      // 1 company reached interview
+    expect(a.funnel.find(f => f.key === 'interview').count).toBe(1)
+    expect(a.weekly.reduce((s, w) => s + w.count, 0)).toBe(3) // trend stays per-application
+  })
+
   it('buckets applications into the requested number of weekly buckets', () => {
     const a = computeAnalytics(
       [

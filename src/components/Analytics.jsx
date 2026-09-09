@@ -3,7 +3,7 @@ import WeeklyRecap from './WeeklyRecap'
 import {
   DAY, parseDate, applicationDate, mondayOf,
   maxStageReached, hasResponse, sentJobs, responseRate as computeResponseRate,
-  rejectionBreakdown,
+  rejectionBreakdown, groupByCompany,
 } from '../utils/metrics'
 
 // ── Pure aggregation ──────────────────────────────────────────────────────────
@@ -40,7 +40,12 @@ function median(values) {
 }
 
 export function computeAnalytics(jobs, weeks = 12) {
-  const applied = sentJobs(jobs)
+  // The funnel and its rates count each COMPANY once, at its furthest stage:
+  // multiple roles / re-applications at a company = one company. The weekly
+  // trend below stays per-application (it measures effort/pace, not outcomes).
+  const rawApplied = sentJobs(jobs)
+  const companies = groupByCompany(jobs)
+  const applied = sentJobs(companies)
   const total = applied.length
 
   const responded = applied.filter(hasResponse).length
@@ -49,7 +54,7 @@ export function computeAnalytics(jobs, weeks = 12) {
   const reachedOffer = applied.filter(j => maxStageReached(j) >= 4).length
 
   // Canonical rate from the shared module (identical to responded/total here).
-  const responseRate = computeResponseRate(jobs)
+  const responseRate = computeResponseRate(companies)
   const interviewRate = total > 0 ? Math.round((reachedInterview / total) * 100) : 0
 
   // Avg time-to-interview (days) over jobs with a determinable interview date.
@@ -74,7 +79,7 @@ export function computeAnalytics(jobs, weeks = 12) {
     buckets.push({ start, count: 0 })
   }
   const firstStart = buckets[0].start.getTime()
-  for (const j of applied) {
+  for (const j of rawApplied) {
     const d = applicationDate(j)
     if (!d) continue
     const idx = Math.floor((mondayOf(d).getTime() - firstStart) / (7 * DAY))
@@ -107,6 +112,7 @@ export function computeAnalytics(jobs, weeks = 12) {
 
   return {
     total,
+    totalApplications: rawApplied.length,
     responseRate,
     responded,
     interviewRate,
@@ -117,7 +123,7 @@ export function computeAnalytics(jobs, weeks = 12) {
     stageTimes,
     funnel,
     weekly: buckets,
-    rejections: rejectionBreakdown(jobs),
+    rejections: rejectionBreakdown(companies),
   }
 }
 
@@ -179,7 +185,12 @@ export default function Analytics({ jobs, t = (k) => k, language = 'en' }) {
 
       {/* Metric cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard label={t('analytics.metrics.totalApps')} value={a.total} color="#374151" />
+        <MetricCard
+          label={t('analytics.metrics.totalApps')}
+          value={a.total}
+          hint={a.totalApplications !== a.total ? t('analytics.metrics.fromApps').replace('{n}', a.totalApplications) : undefined}
+          color="#374151"
+        />
         <MetricCard
           label={t('analytics.metrics.responseRate')}
           value={`${a.responseRate}%`}
@@ -204,7 +215,10 @@ export default function Analytics({ jobs, t = (k) => k, language = 'en' }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Funnel */}
         <Card>
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t('analytics.funnel.title')}</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{t('analytics.funnel.title')}</span>
+            <span className="text-[11px] text-gray-400">{t('analytics.funnel.subtitle')}</span>
+          </div>
           <div className="flex flex-col gap-4 mt-1">
             {a.funnel.map((f, i) => {
               const pct = a.funnel[0].count > 0 ? (f.count / a.funnel[0].count) * 100 : 0
