@@ -131,47 +131,51 @@ function ListGroup({ title, jobs, accent, collapsible, open, onToggle, selectedI
   )
 }
 
-function InterviewList({
-  active, outcome, past, selectedId, onSelect, onToggleFavorite,
+// Full-width filter toolbar above the board: round-type filters on the left,
+// archived toggle on the right. Given the room, the chips breathe instead of
+// wrapping into a cramped 3-row stack inside the narrow list column.
+function InterviewFilters({
   roundKeysPresent, roundCounts, roundFilter, setRoundFilter, total,
   archivedCount, showArchived, toggleArchived, t,
 }) {
+  if (roundKeysPresent.length === 0 && archivedCount === 0) return null
+  const chip = 'inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-full border transition-colors'
+  return (
+    <div className="flex items-center gap-2 flex-wrap mb-4 p-2 bg-white rounded-xl border border-gray-100 shadow-sm">
+      {roundKeysPresent.length > 0 && (
+        <>
+          <button onClick={() => setRoundFilter(null)}
+            className={`${chip} ${roundFilter === null ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+            {t('interviews.filterAll')} <span className="opacity-60">{total}</span>
+          </button>
+          {roundKeysPresent.map(key => {
+            const meta = INTERVIEW_ROUND_META[key]
+            const on = roundFilter === key
+            return (
+              <button key={key} onClick={() => setRoundFilter(on ? null : key)}
+                className={`${chip} ${on ? `${meta.color} border-current` : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                <span>{meta.icon}</span>{roundLabel(key, t)} <span className="opacity-60">{roundCounts[key]}</span>
+              </button>
+            )
+          })}
+        </>
+      )}
+      {archivedCount > 0 && (
+        <button onClick={toggleArchived}
+          className={`ml-auto ${chip} ${showArchived ? 'bg-slate-700 text-white border-slate-700' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+          <span>🗄️</span>{showArchived ? t('interviews.hideArchived') : t('interviews.showArchived')} <span className="opacity-60">{archivedCount}</span>
+        </button>
+      )}
+    </div>
+  )
+}
+
+function InterviewList({ active, outcome, past, selectedId, onSelect, onToggleFavorite, t }) {
   const [showPast, setShowPast] = useState(false)
   const groupProps = { selectedId, onSelect, onToggleFavorite, t }
 
   return (
     <div className="md:sticky md:top-2 md:self-start md:max-h-[calc(100vh-1.5rem)] md:overflow-y-auto no-scrollbar">
-      {/* Controls */}
-      {(roundKeysPresent.length > 0 || archivedCount > 0) && (
-        <div className="flex items-center gap-1.5 flex-wrap px-1 pb-2.5 mb-1 border-b border-gray-100">
-          {roundKeysPresent.length > 0 && (
-            <>
-              <button
-                onClick={() => setRoundFilter(null)}
-                className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border transition-colors ${roundFilter === null ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
-              >
-                {t('interviews.filterAll')} <span className="opacity-60">{total}</span>
-              </button>
-              {roundKeysPresent.map(key => {
-                const meta = INTERVIEW_ROUND_META[key]
-                const on = roundFilter === key
-                return (
-                  <button key={key} onClick={() => setRoundFilter(on ? null : key)}
-                    className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border transition-colors ${on ? `${meta.color} border-current` : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
-                    <span>{meta.icon}</span>{roundLabel(key, t)} <span className="opacity-60">{roundCounts[key]}</span>
-                  </button>
-                )
-              })}
-            </>
-          )}
-          {archivedCount > 0 && (
-            <button onClick={toggleArchived}
-              className={`ml-auto inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border transition-colors ${showArchived ? 'bg-slate-700 text-white border-slate-700' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
-              <span>🗄️</span>{showArchived ? t('interviews.hideArchived') : t('interviews.showArchived')} <span className="opacity-60">{archivedCount}</span>
-            </button>
-          )}
-        </div>
-      )}
 
       <ListGroup {...groupProps} title={t('interviews.sectionActive')} jobs={active} accent="bg-purple-500" />
       <ListGroup {...groupProps} title={t('interviews.sectionOutcome')} jobs={outcome} accent="bg-green-500" />
@@ -259,28 +263,28 @@ function InterviewDetail({ job, prepRound, onPickRound, onOpenFull, onTrain, onE
       </div>
 
       {/* HERO — prepare the selected round: practice is the primary action */}
-      <div className="mx-4 my-3 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-500 text-white p-4 shadow-sm">
-        <div className="flex items-start gap-3">
-          <span className="shrink-0 w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center text-xl">{INTERVIEW_ROUND_META[prepRound]?.icon}</span>
+      <div className="mx-4 my-3 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-500 text-white p-3.5 shadow-sm">
+        <div className="flex items-start gap-2.5">
+          <span className="shrink-0 w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center text-lg">{INTERVIEW_ROUND_META[prepRound]?.icon}</span>
           <div className="min-w-0 flex-1">
-            <div className="text-[15px] font-bold leading-tight">{t('interviews.prepare').replace('{round}', roundLabel(prepRound, t))}</div>
-            <p className="text-[12px] text-indigo-100 leading-snug mt-1">{t(`interviewFocus.${prepRound}`)}</p>
+            <div className="text-[14px] font-bold leading-tight">{t('interviews.prepare').replace('{round}', roundLabel(prepRound, t))}</div>
+            <p className="text-[12px] text-indigo-100 leading-snug mt-0.5">{t(`interviewFocus.${prepRound}`)}</p>
           </div>
         </div>
-        <div className="mt-3.5 flex items-stretch gap-2">
+        <div className="mt-3 flex items-center gap-2 flex-wrap">
           <button onClick={() => onTrain(job, prepRound)}
-            className="flex-1 inline-flex items-center justify-center gap-2 text-[13px] font-bold px-4 py-2.5 rounded-xl bg-white text-indigo-700 hover:bg-indigo-50 shadow-sm transition-colors">
+            className="inline-flex items-center justify-center gap-2 text-[13px] font-bold px-4 py-2 rounded-lg bg-white text-indigo-700 hover:bg-indigo-50 shadow-sm transition-colors">
             🎤 {t('interviews.practiceCta')}
           </button>
           <button onClick={() => onExample(job, prepRound)}
-            className={`inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-2.5 rounded-xl border transition-colors ${hasExample ? 'bg-white/20 border-white/30 text-white hover:bg-white/25' : 'border-white/40 text-white hover:bg-white/10'}`}>
+            className={`inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-2 rounded-lg border transition-colors ${hasExample ? 'bg-white/20 border-white/30 text-white hover:bg-white/25' : 'border-white/40 text-white hover:bg-white/10'}`}>
             {hasExample ? '✅' : '📝'} {t('interviews.example')}
           </button>
-        </div>
-        <div className="mt-2.5 text-[11px] text-indigo-100">
-          {roundSessions.length > 0
-            ? `${roundSessions.length}× · ${t('interviews.best')} ${roundBest}`
-            : t('interviews.notPractised')}
+          <span className="ml-auto text-[11px] text-indigo-100 whitespace-nowrap">
+            {roundSessions.length > 0
+              ? `${roundSessions.length}× · ${t('interviews.best')} ${roundBest}`
+              : t('interviews.notPractised')}
+          </span>
         </div>
       </div>
 
@@ -458,6 +462,15 @@ export default function InterviewsBoard({
         <UpcomingMeetings jobs={jobs} t={t} />
       </div>
 
+      {!empty && (
+        <InterviewFilters
+          roundKeysPresent={roundKeysPresent} roundCounts={roundCounts}
+          roundFilter={roundFilter} setRoundFilter={setRoundFilter} total={stats.total}
+          archivedCount={stats.archivedCount} showArchived={showArchived} toggleArchived={toggleArchived}
+          t={t}
+        />
+      )}
+
       {empty ? (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm text-center py-16 px-6">
           <div className="text-4xl mb-3">🎤</div>
@@ -470,13 +483,11 @@ export default function InterviewsBoard({
           <button onClick={() => setRoundFilter(null)} className="mt-3 text-sm text-indigo-600 hover:underline">{t('interviews.filterClear')}</button>
         </div>
       ) : (
-        <div className="md:grid md:grid-cols-[minmax(260px,300px)_1fr] md:gap-5 md:items-start">
+        <div className="md:grid md:grid-cols-[minmax(300px,340px)_1fr] md:gap-5 md:items-start">
           {/* Master list */}
           <InterviewList
             active={active} outcome={outcome} past={past}
             selectedId={selectedJob?.id} onSelect={selectRow} onToggleFavorite={onToggleFavorite}
-            roundKeysPresent={roundKeysPresent} roundCounts={roundCounts} roundFilter={roundFilter} setRoundFilter={setRoundFilter}
-            total={stats.total} archivedCount={stats.archivedCount} showArchived={showArchived} toggleArchived={toggleArchived}
             t={t}
           />
           {/* Detail (desktop) */}
