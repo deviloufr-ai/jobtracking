@@ -15,6 +15,10 @@ const EXTRA_FIELDS = [
   // Without syncing them, a remote-wins poll dropped them → needless paid re-enrich
   // and mis-timed reminders, and they never existed at all on a fresh device.
   'enrichedAt', 'sentAt',
+  // salaryFetchedAt gates the auto salary fill (useAutoSalary): once set, that job
+  // is never re-researched (found or not), so a synced marker stops other devices
+  // from re-paying for the same web search. Mirrors enrichedAt.
+  'salaryFetchedAt',
   // compensation: structured offer/comp data ({ base, bonus, equity, currency… }).
   // contacts: the per-application networking mini-CRM (people + touchpoints).
   // letterVersions: cover-letter version history (letterSaved stays the current one).

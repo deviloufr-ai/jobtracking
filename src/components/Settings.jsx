@@ -158,6 +158,8 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
   const [legacyLayoutFlag, setLegacyLayoutFlag] = useState(() => getFlag(FLAGS.LEGACY_LAYOUT))
   // Cross-device deletion sync is ON by default; the flag is a "disable" kill-switch.
   const [crossDeleteDisabled, setCrossDeleteDisabled] = useState(() => getFlag(FLAGS.CROSS_DEVICE_DELETE_OFF))
+  // Auto-fill remuneration from the web when a job is added — opt-in (default off).
+  const [autoSalaryFlag, setAutoSalaryFlag] = useState(() => getFlag(FLAGS.AUTO_FILL_SALARY))
   const [syncDiag, setSyncDiag] = useState(null)
   const [syncDiagLoading, setSyncDiagLoading] = useState(false)
   const [calDiag, setCalDiag] = useState(null)
@@ -371,8 +373,10 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
       if (ctrl.signal.aborted) break
       try {
         const patch = await fetchSalaryForJob(batch[i], { signal: ctrl.signal })
-        if (patch) { onUpdateJob?.(batch[i].id, { compensation: patch }); filled++ }
-        else empty++
+        const now = new Date().toISOString()
+        // Mark researched either way so the background auto-fill never re-pays for it.
+        if (patch) { onUpdateJob?.(batch[i].id, { compensation: patch, salaryFetchedAt: now }); filled++ }
+        else { onUpdateJob?.(batch[i].id, { salaryFetchedAt: now }); empty++ }
       } catch (e) {
         if (e?.name === 'AbortError') break
         if (e instanceof NoClaudeKeyError || e?.code === 'NO_CLAUDE_KEY') {
@@ -1194,6 +1198,16 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                 </Card>
 
                 <Card title={`💰 ${t('settingsData.salaryTitle')}`} subtitle={t('settingsData.salarySubtitle')}>
+                  <Row label={t('settingsData.salaryAuto')} hint={t('settingsData.salaryAutoHint')}>
+                    <button
+                      onClick={() => { const v = !autoSalaryFlag; setFlag(FLAGS.AUTO_FILL_SALARY, v); setAutoSalaryFlag(v) }}
+                      className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                        autoSalaryFlag ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      {autoSalaryFlag ? t('settingsData.salaryAutoOn') : t('settingsData.salaryAutoOff')}
+                    </button>
+                  </Row>
                   <Row label={t('settingsData.salaryFill')} hint={t('settingsData.salaryFillHint')}>
                     {salaryFillLoading ? (
                       <div className="flex items-center gap-3">

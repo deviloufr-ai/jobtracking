@@ -67,6 +67,7 @@ import MergeModal from './components/MergeModal'
 import { useAutoRefresh, historyDedupKeys, isNewHistoryEntry } from './hooks/useAutoRefresh'
 import { useAndroidBackButton } from './hooks/useAndroidBackButton'
 import { useAutoScore } from './hooks/useAutoScore'
+import { useAutoSalary } from './hooks/useAutoSalary'
 import { useAutoCheckPositions } from './hooks/useAutoCheckPositions'
 import { usePolling } from './hooks/usePolling'
 import { connectGmail, disconnectGmail, isConnected, isGmailConfigured, getGmailUserInfo, getCachedUser, autoReuseStoredTokens } from './services/gmail'
@@ -338,6 +339,10 @@ export default function App() {
 
   // Auto-compute CV↔job match scores in the background (no user action needed)
   useAutoScore(jobs, updateJob)
+
+  // Auto-fill remuneration from the web when a candidature is added — opt-in
+  // (Settings → Data), own Claude key only, once per job. No-op unless enabled.
+  useAutoSalary(jobs, updateJob)
 
   // Auto-check whether postings are still open, on the "check after X days" setting
   useAutoCheckPositions(jobs, checkAllPositions, settings)

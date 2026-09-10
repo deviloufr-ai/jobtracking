@@ -19,6 +19,10 @@ export const FLAGS = {
   // feature is ENABLED by default (absent flag = off = feature on); set it true to
   // disable the destructive poll consumer instantly if a false deletion is seen.
   CROSS_DEVICE_DELETE_OFF: 'cross_device_delete_off',
+  // Opt-in: automatically research remuneration from the web (Claude web_search)
+  // when a candidature is added. OFF by default because each lookup spends the
+  // user's own Claude key (billed per search). Device-local, read by useAutoSalary.
+  AUTO_FILL_SALARY: 'auto_fill_salary',
 }
 
 export function getFlag(name) {
