@@ -64,12 +64,62 @@ async function blobToSamples(blob) {
   return rendered.getChannelData(0)
 }
 
+// Audio below these levels (measured on the decoded [-1,1] samples) is treated as
+// a dead mic rather than unclear speech. On the web — Firefox especially —
+// getUserMedia can hand back a silent track when the OS mic is muted, the wrong
+// input device is selected, or a virtual device outputs nothing; Whisper then
+// returns an empty string that's indistinguishable from "spoke unclearly" unless
+// we measure the signal ourselves first.
+const SILENCE_RMS = 0.006
+const SILENCE_PEAK = 0.02
+const MIN_SPEECH_SEC = 0.3
+
+// Thrown when a recording carries essentially no audio signal, so the caller can
+// point the user at their microphone instead of telling them to speak more clearly.
+export class SilentAudioError extends Error {
+  constructor(meta) {
+    super('No audible signal in the recording')
+    this.name = 'SilentAudioError'
+    this.code = 'SILENT_AUDIO'
+    this.meta = meta
+  }
+}
+
+// RMS (loudness), peak amplitude, and duration of the 16 kHz sample buffer.
+function signalStats(samples) {
+  let sumSq = 0
+  let peak = 0
+  for (let i = 0; i < samples.length; i++) {
+    const v = samples[i]
+    sumSq += v * v
+    const a = v < 0 ? -v : v
+    if (a > peak) peak = a
+  }
+  const rms = samples.length ? Math.sqrt(sumSq / samples.length) : 0
+  return { rms, peak, durationSec: samples.length / 16000 }
+}
+
 // Transcribe a recorded audio Blob. We let Whisper auto-detect the language
 // (the speaker may answer in FR or EN regardless of the question's language —
 // forcing the wrong one produces garbage). Returns the recognized text.
+// Throws SilentAudioError when the recording holds no audible signal.
 export async function transcribeBlob(blob, langHint, onProgress) {
   const transcriber = await getTranscriber(onProgress)
   const samples = await blobToSamples(blob)
+
+  // Distinguish a silent mic from a transcription miss before we spend CPU on
+  // Whisper, and log the raw numbers so the two cases are diagnosable in the field.
+  const stats = signalStats(samples)
+  console.info(
+    `[MockInterview] recorded audio: ${stats.durationSec.toFixed(1)}s, rms=${stats.rms.toFixed(4)}, peak=${stats.peak.toFixed(4)}`
+  )
+  if (
+    stats.durationSec < MIN_SPEECH_SEC ||
+    (stats.rms < SILENCE_RMS && stats.peak < SILENCE_PEAK)
+  ) {
+    throw new SilentAudioError(stats)
+  }
+
   const output = await transcriber(samples, {
     task: 'transcribe',
     // Long-form chunking so answers over 30s aren't truncated.
@@ -79,7 +129,9 @@ export async function transcribeBlob(blob, langHint, onProgress) {
     no_repeat_ngram_size: 3,
     repetition_penalty: 1.2
   })
-  return cleanTranscript((output?.text || '').trim())
+  const raw = (output?.text || '').trim()
+  console.info(`[MockInterview] whisper raw transcript length=${raw.length}`)
+  return cleanTranscript(raw)
 }
 
 // Clean up the residual repetition Whisper emits on quiet/trailing audio:

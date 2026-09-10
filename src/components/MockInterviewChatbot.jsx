@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { CLAUDE_MODEL } from '../constants/aiModel'
 import AIPanelBoundary from './AIPanelBoundary'
 import { aiFetch } from '../services/apiKey'
-import { transcribeBlob, canRecordAudio } from '../services/localSpeech'
+import { transcribeBlob, canRecordAudio, SilentAudioError } from '../services/localSpeech'
 import { deliverText } from '../services/fileSave'
 import { trackMockInterviewCompleted } from '../services/analytics'
 import { useDragDock } from '../hooks/useDragDock'
@@ -106,6 +106,10 @@ function MockInterviewChatbotPanel({ job, cv, round, roundName, roundFocus, onCl
   // and the language Claude conducts the interview in. User-selectable in the header.
   const [detectedLanguage, setDetectedLanguage] = useState(defaultInterviewLang)
   const [transcribing, setTranscribing] = useState(false)
+  // True after a transcription MISS (Whisper heard sound but produced nothing) —
+  // the recording is fine, so we offer a re-transcribe without re-recording. Not
+  // set for a silent-mic failure, where the audio is dead and re-recording is required.
+  const [canRetry, setCanRetry] = useState(false)
   const [modelStatus, setModelStatus] = useState(null) // loader text while WASM model downloads
   const [feedback, setFeedback] = useState(null) // interview analysis & score
   const recognitionRef = useRef(null)
@@ -118,6 +122,8 @@ function MockInterviewChatbotPanel({ job, cv, round, roundName, roundFocus, onCl
   const mediaRecorderRef = useRef(null)
   const audioChunksRef = useRef([])
   const mediaStreamRef = useRef(null)
+  // Last recorded blob, kept so a transcription miss can be retried without re-recording.
+  const lastRecordingRef = useRef(null)
   // False once the modal has unmounted, so in-flight AI calls don't setState after teardown.
   const mountedRef = useRef(true)
 
@@ -390,6 +396,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
     }
     setTranscript('')
     setError(null)
+    setCanRetry(false)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       mediaStreamRef.current = stream
@@ -423,8 +430,21 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
     }
 
     const blob = new Blob(chunks, { type: chunks[0].type || 'audio/webm' })
+    // Keep the recording so a transcription miss can be retried without re-recording.
+    lastRecordingRef.current = blob
+    transcribeAndSubmit(blob)
+  }
+
+  // Run WASM Whisper on a recorded blob and submit the answer. Splits the two
+  // failure modes that used to share one confusing message:
+  //   • SilentAudioError → the mic captured nothing (dead/muted/wrong device).
+  //     Re-recording is required, so no retry-transcription affordance.
+  //   • empty text       → Whisper heard sound but produced nothing intelligible.
+  //     The recording is fine, so offer a retry without re-recording.
+  const transcribeAndSubmit = async (blob) => {
     setTranscribing(true)
     setError(null)
+    setCanRetry(false)
     try {
       const text = await transcribeBlob(blob, detectedLanguage, (p) => {
         if (p?.status === 'progress' && typeof p.progress === 'number') {
@@ -435,17 +455,27 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
       })
       setModelStatus(null)
       if (!text) {
-        setError('Couldn’t make out any speech. Please try again or type your answer.')
+        setError('Couldn’t make out any speech. Retry the transcription, record again, or type your answer.')
+        setCanRetry(true)
         return
       }
       setTranscript(text)
       submitAnswer(text)
     } catch (err) {
       setModelStatus(null)
-      setError(`Transcription failed: ${err.message}. You can type your answer instead.`)
+      if (err instanceof SilentAudioError) {
+        setError('We didn’t pick up any sound from your microphone. Check it’s the right input and not muted, then record again — or type your answer below.')
+      } else {
+        setError(`Transcription failed: ${err.message}. You can retry, or type your answer instead.`)
+        setCanRetry(Boolean(lastRecordingRef.current))
+      }
     } finally {
       setTranscribing(false)
     }
+  }
+
+  const retryTranscription = () => {
+    if (lastRecordingRef.current) transcribeAndSubmit(lastRecordingRef.current)
   }
 
   // Shared answer pipeline used by both voice and typed input.
@@ -455,6 +485,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
 
     setIsLoading(true)
     setError(null)
+    setCanRetry(false)
 
     try {
       // Build conversation history for Claude
@@ -539,6 +570,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
     setTranscript('')
     setTextAnswer('')
     setError(null)
+    setCanRetry(false)
     setFeedback(null)
     interviewIdRef.current = Date.now()
     generateFirstQuestion()
@@ -560,6 +592,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
     setTranscript('')
     setTextAnswer('')
     setError(null)
+    setCanRetry(false)
     setFeedback(null)
     interviewIdRef.current = Date.now()
     generateFirstQuestion(code)
@@ -862,6 +895,15 @@ Format as JSON with keys: hire_decision, score, strengths, concerns, weak_exampl
                         className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
                       >
                         ⏸ Stop
+                      </button>
+                    )}
+                    {canRetry && (
+                      <button
+                        onClick={retryTranscription}
+                        title="Re-run transcription on your last recording — no need to speak again"
+                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
+                      >
+                        🔁 Retry transcription
                       </button>
                     )}
                   </>
