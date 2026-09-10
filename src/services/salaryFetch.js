@@ -35,24 +35,40 @@ export function isActiveForSalary(job) {
 
 const CURRENCIES = new Set(['EUR', 'USD', 'GBP', 'CHF', 'CAD'])
 
-function buildPrompt(job) {
+// Pull the job description text the app already stores, if any (jobDescription is
+// current; `description` is the legacy field; notes sometimes carries the pay line).
+function jobDescriptionText(job) {
+  const jd = (job.jobDescription || job.description || '').trim()
+  if (jd) return jd
+  const notes = (job.notes || '').trim()
+  return notes.length > 40 ? notes : ''
+}
+
+export function buildPrompt(job) {
   const url = job.url ? (/^https?:\/\//i.test(job.url) ? job.url : `https://${job.url}`) : ''
-  return `You are a compensation researcher. Find the realistic ANNUAL GROSS salary for ONE specific job, using the web_search tool.
+  const jd = jobDescriptionText(job).slice(0, 4000)
+  return `You are a compensation researcher. Find the realistic ANNUAL GROSS salary for ONE specific job.
 
 JOB
 - Company: ${job.company || '(unknown)'}
 - Role / title: ${job.position || '(unknown)'}
 - Location: ${job.location || '(unknown)'}
 ${url ? `- Original posting: ${url}` : ''}
-
+${jd ? `
+JOB DESCRIPTION (already saved for this application — read it FIRST):
+"""
+${jd}
+"""
+` : ''}
 HOW TO RESEARCH
-1. If a posting URL is given, look for the salary stated in that posting first.
-2. Otherwise, or if the posting states none, search salary sites for this role in this location: Glassdoor, Payscale, Levels.fyi, Talent.com, Indeed salary, Comparably. Prefer a company-specific figure when available, else the market range for the role + location.
-3. Use up to 4 searches. Base every number on what you actually found — never invent a figure.
+1. FIRST read the job description above (if present): if it states a salary or range, use THAT — it is the actual posted pay. Set source to "job posting" and confidence "high". No web search needed in that case.
+2. If the description has no pay (or none is given), and a posting URL is present, use the web_search tool to open that posting and look for a stated salary.
+3. If still nothing, web-search salary sites for this role in this location: Glassdoor, Payscale, Levels.fyi, Talent.com, Indeed salary, Comparably. Prefer a company-specific figure, else the market range for the role + location.
+4. Use up to 4 searches. Base every number on what you actually found — never invent a figure.
 
 RETURN
 Return ONLY a JSON object, no prose, no markdown fences:
-{"found": true, "currency": "EUR", "basePeriod": "year", "baseMin": 55000, "baseMax": 70000, "source": "Glassdoor", "confidence": "medium", "note": "market range for the role in this city"}
+{"found": true, "currency": "EUR", "basePeriod": "year", "baseMin": 55000, "baseMax": 70000, "source": "job posting", "confidence": "high", "note": "stated in the posting"}
 - currency is one of EUR, USD, GBP, CHF, CAD (the local currency for the location).
 - Amounts are annual gross, plain integers (no thousands separators, no currency symbol).
 - confidence is high | medium | low.

@@ -1,5 +1,22 @@
 import { describe, it, expect } from 'vitest'
-import { parseSalaryJson, toCompensationPatch, isActiveForSalary } from './salaryFetch'
+import { parseSalaryJson, toCompensationPatch, isActiveForSalary, buildPrompt } from './salaryFetch'
+
+describe('buildPrompt', () => {
+  it('embeds the stored job description so pay stated in it is read first', () => {
+    const p = buildPrompt({ company: 'Acme', position: 'PM', location: 'Paris', jobDescription: 'Salary: 60-75k€ gross per year.' })
+    expect(p).toContain('JOB DESCRIPTION')
+    expect(p).toContain('Salary: 60-75k€ gross per year.')
+    expect(p).toContain('read it FIRST')
+  })
+  it('falls back to the legacy `description` field and to notes', () => {
+    expect(buildPrompt({ company: 'A', description: 'Package around 55k.' })).toContain('Package around 55k.')
+    const longNote = 'Recruiter said the band is 48-52k for this role, TBC.'
+    expect(buildPrompt({ company: 'A', notes: longNote })).toContain(longNote)
+  })
+  it('omits the JD block entirely when there is no description', () => {
+    expect(buildPrompt({ company: 'A', position: 'PM', location: 'Paris' })).not.toContain('JOB DESCRIPTION')
+  })
+})
 
 describe('parseSalaryJson', () => {
   it('parses a bare JSON object', () => {
