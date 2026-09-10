@@ -61,6 +61,7 @@ describe('isAtsRejection', () => {
   it('detects rejection by keyword in the notes (case-insensitive)', () => {
     expect(isAtsRejection('We regret to inform you...')).toBe(true)
     expect(isAtsRejection('not moving forward with your application')).toBe(true)
+    expect(isAtsRejection('we have made the decision to move forward with other candidates')).toBe(true)
     expect(isAtsRejection('Nous avons le regret de...')).toBe(true)
   })
 

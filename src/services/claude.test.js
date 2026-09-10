@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isBoardSendConfirmation, isHelloWorkOfferGone } from './claude'
+import { isBoardSendConfirmation, isHelloWorkOfferGone, isRejectionEmail } from './claude'
 
 describe('isBoardSendConfirmation — job-board "application forwarded" = sent, not reviewing', () => {
   it('matches an Indeed send confirmation', () => {
@@ -57,6 +57,41 @@ describe('isHelloWorkOfferGone — withdrawn HelloWork posting = rejected', () =
       from: 'noreply@indeed.com',
       subject: 'Cette offre no longer available',
       body: 'no longer available',
+    })).toBe(false)
+  })
+})
+
+describe('isRejectionEmail — an explicit "no" survives a polite ATS wrapper', () => {
+  it('matches the Ashby "move forward with other candidates" letter', () => {
+    expect(isRejectionEmail({
+      from: 'no-reply@ashbyhq.com',
+      subject: 'Thanks for your interest in Checkout.com',
+      body: 'Thank you for your interest in our Project Manager - Integrations position. '
+        + 'Despite the quality of your profile, we have made the decision to move forward '
+        + "with other candidates at this time. In the next few days you'll receive an email "
+        + 'to tell us about your experience — we would appreciate it if you completed the survey.',
+    })).toBe(true)
+  })
+
+  it('matches a French "candidature non retenue"', () => {
+    expect(isRejectionEmail({
+      subject: 'Votre candidature',
+      body: "Nous avons le regret de vous informer que votre candidature n'a pas été retenue.",
+    })).toBe(true)
+  })
+
+  it('does NOT match a genuine application acknowledgement', () => {
+    expect(isRejectionEmail({
+      from: 'no-reply@greenhouse.io',
+      subject: 'Thank you for applying',
+      body: 'We have received your application and will review it shortly.',
+    })).toBe(false)
+  })
+
+  it('does NOT match an interview invitation that says "move forward with your application"', () => {
+    expect(isRejectionEmail({
+      subject: 'Next steps',
+      body: "We'd love to move forward with your application and set up an interview.",
     })).toBe(false)
   })
 })

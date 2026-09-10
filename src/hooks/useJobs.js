@@ -49,8 +49,9 @@ export const ATS_DOMAINS = [
 export function isAtsRejection(notes = '', fromEmail = '') {
   const atsMatch = ATS_DOMAINS.some(d => fromEmail.toLowerCase().includes(d))
   const rejectionKeywords = ['not be moving forward', 'not moving forward', 'not selected',
-    'we regret', 'nous avons le regret', 'no longer being considered',
-    'decided to move forward with other', 'not an ideal fit', 'filled the position']
+    'we regret', 'regret to inform', 'nous avons le regret', 'no longer being considered',
+    'decided to move forward with other', 'forward with other candidate', 'forward with other applicant',
+    'not an ideal fit', 'filled the position', 'candidature non retenue', 'un autre candidat']
   const isRejection = rejectionKeywords.some(k => notes.toLowerCase().includes(k))
   return atsMatch || isRejection
 }

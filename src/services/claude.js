@@ -103,8 +103,52 @@ export function isJobAlertEmail(e) {
   const hay = `${e.subject || ''} ${e.snippet || ''} ${e.body || ''}`.toLowerCase()
   return JOB_ALERT_SIGNALS.some(s => hay.includes(s))
 }
+// ─── Explicit rejection detector ─────────────────────────────────────────────
+// A rejection routed through an ATS almost always OPENS politely ("thank you for
+// applying / for your interest") and often CLOSES with a candidate-experience
+// survey, so Haiku reads the wrapper and files the whole thing as a plain
+// acknowledgement ("reviewing") — missing the "no" in the middle (Bug: an Ashby
+// "we have made the decision to move forward with other candidates" letter left the
+// Checkout.com candidature stuck En examen). These phrases are unambiguous refusals,
+// so they let us (a) veto the ATS-confirmation shortcut below — otherwise a rejection
+// gets synthesized/floored into a "reviewing" signal — and (b) deterministically
+// correct a mis-classified acknowledgement back to rejected (applyDeterministicCorrections).
+const REJECTION_PHRASES = [
+  // EN — the "moving forward with other candidates" family (the most common ATS "no")
+  'forward with other candidate', 'forward with other applicant',
+  'forward with another candidate', 'move ahead with other candidate',
+  'proceed with other candidate', 'pursue other candidate', 'pursuing other candidate',
+  'continue with other candidate', 'selected another candidate', 'chosen another candidate',
+  'go with another candidate', 'decided to go with another', 'other candidates whose',
+  // EN — explicit declines
+  'not be moving forward', 'not moving forward with your', 'will not be moving forward',
+  'decided not to move forward', 'not to move forward with your', 'not be progressing',
+  'will not be progressing', 'not progressing your application', 'we regret to inform',
+  'regret to inform you', 'not been selected', 'have not been selected',
+  'were not successful', 'was not successful', 'not successful on this occasion',
+  'no longer being considered', 'not to proceed with your application',
+  'decided not to proceed', 'unable to progress your application', 'not a fit for this',
+  'position has been filled', 'filled the position', 'the role has been filled',
+  // FR
+  'nous avons le regret', 'au regret de vous', 'ne retenons pas votre candidature',
+  'ne retiendrons pas votre candidature', "n'avons pas retenu votre candidature",
+  "n'a pas été retenue", "n'a pas retenu votre", 'ne donnerons pas suite',
+  'ne donnera pas suite', 'sans suite favorable', 'réponse défavorable', 'reponse defavorable',
+  'candidature non retenue', 'choisi un autre candidat', 'retenu un autre candidat',
+  'choisi un autre profil', 'un autre candidat a été retenu', 'poste a été pourvu',
+  'poste est pourvu', 'offre pourvue', 'ne correspond pas au profil recherché',
+]
+export function isRejectionEmail(e) {
+  if (!e) return false
+  const hay = `${e.subject || ''} ${e.snippet || ''} ${e.body || ''}`.toLowerCase()
+  return REJECTION_PHRASES.some(p => hay.includes(p))
+}
 function isAtsConfirmationEmail(e) {
   const hay = `${e.subject || ''} ${e.snippet || ''} ${e.body || ''}`.toLowerCase()
+  // A rejection routed through an ATS is NOT a "reviewing" acknowledgement, even
+  // though it usually opens with "thank you for applying". Veto BEFORE the
+  // confirmation-phrase shortcut so it's never synthesized/floored into "reviewing".
+  if (isRejectionEmail(e)) return false
   // An explicit confirmation phrase always wins — it's an unambiguous candidature.
   if (CONFIRMATION_PHRASES.some(p => hay.includes(p))) return true
   // Otherwise a job alert from an ATS domain is NOT a candidature — don't let the
@@ -179,6 +223,16 @@ function applyDeterministicCorrections(j, e) {
   if (isHelloWorkOfferGone(e)) {
     j.status = 'rejected'
     j.notes = "Offre retirée — n'est plus disponible sur HelloWork"
+    j.confidence = Math.max(j.confidence || 0, 80)
+  }
+  // ③ Explicit rejection language → rejected (rejected_ats when it came through a
+  // recognized ATS), overriding a mis-read acknowledgement. ATS "no"s wrap the refusal
+  // in polite thanks + a candidate-experience survey, which Haiku files as "reviewing".
+  // Only override a not-yet-decided status so a real interview/offer is never downgraded.
+  if (isRejectionEmail(e) && ['reviewing', 'todo', 'waiting', 'sent'].includes(j.status)) {
+    const from = (e.from || '').toLowerCase()
+    j.status = ATS_SENDER_DOMAINS.some(d => from.includes(d)) ? 'rejected_ats' : 'rejected'
+    j.notes = 'Candidature non retenue — un autre candidat a été sélectionné'
     j.confidence = Math.max(j.confidence || 0, 80)
   }
 }
@@ -509,7 +563,18 @@ DÉTECTION STATUS (PRIORISER LA RÉALITÉ)
   "candidature rejetée définitivement", "without further discussion", "will not follow up", "n'y donnera pas suite",
   "no further", "no next steps", "application was studied but", "will not continue", "not proceeding",
   "we will not", "cannot move forward", "pas de suite", "a bien été étudiée mais", "studied but recruiter",
-  "n'aviez pas été retenu", "vous n'aviez pas", "n'ont pas été retenu", "n'a pas été retenu"
+  "n'aviez pas été retenu", "vous n'aviez pas", "n'ont pas été retenu", "n'a pas été retenu",
+  "move forward with other candidates", "moving forward with other candidates",
+  "decided to move forward with other", "decided to go with another candidate",
+  "have not been selected", "were not successful", "not successful on this occasion",
+  "regret to inform", "no longer being considered", "candidature non retenue"
+
+  ⚠️ PIÈGE ATS (TRÈS FRÉQUENT) : un refus envoyé via un ATS (ashbyhq, greenhouse, lever,
+  workable, teamtailor…) COMMENCE presque toujours poliment ("thank you for your interest",
+  "thank you for applying") et SE TERMINE souvent par une invitation à donner son avis
+  ("share your experience", "complete the survey", "sondage d'expérience candidat").
+  Le CŒUR du message ("move forward with other candidates", "not been selected") reste un
+  REFUS. → status: "rejected", JAMAIS "reviewing", même s'il remercie et demande un feedback.
 
   HELLOWORK SPECIAL RULE (CRITICAL - LOGIC OVERRIDE):
   If email from HelloWork says "Réponse reçue de l'entreprise" OR "Response received from company":
@@ -595,6 +660,9 @@ smartrecruiters, recruitee, bamboohr, jobvite, icims, workday…) OU le texte co
   → status = "reviewing" (ou "sent" si l'email confirme seulement l'envoi), confidence >= 70.
   → NE JAMAIS descendre sous 35 sous prétexte que c'est un message automatique / de masse.
   → Extraire company + position du corps : "apply for <POSTE> at <ENTREPRISE>" / "candidature <POSTE> chez <ENTREPRISE>".
+  ⚠️ EXCEPTION : si l'email d'un ATS est en réalité un REFUS (voir REJECTED — "move forward
+     with other candidates", "not been selected", "candidature non retenue"…), il reste
+     status = "rejected", PAS "reviewing", même s'il commence par "thank you for applying".
 
 ═══════════════════════════════════════════════════════════════════════════
 SCORING CONFIDENCE
