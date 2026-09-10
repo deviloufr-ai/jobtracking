@@ -1,5 +1,7 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { deliverFile } from '../services/fileSave'
+import { fetchSalaryForJob, isActiveForSalary, NoClaudeKeyError } from '../services/salaryFetch'
+import { hasCompensation } from '../utils/compensation'
 import { useSettings, SETTINGS_DEFAULTS } from '../hooks/useSettings'
 import { useExtensionDetect } from '../hooks/useExtensionDetect'
 import { useExtensionUpdate } from '../hooks/useExtensionUpdate'
@@ -185,6 +187,13 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
   const [serverDedupLoading, setServerDedupLoading] = useState(false)
   const [serverDedupResult, setServerDedupResult] = useState(null)
   const [serverDedupError, setServerDedupError] = useState(null)
+  // Bulk "fill remuneration from the web" (Data tab).
+  const [salaryFillConfirm, setSalaryFillConfirm] = useState(false)
+  const [salaryFillLoading, setSalaryFillLoading] = useState(false)
+  const [salaryFillProgress, setSalaryFillProgress] = useState({ done: 0, total: 0 })
+  const [salaryFillResult, setSalaryFillResult] = useState(null)
+  const [salaryFillError, setSalaryFillError] = useState(null)
+  const salaryAbortRef = useRef(null)
 
   // AI provider + key state. The provider choice + model live in synced settings;
   // each provider's key stays per-device in localStorage (services/apiKey.js).
@@ -334,6 +343,50 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
     setApiKeySaved(true)
     setApiKeyTestError(null)
     setTimeout(() => setApiKeySaved(false), 2000)
+  }
+
+  // Active candidatures that carry no compensation yet — the bulk filler's targets.
+  const salaryTargets = useMemo(
+    () => (jobs || []).filter(j => isActiveForSalary(j) && !hasCompensation(j.compensation)),
+    [jobs]
+  )
+  // Cap one run so a huge backlog can't fan out into a costly wall of web searches.
+  const SALARY_FILL_MAX = 60
+
+  // Research remuneration for each active candidature missing it and write it to
+  // job.compensation. Sequential (one web search at a time), abortable, and
+  // idempotent — a filled job gains compensation so the next run skips it.
+  async function handleFillSalaries() {
+    const batch = salaryTargets.slice(0, SALARY_FILL_MAX)
+    if (!batch.length) return
+    const ctrl = new AbortController()
+    salaryAbortRef.current = ctrl
+    setSalaryFillError(null)
+    setSalaryFillResult(null)
+    setSalaryFillLoading(true)
+    setSalaryFillProgress({ done: 0, total: batch.length })
+
+    let filled = 0, empty = 0, errors = 0
+    for (let i = 0; i < batch.length; i++) {
+      if (ctrl.signal.aborted) break
+      try {
+        const patch = await fetchSalaryForJob(batch[i], { signal: ctrl.signal })
+        if (patch) { onUpdateJob?.(batch[i].id, { compensation: patch }); filled++ }
+        else empty++
+      } catch (e) {
+        if (e?.name === 'AbortError') break
+        if (e instanceof NoClaudeKeyError || e?.code === 'NO_CLAUDE_KEY') {
+          setSalaryFillError('NO_KEY')
+          break
+        }
+        errors++
+      }
+      setSalaryFillProgress({ done: i + 1, total: batch.length })
+    }
+
+    salaryAbortRef.current = null
+    setSalaryFillLoading(false)
+    setSalaryFillResult({ filled, empty, errors, skipped: salaryTargets.length - batch.length })
   }
 
   const handleServerDedup = async () => {
@@ -1138,6 +1191,58 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                     </label>
                   </Row>
                   {importError && <p className="text-xs text-red-500">{importError}</p>}
+                </Card>
+
+                <Card title={`💰 ${t('settingsData.salaryTitle')}`} subtitle={t('settingsData.salarySubtitle')}>
+                  <Row label={t('settingsData.salaryFill')} hint={t('settingsData.salaryFillHint')}>
+                    {salaryFillLoading ? (
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex items-center gap-2 text-sm text-gray-600">
+                          <span className="w-3.5 h-3.5 border-2 border-indigo-200 border-t-indigo-500 rounded-full animate-spin inline-block" />
+                          {salaryFillProgress.done} / {salaryFillProgress.total}
+                        </span>
+                        <button onClick={() => salaryAbortRef.current?.abort()} className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">
+                          {t('settingsData.cancel')}
+                        </button>
+                      </div>
+                    ) : salaryFillConfirm ? (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 max-w-xs">
+                          {`${Math.min(salaryTargets.length, SALARY_FILL_MAX)} `}{t('settingsData.salaryConfirm')}
+                        </p>
+                        <div className="flex gap-2">
+                          <button onClick={() => { setSalaryFillConfirm(false); handleFillSalaries() }} className="text-xs font-semibold px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                            {t('settingsData.salaryRun')}
+                          </button>
+                          <button onClick={() => setSalaryFillConfirm(false)} className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">
+                            {t('settingsData.cancel')}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setSalaryFillResult(null); setSalaryFillError(null); setSalaryFillConfirm(true) }}
+                        disabled={salaryTargets.length === 0}
+                        className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {salaryTargets.length > 0 ? `${t('settingsData.salaryFillButton')} (${salaryTargets.length})` : t('settingsData.salaryNone')}
+                      </button>
+                    )}
+                  </Row>
+                  {salaryFillError === 'NO_KEY' && (
+                    <p className="text-xs text-red-600">{t('settingsData.salaryNoKey')}</p>
+                  )}
+                  {salaryFillError && salaryFillError !== 'NO_KEY' && (
+                    <p className="text-xs text-red-600">✗ {salaryFillError}</p>
+                  )}
+                  {salaryFillResult && (
+                    <p className="text-xs text-green-600">
+                      ✓ {salaryFillResult.filled} {t('settingsData.salaryFilled')}
+                      {salaryFillResult.empty ? ` · ${salaryFillResult.empty} ${t('settingsData.salaryEmpty')}` : ''}
+                      {salaryFillResult.errors ? ` · ${salaryFillResult.errors} ${t('settingsData.salaryErrors')}` : ''}
+                      {salaryFillResult.skipped ? ` · ${salaryFillResult.skipped} ${t('settingsData.salarySkipped')}` : ''}
+                    </p>
+                  )}
                 </Card>
 
                 <Card title={t('settingsData.dataMaintenance')}>

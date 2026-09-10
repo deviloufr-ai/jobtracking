@@ -104,11 +104,21 @@ export default function CompensationEditor({ job, onUpdateJob, t = (k) => k }) {
               {formatMoney(totalComp(comp), comp.currency || 'EUR')}
               <span className="text-xs font-medium text-gray-400 ml-1.5">{tx('comp.totalPerYear', 'total / yr')}</span>
             </div>
-            {comp.stage && (
-              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{stageLabel(comp.stage)}</span>
-            )}
+            <div className="flex items-center gap-1.5">
+              {comp.estimated && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title={comp.source ? `${tx('comp.estimatedFrom', 'Estimated from')} ${comp.source}` : ''}>
+                  {tx('comp.estimated', 'estimated')}{comp.source ? ` · ${comp.source}` : ''}
+                </span>
+              )}
+              {comp.stage && (
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{stageLabel(comp.stage)}</span>
+              )}
+            </div>
           </div>
           <p className="text-xs text-gray-500 mt-0.5">{summarizeComp(comp, { base: tx('comp.baseWord', 'base'), total: tx('comp.totalWord', 'total') })}</p>
+          {comp.estimated && comp.baseMin && comp.baseMax && (
+            <p className="text-[11px] text-gray-400 mt-0.5">{formatMoney(comp.baseMin, comp.currency || 'EUR')} – {formatMoney(comp.baseMax, comp.currency || 'EUR')}</p>
+          )}
           {comp.benefits && <p className="text-xs text-gray-400 mt-1.5 line-clamp-2">🎁 {comp.benefits}</p>}
           <div className="flex gap-2 mt-3">
             <button onClick={openEdit} className="text-xs font-semibold text-gray-600 border border-gray-200 rounded-lg px-2.5 py-1.5 hover:bg-gray-50 transition-colors">

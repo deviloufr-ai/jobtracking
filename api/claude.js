@@ -63,11 +63,35 @@ export default async function handler(req, res) {
         ? max_tokens
         : Math.min(Number(max_tokens) || 2000, 4000)
 
-      const { status, data } = await callAiMessages({
-        provider: 'anthropic', apiKey, model: safeModel, max_tokens: safeMaxTokens,
-        system, messages, tools, tool_choice,
-      })
-      res.status(status).json(data)
+      // Web search is an Anthropic server tool billed PER SEARCH on top of tokens.
+      // The shared-key free trial meters requests (not searches) per IP, so strip
+      // any web_search tool from a keyless caller — the trial path stays
+      // search-free (see CLAUDE.md). Own-key callers keep it.
+      let safeTools = tools
+      if (!userKey && Array.isArray(tools)) {
+        safeTools = tools.filter(x => !String(x?.type || '').startsWith('web_search') && x?.name !== 'web_search')
+        if (!safeTools.length) safeTools = undefined
+      }
+
+      // Server tools (e.g. web_search) run inside Anthropic and can return
+      // stop_reason 'pause_turn' — "not done, send this turn back to continue".
+      // Echo the assistant content and re-request until the turn finishes (bounded).
+      // A normal request (no server tools) ends on the first pass, unchanged.
+      const convo = Array.isArray(messages) ? [...messages] : messages
+      let result = { status: 500, data: { error: 'No response from model' } }
+      for (let turn = 0; turn < 5; turn++) {
+        result = await callAiMessages({
+          provider: 'anthropic', apiKey, model: safeModel, max_tokens: safeMaxTokens,
+          system, messages: convo, tools: safeTools, tool_choice,
+        })
+        if (result.status < 200 || result.status >= 300) break
+        if (result.data?.stop_reason === 'pause_turn' && Array.isArray(result.data.content) && Array.isArray(convo)) {
+          convo.push({ role: 'assistant', content: result.data.content })
+          continue
+        }
+        break
+      }
+      res.status(result.status).json(result.data)
     } catch (err) {
       console.error('Claude proxy error:', err)
       res.status(500).json({ error: err.message || 'Internal server error' })

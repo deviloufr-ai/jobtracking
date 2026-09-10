@@ -16,6 +16,12 @@
 //     stage:      'expected'|'offered'|'negotiating'|'accepted'|'declined',
 //     notes:      string,
 //     updatedAt:  ISO string,
+//     // Set by the "fill remuneration from the web" flow (services/salaryFetch):
+//     estimated:  boolean,              // true → a web-researched estimate, not a real offer
+//     baseMin:    number,               // researched annual range low  (same currency)
+//     baseMax:    number,               // researched annual range high
+//     source:     string,              // where it came from, e.g. 'Glassdoor'
+//     confidence: 'high'|'medium'|'low',
 //   }
 
 export const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'CAD']
