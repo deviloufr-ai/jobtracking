@@ -99,13 +99,23 @@ function signalStats(samples) {
   return { rms, peak, durationSec: samples.length / 16000 }
 }
 
-// Transcribe a recorded audio Blob. We let Whisper auto-detect the language
-// (the speaker may answer in FR or EN regardless of the question's language —
-// forcing the wrong one produces garbage). Returns the recognized text.
+// BCP-47 tag (or its 2-letter prefix) → the language name Whisper expects. We
+// force the interview language the user picked in the UI rather than letting
+// Whisper auto-detect: left to guess, whisper-small smears French and English
+// together (inventing acronyms, mixing languages) and the transcript is garbage.
+const WHISPER_LANG = {
+  fr: 'french', en: 'english', es: 'spanish', de: 'german',
+  it: 'italian', pt: 'portuguese', nl: 'dutch', ja: 'japanese',
+}
+
+// Transcribe a recorded audio Blob in `langHint` (the selected interview
+// language). When the code is unknown we omit the hint and let Whisper
+// auto-detect. Returns the recognized text.
 // Throws SilentAudioError when the recording holds no audible signal.
 export async function transcribeBlob(blob, langHint, onProgress) {
   const transcriber = await getTranscriber(onProgress)
   const samples = await blobToSamples(blob)
+  const language = WHISPER_LANG[(langHint || '').slice(0, 2).toLowerCase()]
 
   // Distinguish a silent mic from a transcription miss before we spend CPU on
   // Whisper, and log the raw numbers so the two cases are diagnosable in the field.
@@ -122,6 +132,8 @@ export async function transcribeBlob(blob, langHint, onProgress) {
 
   const output = await transcriber(samples, {
     task: 'transcribe',
+    // Force the selected interview language; omit to auto-detect when unknown.
+    ...(language ? { language } : {}),
     // Long-form chunking so answers over 30s aren't truncated.
     chunk_length_s: 30,
     stride_length_s: 5,
@@ -131,7 +143,7 @@ export async function transcribeBlob(blob, langHint, onProgress) {
   })
   const raw = (output?.text || '').trim()
   console.info(
-    `[MockInterview] whisper raw transcript length=${raw.length} preview=${JSON.stringify(raw.slice(0, 60))}`
+    `[MockInterview] whisper (${language || 'auto'}) raw transcript length=${raw.length} preview=${JSON.stringify(raw.slice(0, 60))}`
   )
   const cleaned = cleanTranscript(raw)
   // On audio it can't parse (noise, near-silence that cleared the RMS gate),
