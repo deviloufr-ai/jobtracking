@@ -3,6 +3,7 @@ import { useMigration } from './hooks/useMigration'
 import { usePolling } from './hooks/usePolling'
 import { MigrationDialog } from './components/MigrationDialog'
 import App from './App'
+import InterviewRecorder from './components/InterviewRecorder'
 
 export default function Root() {
   // App handles its own landing page + auth flow via Gmail integration
@@ -21,6 +22,10 @@ export default function Root() {
         error={migration.error}
       />
       <App />
+      
+      {/* Interview Recorder - Floating button for all pages */}
+      <InterviewRecorder />
+      
       <Analytics />
     </>
   )
