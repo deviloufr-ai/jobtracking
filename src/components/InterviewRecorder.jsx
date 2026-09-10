@@ -1,3 +1,4 @@
+// BUILD-TIMESTAMP: 2026-09-10T20:36:00Z FORCE_REBUILD
 import { useState, useEffect, useRef } from 'react';
 
 // Interview Recorder Component
