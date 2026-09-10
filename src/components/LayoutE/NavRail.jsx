@@ -8,7 +8,6 @@
 import { useState } from 'react'
 
 import { EXTENSION_XPI_PATH as XPI_HREF } from '../../constants/extension'
-import RailMeetings from './RailMeetings'
 
 // Browser-extension affordance for the rail footer.
 //   installed === true + updateAvailable → amber "Update" row (opens update modal)
@@ -114,7 +113,6 @@ export default function NavRail({
   activeTab,
   onNav,
   onAdd,
-  jobs = [],
   gmailUser,
   account,
   onAccount,
@@ -175,9 +173,6 @@ export default function NavRail({
           )
         })}
       </nav>
-
-      {/* Upcoming interviews (compact) — the left-panel calendar. Self-hides. */}
-      <RailMeetings jobs={jobs} t={t} />
 
       {/* Footer: account (sync moved next to the notification bell, top-right) */}
       <div className="px-3 py-3 border-t border-gray-100 flex flex-col gap-1 shrink-0">

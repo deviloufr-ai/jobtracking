@@ -1065,6 +1065,7 @@ export default function App() {
   // ── nav tabs config ─────────────────────────────────────────────────────────
   const NAV_TABS = [
     { id: 'tracker',  label: t('nav.tabs.tracker'), icon: '📋', badge: jobs.length || null },
+    { id: 'interviews', label: t('nav.tabs.interviews'), icon: '🎤', badge: interviewCount || null },
     { id: 'analytics', label: t('nav.tabs.analytics'), icon: '📊', badge: null },
     // Job search is hidden unless the experimental flag is enabled.
     ...(searchEnabled ? [{ id: 'search', label: t('nav.tabs.search'), icon: '🔎', badge: null }] : []),
