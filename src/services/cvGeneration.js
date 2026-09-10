@@ -52,6 +52,19 @@ export function loadProfileContact() {
   } catch { return null }
 }
 
+// The candidate's curated tools/technologies (Mon Profil → Mes outils). Passed
+// to generation so the CV surfaces these in the Skills section wherever the
+// candidate genuinely has that experience — a stable, reusable keyword set that
+// rides along on every CV without re-typing it per posting. Returns [] when none
+// are set (block omitted server-side).
+export function loadProfileTools() {
+  try {
+    const p = JSON.parse(localStorage.getItem('jobtrackr_profile') || 'null')
+    const tools = p?.tools
+    return Array.isArray(tools) ? tools.filter(t => typeof t === 'string' && t.trim()) : []
+  } catch { return [] }
+}
+
 // ATS level (Settings → My CV) tunes keyword aggressiveness.
 export function loadAtsLevel() {
   const v = localStorage.getItem('jobtrackr_cv_ats_level')
@@ -157,6 +170,7 @@ export async function generateTailoredCV({ cvText, jobDescription, company, posi
     language,
     atsLevel: loadAtsLevel(),
     contact: loadProfileContact(),
+    tools: loadProfileTools(),
     customRules: loadCustomRules(),
     rules: loadRules(),
     learnedRules: enabledLearnedRulesText('cv'),

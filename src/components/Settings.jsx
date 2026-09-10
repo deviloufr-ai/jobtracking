@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { deliverFile } from '../services/fileSave'
 import { useSettings, SETTINGS_DEFAULTS } from '../hooks/useSettings'
 import { useExtensionDetect } from '../hooks/useExtensionDetect'
@@ -20,6 +20,7 @@ import { loadLocalProfile, pushProfile, pushLocalPrefs, PROFILE_SYNCED_EVENT } f
 import { runSyncDiagnostic } from '../services/syncDiagnostic'
 import { runCalendarDiagnostic } from '../services/calendarDiagnostic'
 import { withUserApiKey, getProviderKey, setProviderKey } from '../services/apiKey'
+import { extractToolsFromJobs, extractToolsFromCVs } from '../utils/toolsExtract'
 import { AI_PROVIDERS, AI_PROVIDER_IDS, DEFAULT_AI_PROVIDER } from '../constants/aiProviders'
 import { Capacitor } from '@capacitor/core'
 
@@ -42,6 +43,9 @@ const PROFILE_DEFAULTS = {
   ai_experience: '',
   recent_project: '',
   homeAddress: '',
+  // Reusable tools/technologies the candidate masters. Curated by the user in the
+  // "Mes outils" card and folded into every CV generation (see loadProfileTools).
+  tools: [],
 }
 
 function loadProfile() {
@@ -237,6 +241,35 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
     setTimeout(() => setProfileSaved(false), 2000)
   }
 
+  // ── Mes outils (reusable tools bank) ────────────────────────────────────────
+  // The curated set is stored on the profile (`tools`) and folded into every CV
+  // generation. It is seeded two ways the user can one-click: the tools required
+  // across their past candidatures, and the tools already present in their CV.
+  const [toolInput, setToolInput] = useState('')
+  // Memoized so its reference is stable across renders (it feeds the suggestion
+  // useMemos' dependency arrays below).
+  const profileTools = useMemo(() => (Array.isArray(profile.tools) ? profile.tools : []), [profile.tools])
+  const hasTool = (name) => profileTools.some(x => x.toLowerCase() === name.toLowerCase())
+  const addTool = (name) => {
+    const v = (name || '').trim()
+    if (!v || hasTool(v)) return
+    setProfile(p => ({ ...p, tools: [...(Array.isArray(p.tools) ? p.tools : []), v] }))
+  }
+  const removeTool = (name) =>
+    setProfile(p => ({ ...p, tools: (Array.isArray(p.tools) ? p.tools : []).filter(x => x !== name) }))
+  const commitToolInput = () => { addTool(toolInput); setToolInput('') }
+
+  // Suggestions mined deterministically (no AI call) — the ones not already in the
+  // bank. Job suggestions are ranked by how often the tool recurs across postings.
+  const jobToolSuggestions = useMemo(() => {
+    const owned = new Set(profileTools.map(x => x.toLowerCase()))
+    return extractToolsFromJobs(jobs).filter(name => !owned.has(name.toLowerCase())).slice(0, 30)
+  }, [jobs, profileTools])
+  const cvToolSuggestions = useMemo(() => {
+    const owned = new Set(profileTools.map(x => x.toLowerCase()))
+    return extractToolsFromCVs(cvs).filter(name => !owned.has(name.toLowerCase())).slice(0, 30)
+  }, [cvs, profileTools])
+
   // Refresh the form when a remote profile is pulled in on another device's sync.
   useEffect(() => {
     const onSynced = (e) => { if (e.detail) setProfile(p => ({ ...p, ...e.detail })) }
@@ -332,7 +365,10 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error?.message || data.error || 'Extraction error')
-      const extracted = { ...data.profile, extractedFrom: cv.name }
+      // Preserve the user-curated tools bank across a re-extract — extract-profile
+      // rebuilds the profile from the CV and doesn't know about `tools`, so without
+      // this a re-extract would silently wipe the reusable set.
+      const extracted = { ...data.profile, tools: Array.isArray(profile.tools) ? profile.tools : [], extractedFrom: cv.name }
       saveProfile(extracted)
       setProfile(extracted)
       setProfileSaved(true)
@@ -631,6 +667,88 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                   <Row label={t('settingsProfile.motivation')} wide>
                     <TextInput multiline rows={2} value={profile.motivation} onChange={v => updateProfile('motivation', v)} placeholder="Passionate about products that solve real problems..." />
                   </Row>
+                </Card>
+
+                {/* Mes outils — reusable tools bank, folded into every CV generation */}
+                <Card title={t('settingsProfile.toolsTitle')} subtitle={t('settingsProfile.toolsSubtitle')}>
+                  {/* Current bank */}
+                  {profileTools.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {profileTools.map(name => (
+                        <span key={name} className="inline-flex items-center gap-1.5 text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full pl-3 pr-1.5 py-1">
+                          {name}
+                          <button
+                            type="button"
+                            onClick={() => removeTool(name)}
+                            aria-label={`${t('settingsProfile.toolsRemove')} ${name}`}
+                            className="w-4 h-4 flex items-center justify-center rounded-full text-indigo-400 hover:bg-indigo-200 hover:text-indigo-800 transition-colors leading-none"
+                          >✕</button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400">{t('settingsProfile.toolsEmpty')}</p>
+                  )}
+
+                  {/* Free-text add */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={toolInput}
+                      onChange={e => setToolInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commitToolInput() } }}
+                      placeholder={t('settingsProfile.toolsPlaceholder')}
+                      className="flex-1 min-w-0 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={commitToolInput}
+                      disabled={!toolInput.trim()}
+                      className="shrink-0 text-sm font-semibold px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {t('settingsProfile.toolsAdd')}
+                    </button>
+                  </div>
+
+                  {/* Suggestions from past candidatures */}
+                  {jobToolSuggestions.length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-gray-500">🎯 {t('settingsProfile.toolsFromApplications')}</p>
+                        <button type="button" onClick={() => jobToolSuggestions.forEach(addTool)} className="text-xs font-medium text-indigo-600 hover:text-indigo-800">
+                          {t('settingsProfile.toolsAddAll')}
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {jobToolSuggestions.map(name => (
+                          <button key={name} type="button" onClick={() => addTool(name)}
+                            className="inline-flex items-center gap-1 text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200 border-dashed rounded-full px-3 py-1 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
+                            <span className="text-indigo-400">+</span>{name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Suggestions from the imported CV */}
+                  {cvToolSuggestions.length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-gray-500">📄 {t('settingsProfile.toolsFromCV')}</p>
+                        <button type="button" onClick={() => cvToolSuggestions.forEach(addTool)} className="text-xs font-medium text-indigo-600 hover:text-indigo-800">
+                          {t('settingsProfile.toolsAddAll')}
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {cvToolSuggestions.map(name => (
+                          <button key={name} type="button" onClick={() => addTool(name)}
+                            className="inline-flex items-center gap-1 text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200 border-dashed rounded-full px-3 py-1 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
+                            <span className="text-indigo-400">+</span>{name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </Card>
 
                 {profile?.key_achievements?.length > 0 && (

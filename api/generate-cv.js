@@ -48,7 +48,7 @@ async function callClaude(cred, { maxTokens, prompt }) {
   return data.content?.[0]?.text || ''
 }
 
-function buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules, rules, additions, learnedRules }) {
+function buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, tools, customRules, rules, additions, learnedRules }) {
   // Authoritative contact details from the candidate's profile. When present,
   // these OVERRIDE whatever contact info is in the original CV text (the model
   // tends to corrupt verbatim tokens like emails/LinkedIn URLs when rewriting).
@@ -135,6 +135,25 @@ Work EVERY missing term above into the CV WITHOUT inventing experience the candi
 - If a term is a genuine hard requirement the candidate lacks, use the closest truthful equivalent from their real experience instead — never fabricate.${impactFeedback}
 ` : ''
 
+  // The candidate's reusable tools/technologies set (Mon Profil → Mes outils).
+  // Unlike per-posting keywords, this is a stable list the candidate maintains of
+  // the tools they GENUINELY use. Surface these in the Skills section wherever
+  // truthful — it does NOT override no-fabrication: the model must drop any tool
+  // that doesn't fit the candidate's real background/this role, never add one the
+  // CV gives no basis for.
+  const toolsBlock = (Array.isArray(tools) && tools.length) ? `
+═══════════════════════════════════════════════════════════════════════════════
+🧰 CANDIDATE'S TOOLS / SKILLS SET (from their profile — surface where TRUTHFUL):
+═══════════════════════════════════════════════════════════════════════════════
+The candidate maintains this reusable set of tools/technologies they genuinely
+use. In the Skills section (and role bullets where it fits naturally), include
+every one that is consistent with the candidate's real experience and relevant to
+this role, using the tool's standard name. Prioritise those that also appear in
+the job description. This does NOT license fabrication: OMIT any tool the CV/role
+gives no basis for — never claim experience the candidate doesn't have.
+${tools.map(x => `- ${x}`).join('\n')}
+` : ''
+
   // Points the candidate explicitly selected in the "Points manquants" panel.
   // Each is assigned to a specific role and MUST be worked into that role as a
   // bullet. These are user-approved, so they OVERRIDE the no-fabrication rule for
@@ -171,7 +190,7 @@ structure, verbatim contact details.
 ${languageInstruction}
 
 ${atsGuidance}
-${rulesBlock}${contactBlock}${customRulesBlock}${learnedRulesBlock}${additionsBlock}
+${rulesBlock}${contactBlock}${customRulesBlock}${learnedRulesBlock}${toolsBlock}${additionsBlock}
 ═══════════════════════════════════════════════════════════════════════════════
 PRIMARY OBJECTIVE — ATS KEYWORD-COVERAGE SCORE ≥ ${targetScore} / 100:
 ═══════════════════════════════════════════════════════════════════════════════
@@ -561,10 +580,16 @@ export default async function handler(req, res) {
     if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
   }
 
-  const { cvText, jobDescription, company, position, language, atsLevel, contact, customRules, rules, mode, additions, knownGaps, learnedRules } = req.body
+  const { cvText, jobDescription, company, position, language, atsLevel, contact, tools, customRules, rules, mode, additions, knownGaps, learnedRules } = req.body
   if (!cvText || !jobDescription) {
     res.status(400).json({ error: 'cvText and jobDescription required' }); return
   }
+
+  // Candidate's reusable tools set (Mon Profil). Bound the count + each token so a
+  // tampered client can't blow up the prompt; drop empties/dupes.
+  const safeTools = Array.isArray(tools)
+    ? [...new Set(tools.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().slice(0, 60)))].slice(0, 60)
+    : []
 
   // Confirmed additions from the "Points manquants" panel (optional). Bound the
   // list + field lengths so a tampered client can't blow up the prompt.
@@ -658,7 +683,7 @@ export default async function handler(req, res) {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       const cv = await callClaude(cred, {
         maxTokens: 8000,
-        prompt: buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, customRules: userRules, rules: activeRules, additions: safeAdditions, learnedRules: userLearnedRules }),
+        prompt: buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, tools: safeTools, customRules: userRules, rules: activeRules, additions: safeAdditions, learnedRules: userLearnedRules }),
       })
 
       const { score, verdict, gaps, impactScore, impactGaps } = await scoreCV(cred, { cv, jobDescription, company, position })
