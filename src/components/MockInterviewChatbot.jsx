@@ -3,6 +3,7 @@ import { CLAUDE_MODEL } from '../constants/aiModel'
 import AIPanelBoundary from './AIPanelBoundary'
 import { aiFetch } from '../services/apiKey'
 import { transcribeBlob, canRecordAudio, SilentAudioError } from '../services/localSpeech'
+import { parseAnalysisJson } from '../services/rejectionAnalysis'
 import { deliverText } from '../services/fileSave'
 import { trackMockInterviewCompleted } from '../services/analytics'
 import { useDragDock } from '../hooks/useDragDock'
@@ -655,7 +656,11 @@ Format as JSON with keys: hire_decision, score, strengths, concerns, weak_exampl
 
       let analysis
       try {
-        analysis = JSON.parse(analysisText)
+        // The model often wraps the object in a ```json fence (± preamble), which
+        // plain JSON.parse chokes on — then the score card fell back to dumping the
+        // raw JSON. parseAnalysisJson strips the fence, extracts the object, and
+        // salvages a truncated tail.
+        analysis = parseAnalysisJson(analysisText)
         setFeedback(analysis)
       } catch {
         // If JSON parsing fails, show raw text
