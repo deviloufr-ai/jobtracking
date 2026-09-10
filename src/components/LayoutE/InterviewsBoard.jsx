@@ -37,12 +37,12 @@ const bestMockScore = (sessions = []) =>
   sessions.reduce((m, s) => { const v = scoreOf(s); return typeof v === 'number' && v > m ? v : m }, -1)
 const sessionsForRound = (sessions = [], key) => sessions.filter(s => (s.round || null) === key)
 
-// The round to prepare by default for a job: the first level not yet reached
-// (i.e. the next one to face), else the last reached, else the first level.
+// The round to prepare by default for a job: the most recent interview it has
+// actually reached. We never auto-advance to a round the candidate hasn't faced
+// yet — reaching a round doesn't mean it was passed.
 const defaultPrepRound = (job) => {
-  const reached = jobRoundKeys(job).filter(k => INTERVIEW_TRAIN_LEVELS.includes(k))
-  const next = INTERVIEW_TRAIN_LEVELS.find(k => !reached.includes(k))
-  return next || reached[reached.length - 1] || INTERVIEW_TRAIN_LEVELS[0]
+  const rounds = jobInterviewRounds(job) // chronological
+  return rounds.at(-1)?.key || INTERVIEW_TRAIN_LEVELS[0]
 }
 
 // A prep-tool as a full card: icon tile + label + one-line description. Larger
@@ -66,13 +66,15 @@ function ToolCard({ icon, label, desc, onClick, tone = 'gray' }) {
   )
 }
 
-// Compact 4-dot round progress shown on a list row.
+// Compact round pips shown on a list row — one per round the candidature has
+// actually reached (rounds not yet set are not displayed).
 function RoundDots({ job, t }) {
-  const reached = new Set(jobRoundKeys(job))
+  const rounds = jobRoundKeys(job)
+  if (rounds.length === 0) return null
   return (
     <span className="flex items-center gap-1 shrink-0">
-      {INTERVIEW_TRAIN_LEVELS.map(k => (
-        <span key={k} title={roundLabel(k, t)} className={`w-1.5 h-1.5 rounded-full ${reached.has(k) ? 'bg-indigo-500' : 'bg-gray-200'}`} />
+      {rounds.map(k => (
+        <span key={k} title={roundLabel(k, t)} className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
       ))}
     </span>
   )
@@ -184,32 +186,32 @@ function InterviewList({ active, outcome, past, selectedId, onSelect, onToggleFa
   )
 }
 
-// Horizontal round stepper. Reached levels filled + dated; click a node to pick
-// the round to prepare (highlighted).
+// Horizontal round stepper — shows ONLY the rounds the candidature has actually
+// reached (never ghost future rounds it hasn't faced). Each is dated; click one
+// to pick the round to prepare (highlighted).
 function InterviewStepper({ job, prepRound, onPick, t }) {
-  const reached = new Set(jobRoundKeys(job))
+  const rounds = jobRoundKeys(job) // reached rounds, pipeline order
   const dateFor = {}
   for (const r of jobInterviewRounds(job)) dateFor[r.key] = r.date // chronological → most recent wins
+  if (rounds.length === 0) return null
   return (
     <div className="flex items-start">
-      {INTERVIEW_TRAIN_LEVELS.map((k, i) => {
-        const isReached = reached.has(k)
+      {rounds.map((k, i) => {
         const selected = prepRound === k
         return (
           <div key={k} className="flex-1 flex flex-col items-center min-w-0">
             <div className="relative w-full flex items-center justify-center h-6">
-              {i > 0 && <span className={`absolute top-1/2 -translate-y-1/2 left-0 w-1/2 h-0.5 ${isReached || reached.has(INTERVIEW_TRAIN_LEVELS[i - 1]) ? 'bg-indigo-300' : 'bg-gray-200'}`} />}
-              {i < INTERVIEW_TRAIN_LEVELS.length - 1 && <span className={`absolute top-1/2 -translate-y-1/2 right-0 w-1/2 h-0.5 ${reached.has(INTERVIEW_TRAIN_LEVELS[i + 1]) && isReached ? 'bg-indigo-300' : 'bg-gray-200'}`} />}
+              {i > 0 && <span className="absolute top-1/2 -translate-y-1/2 left-0 w-1/2 h-0.5 bg-indigo-300" />}
+              {i < rounds.length - 1 && <span className="absolute top-1/2 -translate-y-1/2 right-0 w-1/2 h-0.5 bg-indigo-300" />}
               <button
                 onClick={() => onPick(k)}
                 aria-pressed={selected}
                 title={roundLabel(k, t)}
                 className={`relative z-[1] w-6 h-6 rounded-full flex items-center justify-center text-[11px] transition-all ${
-                  selected ? 'bg-indigo-600 text-white ring-2 ring-indigo-200'
-                    : isReached ? 'bg-indigo-500 text-white' : 'bg-white border border-gray-300 text-gray-400 hover:border-indigo-300'
+                  selected ? 'bg-indigo-600 text-white ring-2 ring-indigo-200' : 'bg-indigo-500 text-white hover:bg-indigo-600'
                 }`}
               >
-                {isReached ? '✓' : i + 1}
+                ✓
               </button>
             </div>
             <button onClick={() => onPick(k)} className={`mt-1 text-[10px] leading-tight text-center truncate w-full px-0.5 ${selected ? 'text-indigo-700 font-semibold' : 'text-gray-500'}`}>

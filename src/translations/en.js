@@ -232,7 +232,7 @@ export const en = {
   // Interview round / type labels (detected from the calendar & email content)
   interviewRounds: {
     screening: 'Initial screen',
-    technical: 'Technical',
+    technical: 'Skills',
     manager: 'Manager',
     panel: 'Panel / team',
     final: 'Final',

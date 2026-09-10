@@ -232,7 +232,7 @@ export const fr = {
   // Libellés des tours / types d’entretien (détectés depuis le calendrier & l’email)
   interviewRounds: {
     screening: 'Préqualification',
-    technical: 'Technique',
+    technical: 'Compétences',
     manager: 'Manager',
     panel: 'Panel / équipe',
     final: 'Final',
