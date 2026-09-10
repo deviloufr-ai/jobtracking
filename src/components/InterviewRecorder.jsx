@@ -1,45 +1,55 @@
 import { useState, useEffect, useRef } from 'react';
 
 export default function InterviewRecorder() {
-  const [isRecording, setIsRecording] = useState(false);
-  const [chunks, setChunks] = useState([]);
-  const [duration, setDuration] = useState(0);
+  // Use a single source of truth for recording state
+  const [recordingState, setRecordingState] = useState({
+    isRecording: false,
+    duration: 0,
+    chunks: [],
+  });
+  
   const timerRef = useRef(null);
+  const stopTimeoutRef = useRef(null);
   
   // Timer for duration tracking
   useEffect(() => {
-    if (isRecording) {
+    if (recordingState.isRecording) {
       timerRef.current = setInterval(() => {
-        setDuration(prev => prev + 1);
+        setRecordingState(prev => ({ ...prev, duration: prev.duration + 1 }));
       }, 1000);
       
       console.log('🎤 Recording started');
     } else {
-      clearInterval(timerRef.current);
-      console.log('🛑 Recording stopped');
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     }
     
     // Cleanup on unmount
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+        timerRef.current = null;
       }
     };
-  }, [isRecording]);
+  }, [recordingState.isRecording]);
   
   const handleStart = async () => {
     try {
       console.log('🎤 Starting interview recording...');
-      setIsRecording(true);
-      setChunks([]);
-      setDuration(0);
+      setRecordingState(prev => ({ 
+        ...prev, 
+        isRecording: true,
+        chunks: [],
+        duration: 0
+      }));
       
       // TODO Phase 2: Connect to AssemblyAI WebSocket here
-      // Example: await connectToAssemblyAIStream();
       
     } catch (error) {
       console.error('Failed to start recording:', error);
-      setIsRecording(false);
+      setRecordingState(prev => ({ ...prev, isRecording: false }));
     }
   };
   
@@ -47,25 +57,33 @@ export default function InterviewRecorder() {
     try {
       console.log('🛑 Stopping recording, saving transcript...');
       
-      // TODO Phase 2: Stop AssemblyAI session here
-      // Example: await stopAssemblyAISession();
-      
-      // Clear timer (double safety)
+      // Clear timer immediately
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
       
-      setTimeout(() => {
-        setIsRecording(false);
-        setChunks([]);
-        setDuration(0);
-      }, 100);
+      // Force re-render after cleanup
+      setRecordingState(prev => ({ 
+        ...prev,
+        isRecording: false,
+        chunks: [],
+        duration: 0
+      }));
+      
+      console.log('✅ Recording stopped successfully');
       
     } catch (error) {
-      console.error('Failed to save transcript:', error);
+      console.error('Failed to stop recording:', error);
+      // Still try to clear timer on error
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     }
   };
+  
+  const { isRecording, duration, chunks } = recordingState;
   
   return (
     <div className="fixed bottom-4 right-4 z-50">
