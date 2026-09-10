@@ -1,31 +1,33 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 // Interview Recorder Component
 // Floating button for recording interviews during Meet/Zoom calls
 export default function InterviewRecorder() {
-  // Use a ref to track internal timer state (bypasses React render cycle issues)
   const [isRecording, setIsRecording] = useState(false);
   const [duration, setDuration] = useState(0);
+  const [, setTick] = useState(0); // Force re-render key
   
-  // Force re-render key for UI updates
-  const [, setTick] = useState(0);
+  // Use ref to store interval ID (accessible outside useEffect)
+  const intervalRef = useRef(null);
 
-  // Timer interval - cleanup is CRITICAL here
+  // Timer interval setup
   useEffect(() => {
-    let intervalId = null;
-    
     if (isRecording) {
-      intervalId = setInterval(() => {
+      intervalRef.current = setInterval(() => {
         setDuration(prev => prev + 1);
       }, 1000);
+    } else {
+      // Clear interval when isRecording becomes false
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     }
     
-    // Cleanup function - MUST run when isRecording changes to false
     return () => {
-      console.log('[INTERVIEW RECORDER] Cleanup: clearing interval');
-      if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
   }, [isRecording]);
@@ -33,12 +35,9 @@ export default function InterviewRecorder() {
   const startRecording = async () => {
     console.log('[INTERVIEW RECORDER] 🎤 Starting recording...');
     
-    // Reset state immediately
     setIsRecording(true);
     setDuration(0);
-    
-    // Force immediate re-render to show recording state
-    setTick(prev => prev + 1);
+    setTick(prev => prev + 1); // Force re-render
     
     // TODO Phase 2: Connect to AssemblyAI WebSocket here
   };
@@ -47,25 +46,21 @@ export default function InterviewRecorder() {
     console.log('[INTERVIEW RECORDER] 🛑 Stopping recording...');
     console.log('[INTERVIEW RECORDER] Current duration:', duration, 'seconds');
     
-    // Step 1: Immediately clear the interval (before any state updates)
-    const cleanup = () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-        console.log('[INTERVIEW RECORDER] Interval cleared');
-      }
-    };
-    
-    // Access intervalId through a ref-like pattern using useEffect cleanup
-    cleanup();
+    // Step 1: Clear the interval using ref
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+      console.log('[INTERVIEW RECORDER] Interval cleared');
+    }
 
     // Step 2: Stop recording state
     setIsRecording(false);
     
-    // Step 3: Clear duration immediately
+    // Step 3: Clear duration and force re-render
     setDuration(0);
+    setTick(prev => prev + 1);
     
-    console.log('[INTERVIEW RECORDER] Recording stopped, state cleared');
+    console.log('[INTERVIEW RECORDER] Recording stopped completely');
   };
 
   const [transcriptText, setTranscriptText] = useState('');
