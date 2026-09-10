@@ -23,12 +23,39 @@ const speechSynthesis = window.speechSynthesis
 //     Whisper model (localSpeech.js).
 const isNativeShell = Boolean(Capacitor?.isNativePlatform?.())
 
-// Detect language from text
-function detectLanguage(text) {
-  if (!text) return 'en-US'
-  const frenchWords = /\b(bonjour|salut|merci|comment|pourquoi|quoi|je|tu|il|elle|nous|vous|ils|elles|être|avoir|aller|faire|pouvoir|vouloir|devoir|mettre|prendre|venir|dire|savoir|répondre|travailler|entreprise|poste|candidature|expérience|projet)\b/gi
-  const matches = text.match(frenchWords) || []
-  return matches.length > text.split(/\s+/).length * 0.15 ? 'fr-FR' : 'en-US'
+// Languages the mock interview can be run in. `code` is the BCP-47 tag used for
+// speech recognition + synthesis; `ai` is the English language name injected
+// into the Claude prompt so the interviewer asks its questions in that language.
+const LANGUAGES = [
+  { code: 'fr-FR', label: 'Français', ai: 'French' },
+  { code: 'en-US', label: 'English', ai: 'English' },
+  { code: 'es-ES', label: 'Español', ai: 'Spanish' },
+  { code: 'de-DE', label: 'Deutsch', ai: 'German' },
+  { code: 'it-IT', label: 'Italiano', ai: 'Italian' },
+  { code: 'pt-PT', label: 'Português', ai: 'Portuguese' },
+  { code: 'nl-NL', label: 'Nederlands', ai: 'Dutch' },
+  { code: 'ja-JP', label: '日本語', ai: 'Japanese' },
+]
+
+// English name of a language code, for the AI prompt. Falls back to English.
+const aiLangName = (code) => LANGUAGES.find((l) => l.code === code)?.ai || 'English'
+
+// Default interview language: follow the app's UI language (jobtrackr_language),
+// then the browser locale, then English.
+function defaultInterviewLang() {
+  try {
+    const appLang = localStorage.getItem('jobtrackr_language')
+    if (appLang) {
+      const byApp = LANGUAGES.find((l) => l.code.startsWith(appLang))
+      if (byApp) return byApp.code
+    }
+    const bl = (navigator.language || '').slice(0, 2)
+    const byBrowser = LANGUAGES.find((l) => l.code.startsWith(bl))
+    if (byBrowser) return byBrowser.code
+  } catch {
+    /* noop */
+  }
+  return 'en-US'
 }
 
 // Strip markdown formatting for cleaner speech output
@@ -75,7 +102,9 @@ function MockInterviewChatbotPanel({ job, cv, round, roundName, roundFocus, onCl
   const [transcript, setTranscript] = useState('')
   const [textAnswer, setTextAnswer] = useState('')
   const [speechRate, setSpeechRate] = useState(1)
-  const [detectedLanguage, setDetectedLanguage] = useState('en-US')
+  // The interview language (BCP-47). Drives speech recognition, text-to-speech,
+  // and the language Claude conducts the interview in. User-selectable in the header.
+  const [detectedLanguage, setDetectedLanguage] = useState(defaultInterviewLang)
   const [transcribing, setTranscribing] = useState(false)
   const [modelStatus, setModelStatus] = useState(null) // loader text while WASM model downloads
   const [feedback, setFeedback] = useState(null) // interview analysis & score
@@ -194,7 +223,7 @@ function MockInterviewChatbotPanel({ job, cv, round, roundName, roundFocus, onCl
     }
   }, [])
 
-  const generateFirstQuestion = async () => {
+  const generateFirstQuestion = async (langCode = detectedLanguage) => {
     setIsLoading(true)
     setError(null)
     try {
@@ -202,13 +231,14 @@ function MockInterviewChatbotPanel({ job, cv, round, roundName, roundFocus, onCl
         ? `\n\nJob description:\n${job.description.slice(0, 800)}`
         : ''
       const cvContext = cv ? `\n\nCandidate CV:\n${cv.slice(0, 800)}` : ''
+      const langLine = `\n\nLANGUAGE — Conduct this entire interview in ${aiLangName(langCode)}. Ask every question in ${aiLangName(langCode)}, phrased naturally the way a native ${aiLangName(langCode)} speaker would.`
       const response = await aiFetch('/api/claude', {
         model: CLAUDE_MODEL,
         max_tokens: 200,
         messages: [
           {
             role: 'user',
-            content: `You are a senior recruiter at ${job.company} evaluating a candidate for a ${job.position} role. Ask ONE probing opening question that reveals their fit for the role and their thought process.${descContext}${cvContext}${focusLine}
+            content: `You are a senior recruiter at ${job.company} evaluating a candidate for a ${job.position} role. Ask ONE probing opening question that reveals their fit for the role and their thought process.${descContext}${cvContext}${focusLine}${langLine}
 
 Connect the candidate's experience to the role. Be direct and realistic—ask what you'd actually ask in a real interview. Stay strictly within the interview focus above when one is given. Output ONLY the question as plain text. No formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just a natural, conversational question you'd ask if talking to someone in person.`
           }
@@ -225,7 +255,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
         { role: 'interviewer', text: firstQuestion, timestamp: Date.now() }
       ]
       setMessages(newMessages)
-      speakText(firstQuestion)
+      speakText(firstQuestion, langCode)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -233,7 +263,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
     }
   }
 
-  const speakText = (text) => {
+  const speakText = (text, lang = detectedLanguage) => {
     // Text-to-speech is a nice-to-have. Some WebViews (incl. the native shell)
     // expose no speechSynthesis — skip it silently rather than surfacing a
     // blocking error on every interviewer question.
@@ -244,13 +274,8 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
     speechSynthesis.cancel()
     setIsSpeaking(true)
 
-    // Auto-detect language and update recognition language
-    const lang = detectLanguage(text)
-    setDetectedLanguage(lang)
-    if (recognitionRef.current) {
-      recognitionRef.current.lang = lang
-    }
-
+    // Speak in the user-selected interview language (recognition stays in sync
+    // via the initRecognition effect keyed on detectedLanguage).
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = lang
     utterance.rate = speechRate
@@ -446,7 +471,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
       const cvContext = cv
         ? `Candidate background: ${cv.slice(0, 600)}\n\n`
         : ''
-      const systemPrompt = `${descContext}${cvContext}You are a senior recruiter at ${job.company} evaluating a candidate for this role.${focusLine ? ` ${focusLine.trim()} Keep every question within this focus.` : ''} Ask natural, probing follow-up questions that uncover whether they're truly fit for this position. Connect their experience to the role's requirements. Push for specific details—ask about challenges they faced, decisions they made, and lessons learned. Be realistic and direct, like you'd be in a real interview. Don't be overly nice; ask questions that matter. Output ONLY plain text questions—no formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just conversational sentences you'd say in person.`
+      const systemPrompt = `${descContext}${cvContext}You are a senior recruiter at ${job.company} evaluating a candidate for this role.${focusLine ? ` ${focusLine.trim()} Keep every question within this focus.` : ''} Ask natural, probing follow-up questions that uncover whether they're truly fit for this position. Connect their experience to the role's requirements. Push for specific details—ask about challenges they faced, decisions they made, and lessons learned. Be realistic and direct, like you'd be in a real interview. Don't be overly nice; ask questions that matter. Always speak in ${aiLangName(detectedLanguage)}, regardless of the language the candidate answers in. Output ONLY plain text questions—no formatting, no bold, no italics, no asterisks, no dashes, no bullet points. Just conversational sentences you'd say in person.`
 
       const response = await aiFetch('/api/claude', {
         model: CLAUDE_MODEL,
@@ -519,6 +544,27 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
     generateFirstQuestion()
   }
 
+  // Switching the interview language restarts the session so the interviewer
+  // (and its first question) come back in the newly chosen language. Pass the
+  // new code straight to generateFirstQuestion to avoid the async-state lag.
+  const changeLanguage = (code) => {
+    if (!code || code === detectedLanguage) return
+    setDetectedLanguage(code)
+    speechSynthesis?.cancel()
+    try { recognitionRef.current?.abort() } catch { /* noop */ }
+    if (isNativeShell) {
+      try { NativeSpeech.stop() } catch { /* noop */ }
+    }
+    setIsRecording(false)
+    setMessages([])
+    setTranscript('')
+    setTextAnswer('')
+    setError(null)
+    setFeedback(null)
+    interviewIdRef.current = Date.now()
+    generateFirstQuestion(code)
+  }
+
   const exportTranscript = async () => {
     const text = messages
       .map(
@@ -561,6 +607,8 @@ Provide:
 5. How to fix it: Concrete reframe of that answer
 
 Be direct. A 70 means "solid but has gaps". An 85+ means "seriously considering". Be critical.
+
+Write all feedback text (strengths, concerns, weak_example, better_answer) in ${aiLangName(detectedLanguage)}. Keep the JSON keys in English and keep hire_decision as one of the English values Yes/No/Maybe.
 
 Format as JSON with keys: hire_decision, score, strengths, concerns, weak_example, better_answer`
           }
@@ -626,12 +674,27 @@ Format as JSON with keys: hire_decision, score, strengths, concerns, weak_exampl
               {job.company} – {job.position}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-2">
+            <select
+              value={detectedLanguage}
+              onChange={(e) => changeLanguage(e.target.value)}
+              onPointerDown={(e) => e.stopPropagation()}
+              title="Interview language — changing it restarts the interview"
+              className="text-xs border border-gray-300 rounded-lg px-2 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300 cursor-pointer"
+            >
+              {LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  🌐 {l.label}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* Chat area */}
