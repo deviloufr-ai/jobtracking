@@ -1,70 +1,56 @@
-// BUILD-TIMESTAMP: 2026-09-10T20:36:00Z FORCE_REBUILD
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 // Interview Recorder Component
 // Floating button for recording interviews during Meet/Zoom calls
 export default function InterviewRecorder() {
   const [isRecording, setIsRecording] = useState(false);
   const [duration, setDuration] = useState(0);
-  const [, setTick] = useState(0); // Force re-render key
-  
-  // Use ref to store interval ID (accessible outside useEffect)
-  const intervalRef = useRef(null);
 
-  // Timer interval setup
+  // Timer interval cleanup
   useEffect(() => {
+    let intervalId;
+    
     if (isRecording) {
-      intervalRef.current = setInterval(() => {
+      intervalId = setInterval(() => {
         setDuration(prev => prev + 1);
       }, 1000);
-    } else {
-      // Clear interval when isRecording becomes false
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
     }
     
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      if (intervalId) clearInterval(intervalId);
     };
   }, [isRecording]);
 
   const startRecording = async () => {
-    console.log('[INTERVIEW RECORDER] 🎤 Starting recording...');
-    
+    console.log('🎤 [RECORDER] Starting recording...');
     setIsRecording(true);
     setDuration(0);
-    setTick(prev => prev + 1); // Force re-render
     
     // TODO Phase 2: Connect to AssemblyAI WebSocket here
   };
   
   const stopRecording = async () => {
-    console.log('[INTERVIEW RECORDER] 🛑 Stopping recording...');
-    console.log('[INTERVIEW RECORDER] Current duration:', duration, 'seconds');
-    
-    // Step 1: Clear the interval using ref
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-      console.log('[INTERVIEW RECORDER] Interval cleared');
-    }
-
-    // Step 2: Stop recording state
+    console.log('🛑 [RECORDER] Stopping recording...');
     setIsRecording(false);
     
-    // Step 3: Clear duration and force re-render
-    setDuration(0);
-    setTick(prev => prev + 1);
-    
-    console.log('[INTERVIEW RECORDER] Recording stopped completely');
-  };
+    if (!isRecording) {
+      console.log('[RECORDER] Already stopped, nothing to do');
+      return;
+    }
 
-  const [transcriptText, setTranscriptText] = useState('');
+    try {
+      const newTranscript = {
+        transcript_text: 'No transcript generated yet',
+        duration_seconds: duration,
+        status: 'completed',
+        start_time: new Date().toISOString(),
+      };
+
+      console.log('[RECORDER] Saving transcript:', JSON.stringify(newTranscript));
+    } catch (error) {
+      console.error('[RECORDER] Error saving transcript:', error);
+    }
+  };
 
   return (
     <div className="fixed bottom-4 right-4 z-50">
@@ -90,17 +76,9 @@ export default function InterviewRecorder() {
           </div>
           
           <div className="h-32 overflow-y-auto mb-3 text-sm font-mono bg-gray-50 dark:bg-gray-900 rounded p-2 border border-gray-200 dark:border-gray-700">
-            {transcriptText ? (
-              transcriptText.split('\n').map((line, i) => (
-                <p key={i} className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-                  {line}
-                </p>
-              ))
-            ) : (
-              <p className="text-gray-400 italic text-center py-4">
-                Transcript will appear here...
-              </p>
-            )}
+            <p className="text-gray-400 italic text-center py-4">
+              Transcript will appear here...
+            </p>
           </div>
           
           <div className="flex gap-2">
