@@ -25,6 +25,7 @@ import { getCompanyAddress, setCompanyAddress } from '../../services/commuteStor
 import { searchCompanyAddress } from '../../services/googlePlaces'
 import { noteLines } from '../../utils/noteFormat'
 import { isCalendarConnected } from '../../services/calendar'
+import { parseAnalysisJson } from '../../services/rejectionAnalysis'
 
 const PALETTE = ['#4f46e5', '#2563eb', '#0d9488', '#d97706', '#db2777', '#7c3aed', '#dc2626', '#059669']
 const colorFor = (s = '') => PALETTE[[...s].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETTE.length]
@@ -49,7 +50,16 @@ const decisionColor = (d) => d === 'Yes' ? 'text-green-700' : d === 'No' ? 'text
 // { score, hire_decision, strengths[], concerns[], weak_example, better_answer } or
 // { raw } when the model didn't return clean JSON.
 function InterviewFeedback({ session }) {
-  const fb = session?.feedback || {}
+  let fb = session?.feedback || {}
+  // Heal sessions saved before the fenced-JSON parse fix: their feedback is
+  // { raw: "```json …" }, so parse the raw at render time and show the card
+  // instead of a raw dump. No data migration needed; unparseable raw falls through.
+  if (fb.raw && !(fb.strengths || fb.concerns || fb.weak_example || fb.better_answer)) {
+    try {
+      const parsed = parseAnalysisJson(fb.raw)
+      if (parsed && typeof parsed === 'object') fb = parsed
+    } catch { /* not JSON — keep showing the raw text below */ }
+  }
   const score = fb.score ?? session?.score
   const decision = fb.hire_decision || session?.hire_decision
   const hasDetail = fb.strengths || fb.concerns || fb.weak_example || fb.better_answer || fb.raw
