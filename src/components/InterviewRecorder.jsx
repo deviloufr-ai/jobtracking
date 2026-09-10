@@ -3,110 +3,117 @@ import { useState, useEffect } from 'react';
 // Interview Recorder Component
 // Floating button for recording interviews during Meet/Zoom calls
 export default function InterviewRecorder() {
-  const [recordingActive, setRecordingActive] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  
-  // Clear interval when component unmounts
+  const [isRecording, setIsRecording] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [transcriptText, setTranscriptText] = useState('');
+
+  // Timer interval cleanup
   useEffect(() => {
-    return () => clearInterval(timerId);
-  }, []);
-  
-  let timerId;
-  
-  // Start recording
+    let intervalId;
+    
+    if (isRecording) {
+      intervalId = setInterval(() => {
+        setDuration(prev => prev + 1);
+      }, 1000);
+    }
+    
+    // Cleanup on unmount or isRecording change
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isRecording]);
+
   const startRecording = async () => {
-    console.log('🎤 [INTERVIEW RECORDER] Starting recording...');
-    setRecordingActive(true);
-    setElapsedSeconds(0);
+    console.log('🎤 [RECORDER] Starting recording...');
+    setIsRecording(true);
+    setDuration(0);
+    setTranscriptText('');
     
     // TODO Phase 2: Connect to AssemblyAI WebSocket here
-    // await connectToAssemblyAIStream();
-    
-    console.log('[INTERVIEW RECORDER] Recording active');
+    // For now, just waiting for audio to be saved manually
   };
   
-  // Stop recording
   const stopRecording = async () => {
-    console.log('🛑 [INTERVIEW RECORDER] Stopping recording...');
+    console.log('🛑 [RECORDER] Stopping recording...');
+    setIsRecording(false);
     
-    // Clear the timer immediately
-    if (timerId) {
-      clearInterval(timerId);
-      timerId = null;
-      console.log('[INTERVIEW RECORDER] Timer cleared');
+    if (!isRecording) {
+      console.log('[RECORDER] Already stopped, nothing to do');
+      return;
     }
-    
-    // Update state to stop recording
-    setRecordingActive(false);
-    
-    // Small delay to ensure cleanup happens before UI update
-    setTimeout(() => {
-      setElapsedSeconds(0);
-      console.log('✅ [INTERVIEW RECORDER] Recording stopped successfully');
-    }, 50);
+
+    try {
+      const newTranscript = {
+        transcript_text: transcriptText || 'No transcript generated yet',
+        duration_seconds: duration,
+        status: 'completed',
+        start_time: new Date().toISOString(),
+      };
+
+      console.log('[RECORDER] Saving transcript:', JSON.stringify(newTranscript));
+      
+      // Store locally for later association with job_history_id
+      localStorage.setItem('pending_interview_transcript', 
+        JSON.stringify({
+          ...newTranscript,
+          platform: newTranscript.platform || 'meet', // default to meet
+          meeting_link: newTranscript.meeting_link || '', // user can add this before stopping
+        })
+      );
+      
+      console.log('[RECORDER] Transcript stored locally with job_history_id pending');
+    } catch (error) {
+      console.error('[RECORDER] Error saving transcript:', error);
+    }
   };
-  
-  // Update timer when recording is active
-  useEffect(() => {
-    if (recordingActive) {
-      const tick = () => {
-        setElapsedSeconds(prev => prev + 1);
-      };
-      
-      timerId = setInterval(tick, 1000);
-      
-      return () => {
-        if (timerId) {
-          clearInterval(timerId);
-          console.log('[INTERVIEW RECORDER] Timer cleared on unmount');
-        }
-      };
-    }
-  }, [recordingActive]);
-  
-  // Render the UI
-  if (!recordingActive) {
-    return (
-      <button
-        onClick={startRecording}
-        className="fixed bottom-4 right-4 z-50 bg-red-500 hover:bg-red-600 text-white p-3 rounded-full shadow-lg animate-pulse"
-        title="Record Interview"
-        aria-label="Start recording interview"
-        style={{ minWidth: '48px', height: '48px' }}
-      >
-        🎤
-      </button>
-    );
-  }
-  
-  // Rendering the recording panel
+
   return (
-    <div className="fixed bottom-16 right-4 z-50 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 border border-gray-200 dark:border-gray-700">
-      <h3 className="font-bold text-sm mb-2 flex items-center gap-2">
-        🎤 Live Transcript
-        <span className="inline-block w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-      </h3>
-      
-      <div className="flex items-center gap-2 mb-2 text-xs text-gray-500 dark:text-gray-400">
-        <span>{elapsedSeconds}s</span>
-        <span>|</span>
-        <span>Recording in progress...</span>
-      </div>
-      
-      <div className="h-32 overflow-y-auto mb-3 text-sm font-mono bg-gray-50 dark:bg-gray-900 rounded p-2">
-        <p className="text-gray-400 italic text-center py-4">
-          Click "Stop & Save" when done recording
-        </p>
-      </div>
-      
-      <div className="flex gap-2">
-        <button 
-          onClick={stopRecording}
-          className="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm font-medium"
+    <div className="fixed bottom-4 right-4 z-50">
+      {!isRecording ? (
+        <button
+          onClick={startRecording}
+          className="bg-red-500 hover:bg-red-600 text-white p-3 rounded-full shadow-lg animate-pulse"
+          title="Record Interview"
+          aria-label="Start recording interview"
         >
-          ✅ Stop & Save
+          🎤
         </button>
-      </div>
+      ) : (
+        <div className="absolute bottom-14 right-0 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 border border-gray-200 dark:border-gray-700">
+          <h3 className="font-bold text-sm mb-2 flex items-center gap-2">
+            🎤 Live Transcript
+            <span className="inline-block w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+          </h3>
+          
+          <div className="flex items-center justify-between mb-2 text-xs text-gray-500 dark:text-gray-400">
+            <span>{duration}s</span>
+            <span>• Recording in progress...</span>
+          </div>
+          
+          <div className="h-32 overflow-y-auto mb-3 text-sm font-mono bg-gray-50 dark:bg-gray-900 rounded p-2 border border-gray-200 dark:border-gray-700">
+            {transcriptText ? (
+              transcriptText.split('\n').map((line, i) => (
+                <p key={i} className="text-gray-800 dark:text-gray-200">
+                  {line}
+                </p>
+              ))
+            ) : (
+              <p className="text-gray-400 italic text-center py-4">
+                Transcript will appear here...
+              </p>
+            )}
+          </div>
+          
+          <div className="flex gap-2">
+            <button 
+              onClick={stopRecording}
+              className="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm font-medium"
+            >
+              ✅ Stop & Save
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
