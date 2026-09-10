@@ -1,19 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function InterviewRecorder() {
   const [isRecording, setIsRecording] = useState(false);
   const [chunks, setChunks] = useState([]);
   const [duration, setDuration] = useState(0);
+  const timerRef = useRef(null);
   
   // Timer for duration tracking
   useEffect(() => {
-    let interval;
     if (isRecording) {
-      interval = setInterval(() => {
+      timerRef.current = setInterval(() => {
         setDuration(prev => prev + 1);
       }, 1000);
+      
+      console.log('🎤 Recording started');
+    } else {
+      clearInterval(timerRef.current);
+      console.log('🛑 Recording stopped');
     }
-    return () => clearInterval(interval);
+    
+    // Cleanup on unmount
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
   }, [isRecording]);
   
   const handleStart = async () => {
@@ -21,8 +32,10 @@ export default function InterviewRecorder() {
       console.log('🎤 Starting interview recording...');
       setIsRecording(true);
       setChunks([]);
+      setDuration(0);
       
       // TODO Phase 2: Connect to AssemblyAI WebSocket here
+      // Example: await connectToAssemblyAIStream();
       
     } catch (error) {
       console.error('Failed to start recording:', error);
@@ -35,12 +48,19 @@ export default function InterviewRecorder() {
       console.log('🛑 Stopping recording, saving transcript...');
       
       // TODO Phase 2: Stop AssemblyAI session here
+      // Example: await stopAssemblyAISession();
       
-      // For now, just show success message
+      // Clear timer (double safety)
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      
       setTimeout(() => {
         setIsRecording(false);
         setChunks([]);
-      }, 1000);
+        setDuration(0);
+      }, 100);
       
     } catch (error) {
       console.error('Failed to save transcript:', error);
