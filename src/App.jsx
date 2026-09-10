@@ -64,7 +64,7 @@ import NextAction from './components/NextAction'
 import STARGenerator from './components/STARGenerator'
 import EmailDraft from './components/EmailDraft'
 import MergeModal from './components/MergeModal'
-import { useAutoRefresh } from './hooks/useAutoRefresh'
+import { useAutoRefresh, historyDedupKeys, isNewHistoryEntry } from './hooks/useAutoRefresh'
 import { useAndroidBackButton } from './hooks/useAndroidBackButton'
 import { useAutoScore } from './hooks/useAutoScore'
 import { useAutoCheckPositions } from './hooks/useAutoCheckPositions'
@@ -108,6 +108,46 @@ import { pushLocalPrefs, AUX_PREFS_SYNCED_EVENT, PROFILE_SYNCED_EVENT } from './
 const ONBOARDED_KEY = 'jobtrackr_onboarded'
 const TOUR_DONE_KEY = 'jobtrackr_tour_done'
 const API_KEY_STORAGE = 'jobtrackr_claude_api_key'
+
+// ─── Announced-history ledger (bell notification dedup) ───────────────────────
+// The hourly auto-refresh writes a merged history, then reprocessJobs() re-derives
+// it — and the two paths don't always canonicalize an entry to the SAME key. So a
+// job can churn one key every refresh: the merge output holds key X, the stored
+// (reprocessed) history holds Y, and next hour the merge recomputes X, sees it's
+// "not in" the job's Y history, and fires a phantom "1 nouvelle entrée dans
+// l'historique" bell — forever, once per refresh, with nothing new in the timeline.
+// (This is what showed up as the same "Checkout Com 1 — 1 nouvelle entrée" card
+// repeating every hour.) Remember which entry keys we've ALREADY announced per job
+// so a perpetually-"new" key is surfaced at most once. Keyed by canonical
+// historyEntryKey, so a real new event (new gmailId / status) still notifies.
+const NOTIF_ANNOUNCED_KEY = 'jobtrackr_notif_announced_history'
+const MAX_ANNOUNCED_PER_JOB = 60
+
+function loadAnnouncedHistory() {
+  try {
+    const raw = localStorage.getItem(NOTIF_ANNOUNCED_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function getAnnouncedHistoryKeys(jobId) {
+  const all = loadAnnouncedHistory()
+  return new Set(all[jobId] || [])
+}
+
+// Record every current entry key for a job as "announced" so a churned/duplicate
+// key can't re-trigger the bell on the next refresh. Trims to the most recent keys
+// per job (older entries never re-appear) to keep localStorage bounded.
+function recordAnnouncedHistoryKeys(jobId, keys) {
+  try {
+    const all = loadAnnouncedHistory()
+    const merged = [...new Set([...(all[jobId] || []), ...keys.filter(Boolean)])]
+    all[jobId] = merged.slice(-MAX_ANNOUNCED_PER_JOB)
+    localStorage.setItem(NOTIF_ANNOUNCED_KEY, JSON.stringify(all))
+  } catch {}
+}
 
 // Interactive product tour steps. Each points at a DOM element via a
 // `[data-tour="…"]` anchor (see the JSX below); steps whose target isn't
@@ -669,13 +709,22 @@ export default function App() {
     // shuffle length without adding anything real; counting by length fired a
     // phantom "1 nouvelle entrée" every hour (nothing new visible in the timeline).
     if (job && Array.isArray(data.history)) {
-      const oldKeys = new Set()
-      for (const h of job.history || []) {
-        oldKeys.add(historyEntryKey(h))
-        for (const gid of h.gmailIds || []) oldKeys.add(`gmail:${gid}`)
-      }
-      const newCount = data.history.filter(h => !oldKeys.has(historyEntryKey(h))).length
-      if (newCount > 0) {
+      // Use the SAME robust key set the refresh dedups with (gmailIds arrays +
+      // note-separator expansion), so a merged/combined note isn't mistaken for a
+      // new entry. Then subtract anything we've ALREADY announced for this job:
+      // the refresh-merge vs reprocessJobs canonicalization mismatch can leave one
+      // key perpetually "new" against the stored history, which otherwise re-fired
+      // the bell every hour with nothing new in the timeline (see the ledger above).
+      const oldKeys = historyDedupKeys(job.history)
+      const announced = getAnnouncedHistoryKeys(id)
+      const fresh = data.history.filter(
+        h => isNewHistoryEntry(oldKeys, h) && !announced.has(historyEntryKey(h))
+      )
+      // Remember every current key (not just the fresh ones) so a churned duplicate
+      // can't masquerade as new next refresh.
+      recordAnnouncedHistoryKeys(id, data.history.map(historyEntryKey))
+      if (fresh.length > 0) {
+        const newCount = fresh.length
         pushNotif('update', `${job.company} — ${newCount} nouvelle${newCount > 1 ? 's' : ''} entrée${newCount > 1 ? 's' : ''} dans l'historique`, { company: job.company, position: job.position, status: data.status || job.status, count: newCount, jobId: id })
       }
     }
