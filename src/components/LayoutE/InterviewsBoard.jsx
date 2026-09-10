@@ -45,15 +45,23 @@ const defaultPrepRound = (job) => {
   return next || reached[reached.length - 1] || INTERVIEW_TRAIN_LEVELS[0]
 }
 
-function ToolButton({ icon, label, onClick, tone = 'gray' }) {
+// A prep-tool as a full card: icon tile + label + one-line description. Larger
+// and more inviting than a chip — training is the hero, so its tools read as a
+// proper toolkit rather than a strip of tiny buttons.
+function ToolCard({ icon, label, desc, onClick, tone = 'gray' }) {
   const tones = {
-    gray: 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50',
-    indigo: 'bg-indigo-50 border-indigo-100 text-indigo-700 hover:bg-indigo-100',
-    green: 'bg-green-50 border-green-100 text-green-700 hover:bg-green-100',
+    gray: 'hover:border-gray-300 hover:bg-gray-50',
+    indigo: 'hover:border-indigo-300 hover:bg-indigo-50/60',
+    green: 'hover:border-green-300 hover:bg-green-50/60',
   }
+  const iconTones = { gray: 'bg-gray-100', indigo: 'bg-indigo-100', green: 'bg-green-100' }
   return (
-    <button onClick={onClick} className={`inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-lg border transition-colors ${tones[tone]}`}>
-      <span>{icon}</span>{label}
+    <button onClick={onClick} className={`group flex items-start gap-2.5 text-left p-3 rounded-xl border border-gray-200 bg-white transition-colors ${tones[tone]}`}>
+      <span className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-base ${iconTones[tone]}`}>{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[12.5px] font-semibold text-gray-900">{label}</span>
+        <span className="block text-[11px] text-gray-500 leading-snug mt-0.5">{desc}</span>
+      </span>
     </button>
   )
 }
@@ -244,42 +252,46 @@ function InterviewDetail({ job, prepRound, onPickRound, onOpenFull, onTrain, onE
         </button>
       </div>
 
-      {/* Round stepper */}
-      <div className="px-4 pt-4 pb-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2.5">{t('interviews.journey')}</p>
+      {/* Round selector — pick which round to prepare */}
+      <div className="px-4 pt-4 pb-1">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2.5">{t('interviews.pickRound')}</p>
         <InterviewStepper job={job} prepRound={prepRound} onPick={onPickRound} t={t} />
       </div>
 
-      {/* Prepare selected round */}
-      <div className="mx-4 my-3 rounded-xl border border-indigo-100 bg-indigo-50/40 p-3.5">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-base leading-none">{INTERVIEW_ROUND_META[prepRound]?.icon}</span>
-          <span className="text-[13px] font-bold text-gray-900">{t('interviews.prepare').replace('{round}', roundLabel(prepRound, t))}</span>
+      {/* HERO — prepare the selected round: practice is the primary action */}
+      <div className="mx-4 my-3 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-500 text-white p-4 shadow-sm">
+        <div className="flex items-start gap-3">
+          <span className="shrink-0 w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center text-xl">{INTERVIEW_ROUND_META[prepRound]?.icon}</span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[15px] font-bold leading-tight">{t('interviews.prepare').replace('{round}', roundLabel(prepRound, t))}</div>
+            <p className="text-[12px] text-indigo-100 leading-snug mt-1">{t(`interviewFocus.${prepRound}`)}</p>
+          </div>
         </div>
-        <p className="text-[12px] text-gray-500 leading-snug mb-3">{t(`interviewFocus.${prepRound}`)}</p>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="mt-3.5 flex items-stretch gap-2">
+          <button onClick={() => onTrain(job, prepRound)}
+            className="flex-1 inline-flex items-center justify-center gap-2 text-[13px] font-bold px-4 py-2.5 rounded-xl bg-white text-indigo-700 hover:bg-indigo-50 shadow-sm transition-colors">
+            🎤 {t('interviews.practiceCta')}
+          </button>
           <button onClick={() => onExample(job, prepRound)}
-            className={`inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-lg border transition-colors ${hasExample ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
+            className={`inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-2.5 rounded-xl border transition-colors ${hasExample ? 'bg-white/20 border-white/30 text-white hover:bg-white/25' : 'border-white/40 text-white hover:bg-white/10'}`}>
             {hasExample ? '✅' : '📝'} {t('interviews.example')}
           </button>
-          <button onClick={() => onTrain(job, prepRound)}
-            className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
-            🎤 {t('interviews.train')}
-          </button>
-          {roundSessions.length > 0 && (
-            <span className="text-[11px] text-gray-400">{roundSessions.length}× · {t('interviews.best')} {roundBest}</span>
-          )}
+        </div>
+        <div className="mt-2.5 text-[11px] text-indigo-100">
+          {roundSessions.length > 0
+            ? `${roundSessions.length}× · ${t('interviews.best')} ${roundBest}`
+            : t('interviews.notPractised')}
         </div>
       </div>
 
-      {/* More tools */}
+      {/* Prep toolkit */}
       <div className="px-4 pb-3">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">{t('interviews.moreTools')}</p>
-        <div className="flex items-center gap-2 flex-wrap">
-          <ToolButton icon="🎯" label={t('interviews.toolStar')} tone="indigo" onClick={() => onSTAR?.(job)} />
-          <ToolButton icon="🎤" label={t('interviews.toolFreePractice')} onClick={() => onTrain(job, null)} />
-          <ToolButton icon="📄" label={t('interviews.toolCv')} onClick={() => onGenerateCV?.(job)} />
-          <ToolButton icon="🤝" label={t('interviews.toolNegotiate')} tone="green" onClick={() => onNegotiate?.(job)} />
+        <div className="grid grid-cols-2 gap-2">
+          <ToolCard tone="indigo" icon="🎯" label={t('interviews.toolStar')} desc={t('interviews.toolStarDesc')} onClick={() => onSTAR?.(job)} />
+          <ToolCard tone="gray" icon="🎤" label={t('interviews.toolFreePractice')} desc={t('interviews.toolFreePracticeDesc')} onClick={() => onTrain(job, null)} />
+          <ToolCard tone="gray" icon="📄" label={t('interviews.toolCv')} desc={t('interviews.toolCvDesc')} onClick={() => onGenerateCV?.(job)} />
+          <ToolCard tone="green" icon="🤝" label={t('interviews.toolNegotiate')} desc={t('interviews.toolNegotiateDesc')} onClick={() => onNegotiate?.(job)} />
         </div>
       </div>
 
@@ -458,7 +470,7 @@ export default function InterviewsBoard({
           <button onClick={() => setRoundFilter(null)} className="mt-3 text-sm text-indigo-600 hover:underline">{t('interviews.filterClear')}</button>
         </div>
       ) : (
-        <div className="md:grid md:grid-cols-[minmax(300px,340px)_1fr] md:gap-5 md:items-start">
+        <div className="md:grid md:grid-cols-[minmax(260px,300px)_1fr] md:gap-5 md:items-start">
           {/* Master list */}
           <InterviewList
             active={active} outcome={outcome} past={past}

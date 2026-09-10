@@ -158,7 +158,7 @@ export const en = {
     tabs: {
       home: 'Home',
       tracker: 'Applications',
-      interviews: 'Interviews',
+      interviews: 'Training',
       analytics: 'Analytics',
       search: 'Search',
       cv: 'My CV',
@@ -174,8 +174,8 @@ export const en = {
 
   // Interviews board (dedicated interviews & prep view, below Applications)
   interviews: {
-    title: 'Interviews & prep',
-    subtitle: 'Only the applications that reached an interview — track them, review outcomes, and practise.',
+    title: 'Interview training',
+    subtitle: 'Practise each round, prep your answers, and keep an eye on the applications that reached an interview.',
     statTotal: 'In this board',
     statActive: 'In process',
     statOffers: 'Offers & hires',
@@ -204,6 +204,8 @@ export const en = {
     roundBadgeTip: 'Interview type detected from the calendar/email',
     details: 'Details',
     journey: 'Interview journey',
+    pickRound: 'Pick the round to prepare',
+    practiceCta: 'Start a mock interview',
     trainTitle: 'Train to succeed — by interview level',
     train: 'Train',
     example: 'Example',
@@ -221,6 +223,10 @@ export const en = {
     toolFreePractice: 'Free practice',
     toolCv: 'Tailor CV',
     toolNegotiate: 'Negotiation prep',
+    toolStarDesc: 'Structure your examples with the STAR method.',
+    toolFreePracticeDesc: 'Open mock interview, any topic.',
+    toolCvDesc: 'Tailor your CV to this role.',
+    toolNegotiateDesc: 'Prep your salary arguments.',
   },
 
   // Interview round / type labels (detected from the calendar & email content)

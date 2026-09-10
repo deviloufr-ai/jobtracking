@@ -158,7 +158,7 @@ export const fr = {
     tabs: {
       home: 'Accueil',
       tracker: 'Candidatures',
-      interviews: 'Entretiens',
+      interviews: 'Préparation',
       analytics: 'Analyse',
       search: 'Recherche',
       cv: 'Mon CV',
@@ -172,10 +172,10 @@ export const fr = {
     signOut: 'Se déconnecter',
   },
 
-  // Tableau Entretiens (vue dédiée entretiens & préparation, sous Candidatures)
+  // Tableau Préparation (vue dédiée entraînement & préparation aux entretiens, sous Candidatures)
   interviews: {
-    title: 'Entretiens & préparation',
-    subtitle: 'Seules les candidatures arrivées en entretien — suivez-les, analysez les issues et entraînez-vous.',
+    title: 'Préparation aux entretiens',
+    subtitle: 'Entraînez-vous à chaque tour, préparez vos réponses et gardez un œil sur les candidatures arrivées en entretien.',
     statTotal: 'Dans ce tableau',
     statActive: 'En cours',
     statOffers: 'Offres & embauches',
@@ -204,6 +204,8 @@ export const fr = {
     roundBadgeTip: 'Type d’entretien détecté depuis le calendrier / l’email',
     details: 'Détails',
     journey: 'Parcours d’entretien',
+    pickRound: 'Choisissez le tour à préparer',
+    practiceCta: 'Démarrer un entretien blanc',
     trainTitle: 'S’entraîner pour réussir — par niveau d’entretien',
     train: 'S’entraîner',
     example: 'Exemple',
@@ -221,6 +223,10 @@ export const fr = {
     toolFreePractice: 'Entraînement libre',
     toolCv: 'Adapter le CV',
     toolNegotiate: 'Préparer la négo',
+    toolStarDesc: 'Structurez vos exemples en méthode STAR.',
+    toolFreePracticeDesc: 'Entretien blanc libre, tous sujets.',
+    toolCvDesc: 'Adaptez votre CV à cette offre.',
+    toolNegotiateDesc: 'Préparez vos arguments de salaire.',
   },
 
   // Libellés des tours / types d’entretien (détectés depuis le calendrier & l’email)
