@@ -130,8 +130,20 @@ export async function transcribeBlob(blob, langHint, onProgress) {
     repetition_penalty: 1.2
   })
   const raw = (output?.text || '').trim()
-  console.info(`[MockInterview] whisper raw transcript length=${raw.length}`)
-  return cleanTranscript(raw)
+  console.info(
+    `[MockInterview] whisper raw transcript length=${raw.length} preview=${JSON.stringify(raw.slice(0, 60))}`
+  )
+  const cleaned = cleanTranscript(raw)
+  // On audio it can't parse (noise, near-silence that cleared the RMS gate),
+  // Whisper doesn't return an empty string — it hallucinates punctuation or quote
+  // marks ("'''", "...", "♪"). Those have no letters, so treat anything with no
+  // actual word content as a miss; the caller then shows the retry/type path
+  // instead of submitting garbage as the candidate's answer.
+  if (!/\p{L}/u.test(cleaned)) {
+    console.info('[MockInterview] transcript has no word content — treating as no speech')
+    return ''
+  }
+  return cleaned
 }
 
 // Clean up the residual repetition Whisper emits on quiet/trailing audio:
