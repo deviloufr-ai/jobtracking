@@ -28,6 +28,13 @@ const EXTRA_FIELDS = [
   // interviewExamples: per-round cached example interviews (Q + model answers),
   // keyed by round ({ screening, technical, … , general }). Rides jobs.extras.
   'interviewExamples',
+  // positionLinks / positionChecks: discovered apply-links and the per-URL
+  // "is this posting still open" check results. These are written by useAutoRefresh
+  // and checkPosition and are deserialized on the read path (deserializeJobFields),
+  // but there is NO dedicated jobs column for them (only an unused position_checks
+  // TABLE) and they weren't in stripLocalOnlyFields' safe list — so every write
+  // silently dropped them and they never reached another device. Ride jobs.extras.
+  'positionLinks', 'positionChecks',
 ]
 
 // Collect the present extra fields off a full job record into a jsonb blob.
@@ -210,6 +217,29 @@ class SyncManager {
     return snake
   }
 
+  // Union this device's extras with the server's current blob so a write never
+  // narrows what a peer device stored. Only needed for updates (an insert is a
+  // brand-new row with no prior extras). On any read failure we fall back to the
+  // local extras — no worse than the previous unconditional overwrite.
+  async mergeServerExtras(userId, type, jobId, localExtras) {
+    if (type !== 'update' || !jobId) return localExtras
+    try {
+      const { data: existing } = await supabase
+        .from('jobs')
+        .select('extras')
+        .eq('id', jobId)
+        .eq('user_id', userId)
+        .maybeSingle()
+      const serverExtras = (existing && existing.extras && typeof existing.extras === 'object' && !Array.isArray(existing.extras))
+        ? existing.extras
+        : {}
+      return { ...serverExtras, ...localExtras }
+    } catch (err) {
+      console.warn('extras merge read failed, writing local extras only:', err?.message)
+      return localExtras
+    }
+  }
+
   async sendMutationToSupabase(userId, table, type, record, options = {}) {
     if (!userId) throw new Error('User not authenticated')
 
@@ -248,7 +278,20 @@ class SyncManager {
       jobRecord = this.stripLocalOnlyFields(jobRecord)
       // Convert camelCase to snake_case for Supabase
       jobRecord = this.camelToSnake(jobRecord)
-      if (extras) jobRecord.extras = extras
+      if (extras) {
+        // `extras` is a WHOLE jsonb blob and buildExtras only ever contains the
+        // fields THIS device currently holds. On an update that would REPLACE the
+        // server blob — silently wiping any extra field a peer set but this device
+        // hasn't polled yet. Concrete loss: device A generates a CV (cvSaved); before
+        // B's next 5-min poll, B edits the same job's status → B's write drops
+        // cvSaved from the server, and B never receives it (its own poll now returns
+        // the narrowed blob). The READ path unions extras (pollManager.mergeJob) but
+        // the WRITE path had no union, so scores/CVs/letters/interview data vanished
+        // across devices. Merge into the server's current blob (this device wins per
+        // key). buildExtras never emits null/undefined, so this can never CLEAR a
+        // field — it only ever adds/overwrites, which is exactly the LWW intent.
+        jobRecord.extras = await this.mergeServerExtras(userId, type, jobRecord.id, extras)
+      }
     }
 
     switch (type) {

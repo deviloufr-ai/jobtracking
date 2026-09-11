@@ -73,8 +73,15 @@ plugin changes).
   whitelist lives in `syncManager.js` `EXTRA_FIELDS`: generated CV/cover letter (`cvSaved`,
   `letterSaved` + version history `letterVersions`), STAR answers, score, interview sessions,
   compensation (`compensation`), the per-application contacts CRM (`contacts` + touchpoints), and
-  the saved negotiation draft (`negotiationSaved`). Adding a synced per-job field = add it here;
+  the saved negotiation draft (`negotiationSaved`), plus discovered apply-links / position-open
+  checks (`positionLinks`, `positionChecks`). Adding a synced per-job field = add it here;
   no migration needed. The poll unbundles `extras` back onto the job (`pollManager.js`).
+  **The `extras` write is a UNION, not an overwrite.** `sendMutationToSupabase` reads the row's
+  current `extras` and merges this device's fields in (`mergeServerExtras`, this-device-wins per
+  key) — because the blob is written whole and `buildExtras` only carries the fields the *writing*
+  device holds. Without the union, a device that edits a job before polling a peer's freshly-added
+  extra field wiped it from the server (score/CV/letter/interview data silently not syncing across
+  devices). `buildExtras` never emits null, so the union only ever adds — it can't clear a field.
 
 ### Gmail ingestion
 
