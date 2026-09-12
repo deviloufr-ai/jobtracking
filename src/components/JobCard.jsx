@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, memo, Fragment } from 'react'
 import { enrichJobTimeline } from '../services/enrichTimeline'
-import { STATUSES, getStatus, getStatusLabel } from '../hooks/useJobs'
+import { STATUSES, getStatus, getStatusLabel, resolveInterviewStatus } from '../hooks/useJobs'
 import { ScoreBadge } from './ScoreJob'
 import CompanyAvatar from './CompanyAvatar'
 import BottomSheet from './BottomSheet'
@@ -207,7 +207,7 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
       note: editForm.note,
       date: editForm.time ? `${editForm.date}T${editForm.time}:00` : editForm.date,
     }
-    if (merged.status === 'interview' && new Date(merged.date) < new Date()) merged.status = 'done'
+    merged.status = resolveInterviewStatus(merged.status, merged.date)
     const updated = [...history]
     updated[idx] = merged
     onUpdateHistory(job.id, [...updated].sort((a, b) => new Date(a.date) - new Date(b.date)))

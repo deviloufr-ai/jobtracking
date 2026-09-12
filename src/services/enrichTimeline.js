@@ -7,7 +7,7 @@ import { withUserApiKey } from './apiKey'
 const IS_DEV = import.meta.env.DEV
 
 // Extract meeting links from text
-function extractMeetingLink(text = '') {
+export function extractMeetingLink(text = '') {
   const patterns = [
     // Google Meet
     /(https:\/\/meet\.google\.com\/[a-z0-9-]+)/i,
@@ -263,10 +263,15 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
   // If a calendar event matches an existing entry by date+status, inject its meeting link
   const existingByKey = new Map((job.history || []).map(h => [`${h.date}-${h.status}`, h]))
 
-  // Build set of existing meeting links to prevent duplicate meetings
+  // Build set of existing meeting links to prevent duplicate meetings. Scan the
+  // NOTE text too, not just the structured field: an invite that arrived as an email
+  // (or was pasted in by hand) often carries the join link inside the note only, so
+  // matching on `h.meetingLink` alone re-added the same calendar meeting as a duplicate.
   const existingMeetingLinks = new Set()
   for (const h of job.history || []) {
     if (h.meetingLink) existingMeetingLinks.add(h.meetingLink)
+    const inNote = extractMeetingLink(h.note || '')
+    if (inNote) existingMeetingLinks.add(inNote)
   }
 
   const newEvents = []

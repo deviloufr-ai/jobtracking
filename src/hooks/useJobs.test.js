@@ -31,9 +31,30 @@ import {
   dropMisplacedSeeds,
   deduplicateHistory,
   reconcileExactDuplicateJobs,
+  resolveInterviewStatus,
 } from './useJobs'
 
 const daysAgo = n => new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString()
+const todayKey = new Date().toISOString().split('T')[0]
+
+describe('resolveInterviewStatus — same-day interview stays interview', () => {
+  it('keeps a same-day interview as "interview" (not "done")', () => {
+    // Regression: adding an "Entretien" step for today wrote "Terminée" because a
+    // date-only (midnight) entry compared "before now".
+    expect(resolveInterviewStatus('interview', todayKey)).toBe('interview')
+    expect(resolveInterviewStatus('interview', `${todayKey}T09:00:00`)).toBe('interview')
+  })
+  it('resolves an EARLIER-day interview to "done"', () => {
+    expect(resolveInterviewStatus('interview', '2026-01-05')).toBe('done')
+  })
+  it('keeps a future interview as "interview"', () => {
+    expect(resolveInterviewStatus('interview', '2999-01-01')).toBe('interview')
+  })
+  it('passes non-interview statuses through untouched', () => {
+    expect(resolveInterviewStatus('sent', '2026-01-05')).toBe('sent')
+    expect(resolveInterviewStatus('done', todayKey)).toBe('done')
+  })
+})
 
 describe('getStatus / getStatusLabel', () => {
   it('returns the matching status object', () => {

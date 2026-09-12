@@ -7,7 +7,7 @@
 // per-step edit/delete + primary actions. CV / Cover letter / Interview keep the
 // real generators. Self-contained (classic JobRow/JobCandidaturePanel untouched).
 import { useState, useEffect, useRef, Fragment } from 'react'
-import { STATUSES, getStatus, getStatusLabel, historyEntryKey } from '../../hooks/useJobs'
+import { STATUSES, getStatus, getStatusLabel, historyEntryKey, resolveInterviewStatus } from '../../hooks/useJobs'
 import { classifyInterviewRound, isInterviewEntry, INTERVIEW_ROUND_META, roundLabel } from '../../utils/interviewRounds'
 import { gmailMessageUrl, openGmailNative } from '../../services/gmail'
 import { scoreColorClasses, ScoreBreakdown } from '../ScoreJob'
@@ -26,6 +26,7 @@ import { getCompanyAddress, setCompanyAddress } from '../../services/commuteStor
 import { searchCompanyAddress } from '../../services/googlePlaces'
 import { noteLines } from '../../utils/noteFormat'
 import { isCalendarConnected } from '../../services/calendar'
+import { extractMeetingLink } from '../../services/enrichTimeline'
 import { parseAnalysisJson } from '../../services/rejectionAnalysis'
 
 const PALETTE = ['#4f46e5', '#2563eb', '#0d9488', '#d97706', '#db2777', '#7c3aed', '#dc2626', '#059669']
@@ -130,7 +131,11 @@ export default function CandidatureDrawer({
   // candidature is at the interview step yet no accepted Google Calendar event
   // (with its date/time + join link) has attached to the timeline. Gated on a
   // connected calendar, so we could actually have found and linked one.
-  const hasLinkedMeeting = history.some(h => h.meetingLink || h.source === 'calendar')
+  // A meeting counts as "linked" when it has a structured link/calendar source OR a
+  // join link embedded in its note text (an email invite often lands that way) — so
+  // the candidature stops nagging "no calendar event linked" when the meeting is
+  // plainly already on the timeline, matching the live Interviews board.
+  const hasLinkedMeeting = history.some(h => h.meetingLink || h.source === 'calendar' || extractMeetingLink(h.note || ''))
   const invitePending = displayStatus === 'interview' && !hasLinkedMeeting && isCalendarConnected()
 
   const recruiterContact = (() => {
@@ -176,7 +181,7 @@ export default function CandidatureDrawer({
     const idx = findIdxByKey(editIdx)
     if (idx < 0) { setEditIdx(null); setEditForm({}); return }  // step moved/removed under us — abort
     const merged = { ...history[idx], ...editForm }
-    if (merged.status === 'interview' && new Date(merged.date) < new Date()) merged.status = 'done'
+    merged.status = resolveInterviewStatus(merged.status, merged.date)
     const updated = [...history]; updated[idx] = merged
     onUpdateHistory?.(job.id, [...updated].sort((a, b) => new Date(a.date) - new Date(b.date)))
     setEditIdx(null); setEditForm({})

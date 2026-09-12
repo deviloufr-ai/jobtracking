@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { isConnected, fetchJobEmails, fetchJobEmailsForAccount, getConnectedAccounts, getCachedUser, isInsufficientScopeError } from '../services/gmail'
 import { parseEmailsForJobs, validateAndCleanJobs } from '../services/claude'
 import { fetchCalendarEvents } from '../services/calendar'
+import { enrichJobTimeline } from '../services/enrichTimeline'
 import { extractJobUrlsFromEmail, rankUrlsByJobRelevance } from '../services/positionChecker'
 import { isAtsRejection, isDeletedJob, mergeHistoryBySameDayTopic, splitMeetingDatesInHistory, deriveStatusFromHistory, historyEntryKey, ATS_DOMAINS } from './useJobs'
 import { normalize, isJobBoard, JOB_BOARD_NAMES } from '../constants/jobBoards'
@@ -668,6 +669,26 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
         Promise.resolve(allEmails),
         fetchCalendarEvents('', months).catch(() => []),
       ])
+
+      // Link accepted Google Calendar events to candidatures already at the interview
+      // stage — independently of any new email, and BEFORE the "no new emails" early
+      // return below. Such a job often has NO fresh email (only the invite sits on the
+      // calendar), so the email-driven merge further down never attaches the meeting and
+      // the "no calendar event linked" banner stays up despite a real invite. Reuses the
+      // per-job enrichment (same path as the manual Sync button) so the merge/dedup is
+      // identical; gated on `newCount > 0` so a re-link on a later refresh is a no-op.
+      try {
+        const interviewJobs = jobsRef.current.filter(
+          j => (deriveStatusFromHistory(j.history) || j.status) === 'interview'
+        )
+        let linked = 0
+        for (const j of interviewJobs) {
+          const r = await enrichJobTimeline(j, { calendarOnly: true })
+          if (r?.history && r.newCount > 0) { updateJob(j.id, { history: r.history }); linked++ }
+        }
+        if (linked) log(`📅 Linked calendar meeting(s) to ${linked} interview candidature(s)`)
+      } catch (e) { log(`📅 Calendar linking pass failed: ${e.message}`) }
+
       if (!emails.length) return
 
       // Defense-in-depth against the hydration race: the Gmail/Calendar fetch

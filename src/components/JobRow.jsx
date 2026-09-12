@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, memo } from 'react'
 import { enrichJobTimeline } from '../services/enrichTimeline'
 import AdvicePanel from './AdvicePanel'
-import { STATUSES, getStatus, getStatusLabel } from '../hooks/useJobs'
+import { STATUSES, getStatus, getStatusLabel, resolveInterviewStatus } from '../hooks/useJobs'
 import { gmailMessageUrl } from '../services/gmail'
 import { isNoReply } from './EmailDraft'
 import { parseSender } from '../utils/parseSender'
@@ -287,8 +287,8 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
   const handleSaveEdit = (displayIdx) => {
     const idx = toOriginalIdx(displayIdx)
     const merged = { ...history[idx], ...editForm }
-    // Auto-resolve interview → done when date is in the past
-    if (merged.status === 'interview' && new Date(merged.date) < new Date()) merged.status = 'done'
+    // Auto-resolve interview → done only when it's on an earlier day (same-day stays interview)
+    merged.status = resolveInterviewStatus(merged.status, merged.date)
     const updated = [...history]
     updated[idx] = merged
     // Re-sort by date after editing (create new sorted array, don't mutate)

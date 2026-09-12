@@ -143,6 +143,16 @@ export function getStatusLabel(key, t = (key) => key) {
 export const isDiscoverySeed = (h) =>
   !!h && h.status === 'todo' && (h.showCVButton === true || /offre\s+(trouv|ajout)/i.test(h.note || ''))
 
+// A logged interview resolves to "done" (completed) only when it falls on an EARLIER
+// calendar day. A same-day interview — one added or scheduled for today — must stay
+// "interview": comparing full timestamps (`new Date(date) < new Date()`) flipped a
+// today entry to "done" the instant its clock time (or midnight, for a date-only entry)
+// slipped behind "now", so an interview you just added for today showed up as "Terminée".
+export function resolveInterviewStatus(status, date) {
+  if (status !== 'interview') return status
+  return historyDayKey(date) < historyDayKey(new Date().toISOString()) ? 'done' : status
+}
+
 export function deriveStatusFromHistory(history) {
   if (!Array.isArray(history) || history.length === 0) return null
   const known = new Set(STATUSES.map(s => s.key))
@@ -1932,7 +1942,15 @@ export function useJobs() {
 
   const updateStatus = (id, status) => {
     const job = jobs.find(j => j.id === id)
-    if (!job || job.status === status) return
+    if (!job) return
+    // The list's status pill shows the status of the LAST timeline entry (latest-wins),
+    // which can differ from the raw job.status field: job.status is only re-derived from
+    // history on load/refresh (reprocessJobs), so the two drift after an in-session parse.
+    // Guarding on raw job.status silently dropped a click whose target happened to equal
+    // the STALE job.status — the pill (showing a different value) never moved. Compare
+    // against the same value the pill displays so a manual change always lands.
+    const displayed = (job.history?.length ? job.history[job.history.length - 1].status : null) || job.status
+    if (displayed === status) return
 
     const st = STATUSES.find(s => s.key === status)
     const newJob = sortJobHistory({
@@ -1966,10 +1984,9 @@ export function useJobs() {
     const job = jobs.find(j => j.id === id)
     if (!job) return
 
-    // Resolve history entry status if interview is in the past, but don't change job status
-    const entryDate = new Date(entry.date)
-    const isPast = entryDate < new Date()
-    const entryStatusResolved = entry.status === 'interview' && isPast ? 'done' : entry.status
+    // Resolve a PAST-DAY interview entry to "done" (a same-day interview stays
+    // "interview"); job status itself is left unchanged.
+    const entryStatusResolved = resolveInterviewStatus(entry.status, entry.date)
 
     const newJob = sortJobHistory({
       ...job,
