@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core'
 import { useAppUpdate } from '../hooks/useAppUpdate'
-import { ANDROID_APK_DOWNLOAD_URL } from '../constants/appVersion'
+import { apkDownloadUrl } from '../constants/appVersion'
 
 const isEN = typeof navigator !== 'undefined' && navigator.language.startsWith('en')
 const tr = (fr, en) => (isEN ? en : fr)
@@ -9,7 +9,7 @@ const tr = (fr, en) => (isEN ? en : fr)
 // no auto-update) it links to the fresh APK; on the web it reloads to pick up
 // the new build. Sits above the mobile bottom nav.
 export default function AppUpdateBanner() {
-  const { updateAvailable, latestVersion, dismiss } = useAppUpdate()
+  const { updateAvailable, latestVersion, dismiss, nativeBuildToken } = useAppUpdate()
   if (!updateAvailable) return null
 
   const isNative = !!(Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform())
@@ -21,8 +21,8 @@ export default function AppUpdateBanner() {
       // which downloads it — a Chrome Custom Tab (Browser.open) silently drops APK
       // downloads, and a same-host URL just no-ops in the WebView. See the comment
       // on ANDROID_APK_DOWNLOAD_URL. The Bridge cancels the WebView's own load, so
-      // the app stays put.
-      window.location.href = ANDROID_APK_DOWNLOAD_URL
+      // the app stays put. Cache-bust so we never re-download a stale older APK.
+      window.location.href = apkDownloadUrl(nativeBuildToken)
     } else {
       window.location.reload()
     }
