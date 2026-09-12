@@ -9,7 +9,7 @@
 //
 //   Do NOT tie this to the git commit count — the CI APK-refresh commits bump
 //   the count without being a real release, which would nag users falsely.
-export const APP_VERSION = '0.6.2'
+export const APP_VERSION = '0.6.3'
 
 // Minimum Android APK build (versionCode) the current web app needs. With
 // server.url the app loads the live web, so pure web changes never require a new
@@ -18,7 +18,7 @@ export const APP_VERSION = '0.6.2'
 // When that happens, bump BOTH this and `versionCode` in android/app/build.gradle
 // together; out-of-date installs then get an "update the app" prompt. Web-only
 // releases leave this alone.
-export const MIN_NATIVE_VERSION = 4
+export const MIN_NATIVE_VERSION = 5
 
 // Absolute URL of the deployed version manifest. MUST be absolute: the native
 // app has its own bundled /version.json, so a relative fetch would only ever
