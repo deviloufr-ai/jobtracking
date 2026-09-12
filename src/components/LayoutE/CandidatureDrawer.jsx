@@ -16,6 +16,7 @@ import CVGenerationSettings from '../CVGenerationSettings'
 import CommuteInfo from '../CommuteInfo'
 import MotivationLetterGenerator from '../MotivationLetterGenerator'
 import MockInterviewChatbot from '../MockInterviewChatbot'
+import InterviewRecorder from '../InterviewRecorder'
 import CompensationEditor from '../CompensationEditor'
 import ContactsManager from '../ContactsManager'
 import LetterVersions from '../LetterVersions'
@@ -36,7 +37,7 @@ const nowStep = (status) => {
   const n = new Date()
   return { status, note: '', date: n.toISOString().split('T')[0], time: `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}` }
 }
-const TABS = [['overview', 'Overview'], ['cv', 'CV'], ['letter', 'Cover letter'], ['star', 'STAR'], ['interview', 'Interview']]
+const TABS = [['overview', 'Overview'], ['cv', 'CV'], ['letter', 'Cover letter'], ['star', 'STAR'], ['preparation', 'Preparation'], ['interview', 'Interview']]
 
 const btn = 'inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-xl border border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50 transition-colors'
 const btnP = 'inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:brightness-105 transition'
@@ -144,7 +145,9 @@ export default function CandidatureDrawer({
   const [tab, setTab] = useState(initialTab && TABS.some(([id]) => id === initialTab) ? initialTab : 'overview')
   const [showLetter, setShowLetter] = useState(false)
   const [showMock, setShowMock] = useState(false)
-  const [sessionIdx, setSessionIdx] = useState(null)   // which interview session is shown inline (null = latest)
+  const [showRecorder, setShowRecorder] = useState(false)
+  const [sessionIdx, setSessionIdx] = useState(null)   // mock session shown inline (null = latest)
+  const [realIdx, setRealIdx] = useState(null)         // real interview session shown inline
   const [showTranscript, setShowTranscript] = useState(false)
   const [showScore, setShowScore] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
@@ -548,9 +551,9 @@ export default function CandidatureDrawer({
           )
         })()}
 
-        {tab === 'interview' && (() => {
-          const sessions = job.interviewSessions || []
-          if (sessions.length === 0) {
+        {tab === 'preparation' && (() => {
+          const mockSessions = (job.interviewSessions || []).filter(s => (s.kind || 'mock') === 'mock')
+          if (mockSessions.length === 0) {
             return (
               <div className="text-center py-10">
                 <p className="text-sm text-gray-500 mb-4">Practice with an AI mock interview (voice), then review your results here.</p>
@@ -558,8 +561,8 @@ export default function CandidatureDrawer({
               </div>
             )
           }
-          const activeIdx = (sessionIdx == null || sessionIdx >= sessions.length) ? sessions.length - 1 : sessionIdx
-          const active = sessions[activeIdx]
+          const activeIdx = (sessionIdx == null || sessionIdx >= mockSessions.length) ? mockSessions.length - 1 : sessionIdx
+          const active = mockSessions[activeIdx]
           return (
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -567,13 +570,13 @@ export default function CandidatureDrawer({
                   <div className="text-sm font-semibold text-gray-900">Mock interview</div>
                   <div className="text-xs text-gray-400">{active?.date ? new Date(active.date).toLocaleDateString() : ''}</div>
                 </div>
-                <button className={btnP} onClick={() => setShowMock(true)}>🎤 New interview</button>
+                <button className={btnP} onClick={() => setShowMock(true)}>🎤 New mock</button>
               </div>
 
               {/* Session picker when there is more than one */}
-              {sessions.length > 1 && (
+              {mockSessions.length > 1 && (
                 <div className="flex flex-wrap gap-2">
-                  {sessions.map((s, i) => (
+                  {mockSessions.map((s, i) => (
                     <button key={i} onClick={() => { setSessionIdx(i); setShowTranscript(false) }}
                       className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${i === activeIdx ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
                       {shortDate(s.date)} · {s.score ?? '—'}
@@ -611,6 +614,59 @@ export default function CandidatureDrawer({
             </div>
           )
         })()}
+
+        {tab === 'interview' && (() => {
+          const realSessions = (job.interviewSessions || []).filter(s => s.kind === 'real')
+          const header = (
+            <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-gray-900">Real interview</div>
+                <div className="text-xs text-gray-400">Record your live Meet/Zoom call and get AI feedback.</div>
+              </div>
+              <button className={btnP} onClick={() => setShowRecorder(true)}>🎙️ Record interview</button>
+            </div>
+          )
+          if (realSessions.length === 0) {
+            return (
+              <div>
+                {header}
+                <div className="text-center py-10 text-sm text-gray-500">No recorded interviews yet. Record a real call — or paste its transcript — to get feedback here.</div>
+              </div>
+            )
+          }
+          const activeIdx = (realIdx == null || realIdx >= realSessions.length) ? realSessions.length - 1 : realIdx
+          const active = realSessions[activeIdx]
+          return (
+            <div className="space-y-4">
+              {header}
+              {realSessions.length > 1 && (
+                <div className="flex flex-wrap gap-2">
+                  {realSessions.map((s, i) => (
+                    <button key={i} onClick={() => { setRealIdx(i); setShowTranscript(false) }}
+                      className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${i === activeIdx ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                      {shortDate(s.date)} · {s.score ?? '—'}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="rounded-xl border border-gray-200 bg-white overflow-auto p-5" style={{ maxHeight: 700 }}>
+                <InterviewFeedback session={active} />
+                {(active?.transcriptText || (Array.isArray(active?.transcript) && active.transcript.length > 0)) && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <button className="text-xs font-semibold text-indigo-600 hover:underline" onClick={() => setShowTranscript(v => !v)}>
+                      {showTranscript ? 'Hide transcript' : 'Show transcript'}
+                    </button>
+                    {showTranscript && (
+                      <div className="mt-3 text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">
+                        {active.transcriptText || active.transcript.map(m => m.text).join('\n')}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* ── Generator modals ──────────────────────────────────────────────── */}
@@ -620,11 +676,18 @@ export default function CandidatureDrawer({
       {showMock && (
         <MockInterviewChatbot job={job} cv={job.cvSaved?.markdown || ''} onClose={() => setShowMock(false)}
           onInterviewComplete={(result) => {
-            const session = { type: 'interview', date: new Date().toISOString(), score: result.score, hire_decision: result.hire_decision, feedback: result.feedback, transcript: result.transcript }
+            const session = { type: 'interview', kind: 'mock', date: new Date().toISOString(), score: result.score, hire_decision: result.hire_decision, feedback: result.feedback, transcript: result.transcript }
             // onUpdateJob is updateJob(id, data) — pass id + patch, not a whole job object,
             // or jobs.find(id) never matches and the session is silently discarded.
             onUpdateJob?.(job.id, { interviewSessions: [...(job.interviewSessions || []), session], updated_at: new Date().toISOString() })
             setShowMock(false)
+          }} />
+      )}
+      {showRecorder && (
+        <InterviewRecorder job={job} cv={job.cvSaved?.markdown || ''} onClose={() => setShowRecorder(false)}
+          onComplete={(session) => {
+            onUpdateJob?.(job.id, { interviewSessions: [...(job.interviewSessions || []), session], updated_at: new Date().toISOString() })
+            setShowRecorder(false)
           }} />
       )}
     </div>
