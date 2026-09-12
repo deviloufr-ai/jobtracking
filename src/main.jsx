@@ -6,6 +6,7 @@ import { installNativeApiShim } from './services/nativeApi.js'
 import { initNativeAuthDeepLink, initNativeAuthLifecycle } from './services/supabase.js'
 import { initPushNotifications } from './services/pushNotifications.js'
 import { initAnalytics } from './services/analytics.js'
+import { initShareIntake } from './services/shareIntake.js'
 
 // Initialize Mixpanel on app boot. Identity + signup tracking is wired through
 // supabase.js's auth state listener; product events fire from their call sites.
@@ -25,6 +26,10 @@ initNativeAuthLifecycle()
 
 // Register for Android FCM push and store the device token. No-op on the web.
 initPushNotifications()
+
+// Capture a job link shared INTO the app from the Android share sheet, and buffer
+// it until React mounts and subscribes (see shareIntake.js). Safe on the web too.
+initShareIntake()
 
 // Recover from stale lazy chunks. When the app is redeployed while a tab is
 // still open, the loaded index references chunk hashes that no longer exist on

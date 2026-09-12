@@ -76,6 +76,7 @@ import { migrateToAuthIdentity } from './services/authMigration'
 import { reinitializeSyncCoordinator } from './services/syncCoordinator'
 import JobSearch from './components/JobSearch'
 import { getFlag, FLAGS, FLAGS_EVENT } from './services/featureFlags'
+import { onSharedUrl } from './services/shareIntake'
 import NavRail from './components/LayoutE/NavRail'
 import TrackerHomeE from './components/LayoutE/TrackerHomeE'
 import InterviewsBoard from './components/LayoutE/InterviewsBoard'
@@ -86,6 +87,7 @@ import FloatingWindow from './components/FloatingWindow'
 import { useCVs } from './hooks/useCVs'
 import Settings from './components/Settings'
 import ImageImport from './components/ImageImport'
+import LinkedInImport from './components/LinkedInImport'
 import UpcomingMeetings from './components/UpcomingMeetings'
 import Goals from './components/Goals'
 import CalendarWidget from './components/CalendarWidget'
@@ -691,6 +693,17 @@ export default function App() {
   const [cvGenJob, setCvGenJob] = useState(null) // job whose tailored CV is being generated
   const [cvGenEdit, setCvGenEdit] = useState(false) // true = open cvGenJob to edit its saved CV (thema/content/skills); false = generate fresh
   const [showImageImport, setShowImageImport] = useState(false)
+  // { url } while the LinkedIn-import modal is open (url pre-fills it from a
+  // share); null when closed.
+  const [linkedInImport, setLinkedInImport] = useState(null)
+
+  // A job link shared INTO the app (Android share sheet) opens the LinkedIn
+  // import flow pre-filled. Also replays a link shared before this mounted.
+  useEffect(() => onSharedUrl((url) => {
+    setShowAddMenu(false)
+    setAddSheet(false)
+    setLinkedInImport({ url })
+  }), [])
 
   const { notifications, push: pushNotif, markAllRead, clear: clearNotifs, remove: removeNotif, unreadCount } = useNotifications()
 
@@ -1144,6 +1157,7 @@ export default function App() {
       { open: !!emailDraft, close: () => setEmailDraft(null) },
       { open: !!starJob, close: () => setStarJob(null) },
       { open: showImageImport, close: () => setShowImageImport(false) },
+      { open: !!linkedInImport, close: () => setLinkedInImport(null) },
       { open: showGmail, close: closeGmail },
       { open: !!toDelete, close: () => setToDelete(null) },
       { open: !!modal, close: () => setModal(null) },
@@ -1228,6 +1242,7 @@ export default function App() {
           {[
             { icon: '📧', label: t('mobileMenu.gmail'), sub: t('addMenu.gmailDesc'), tint: 'bg-indigo-50', action: () => { setAddSheet(false); setShowGmail(true) } },
             { icon: '🖼️', label: t('mobileMenu.screenshot'), sub: t('addMenu.screenshotDesc'), tint: 'bg-purple-50', action: () => { setAddSheet(false); setShowImageImport(true) } },
+            { icon: '💼', label: t('addMenu.linkedin'), sub: t('addMenu.linkedinDesc'), tint: 'bg-blue-50', action: () => { setAddSheet(false); setLinkedInImport({ url: '' }) } },
             { icon: '✏️', label: t('mobileMenu.manual'), sub: t('addMenu.manualDesc'), tint: 'bg-gray-50', action: () => { setAddSheet(false); setModal('add') } },
           ].map(item => (
             <button key={item.label} onClick={item.action}
@@ -1450,6 +1465,11 @@ export default function App() {
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors">
                       <span className="text-base">🖼️</span>
                       <div className="text-left"><div className="font-medium">{t('addMenu.screenshot')}</div><div className="text-[11px] text-gray-400">{t('addMenu.screenshotDesc')}</div></div>
+                    </button>
+                    <button onClick={() => { setShowAddMenu(false); setLinkedInImport({ url: '' }) }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                      <span className="text-base">💼</span>
+                      <div className="text-left"><div className="font-medium">{t('addMenu.linkedin')}</div><div className="text-[11px] text-gray-400">{t('addMenu.linkedinDesc')}</div></div>
                     </button>
                     {extensionInstalled === false && (
                       <>
@@ -1873,6 +1893,15 @@ export default function App() {
       {toDelete && <ConfirmDelete job={toDelete} onConfirm={handleDelete} onCancel={() => setToDelete(null)} t={t} />}
       {showGmail && <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={closeGmail} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u) }} existingJobs={jobs} t={t} />}
       {showImageImport && <ImageImport onImport={handleBulkImport} onClose={() => setShowImageImport(false)} existingJobs={jobs} />}
+      {linkedInImport && (
+        <LinkedInImport
+          initialUrl={linkedInImport.url}
+          onImport={(job) => { addJobWithNotif(job); showToast(t('linkedinImport.added') || `${job.company} ajouté !`); setActiveTab('tracker') }}
+          onClose={() => setLinkedInImport(null)}
+          existingJobs={jobs}
+          t={t}
+        />
+      )}
       {starJob && <STARGenerator job={starJob} onClose={() => setStarJob(null)} onSaveSTAR={updateJob} />}
       {emailDraft && <EmailDraft job={emailDraft.job} type={emailDraft.type} onClose={() => setEmailDraft(null)} onEmailSent={handleEmailSent} />}
       {cvGenJob && (baseCV || cvGenEdit) && (

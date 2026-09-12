@@ -31,6 +31,16 @@
                 <data android:scheme="com.smartjobtracker.app" />
             </intent-filter>
 
+            <!-- Share target: makes SmartJobTracker appear in the Android share
+                 sheet for shared text (e.g. LinkedIn → Share → SmartJobTracker).
+                 MainActivity reads the shared job link and hands it to the web
+                 layer, which opens the "add candidature from LinkedIn" flow. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
         </activity>
 
         <provider

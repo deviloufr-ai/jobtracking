@@ -315,8 +315,30 @@ export const fr = {
     installExtDesc: "Importer depuis n'importe quelle offre",
     extActive: 'Extension Firefox',
     extActiveDesc: 'Importation activée ✓',
+    linkedin: 'Lien LinkedIn',
+    linkedinDesc: "Coller ou partager une offre LinkedIn",
     manual: 'Manuel',
     manualDesc: 'Saisie manuelle',
+  },
+
+  // LinkedIn share-link import
+  linkedinImport: {
+    title: 'Ajouter depuis LinkedIn',
+    subtitle: "Colle ou partage un lien d'offre LinkedIn",
+    urlLabel: "Lien de l'offre LinkedIn",
+    hint: "Astuce : sur l'appli LinkedIn, touche Partager sur une offre puis choisis SmartJobTracker.",
+    notLinkedin: "Ce lien n'a pas l'air d'être une offre LinkedIn — tu peux quand même essayer.",
+    reading: "Lecture de l'offre…",
+    changeLink: 'Changer le lien',
+    duplicate: 'Une candidature existe déjà pour cette entreprise et ce poste.',
+    fetch: "Lire l'offre",
+    add: 'Ajouter la candidature',
+    added: 'Candidature ajoutée !',
+    errNoUrl: 'Colle un lien LinkedIn.',
+    errPartial: "Lecture partielle — complète l'entreprise et le poste ci-dessous.",
+    errUnreadable: "Offre illisible automatiquement — saisis l'entreprise et le poste.",
+    errFetch: "Impossible de lire l'offre — saisis les infos manuellement.",
+    errRequired: "L'entreprise et le poste sont requis.",
   },
 
   // Header & Loading
