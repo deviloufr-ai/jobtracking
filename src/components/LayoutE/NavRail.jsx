@@ -174,9 +174,8 @@ export default function NavRail({
         })}
       </nav>
 
-      {/* Footer: account (sync moved next to the notification bell, top-right) */}
-      <div className="px-3 py-3 border-t border-gray-100 flex flex-col gap-1 shrink-0">
-        <RailExtension installed={extensionInstalled} updateAvailable={extensionUpdateAvailable} onUpdate={onExtensionUpdate} t={t} />
+      {/* Ko-fi support button — above the footer divider */}
+      <div className="px-3 pb-3">
         <a
           href="https://ko-fi.com/J7W726VRZR"
           target="_blank"
@@ -190,6 +189,11 @@ export default function NavRail({
             style={{ border: 0, height: 36 }}
           />
         </a>
+      </div>
+
+      {/* Footer: account (sync moved next to the notification bell, top-right) */}
+      <div className="px-3 py-3 border-t border-gray-100 flex flex-col gap-1 shrink-0">
+        <RailExtension installed={extensionInstalled} updateAvailable={extensionUpdateAvailable} onUpdate={onExtensionUpdate} t={t} />
         {onTour && (
           <button
             onClick={onTour}
