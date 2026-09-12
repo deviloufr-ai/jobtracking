@@ -80,6 +80,7 @@ export function useUpcomingMeetings(jobs, { monthsAhead = 2, daysAhead = 60 } = 
         meetingLink: e.meetingLink,
         source: 'calendar',
         isUpcoming: e.isUpcoming,
+        job: job || null,   // matched candidature, so "Join" can also open the recorder
       })
     }
 

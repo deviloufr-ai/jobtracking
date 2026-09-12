@@ -55,7 +55,7 @@ function getMeetingPlatform(url = '') {
   return { name: 'Visio', emoji: '📹' }
 }
 
-export default function UpcomingMeetings({ jobs, t = (key) => key }) {
+export default function UpcomingMeetings({ jobs, t = (key) => key, onJoin }) {
   const { meetings } = useUpcomingMeetings(jobs)
 
   if (meetings.length === 0) return null
@@ -125,6 +125,7 @@ export default function UpcomingMeetings({ jobs, t = (key) => key }) {
                 {/* Join button — compact, content-sized */}
                 {m.meetingLink && state !== 'done' && (
                   <a href={m.meetingLink} target="_blank" rel="noopener noreferrer"
+                    onClick={() => { if (m.job) onJoin?.(m.job) }}
                     title={platform ? t('upcomingMeetings.joinVia').replace('{platform}', platform.name) : t('upcomingMeetings.join')}
                     className={`flex-shrink-0 inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-lg transition-all ${accent.btn}`}
                   >

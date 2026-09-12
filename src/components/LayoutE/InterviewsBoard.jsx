@@ -16,6 +16,7 @@ import {
 import { scoreColorClasses } from '../ScoreJob'
 import UpcomingMeetings from '../UpcomingMeetings'
 import MockInterviewChatbot from '../MockInterviewChatbot'
+import InterviewRecorder from '../InterviewRecorder'
 import NegotiationAssistant from '../NegotiationAssistant'
 import InterviewExample from '../InterviewExample'
 import CandidatureDrawer from './CandidatureDrawer'
@@ -358,6 +359,7 @@ export default function InterviewsBoard({
   const [mobileOpen, setMobileOpen] = useState(false) // mobile: detail overlay
   const [prepPick, setPrepPick] = useState(null)      // { id, round } user's round choice for the selected job
   const [mock, setMock] = useState(null)              // { job, round } focused practice
+  const [recordJob, setRecordJob] = useState(null)    // candidature being recorded (from "Join")
   const [example, setExample] = useState(null)        // { job, round } text example
   const [negotiate, setNegotiate] = useState(null)    // job → negotiation prep
 
@@ -450,6 +452,15 @@ export default function InterviewsBoard({
     setMock(null)
   }
 
+  // Save a real interview recorded from the "Join" button (session already carries
+  // kind: 'real' from the recorder). Re-reads the job so we append to the latest list.
+  const saveRecordedSession = (session) => {
+    const job = jobs.find(j => j.id === recordJob?.id) || recordJob
+    if (!job) { setRecordJob(null); return }
+    onUpdateJob?.(job.id, { interviewSessions: [...(job.interviewSessions || []), session], updated_at: new Date().toISOString() })
+    setRecordJob(null)
+  }
+
   const detailProps = selectedJob && {
     job: selectedJob, prepRound, onPickRound: pickRound, onOpenFull: openFull,
     onTrain: startTrain, onExample: startExample, onSTAR, onGenerateCV, onNegotiate: setNegotiate, onToggleFavorite, t,
@@ -475,7 +486,7 @@ export default function InterviewsBoard({
       )}
 
       <div className="mb-4 [&:empty]:hidden">
-        <UpcomingMeetings jobs={jobs} t={t} />
+        <UpcomingMeetings jobs={jobs} t={t} onJoin={setRecordJob} />
       </div>
 
       {!empty && (
@@ -560,6 +571,16 @@ export default function InterviewsBoard({
       {/* Negotiation prep */}
       {negotiate && (
         <NegotiationAssistant job={negotiate} onClose={() => setNegotiate(null)} onSave={onUpdateJob} t={t} />
+      )}
+
+      {/* Real interview recorder — opened from a meeting's "Join" button */}
+      {recordJob && (
+        <InterviewRecorder
+          job={recordJob}
+          cv={recordJob.cvSaved?.markdown || ''}
+          onClose={() => setRecordJob(null)}
+          onComplete={saveRecordedSession}
+        />
       )}
 
       {/* Full-details drawer */}
