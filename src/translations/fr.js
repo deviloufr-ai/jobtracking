@@ -213,6 +213,8 @@ export const fr = {
     examplesSaved: '{n} exemple(s) enregistré(s)',
     openFull: 'Fiche complète',
     prepare: 'Préparer le tour {round}',
+    focusLabel: 'Un point à travailler ? (optionnel)',
+    focusPlaceholder: 'ex : creuser mon point faible sur le system design, ou insister sur des mises en situation de leadership',
     moreTools: 'Autres outils',
     back: 'Retour',
     reached: 'atteint',

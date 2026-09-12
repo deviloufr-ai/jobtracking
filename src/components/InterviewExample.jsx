@@ -28,19 +28,25 @@ function cleanText(s = '') {
     .trim()
 }
 
-function buildPrompt({ company, position, description, cv, roundName, roundFocus, language }) {
+function buildPrompt({ company, position, description, cv, roundName, roundFocus, language, guidance }) {
   const langLine = language === 'fr' ? 'Write the ENTIRE response in FRENCH.'
     : language === 'en' ? 'Write the ENTIRE response in ENGLISH.'
     : 'DETECT the language from the role/company/description below and write the ENTIRE response in THAT language. If unsure, default to French.'
   const descCtx = description ? `\n\nJob description (excerpt):\n${String(description).slice(0, 900)}` : ''
   const cvCtx = cv ? `\n\nCandidate CV (excerpt):\n${String(cv).slice(0, 900)}` : ''
+  // Free-text steering the user typed in the panel — a weak spot to drill, a
+  // specific competency, or a scenario the real interview will cover. Injected as
+  // a hard instruction so the questions and model answers reflect it.
+  const guidanceCtx = guidance && guidance.trim()
+    ? `\n\nCANDIDATE'S REQUESTED FOCUS — the person preparing asked you to specifically address the following; make sure the questions AND the model answers reflect it: ${guidance.trim()}`
+    : ''
   return `You are a senior interviewer at ${company || 'the company'} running a ${roundName || 'job'} interview for the role of ${position || 'this role'}.
 
 ${langLine}
 
 INTERVIEW STAGE — the questions MUST belong to THIS stage only: ${roundFocus || 'a general interview.'} Do not include questions from other interview types.
 
-Write a realistic 6-question example interview for this candidate, tailored to the role, company and the candidate's background below.${descCtx}${cvCtx}
+Write a realistic 6-question example interview for this candidate, tailored to the role, company and the candidate's background below.${descCtx}${cvCtx}${guidanceCtx}
 
 For EACH question, write the interviewer's question, then a COMPLETE model answer spoken in the first person AS THIS CANDIDATE, grounded in their real background from the CV (use concrete details; where a specific figure or example is unknown, write a clearly bracketed placeholder like [your metric]). Each answer must be a full, ready-to-say spoken answer of about 4 to 6 natural sentences (keep each answer under ~110 words so the whole interview is complete), NOT an outline. For behavioral questions use the STAR structure but written as flowing speech.
 
@@ -94,20 +100,23 @@ export default function InterviewExample(props) {
   )
 }
 
-function InterviewExamplePanel({ job, round, roundName, roundFocus, cv, onClose, onSave, t = (k) => k }) {
+function InterviewExamplePanel({ job, round, roundName, roundFocus, cv, guidance: guidanceProp = '', onClose, onSave, t = (k) => k }) {
   const tx = (k, f) => { const v = t(k); return v && v !== k ? v : f }
   const { startDrag, panelStyle, snapPreview } = useDragDock({ width: 760 })
   const saved = job.interviewExamples?.[storeKey(round)] || null
   const [data, setData] = useState(saved?.data || null)
   const [raw, setRaw] = useState(saved?.raw || '')       // fallback text when JSON failed
   const [language, setLanguage] = useState('auto')
+  // Free-text steering: seeded from the prep card, editable here so the user can
+  // refine it and regenerate. Persisted with the example so it survives a reopen.
+  const [guidance, setGuidance] = useState(guidanceProp || saved?.guidance || '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [savedFlag, setSavedFlag] = useState(false)
 
   const persist = (payload) => {
     if (!onSave) return
-    const next = { ...(job.interviewExamples || {}), [storeKey(round)]: { ...payload, generatedAt: new Date().toISOString() } }
+    const next = { ...(job.interviewExamples || {}), [storeKey(round)]: { ...payload, guidance, generatedAt: new Date().toISOString() } }
     onSave(job.id, { interviewExamples: next })
     setSavedFlag(true)
     setTimeout(() => setSavedFlag(false), 2500)
@@ -119,7 +128,7 @@ function InterviewExamplePanel({ job, round, roundName, roundFocus, cv, onClose,
     try {
       const prompt = buildPrompt({
         company: job.company, position: job.position, description: job.description || job.jobDescription,
-        cv, roundName, roundFocus, language,
+        cv, roundName, roundFocus, language, guidance,
       })
       const res = await aiFetch('/api/claude', {
         model: CLAUDE_MODEL,
@@ -173,6 +182,19 @@ function InterviewExamplePanel({ job, round, roundName, roundFocus, cv, onClose,
         {/* Content */}
         <div className="flex-1 overflow-auto p-6 space-y-4">
           <p className="text-xs text-gray-500">{tx('interviewExample.subtitle', 'Likely questions for this interview stage, tailored to this application. Use it to prepare — then practise with a mock interview.')}</p>
+
+          {/* Optional custom focus — refine what the questions and answers should cover, then (re)generate. */}
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-500 mb-1">{tx('interviews.focusLabel', 'Add your own focus (optional)')}</label>
+            <textarea
+              value={guidance}
+              onChange={(e) => setGuidance(e.target.value)}
+              disabled={loading}
+              rows={2}
+              placeholder={tx('interviews.focusPlaceholder', 'e.g. drill my weak spot on system design, or focus on leadership scenarios')}
+              className="w-full resize-none text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+            />
+          </div>
 
           {!hasContent && !loading && (
             <div className="text-center py-8">

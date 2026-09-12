@@ -213,6 +213,8 @@ export const en = {
     examplesSaved: '{n} example(s) saved',
     openFull: 'Full details',
     prepare: 'Prepare the {round} round',
+    focusLabel: 'Anything specific to work on? (optional)',
+    focusPlaceholder: 'e.g. drill my weak spot on system design, or focus on leadership scenarios',
     moreTools: 'More prep tools',
     back: 'Back',
     reached: 'reached',

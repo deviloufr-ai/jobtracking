@@ -234,6 +234,11 @@ function InterviewDetail({ job, prepRound, onPickRound, onOpenFull, onTrain, onE
   const hasExample = !!job.interviewExamples?.[prepRound]
   const roundSessions = sessionsForRound(sessions, prepRound)
   const roundBest = bestMockScore(roundSessions)
+  // Optional free-text steering the user types before launching a mock or example
+  // (a weak spot to drill, a competency to hit, a scenario the real interview will
+  // cover). Passed straight into both the mock interview and the example prompt.
+  // The component is keyed by job.id at the call site, so this resets per job.
+  const [guidance, setGuidance] = useState('')
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
@@ -273,12 +278,21 @@ function InterviewDetail({ job, prepRound, onPickRound, onOpenFull, onTrain, onE
             <p className="text-[12px] text-indigo-100 leading-snug mt-0.5">{t(`interviewFocus.${prepRound}`)}</p>
           </div>
         </div>
-        <div className="mt-3 flex items-center gap-2 flex-wrap">
-          <button onClick={() => onTrain(job, prepRound)}
+        {/* Optional custom focus — steers both the mock interview and the example below */}
+        <textarea
+          value={guidance}
+          onChange={(e) => setGuidance(e.target.value)}
+          rows={2}
+          placeholder={t('interviews.focusPlaceholder')}
+          aria-label={t('interviews.focusLabel')}
+          className="mt-3 w-full resize-none rounded-lg bg-white/15 border border-white/25 text-white placeholder-indigo-100/70 text-[12px] leading-snug px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-white/50"
+        />
+        <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+          <button onClick={() => onTrain(job, prepRound, guidance)}
             className="inline-flex items-center justify-center gap-2 text-[13px] font-bold px-4 py-2 rounded-lg bg-white text-indigo-700 hover:bg-indigo-50 shadow-sm transition-colors">
             🎤 {t('interviews.practiceCta')}
           </button>
-          <button onClick={() => onExample(job, prepRound)}
+          <button onClick={() => onExample(job, prepRound, guidance)}
             className={`inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-2 rounded-lg border transition-colors ${hasExample ? 'bg-white/20 border-white/30 text-white hover:bg-white/25' : 'border-white/40 text-white hover:bg-white/10'}`}>
             {hasExample ? '✅' : '📝'} {t('interviews.example')}
           </button>
@@ -295,7 +309,7 @@ function InterviewDetail({ job, prepRound, onPickRound, onOpenFull, onTrain, onE
         <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">{t('interviews.moreTools')}</p>
         <div className="grid grid-cols-2 gap-2">
           <ToolCard tone="indigo" icon="🎯" label={t('interviews.toolStar')} desc={t('interviews.toolStarDesc')} onClick={() => onSTAR?.(job)} />
-          <ToolCard tone="gray" icon="🎤" label={t('interviews.toolFreePractice')} desc={t('interviews.toolFreePracticeDesc')} onClick={() => onTrain(job, null)} />
+          <ToolCard tone="gray" icon="🎤" label={t('interviews.toolFreePractice')} desc={t('interviews.toolFreePracticeDesc')} onClick={() => onTrain(job, null, guidance)} />
           <ToolCard tone="gray" icon="📄" label={t('interviews.toolCv')} desc={t('interviews.toolCvDesc')} onClick={() => onGenerateCV?.(job)} />
           <ToolCard tone="green" icon="🤝" label={t('interviews.toolNegotiate')} desc={t('interviews.toolNegotiateDesc')} onClick={() => onNegotiate?.(job)} />
         </div>
@@ -355,8 +369,8 @@ export default function InterviewsBoard({
   const openJob = jobs.find(j => j.id === openId) || null
   const openFull = (j) => { setOpenTab('overview'); setOpenId(j.id) }
   const close = () => setOpenId(null)
-  const startTrain = (job, round) => setMock({ job, round })
-  const startExample = (job, round) => setExample({ job, round })
+  const startTrain = (job, round, guidance = '') => setMock({ job, round, guidance })
+  const startExample = (job, round, guidance = '') => setExample({ job, round, guidance })
   const exampleJob = example ? (jobs.find(j => j.id === example.job.id) || example.job) : null
 
   // Esc closes the full-details drawer.
@@ -492,9 +506,10 @@ export default function InterviewsBoard({
             selectedId={selectedJob?.id} onSelect={selectRow} onToggleFavorite={onToggleFavorite}
             t={t}
           />
-          {/* Detail (desktop) */}
+          {/* Detail (desktop) — keyed by job so per-job local state (e.g. the custom
+              focus field) resets when the selection changes. */}
           <div className="hidden md:block">
-            {detailProps && <InterviewDetail {...detailProps} />}
+            {detailProps && <InterviewDetail key={detailProps.job.id} {...detailProps} />}
           </div>
         </div>
       )}
@@ -508,7 +523,7 @@ export default function InterviewsBoard({
             </button>
           </div>
           <div className="p-3">
-            <InterviewDetail {...detailProps} />
+            <InterviewDetail key={detailProps.job.id} {...detailProps} />
           </div>
         </div>
       )}
@@ -521,6 +536,7 @@ export default function InterviewsBoard({
           round={mock.round}
           roundName={mock.round ? roundLabel(mock.round, t) : null}
           roundFocus={mock.round ? roundPrompt(mock.round) : ''}
+          guidance={mock.guidance || ''}
           onClose={() => setMock(null)}
           onInterviewComplete={saveMockSession}
         />
@@ -533,6 +549,7 @@ export default function InterviewsBoard({
           round={example.round}
           roundName={example.round ? roundLabel(example.round, t) : null}
           roundFocus={example.round ? roundPrompt(example.round) : ''}
+          guidance={example.guidance || ''}
           cv={exampleJob.cvSaved?.markdown || ''}
           onClose={() => setExample(null)}
           onSave={onUpdateJob}
