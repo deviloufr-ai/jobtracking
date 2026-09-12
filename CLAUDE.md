@@ -50,6 +50,27 @@ Web / Android shell / Firefox extension
 The **Android app is a Capacitor shell pointed at the live site** (`capacitor.config.json`
 → `server.url`). A web deploy changes the Android app with no store release.
 
+**Android share target** (add a candidature from a shared link, e.g. LinkedIn → Share →
+SmartJobTracker): the manifest declares an `ACTION_SEND`/`text/plain` intent-filter and
+`MainActivity.java` forwards the shared text to the web layer by polling
+`window.__sjtReceiveSharedUrl(text)` (installed by `services/shareIntake.js`) until it's
+consumed. On the web, `shareIntake.js` buffers the link and `App.jsx` opens
+`LinkedInImport.jsx`, which resolves company/position/location via `/api/fetch-jd` (see
+below) and `addJob`s it. The same modal is reachable from the "+" menu by pasting a link.
+This is a **native manifest/MainActivity change → needs an APK rebuild** (no new Capacitor
+plugin, so `npx cap sync android` is not required, but the web deploy alone won't add the
+share target to installed apps).
+
+`/api/fetch-jd` (the generic URL→text scraper used by CV/letter/score) special-cases
+**LinkedIn**: a plain fetch of a LinkedIn job returns only the JS shell, so it extracts the
+numeric job id from the URL (`/jobs/view/<id>`, slugged variants, or `?currentJobId=`) and
+reads LinkedIn's public, auth-free guest fragment
+(`/jobs-guest/jobs/api/jobPosting/<id>`) for the title/company/location/description. It
+returns `{ text, url, meta:{ company, position, location, source:'linkedin' } }` — the new
+`meta` is additive, other callers still read `.text`. Falls back to the page's `og:title`
+("`<Company> hiring <Position> in <Location>`") and resolves `lnkd.in` shorteners via the
+redirect. Still SSRF-guarded (`assertSafeUrl`/`safeFetch`) and IP-rate-limited.
+
 File downloads (CV / cover-letter PDF, JSON export, interview transcript) go through
 `services/fileSave.js`: a normal browser download on web, but on native a
 Filesystem-write + Share-sheet, because the WebView has **no download manager** and a

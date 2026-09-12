@@ -315,8 +315,30 @@ export const en = {
     installExtDesc: 'Import from any job posting',
     extActive: 'Firefox Extension',
     extActiveDesc: 'Import enabled ✓',
+    linkedin: 'LinkedIn link',
+    linkedinDesc: 'Paste or share a LinkedIn job',
     manual: 'Manual',
     manualDesc: 'Manual entry',
+  },
+
+  // LinkedIn share-link import
+  linkedinImport: {
+    title: 'Add from LinkedIn',
+    subtitle: 'Paste or share a LinkedIn job link',
+    urlLabel: 'LinkedIn job link',
+    hint: 'Tip: in the LinkedIn app, tap Share on a job and pick SmartJobTracker.',
+    notLinkedin: "This doesn't look like a LinkedIn job link — you can still try.",
+    reading: 'Reading the job…',
+    changeLink: 'Change link',
+    duplicate: 'A candidature already exists for this company and role.',
+    fetch: 'Read job',
+    add: 'Add candidature',
+    added: 'Candidature added!',
+    errNoUrl: 'Paste a LinkedIn link.',
+    errPartial: 'Partial read — fill in the company and role below.',
+    errUnreadable: "Couldn't read the job automatically — enter the company and role.",
+    errFetch: "Couldn't read the job — enter the details manually.",
+    errRequired: 'Company and role are required.',
   },
 
   // Header & Loading
