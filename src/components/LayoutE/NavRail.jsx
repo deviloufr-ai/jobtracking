@@ -177,6 +177,19 @@ export default function NavRail({
       {/* Footer: account (sync moved next to the notification bell, top-right) */}
       <div className="px-3 py-3 border-t border-gray-100 flex flex-col gap-1 shrink-0">
         <RailExtension installed={extensionInstalled} updateAvailable={extensionUpdateAvailable} onUpdate={onExtensionUpdate} t={t} />
+        <a
+          href="https://ko-fi.com/J7W726VRZR"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Buy Me a Coffee at ko-fi.com"
+          className="flex items-center justify-center px-3 py-1.5 rounded-xl hover:bg-gray-50 transition-colors"
+        >
+          <img
+            src="https://storage.ko-fi.com/cdn/kofi6.png?v=6"
+            alt="Buy Me a Coffee at ko-fi.com"
+            style={{ border: 0, height: 36 }}
+          />
+        </a>
         {onTour && (
           <button
             onClick={onTour}
