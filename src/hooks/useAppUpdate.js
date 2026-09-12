@@ -69,6 +69,9 @@ export function useAppUpdate() {
     nativeUpdate: !!nativeUpdate,
     latestVersion: preview ? `${APP_VERSION}+1` : latest?.version,
     currentVersion: APP_VERSION,
+    // Cache-buster token for the APK download URL: the required native build, so
+    // the download URL changes exactly when a new APK is needed (see apkDownloadUrl).
+    nativeBuildToken: latest?.minNative || null,
     dismiss,
   }
 }
