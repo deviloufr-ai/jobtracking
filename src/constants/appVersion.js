@@ -37,3 +37,15 @@ export const ANDROID_APK_URL = 'https://www.smartjobtracker.com/smartjobtracker.
 // (@capacitor/browser) silently blocks APK downloads. The apex host is a different
 // host and 308-redirects to the canonical www APK, so the system browser downloads it.
 export const ANDROID_APK_DOWNLOAD_URL = 'https://smartjobtracker.com/smartjobtracker.apk'
+
+// The APK lives at a STATIC filename, so a browser/CDN can hand back a previously
+// cached (older versionCode) copy — which reinstalls the same build and leaves the
+// "update available" banner stuck forever (installedBuild never reaches minNative).
+// Append a cache-buster so every "Download" tap fetches the currently deployed APK.
+// Pass the deployed build token (version.json `build`/`minNative`) when known so the
+// URL is stable per release and still cacheable between releases; falls back to a
+// timestamp for guaranteed freshness.
+export function apkDownloadUrl(token) {
+  const bust = token != null && token !== '' ? String(token) : String(Date.now())
+  return `${ANDROID_APK_DOWNLOAD_URL}?v=${encodeURIComponent(bust)}`
+}

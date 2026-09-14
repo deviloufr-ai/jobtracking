@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Capacitor } from '@capacitor/core'
-import { APP_VERSION, VERSION_MANIFEST_URL, ANDROID_APK_DOWNLOAD_URL } from '../constants/appVersion'
+import { APP_VERSION, VERSION_MANIFEST_URL, apkDownloadUrl } from '../constants/appVersion'
 import { compareVersions } from '../constants/extension'
 
 const isEN = typeof navigator !== 'undefined' && navigator.language.startsWith('en')
@@ -10,7 +10,7 @@ const tr = (fr, en) => (isEN ? en : fr)
 // button. Complements the passive AppUpdateBanner. On Android it links to the
 // fresh APK; on the web it reloads to pick up the new build.
 export default function UpdateChecker() {
-  const [state, setState] = useState({ status: 'idle', latest: null })
+  const [state, setState] = useState({ status: 'idle', latest: null, minNative: null })
   const isNative = !!(Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform())
 
   const check = async () => {
@@ -33,9 +33,9 @@ export default function UpdateChecker() {
         outdated = latest && compareVersions(latest, APP_VERSION) > 0
       }
 
-      setState({ status: outdated ? 'available' : 'uptodate', latest })
+      setState({ status: outdated ? 'available' : 'uptodate', latest, minNative: Number(data?.minNative) || null })
     } catch {
-      setState({ status: 'error', latest: null })
+      setState({ status: 'error', latest: null, minNative: null })
     }
   }
 
@@ -43,7 +43,9 @@ export default function UpdateChecker() {
     if (isNative) {
       // System-browser hand-off via the apex host — see ANDROID_APK_DOWNLOAD_URL and
       // AppUpdateBanner. A Custom Tab / same-host URL can't download the APK.
-      window.location.href = ANDROID_APK_DOWNLOAD_URL
+      // Cache-bust so a stale older APK is never re-downloaded (keeps the update
+      // banner stuck because installedBuild never reaches minNative).
+      window.location.href = apkDownloadUrl(state.minNative)
     } else {
       window.location.reload()
     }
