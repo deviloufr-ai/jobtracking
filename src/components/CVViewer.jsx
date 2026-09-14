@@ -1,5 +1,5 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react'
-import { renderCV, TEMPLATES, fitContactLines } from './CVGenerator'
+import { useState, useEffect, useRef } from 'react'
+import { renderCV, TEMPLATES } from './CVGenerator'
 import { useDragDock } from '../hooks/useDragDock'
 import { deliverFile } from '../services/fileSave'
 
@@ -25,19 +25,6 @@ export default function CVViewer({ job, onClose, inline = false, onUpdate = null
     setEditing(false)
     setShowTplMenu(false)
   }, [job?.id, saved?.savedAt])
-
-  // Keep the header contact line on a single row in the live preview (see
-  // fitContactLines). useLayoutEffect so the shrink lands before paint — no flash.
-  // Declared before the early return below so hook order stays stable.
-  const previewRef = useRef(null)
-  useLayoutEffect(() => {
-    fitContactLines(previewRef.current)
-  }, [md, tpl, profilePic, editing])
-  useEffect(() => {
-    const onResize = () => fitContactLines(previewRef.current)
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
 
   if (!saved) return null
 
@@ -71,23 +58,6 @@ export default function CVViewer({ job, onClose, inline = false, onUpdate = null
       element.style.boxSizing = 'border-box'
       element.style.wordWrap = 'break-word'
       element.style.overflowWrap = 'break-word'
-
-      // Fit the header contact line to one row before capture. Mount off-screen at
-      // the real A4 width so the measurement matches the page, then clear the
-      // positioning (html2pdf mounts the element itself; a position:absolute element
-      // would capture as a 0-height blank page).
-      element.style.position = 'absolute'
-      element.style.left = '-99999px'
-      element.style.top = '0'
-      element.style.visibility = 'hidden'
-      document.body.appendChild(element)
-      try { fitContactLines(element) } finally {
-        element.style.position = ''
-        element.style.left = ''
-        element.style.top = ''
-        element.style.visibility = ''
-        element.remove()
-      }
 
       const opt = {
         margin: [12, 0, 14, 0],
@@ -194,7 +164,7 @@ export default function CVViewer({ job, onClose, inline = false, onUpdate = null
 
   // ── Content (live preview, or split editor when editing) ────────────────────
   const preview = (
-    <div ref={previewRef} className="cv-paper rounded-lg shadow-sm p-4 sm:p-8 max-w-2xl mx-auto bg-white"
+    <div className="cv-paper rounded-lg shadow-sm p-4 sm:p-8 max-w-2xl mx-auto bg-white"
       dangerouslySetInnerHTML={{ __html: html }} />
   )
 

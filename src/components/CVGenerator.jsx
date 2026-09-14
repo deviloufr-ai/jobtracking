@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import AIPanelBoundary from './AIPanelBoundary'
 import { resolveAutoLanguage, generateTailoredCV, suggestCvPoints } from '../services/cvGeneration'
 import { trackCvGenerationStarted, trackCvGenerated } from '../services/analytics'
@@ -47,9 +47,9 @@ const cleanEmail = (email) => {
 }
 
 // Compact a URL for display in the contact line: drop the protocol, the leading
-// "www." and any trailing slash. Standard CV convention, and it keeps the
-// City · Email · Phone · LinkedIn · Website line short enough to sit on one row
-// (the links are rasterized in the PDF, so the full https:// prefix buys nothing).
+// "www." and any trailing slash. Standard CV convention, and it keeps each link
+// short (the links are rasterized in the PDF, so the full https:// prefix buys
+// nothing). e.g. "https://www.linkedin.com/in/x/" → "linkedin.com/in/x".
 const cleanUrlDisplay = (url) => {
   if (!url) return url
   return url.trim().replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/+$/, '')
@@ -102,21 +102,34 @@ function parseCV(raw) {
   // (City · Email · Phone · LinkedIn · Website), so clean each field
   // independently — running the single-value cleaners on the whole line would
   // discard every other field (cleanLinkedIn keeps only the URL tail, etc.).
-  const cleanedContact = contact.map(line =>
-    line.split(/\s*·\s*/).map(part => {
-      if (!part) return part
-      let v
-      if (/\+?\d[\d\s().-]{6,}\d/.test(part)) v = cleanPhone(part)
-      else if (part.toLowerCase().includes('linkedin')) v = cleanUrlDisplay(cleanLinkedIn(part))
-      else if (part.includes('@')) v = cleanEmail(part)
-      else if (/^(https?:\/\/|www\.)|\.[a-z]{2,}\//i.test(part)) v = cleanUrlDisplay(part) // portfolio/website
-      else v = part
+  // Non-link fields (city, email, phone) stay together on the first row; each
+  // link (LinkedIn, portfolio/website) goes on its OWN row below — how links
+  // read best on a CV. A part is a "link" when it's a web address (has a domain
+  // + TLD) rather than an email (@) or plain text.
+  const isLinkPart = p => /^[^@\s]+\.[a-z]{2,}(\/|$)/i.test(p)
+  const plain = [] // city / email / phone → first row, joined by " · "
+  const links = [] // one per row
+  for (const line of contact) {
+    for (const part of line.split(/\s*·\s*/)) {
+      const raw = part.trim()
+      if (!raw) continue
+      let v, isLink = false
+      if (/\+?\d[\d\s().-]{6,}\d/.test(raw)) v = cleanPhone(raw)
+      else if (raw.toLowerCase().includes('linkedin')) { v = cleanUrlDisplay(cleanLinkedIn(raw)); isLink = true }
+      else if (raw.includes('@')) v = cleanEmail(raw)
+      else if (/^(https?:\/\/|www\.)/i.test(raw) || isLinkPart(raw)) { v = cleanUrlDisplay(raw); isLink = true }
+      else v = raw
+      if (!v) continue
       // Escaped like name/title above — contact is emitted raw by the templates.
-      return escapeHtml(v)
-    }).filter(Boolean).join(' · ')
-  )
+      ;(isLink ? links : plain).push(escapeHtml(v))
+    }
+  }
 
-  return { name, contact: cleanedContact.join(' · '), sections }
+  const firstRow = plain.join(' · ')
+  // Each link on its own line, under the first (city · email · phone) row.
+  const contactHtml = [firstRow, ...links].filter(Boolean).join('<br>')
+
+  return { name, contact: [...plain, ...links].join(' · '), contactHtml, sections }
 }
 
 // ── Profile picture HTML snippet ───────────────────────────────────────────────
@@ -208,7 +221,7 @@ function renderSection(headerHTML, blocks, s, sectionWrap) {
 
 // ── Template: MODERN ─────────────────────────────────────────────────────────
 function renderModern(md, pic) {
-  const { name, contact, sections } = parseCV(md)
+  const { name, contactHtml, sections } = parseCV(md)
 
   const s = {
     block:   'margin-bottom:13px',
@@ -227,7 +240,7 @@ function renderModern(md, pic) {
     <div style="background:linear-gradient(135deg,#4338ca 0%,#6366f1 60%,#818cf8 100%);padding:30px 46px;display:flex;align-items:center;justify-content:space-between;gap:22px">
       <div style="flex:1;min-width:0">
         <div style="font-size:24pt;font-weight:900;color:#fff;letter-spacing:-0.02em;line-height:1.1;margin-bottom:7px">${name}</div>
-        ${contact ? `<div class="cv-contact" style="font-size:9pt;color:#c7d2fe;letter-spacing:0.02em;line-height:1.5;white-space:nowrap">${contact}</div>` : ''}
+        ${contactHtml ? `<div style="font-size:9pt;color:#c7d2fe;letter-spacing:0.02em;line-height:1.5">${contactHtml}</div>` : ''}
       </div>
       ${picHTML(pic, 88, 'rgba(255,255,255,0.3)')}
     </div>`
@@ -247,7 +260,7 @@ function renderModern(md, pic) {
 
 // ── Template: CLASSIC ─────────────────────────────────────────────────────────
 function renderClassic(md, pic) {
-  const { name, contact, sections } = parseCV(md)
+  const { name, contactHtml, sections } = parseCV(md)
 
   const s = {
     block:   'margin-bottom:13px',
@@ -266,7 +279,7 @@ function renderClassic(md, pic) {
     <div style="text-align:center;padding:30px 46px 18px;border-bottom:2.5px solid #0f172a">
       ${pic ? `<div style="display:flex;justify-content:center;margin-bottom:12px">${picHTML(pic, 80, '#94a3b8')}</div>` : ''}
       <div style="font-size:22pt;font-weight:900;color:#0f172a;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:7px">${name}</div>
-      ${contact ? `<div class="cv-contact" style="font-size:9pt;color:#64748b;letter-spacing:0.04em;line-height:1.5;white-space:nowrap">${contact}</div>` : ''}
+      ${contactHtml ? `<div style="font-size:9pt;color:#64748b;letter-spacing:0.04em;line-height:1.5">${contactHtml}</div>` : ''}
     </div>`
 
   const body = sections.map(sec => {
@@ -350,7 +363,7 @@ function renderExecutive(md, pic) {
 const STD_SIDE = '56px'  //≈ 13.8mm side margin on a 210mm-wide A4 element
 
 function renderStandard(md, pic) {
-  const { name, contact, sections } = parseCV(md)
+  const { name, contactHtml, sections } = parseCV(md)
 
   const s = {
     block:   'margin-bottom:15px',
@@ -364,7 +377,7 @@ function renderStandard(md, pic) {
   const header = `
     <div style="padding:28px ${STD_SIDE} 16px;border-bottom:2.5px solid #0f172a">
       <div style="font-size:24pt;font-weight:900;color:#0f172a;margin-bottom:8px;line-height:1.05;letter-spacing:-0.02em">${name}</div>
-      ${contact ? `<div class="cv-contact" style="font-size:9pt;color:#64748b;line-height:1.6;letter-spacing:0.01em;font-weight:500;white-space:nowrap">${contact}</div>` : ''}
+      ${contactHtml ? `<div style="font-size:9pt;color:#64748b;line-height:1.6;letter-spacing:0.01em;font-weight:500">${contactHtml}</div>` : ''}
     </div>`
 
   const body = sections.map(sec => {
@@ -377,7 +390,7 @@ function renderStandard(md, pic) {
 
 // ── Template: MINIMAL ────────────────────────────────────────────────────────
 function renderMinimal(md, pic) {
-  const { name, contact, sections } = parseCV(md)
+  const { name, contactHtml, sections } = parseCV(md)
 
   const s = {
     block:   'margin-bottom:9px',
@@ -392,9 +405,9 @@ function renderMinimal(md, pic) {
     <div style="padding:22px 42px 16px;border-bottom:1.5px solid #d1d5db">
       <div style="display:flex;align-items:center;gap:16px">
         ${pic ? `<div style="flex-shrink:0">${picHTML(pic, 112, '#d1d5db')}</div>` : ''}
-        <div style="flex:1;min-width:0">
+        <div>
           <div style="font-size:18pt;font-weight:900;color:#000;margin:0;letter-spacing:-0.01em">${name}</div>
-          ${contact ? `<div class="cv-contact" style="font-size:8.5pt;color:#6b7280;margin-top:3px;line-height:1.5;white-space:nowrap">${contact}</div>` : ''}
+          ${contactHtml ? `<div style="font-size:8.5pt;color:#6b7280;margin-top:3px;line-height:1.5">${contactHtml}</div>` : ''}
         </div>
       </div>
     </div>`
@@ -430,33 +443,6 @@ export function renderCV(md, templateId, pic) {
   if (templateId === 'executive') return renderExecutive(md, pic)
   if (templateId === 'minimal')   return renderMinimal(md, pic)
   return renderModern(md, pic)
-}
-
-// Keep each single-line contact row (.cv-contact, rendered white-space:nowrap) on
-// ONE physical line: shrink its font just enough to fit the available width so the
-// links never wrap, whatever the line's length or the container's width. Idempotent
-// — it resets to the template's base size first (cached per node), so it re-fits
-// correctly when the template or viewport width changes, and can grow back. Runs on
-// the live preview AND on the detached element handed to html2pdf, so the exported
-// PDF matches what the user sees. No-op with no matching node (e.g. Executive, which
-// intentionally stacks its contact block in a narrow sidebar).
-export function fitContactLines(root) {
-  if (!root || typeof root.querySelectorAll !== 'function') return
-  root.querySelectorAll('.cv-contact').forEach(el => {
-    let base = parseFloat(el.dataset.baseFontSize)
-    if (!base) {
-      base = parseFloat(getComputedStyle(el).fontSize) || 12
-      el.dataset.baseFontSize = String(base)
-    }
-    let size = base
-    el.style.fontSize = size + 'px'
-    const FLOOR = 6 // px (~4.5pt): small but still legible; below this we stop.
-    // +1px tolerance so sub-pixel rounding never triggers a needless shrink.
-    while (el.scrollWidth > el.clientWidth + 1 && size > FLOOR) {
-      size -= 0.5
-      el.style.fontSize = size + 'px'
-    }
-  })
 }
 
 // ── Legacy: Shared one-page scale logic (no longer used — using html2pdf instead) ───
@@ -544,18 +530,6 @@ function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSave
   const [selectedLanguage, setSelectedLanguage] = useState('auto')
   const [isCompressing, setIsCompressing] = useState(false)
   const picInputRef = useRef()
-  const afterPreviewRef = useRef(null) // "AFTER" preview container — auto-fits the contact line to one row
-
-  // Keep the header contact line on a single row in the live preview. useLayoutEffect
-  // (not useEffect) so the shrink happens before paint — no flash of a wrapped line.
-  useLayoutEffect(() => {
-    fitContactLines(afterPreviewRef.current)
-  }, [editableCV, template, profilePic, viewMode, step])
-  useEffect(() => {
-    const onResize = () => fitContactLines(afterPreviewRef.current)
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
 
   // ── "Points manquants" state ────────────────────────────────────────────────
   // suggestions: the missing points (each assigned to an existing role) proposed
@@ -815,23 +789,6 @@ function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSave
       body { margin: 0; padding: 0; }
     `
     element.appendChild(style)
-
-    // Fit the header contact line to one row before capture. Mount off-screen at
-    // the real A4 width so the measurement matches the rendered page, then clear
-    // the positioning again: html2pdf mounts the element in its own container, and
-    // a position:absolute element there would capture as a 0-height blank page.
-    element.style.position = 'absolute'
-    element.style.left = '-99999px'
-    element.style.top = '0'
-    element.style.visibility = 'hidden'
-    document.body.appendChild(element)
-    try { fitContactLines(element) } finally {
-      element.style.position = ''
-      element.style.left = ''
-      element.style.top = ''
-      element.style.visibility = ''
-      element.remove()
-    }
 
     // Configure html2pdf options for optimal quality and file size.
     // margin: [top, left, bottom, right] in mm — top/bottom apply to EVERY
@@ -1175,7 +1132,7 @@ function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSave
                     <span className="text-[10px] text-indigo-400 ml-auto">{currentTpl.icon} {currentTpl.label}</span>
                   </div>
                   <div className="flex-1 min-h-0 overflow-auto" style={{ background:'#f1f5f9' }}>
-                    <div ref={afterPreviewRef} style={{ margin:'16px auto', maxWidth:680, background:'#fff', boxShadow:'0 4px 24px rgba(0,0,0,0.10)', borderRadius:4, overflow:'hidden', fontFamily:'Arial,Helvetica,sans-serif' }}
+                    <div style={{ margin:'16px auto', maxWidth:680, background:'#fff', boxShadow:'0 4px 24px rgba(0,0,0,0.10)', borderRadius:4, overflow:'hidden', fontFamily:'Arial,Helvetica,sans-serif' }}
                       dangerouslySetInnerHTML={{ __html: renderCV(editableCV, template, profilePic) }} />
                   </div>
                 </div>
