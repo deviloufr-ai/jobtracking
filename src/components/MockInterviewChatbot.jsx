@@ -122,6 +122,11 @@ function MockInterviewChatbotPanel({ job, cv, round, roundName, roundFocus, guid
   const [modelStatus, setModelStatus] = useState(null) // loader text while WASM model downloads
   const [feedback, setFeedback] = useState(null) // interview analysis & score
   const recognitionRef = useRef(null)
+  // True while the user still wants the Web Speech recognizer running. Chrome/Edge
+  // end a recognition session on their own after a brief silence (even with
+  // continuous = true), so onend restarts it as long as this stays set — otherwise
+  // recording cut off after a few sentences. Cleared when the user submits/stops.
+  const keepListeningRef = useRef(false)
   const messagesEndRef = useRef(null)
   const interviewIdRef = useRef(Date.now())
   // Track final vs. interim results separately so we accumulate all final
@@ -160,8 +165,26 @@ function MockInterviewChatbotPanel({ job, cv, round, roundName, roundFocus, guid
       recognition.lang = detectedLanguage
 
       recognition.onstart = () => setIsRecording(true)
-      recognition.onend = () => setIsRecording(false)
+      recognition.onend = () => {
+        // Chrome/Edge stop the session on their own after a pause. While the user
+        // still intends to answer, restart seamlessly (finalTranscriptRef keeps the
+        // text accumulated so far) instead of ending the recording mid-answer.
+        if (keepListeningRef.current && mountedRef.current) {
+          try {
+            recognition.start()
+            return
+          } catch {
+            /* start() can throw if it's still winding down; fall through to stop */
+          }
+        }
+        setIsRecording(false)
+      }
       recognition.onerror = (e) => {
+        // 'no-speech' fires on a normal pause and 'aborted' on our own stop — both
+        // are followed by onend, which restarts if the user is still answering. Only
+        // surface genuine failures so a pause doesn't spam an error.
+        if (e.error === 'no-speech' || e.error === 'aborted') return
+        keepListeningRef.current = false
         setIsRecording(false)
         setError(`Speech error: ${e.error}`)
       }
@@ -198,6 +221,7 @@ function MockInterviewChatbotPanel({ job, cv, round, roundName, roundFocus, guid
   useEffect(() => {
     if (nativeSpeechSupported) initRecognition()
     return () => {
+      keepListeningRef.current = false
       try {
         recognitionRef.current?.abort()
       } catch {
@@ -388,10 +412,12 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
     finalTranscriptRef.current = ''
     setTranscript('')
     setError(null)
+    keepListeningRef.current = true
     try {
       recognition.start()
     } catch (err) {
       // start() throws if already running — reset state cleanly.
+      keepListeningRef.current = false
       setError('Voice input is already active. Please wait a moment and retry.')
       setIsRecording(false)
     }
@@ -553,6 +579,8 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
       mediaRecorderRef.current?.stop()
       return
     }
+    // Clear the intent first so onend doesn't restart the recognizer.
+    keepListeningRef.current = false
     recognitionRef.current?.stop()
     // Use whatever is currently displayed (final + interim combined).
     const displayedText = transcript.trim()
@@ -592,6 +620,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
     if (!code || code === detectedLanguage) return
     setDetectedLanguage(code)
     speechSynthesis?.cancel()
+    keepListeningRef.current = false
     try { recognitionRef.current?.abort() } catch { /* noop */ }
     if (isNativeShell) {
       try { NativeSpeech.stop() } catch { /* noop */ }
