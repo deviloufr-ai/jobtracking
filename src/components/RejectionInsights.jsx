@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { buildRejectionEvidence } from '../utils/rejectionEvidence'
 import { analyzeRejections } from '../services/rejectionAnalysis'
 import { loadLearnedRules, saveLearnedRules, mergeLearnedRules } from '../services/learnedRules'
 import { getUserApiKey } from '../services/apiKey'
+import { pushLocalPrefs, AUX_PREFS_SYNCED_EVENT } from '../services/profileSync'
 
 const CACHE_KEY = 'jobtrackr_rejection_analysis'
 
@@ -42,6 +43,21 @@ export default function RejectionInsights({ jobs, t = (k) => k, language = 'en' 
   const hasKey = !!getUserApiKey()
   const staleBy = meta ? Math.max(0, evidence.totals.rejected - (meta.rejectedCount || 0)) : 0
 
+  // A cross-device pull restores the analysis + learned rules into localStorage;
+  // re-read them so an already-open panel shows the synced data without a reload.
+  useEffect(() => {
+    const onSynced = () => {
+      const c = loadCache()
+      if (c?.result) {
+        setAnalysis(c.result)
+        setMeta({ generatedAt: c.generatedAt, rejectedCount: c.rejectedCount })
+      }
+      setRules(loadLearnedRules())
+    }
+    window.addEventListener(AUX_PREFS_SYNCED_EVENT, onSynced)
+    return () => window.removeEventListener(AUX_PREFS_SYNCED_EVENT, onSynced)
+  }, [])
+
   const run = async () => {
     if (!evidence.hasData) { setError(t('rejectionInsights.noData') || 'No rejections to analyze yet.'); return }
     setLoading(true); setError(null)
@@ -56,6 +72,8 @@ export default function RejectionInsights({ jobs, t = (k) => k, language = 'en' 
         ...result.letterRules.map(text => ({ text, area: 'letter' })),
       ])
       setRules(loadLearnedRules())
+      // Sync the fresh analysis + learned rules to the account (other devices).
+      pushLocalPrefs()
     } catch (e) {
       setError(e?.code === 'TRIAL_EXHAUSTED'
         ? (t('rejectionInsights.trial') || 'Free trial used up — add your Claude API key in Settings to run the analysis.')
@@ -68,6 +86,8 @@ export default function RejectionInsights({ jobs, t = (k) => k, language = 'en' 
   const toggleRule = (id) => {
     const next = rules.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r)
     setRules(next); saveLearnedRules(next)
+    // Persist the toggle across devices too.
+    pushLocalPrefs()
   }
 
   const cvRules = rules.filter(r => r.area === 'cv')

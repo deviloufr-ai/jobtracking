@@ -14,6 +14,9 @@
 //   • Guided-tour completion   → localStorage `jobtrackr_tour_done` (so the
 //     interactive tour is taken once per ACCOUNT, not once per device — a fresh
 //     browser / the Android app / cleared storage no longer replays it)
+//   • Rejection analysis        → localStorage `jobtrackr_rejection_analysis`
+//     (the deep AI diagnosis + its learned CV/letter rules), so the analysis run
+//     on one device — and the lessons toggled from it — follow the account.
 // These are attached at push time and restored to their own localStorage keys on
 // pull, so a fresh device inherits them without a schema change.
 import { supabase, isSupabaseConfigured } from './supabase'
@@ -29,6 +32,8 @@ const PICTURE_KEY = 'cv_profile_picture'
 const THEME_KEY = 'jobtrackr_theme'
 const DISMISSED_KEY = 'jobtrackr_dismissed_actions'
 const TOUR_DONE_KEY = 'jobtrackr_tour_done'
+const REJECTION_ANALYSIS_KEY = 'jobtrackr_rejection_analysis'
+const LEARNED_RULES_KEY = 'jobtrackr_learned_rules'
 const CV_PREF_KEYS = [
   'jobtrackr_cv_base_id',
   'jobtrackr_cv_ats_level',
@@ -78,6 +83,18 @@ function collectAuxPrefs() {
     if (tourDone) aux.tourDone = tourDone
   } catch { /* ignore */ }
 
+  // Rejection analysis: the cached AI diagnosis and the learned CV/letter rules.
+  // Stored as their raw JSON strings (same as dismissedActions) — restored verbatim.
+  try {
+    const rejection = localStorage.getItem(REJECTION_ANALYSIS_KEY)
+    if (rejection) aux.rejectionAnalysis = rejection
+  } catch { /* ignore */ }
+
+  try {
+    const learned = localStorage.getItem(LEARNED_RULES_KEY)
+    if (learned) aux.learnedRules = learned
+  } catch { /* ignore */ }
+
   return Object.keys(aux).length ? aux : null
 }
 
@@ -103,6 +120,12 @@ function applyAuxPrefs(aux) {
     // Tour completion is account-wide: once done on any device, never replay.
     if (typeof aux.tourDone === 'string') {
       localStorage.setItem(TOUR_DONE_KEY, aux.tourDone)
+    }
+    if (typeof aux.rejectionAnalysis === 'string') {
+      localStorage.setItem(REJECTION_ANALYSIS_KEY, aux.rejectionAnalysis)
+    }
+    if (typeof aux.learnedRules === 'string') {
+      localStorage.setItem(LEARNED_RULES_KEY, aux.learnedRules)
     }
   } catch { /* quota / serialization — non-critical */ }
   try {
