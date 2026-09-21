@@ -24,6 +24,11 @@ const speechSynthesis = window.speechSynthesis
 //     Whisper model (localSpeech.js).
 const isNativeShell = Boolean(Capacitor?.isNativePlatform?.())
 
+// Cap on consecutive Web Speech auto-restarts with no speech in between, so a
+// persistent 'network' outage stops gracefully instead of looping forever. High
+// enough to ride out long thinking pauses (each restart also waits ~350ms).
+const MAX_RESTART_ATTEMPTS = 15
+
 // Languages the mock interview can be run in. `code` is the BCP-47 tag used for
 // speech recognition + synthesis; `ai` is the English language name injected
 // into the Claude prompt so the interviewer asks its questions in that language.
@@ -127,6 +132,12 @@ function MockInterviewChatbotPanel({ job, cv, round, roundName, roundFocus, guid
   // continuous = true), so onend restarts it as long as this stays set — otherwise
   // recording cut off after a few sentences. Cleared when the user submits/stops.
   const keepListeningRef = useRef(false)
+  // Counts consecutive auto-restarts that produced no new speech — bounds the
+  // retry loop when the Web Speech cloud recognizer keeps erroring (e.g. a real
+  // 'network' outage) instead of spinning start→error→end→start forever. Reset to
+  // 0 on every final result.
+  const restartAttemptsRef = useRef(0)
+  const restartTimerRef = useRef(null)
   const messagesEndRef = useRef(null)
   const interviewIdRef = useRef(Date.now())
   // Track final vs. interim results separately so we accumulate all final
@@ -166,30 +177,50 @@ function MockInterviewChatbotPanel({ job, cv, round, roundName, roundFocus, guid
 
       recognition.onstart = () => setIsRecording(true)
       recognition.onend = () => {
-        // Chrome/Edge stop the session on their own after a pause. While the user
-        // still intends to answer, restart seamlessly (finalTranscriptRef keeps the
-        // text accumulated so far) instead of ending the recording mid-answer.
+        // Chrome/Edge end the session on their own after a pause AND after a
+        // transient error (notably 'network' — the recognizer streams audio to a
+        // cloud service that blips). While the user still intends to answer, restart
+        // seamlessly (finalTranscriptRef keeps the text accumulated so far) instead
+        // of ending mid-answer. Bounded + back-off so a real outage can't hot-loop.
         if (keepListeningRef.current && mountedRef.current) {
-          try {
-            recognition.start()
+          if (restartAttemptsRef.current >= MAX_RESTART_ATTEMPTS) {
+            // Persistent failure — stop and let the user submit what was captured.
+            keepListeningRef.current = false
+            setIsRecording(false)
+            setError('Voice input keeps dropping (network). Your answer so far is kept — tap Submit, or record again.')
             return
-          } catch {
-            /* start() can throw if it's still winding down; fall through to stop */
           }
+          restartAttemptsRef.current += 1
+          // Small delay so a transient network blip can recover and we never spin a
+          // tight start→error→end loop.
+          if (restartTimerRef.current) clearTimeout(restartTimerRef.current)
+          restartTimerRef.current = setTimeout(() => {
+            restartTimerRef.current = null
+            if (!keepListeningRef.current || !mountedRef.current) return
+            try {
+              recognition.start()
+            } catch {
+              /* still winding down — the next onend will retry (or hit the cap) */
+            }
+          }, 350)
+          return
         }
         setIsRecording(false)
       }
       recognition.onerror = (e) => {
-        // 'no-speech' fires on a normal pause and 'aborted' on our own stop — both
-        // are followed by onend, which restarts if the user is still answering. Only
-        // surface genuine failures so a pause doesn't spam an error.
-        if (e.error === 'no-speech' || e.error === 'aborted') return
+        // Transient, expected errors are all followed by onend, which restarts if the
+        // user is still answering: 'no-speech' on a pause, 'aborted' on our own stop,
+        // 'network' on a cloud-recognizer blip. Don't surface these or tear down —
+        // the bounded restart in onend handles recovery.
+        if (e.error === 'no-speech' || e.error === 'aborted' || e.error === 'network') return
         keepListeningRef.current = false
         setIsRecording(false)
         setError(`Speech error: ${e.error}`)
       }
       recognition.onresult = (e) => {
         let interim = ''
+        // Any speech means the recognizer is healthy — clear the retry budget.
+        restartAttemptsRef.current = 0
         // Accumulate all final results; show interim as a live preview.
         for (let i = e.resultIndex; i < e.results.length; i++) {
           const t = e.results[i][0].transcript
@@ -413,6 +444,7 @@ Connect the candidate's experience to the role. Be direct and realistic—ask wh
     setTranscript('')
     setError(null)
     keepListeningRef.current = true
+    restartAttemptsRef.current = 0
     try {
       recognition.start()
     } catch (err) {
