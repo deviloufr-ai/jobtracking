@@ -19,6 +19,8 @@ import MockInterviewChatbot from '../MockInterviewChatbot'
 import InterviewRecorder from '../InterviewRecorder'
 import NegotiationAssistant from '../NegotiationAssistant'
 import InterviewExample from '../InterviewExample'
+import InterviewMindMap from '../InterviewMindMap'
+import { hasMindMap } from '../../utils/mindMap'
 import CandidatureDrawer from './CandidatureDrawer'
 
 const PALETTE = ['#4f46e5', '#2563eb', '#0d9488', '#d97706', '#db2777', '#7c3aed', '#dc2626', '#059669']
@@ -49,7 +51,7 @@ const defaultPrepRound = (job) => {
 // A prep-tool as a full card: icon tile + label + one-line description. Larger
 // and more inviting than a chip — training is the hero, so its tools read as a
 // proper toolkit rather than a strip of tiny buttons.
-function ToolCard({ icon, label, desc, onClick, tone = 'gray' }) {
+function ToolCard({ icon, label, desc, onClick, tone = 'gray', wide = false }) {
   const tones = {
     gray: 'hover:border-gray-300 hover:bg-gray-50',
     indigo: 'hover:border-indigo-300 hover:bg-indigo-50/60',
@@ -57,7 +59,7 @@ function ToolCard({ icon, label, desc, onClick, tone = 'gray' }) {
   }
   const iconTones = { gray: 'bg-gray-100', indigo: 'bg-indigo-100', green: 'bg-green-100' }
   return (
-    <button onClick={onClick} className={`group flex items-start gap-2.5 text-left p-3 rounded-xl border border-gray-200 bg-white transition-colors ${tones[tone]}`}>
+    <button onClick={onClick} className={`group flex items-start gap-2.5 text-left p-3 rounded-xl border border-gray-200 bg-white transition-colors ${tones[tone]} ${wide ? 'col-span-2' : ''}`}>
       <span className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-base ${iconTones[tone]}`}>{icon}</span>
       <span className="min-w-0 flex-1">
         <span className="block text-[12.5px] font-semibold text-gray-900">{label}</span>
@@ -226,7 +228,7 @@ function InterviewStepper({ job, prepRound, onPick, t }) {
   )
 }
 
-function InterviewDetail({ job, prepRound, onPickRound, onOpenFull, onTrain, onExample, onSTAR, onGenerateCV, onNegotiate, onToggleFavorite, t }) {
+function InterviewDetail({ job, prepRound, onPickRound, onOpenFull, onTrain, onExample, onSTAR, onMindMap, onGenerateCV, onNegotiate, onToggleFavorite, t }) {
   const effective = deriveStatusFromHistory(job.history) || job.status
   const status = getStatus(effective)
   const sessions = job.interviewSessions || []
@@ -309,6 +311,9 @@ function InterviewDetail({ job, prepRound, onPickRound, onOpenFull, onTrain, onE
       <div className="px-4 pb-3">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">{t('interviews.moreTools')}</p>
         <div className="grid grid-cols-2 gap-2">
+          <ToolCard tone="indigo" icon="🧠" wide label={t('interviews.toolMindMap')}
+            desc={hasMindMap(job) ? t('interviews.toolMindMapSaved') : t('interviews.toolMindMapDesc')}
+            onClick={() => onMindMap?.(job, guidance)} />
           <ToolCard tone="indigo" icon="🎯" label={t('interviews.toolStar')} desc={t('interviews.toolStarDesc')} onClick={() => onSTAR?.(job)} />
           <ToolCard tone="gray" icon="🎤" label={t('interviews.toolFreePractice')} desc={t('interviews.toolFreePracticeDesc')} onClick={() => onTrain(job, null, guidance)} />
           <ToolCard tone="gray" icon="📄" label={t('interviews.toolCv')} desc={t('interviews.toolCvDesc')} onClick={() => onGenerateCV?.(job)} />
@@ -362,6 +367,7 @@ export default function InterviewsBoard({
   const [recordJob, setRecordJob] = useState(null)    // candidature being recorded (from "Join")
   const [example, setExample] = useState(null)        // { job, round } text example
   const [negotiate, setNegotiate] = useState(null)    // job → negotiation prep
+  const [mindMap, setMindMap] = useState(null)        // { id, guidance } interview mind map
 
   const toggleArchived = () => setShowArchived(v => {
     const next = !v
@@ -374,6 +380,7 @@ export default function InterviewsBoard({
   const startTrain = (job, round, guidance = '') => setMock({ job, round, guidance })
   const startExample = (job, round, guidance = '') => setExample({ job, round, guidance })
   const exampleJob = example ? (jobs.find(j => j.id === example.job.id) || example.job) : null
+  const mindMapJob = mindMap ? jobs.find(j => j.id === mindMap.id) || null : null
 
   // Esc closes the full-details drawer.
   useEffect(() => {
@@ -463,7 +470,8 @@ export default function InterviewsBoard({
 
   const detailProps = selectedJob && {
     job: selectedJob, prepRound, onPickRound: pickRound, onOpenFull: openFull,
-    onTrain: startTrain, onExample: startExample, onSTAR, onGenerateCV, onNegotiate: setNegotiate, onToggleFavorite, t,
+    onTrain: startTrain, onExample: startExample, onSTAR,
+    onMindMap: (job, guidance = '') => setMindMap({ id: job.id, guidance }), onGenerateCV, onNegotiate: setNegotiate, onToggleFavorite, t,
   }
 
   return (
@@ -566,6 +574,11 @@ export default function InterviewsBoard({
           onSave={onUpdateJob}
           t={t}
         />
+      )}
+
+      {/* Interview mind map — keywords that map every question to an answer */}
+      {mindMapJob && (
+        <InterviewMindMap job={mindMapJob} guidance={mindMap.guidance} onClose={() => setMindMap(null)} onSave={onUpdateJob} t={t} />
       )}
 
       {/* Negotiation prep */}

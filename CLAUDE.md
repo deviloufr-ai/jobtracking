@@ -94,7 +94,8 @@ plugin changes).
   whitelist lives in `syncManager.js` `EXTRA_FIELDS`: generated CV/cover letter (`cvSaved`,
   `letterSaved` + version history `letterVersions`), STAR answers, score, interview sessions,
   compensation (`compensation`), the per-application contacts CRM (`contacts` + touchpoints), and
-  the saved negotiation draft (`negotiationSaved`), plus discovered apply-links / position-open
+  the saved negotiation draft (`negotiationSaved`), per-round example interviews
+  (`interviewExamples`) and the interview memory map (`mindMap`, reset = `{}` not null), plus discovered apply-links / position-open
   checks (`positionLinks`, `positionChecks`). Adding a synced per-job field = add it here;
   no migration needed. The poll unbundles `extras` back onto the job (`pollManager.js`).
   **The `extras` write is a UNION, not an overwrite.** `sendMutationToSupabase` reads the row's

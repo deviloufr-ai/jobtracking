@@ -28,6 +28,9 @@ const EXTRA_FIELDS = [
   // interviewExamples: per-round cached example interviews (Q + model answers),
   // keyed by round ({ screening, technical, … , general }). Rides jobs.extras.
   'interviewExamples',
+  // mindMap: the interview memory map (themes → keywords → stories/questions/cues).
+  // A reset writes {} (not null) so the union write actually clears it server-side.
+  'mindMap',
   // positionLinks / positionChecks: discovered apply-links and the per-URL
   // "is this posting still open" check results. These are written by useAutoRefresh
   // and checkPosition and are deserialized on the read path (deserializeJobFields),

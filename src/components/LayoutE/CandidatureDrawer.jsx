@@ -28,6 +28,8 @@ import { noteLines } from '../../utils/noteFormat'
 import { isCalendarConnected } from '../../services/calendar'
 import { extractMeetingLink } from '../../services/enrichTimeline'
 import { parseAnalysisJson } from '../../services/rejectionAnalysis'
+import InterviewMindMap, { MindMapWorkspace } from '../InterviewMindMap'
+import { hasMindMap } from '../../utils/mindMap'
 
 const PALETTE = ['#4f46e5', '#2563eb', '#0d9488', '#d97706', '#db2777', '#7c3aed', '#dc2626', '#059669']
 const colorFor = (s = '') => PALETTE[[...s].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETTE.length]
@@ -38,7 +40,7 @@ const nowStep = (status) => {
   const n = new Date()
   return { status, note: '', date: n.toISOString().split('T')[0], time: `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}` }
 }
-const TABS = [['overview', 'Overview'], ['cv', 'CV'], ['letter', 'Cover letter'], ['star', 'STAR'], ['preparation', 'Preparation'], ['interview', 'Interview']]
+const TABS = [['overview', 'Overview'], ['cv', 'CV'], ['letter', 'Cover letter'], ['star', 'STAR'], ['mindmap', 'Mind map'], ['preparation', 'Preparation'], ['interview', 'Interview']]
 
 const btn = 'inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-xl border border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50 transition-colors'
 const btnP = 'inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:brightness-105 transition'
@@ -149,6 +151,7 @@ export default function CandidatureDrawer({
 
   const [tab, setTab] = useState(initialTab && TABS.some(([id]) => id === initialTab) ? initialTab : 'overview')
   const [showLetter, setShowLetter] = useState(false)
+  const [showMindMap, setShowMindMap] = useState(false)
   const [showMock, setShowMock] = useState(false)
   const [showRecorder, setShowRecorder] = useState(false)
   const [sessionIdx, setSessionIdx] = useState(null)   // mock session shown inline (null = latest)
@@ -253,10 +256,10 @@ export default function CandidatureDrawer({
           </a>
         )}
 
-        <div className="flex gap-1 mt-3 -mb-px">
+        <div className="flex gap-1 mt-3 -mb-px overflow-x-auto no-scrollbar">
           {TABS.map(([id, label]) => (
             <button key={id} onClick={() => setTab(id)}
-              className={`px-3 py-2 text-sm font-semibold border-b-2 transition-colors ${tab === id ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{label}</button>
+              className={`shrink-0 whitespace-nowrap px-3 py-2 text-sm font-semibold border-b-2 transition-colors ${tab === id ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{label}</button>
           ))}
         </div>
       </div>
@@ -556,6 +559,24 @@ export default function CandidatureDrawer({
           )
         })()}
 
+        {tab === 'mindmap' && (hasMindMap(job) ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-gray-900">Interview mind map</div>
+                <div className="text-xs text-gray-400">{job.mindMap.generatedAt ? new Date(job.mindMap.generatedAt).toLocaleDateString() : ''}</div>
+              </div>
+              <button className={btnP} onClick={() => setShowMindMap(true)}>↻ Regenerate</button>
+            </div>
+            <MindMapWorkspace key={job.mindMap.generatedAt} map={job.mindMap} job={job} t={t} />
+          </div>
+        ) : (
+          <div className="text-center py-10">
+            <p className="text-sm text-gray-500 mb-4">No mind map yet — turn your CV and STAR stories into a handful of keywords that map every likely question to an answer.</p>
+            <button className={btnP} onClick={() => setShowMindMap(true)}>🧠 Build a mind map</button>
+          </div>
+        ))}
+
         {tab === 'preparation' && (() => {
           const mockSessions = (job.interviewSessions || []).filter(s => (s.kind || 'mock') === 'mock')
           if (mockSessions.length === 0) {
@@ -677,6 +698,9 @@ export default function CandidatureDrawer({
       {/* ── Generator modals ──────────────────────────────────────────────── */}
       {showLetter && (
         <MotivationLetterGenerator job={job} cvText={job.cvSaved?.markdown || ''} initialContent={job.letterSaved?.content || ''} onClose={() => setShowLetter(false)} onSaveLetter={onUpdateJob} />
+      )}
+      {showMindMap && (
+        <InterviewMindMap job={job} onClose={() => setShowMindMap(false)} onSave={onUpdateJob} t={t} />
       )}
       {showMock && (
         <MockInterviewChatbot job={job} cv={job.cvSaved?.markdown || ''} onClose={() => setShowMock(false)}
