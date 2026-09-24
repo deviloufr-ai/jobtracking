@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartJobTracker - Design & UX Prototypes</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .scroll-smooth { scroll-behavior: smooth; }
+    .glass { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+    .float { animation: float 6s ease-in-out infinite; }
+  </style>
+</head>
+<body class="bg-slate-900 text-white font-sans antialiased">
+  
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-6 py-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">SmartJobTracker</h1>
+            <p class="text-xs text-slate-400">Design & UX Prototypes</p>
+          </div>
+        </div>
+        
+        <nav class="hidden md:flex gap-2">
+          <button onclick="scrollToSection('design-system')" class="px-4 py-2 rounded-lg hover:bg-slate-800 transition text-sm font-medium">Design System</button>
+          <button onclick="scrollToSection('concept-1')" class="px-4 py-2 rounded-lg hover:bg-slate-800 transition text-sm font-medium">Modern Clean</button>
+          <button onclick="scrollToSection('concept-2')" class="px-4 py-2 rounded-lg hover:bg-slate-800 transition text-sm font-medium">Gradient Flow</button>
+          <button onclick="scrollToSection('concept-3')" class="px-4 py-2 rounded-lg hover:bg-slate-800 transition text-sm font-medium">Dark Pro</button>
+          <button onclick="scrollToSection('ux-improvements')" class="px-4 py-2 rounded-lg hover:bg-slate-800 transition text-sm font-medium">UX Improvements</button>
+        </nav>
+
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-slate-500">v1.5.1 - Prototype</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 py-8 space-y-24">
+    
+    <!-- Introduction -->
+    <section class="text-center space-y-6 my-12">
+      <h2 class="text-5xl font-bold tracking-tight">Explore New Designs</h2>
+      <p class="text-xl text-slate-400 max-w-3xl mx-auto">
+        Three complete design directions for SmartJobTracker, each with distinct visual identity and UX improvements.
+        Click a concept above to jump to it, or scroll to explore them all.
+      </p>
+      
+      <div class="flex flex-wrap justify-center gap-4 mt-8">
+        <a href="#design-system" class="px-6 py-3 bg-slate-800 rounded-xl hover:bg-slate-700 transition font-medium border border-slate-700">
+          🎨 Design System
+        </a>
+        <a href="#concept-1" class="px-6 py-3 bg-gradient-to-r from-emerald-600 to-cyan-600 rounded-xl hover:from-emerald-500 hover:to-cyan-500 transition font-medium shadow-lg">
+          ✨ Modern Clean
+        </a>
+        <a href="#concept-2" class="px-6 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-xl hover:from-violet-500 hover:to-fuchsia-500 transition font-medium shadow-lg">
+          🌊 Gradient Flow
+        </a>
+        <a href="#concept-3" class="px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 rounded-xl hover:from-orange-500 hover:to-red-500 transition font-medium shadow-lg">
+          🎯 Dark Pro
+        </a>
+      </div>
+    </section>
+
+    <!-- Design System -->
+    <section id="design-system" class="scroll-mt-24">
+      <div class="flex items-center gap-3 mb-8">
+        <span class="text-5xl">🎨</span>
+        <div>
+          <h3 class="text-3xl font-bold">Design System & Principles</h3>
+          <p class="text-slate-400">Shared foundations across all concepts</p>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-6 my-8">
+        <!-- Typography -->
+        <div class="bg-slate-950/50 rounded-2xl p-6 border border-slate-800">
+          <h4 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Typography</h4>
+          <div class="space-y-3">
+            <div><span class="text-xs text-slate-500">H1 (32px)</span> <span class="text-3xl font-bold">Main Heading</span></div>
+            <div><span class="text-xs text-slate-500">H2 (24px)</span> <span class="text-2xl font-semibold">Section Title</span></div>
+            <div><span class="text-xs text-slate-500">Body (16px)</span> <span class="text-base">Regular body text for readability</span></div>
+            <div><span class="text-xs text-slate-500">Small (14px)</span> <span class="text-sm text-slate-400">Secondary information</span></div>
+          </div>
+        </div>
+
+        <!-- Colors -->
+        <div class="bg-slate-950/50 rounded-2xl p-6 border border-slate-800">
+          <h4 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Color Palette</h4>
+          <div class="space-y-3">
+            <div><span class="inline-block w-8 h-8 rounded-full bg-slate-900 mr-2"></span><span class="text-sm text-slate-300">Background - slate-950</span></div>
+            <div><span class="inline-block w-8 h-8 rounded-full bg-slate-800 mr-2"></span><span class="text-sm text-slate-300">Surface - slate-800</span></div>
+            <div><span class="inline-block w-8 h-8 rounded-full bg-emerald-500/20 mr-2 border border-emerald-500/50"></span><span class="text-sm text-slate-300">Success - emerald</span></div>
+            <div><span class="inline-block w-8 h-8 rounded-full bg-blue-500/20 mr-2 border border-blue-500/50"></span><span class="text-sm text-slate-300">Primary - blue</span></div>
+            <div><span class="inline-block w-8 h-8 rounded-full bg-purple-500/20 mr-2 border border-purple-500/50"></span><span class="text-sm text-slate-300">Accent - purple</span></div>
+          </div>
+        </div>
+
+        <!-- Spacing -->
+        <div class="bg-slate-950/50 rounded-2xl p-6 border border-slate-800">
+          <h4 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Spacing System</h4>
+          <div class="grid grid-cols-12 gap-3 items-center my-4">
+            <div class="col-span-3"><span class="text-xs text-slate-500">xs (0.25rem)</span></div>
+            <div class="col-span-2 bg-slate-800 rounded h-2"></div>
+            
+            <div class="col-span-3"><span class="text-xs text-slate-500">sm (0.5rem)</span></div>
+            <div class="col-span-2 bg-slate-700 rounded h-4"></div>
+            
+            <div class="col-span-3"><span class="text-xs text-slate-500">md (1rem)</span></div>
+            <div class="col-span-2 bg-slate-600 rounded h-8"></div>
+            
+            <div class="col-span-3"><span class="text-xs text-slate-500">lg (2rem)</span></div>
+            <div class="col-span-2 bg-slate-500 rounded h-16"></div>
+          </div>
+        </div>
+
+        <!-- Components -->
+        <div class="bg-slate-950/50 rounded-2xl p-6 border border-slate-800">
+          <h4 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Component Styles</h4>
+          <div class="space-y-4">
+            <div class="flex items-center gap-4">
+              <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium transition">Primary Button</button>
+              <button class="px-4 py-2 border border-slate-600 rounded-lg text-sm font-medium hover:border-slate-500 transition">Secondary</button>
+              <button class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-medium transition">Ghost</button>
+            </div>
+            <div class="flex items-center gap-4">
+              <input type="text" value="Search applications..." placeholder="Search..." class="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500 w-64">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Principles -->
+      <div class="mt-8 bg-slate-950/50 rounded-2xl p-6 border border-slate-800">
+        <h4 class="text-lg font-semibold mb-4">Core UX Principles</h4>
+        <div class="grid md:grid-cols-3 gap-6">
+          <div class="space-y-2">
+            <div class="flex items-center gap-2"><span class="w-2 h-2 bg-emerald-500 rounded-full"></span><strong>Offline-first</strong></div>
+            <p class="text-sm text-slate-400">Data persists locally, syncs when connection returns. Never lose progress.</p>
+          </div>
+          <div class="space-y-2">
+            <div class="flex items-center gap-2"><span class="w-2 h-2 bg-emerald-500 rounded-full"></span><strong>Actionable insights</strong></div>
+            <p class="text-sm text-slate-400">Surface what needs attention: follow-ups due, interviews tomorrow, offers waiting.</p>
+          </div>
+          <div class="space-y-2">
+            <div class="flex items-center gap-2"><span class="w-2 h-2 bg-emerald-500 rounded-full"></span><strong>Contextual actions</strong></div>
+            <p class="text-sm text-slate-400">Every view shows relevant actions. No hunting for features.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Concept 1: Modern Clean -->
+    <section id="concept-1" class="scroll-mt-24">
+      <div class="flex items-center gap-3 mb-8">
+        <span class="text-5xl">✨</span>
+        <div>
+          <h3 class="text-3xl font-bold text-white">Concept 1: Modern Clean</h3>
+          <p class="text-slate-400">Minimalist, high contrast, perfect focus on content</p>
+        </div>
+      </div>
+
+      <!-- Dashboard Preview -->
+      <div class="bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl p-8 border border-slate-200">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h4 class="text-2xl font-bold text-slate-800">Dashboard</h4>
+            <p class="text-sm text-slate-500">Overview of your job search progress</p>
+          </div>
+          <div class="flex gap-3">
+            <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">12 active</span>
+            <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">8 interviews</span>
+          </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid md:grid-cols-4 gap-4 mb-6">
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <div class="text-sm text-slate-500 mb-1">Total Applications</div>
+            <div class="text-3xl font-bold text-slate-800">142</div>
+            <div class="text-xs text-green-600 mt-1">↑ 12 this week</div>
+          </div>
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <div class="text-sm text-slate-500 mb-1">Interviews This Month</div>
+            <div class="text-3xl font-bold text-slate-800">8</div>
+            <div class="text-xs text-blue-600 mt-1">Next: 2 days away</div>
+          </div>
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <div class="text-sm text-slate-500 mb-1">Pending Follow-ups</div>
+            <div class="text-3xl font-bold text-slate-800">4</div>
+            <div class="text-xs text-orange-600 mt-1">Due today/tomorrow</div>
+          </div>
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <div class="text-sm text-slate-500 mb-1">Avg. Score</div>
+            <div class="text-3xl font-bold text-slate-800">7.8</div>
+            <div class="text-xs text-purple-600 mt-1">Based on 120 postings</div>
+          </div>
+        </div>
+
+        <!-- Recent Jobs Table -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-4 border-b border-slate-200 flex items-center justify-between">
+            <h5 class="font-semibold text-slate-700">Recent Applications</h5>
+            <div class="flex gap-2">
+              <span class="text-xs text-slate-500">Showing 1-6 of 24</span>
+            </div>
+          </div>
+          
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-50">
+                <tr>
+                  <th class="px-4 py-3 text-left font-semibold text-slate-700">Company</th>
+                  <th class="px-4 py-3 text-left font-semibold text-slate-700">Position</th>
+                  <th class="px-4 py-3 text-left font-semibold text-slate-700">Status</th>
+                  <th class="px-4 py-3 text-left font-semibold text-slate-700">Score</th>
+                  <th class="px-4 py-3 text-left font-semibold text-slate-700">Last Action</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr class="hover:bg-slate-50 transition">
+                  <td class="px-4 py-4 font-medium text-slate-800 flex items-center gap-3">
+                    <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xs font-bold">A</div>
+                    Acme Inc.
+                  </td>
+                  <td class="px-4 py-4 text-slate-700">Senior Frontend Dev</td>
+                  <td class="px-4 py-4"><span class="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Offer</span></td>
+                  <td class="px-4 py-4 text-slate-600">9.2</td>
+                  <td class="px-4 py-4 text-slate-500">Just now</td>
+                </tr>
+                <tr class="hover:bg-slate-50 transition">
+                  <td class="px-4 py-4 font-medium text-slate-800 flex items-center gap-3">
+                    <div class="w-8 h-8 bg-gradient-to-br from-red-500 to-orange-600 rounded-full flex items-center justify-center text-xs font-bold">T</div>
+                    TechCorp
+                  </td>
+                  <td class="px-4 py-4 text-slate-700">Full Stack Engineer</td>
+                  <td class="px-4 py-4"><span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">Interviewing</span></td>
+                  <td class="px-4 py-4 text-slate-600">8.5</td>
+                  <td class="px-4 py-4 text-slate-500">2 days ago</td>
+                </tr>
+                <tr class="hover:bg-slate-50 transition">
+                  <td class="px-4 py-4 font-medium text-slate-800 flex items-center gap-3">
+                    <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-xs font-bold">N</div>
+                    Nocode Inc.
+                  </td>
+                  <td class="px-4 py-4 text-slate-700">Product Designer</td>
+                  <td class="px-4 py-4"><span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">Follow-up Due</span></td>
+                  <td class="px-4 py-4 text-slate-600">8.9</td>
+                  <td class="px-4 py-4 text-orange-500">Today, 10:00 AM</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+            <button class="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 transition">Show all</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- UX Notes -->
+      <div class="mt-6 grid md:grid-cols-2 gap-6">
+        <div class="bg-slate-950/50 rounded-xl p-6 border border-slate-800">
+          <h5 class="font-semibold mb-3 flex items-center gap-2">
+            <span>💡</span> Key UX Features
+          </h5>
+          <ul class="space-y-2 text-sm text-slate-400">
+            <li class="flex items-start gap-2">
+              <span class="text-green-500 mt-0.5">•</span>
+              <span>Bold status badges for quick scanning</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500 mt-0.5">•</span>
+              <span>Action counts prominently displayed</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500 mt-0.5">•</span>
+              <span>Timeline view shows next action clearly</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500 mt-0.5">•</span>
+              <span>Search & filter at top, no scrolling needed</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="bg-slate-950/50 rounded-xl p-6 border border-slate-800">
+          <h5 class="font-semibold mb-3 flex items-center gap-2">
+            <span>🎨</span> Visual Style
+          </h5>
+          <ul class="space-y-2 text-sm text-slate-400">
+            <li class="flex items-start gap-2">
+              <span class="text-purple-500 mt-0.5">•</span>
+              <span>Generous whitespace for readability</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-purple-500 mt-0.5">•</span>
+              <span>Subtle shadows create depth</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-purple-500 mt-0.5">•</span>
+              <span>Monochrome palette with color only for status</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-purple-500 mt-0.5">•</span>
+              <span>Rounded corners (8px) feel modern & friendly</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Concept 2: Gradient Flow -->
+    <section id="concept-2" class="scroll-mt-24">
+      <div class="flex items-center gap-3 mb-8">
+        <span class="text-5xl">🌊</span>
+        <div>
+          <h3 class="text-3xl font-bold text-white">Concept 2: Gradient Flow</h3>
+          <p class="text-slate-400">Vibrant gradients, smooth animations, glassmorphism</p>
+        </div>
+      </div>
+
+      <!-- Dashboard Preview -->
+      <div class="bg-gradient-to-br from-violet-950 via-fuchsia-950 to-purple-950 rounded-3xl p-8 border border-fuchsia-500/20 relative overflow-hidden">
+        
+        <!-- Background decoration -->
+        <div class="absolute top-0 right-0 w-96 h-96 bg-fuchsia-500/10 rounded-full blur-3xl"></div>
+        <div class="absolute bottom-0 left-0 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl"></div>
+
+        <div class="relative z-10">
+          <div class="flex items-center justify-between mb-8">
+            <div>
+              <h4 class="text-2xl font-bold text-white">Dashboard</h4>
+              <p class="text-sm text-fuchsia-300/70">Track your journey with flow & clarity</p>
+            </div>
+            <div class="flex gap-3">
+              <span class="px-3 py-1 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 text-green-300 rounded-full text-xs font-medium">12 active</span>
+              <span class="px-3 py-1 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/30 text-blue-300 rounded-full text-xs font-medium">8 interviews</span>
+            </div>
+          </div>
+
+          <!-- KPI Cards with gradients -->
+          <div class="grid md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-sm p-5 rounded-2xl border border-slate-700/50 hover:border-fuchsia-500/30 transition">
+              <div class="text-sm text-slate-400 mb-1">Total Applications</div>
+              <div class="text-3xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">142</div>
+              <div class="flex items-center gap-2 mt-2">
+                <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                </svg>
+                <span class="text-xs text-green-400">+12 this week</span>
+              </div>
+            </div>
+            
+            <div class="bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-sm p-5 rounded-2xl border border-slate-700/50 hover:border-fuchsia-500/30 transition">
+              <div class="text-sm text-slate-400 mb-1">Interviews This Month</div>
+              <div class="text-3xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">8</div>
+              <div class="flex items-center gap-2 mt-2">
+                <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+                <span class="text-xs text-blue-400">Next: 2 days</span>
+              </div>
+            </div>
+            
+            <div class="bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-sm p-5 rounded-2xl border border-slate-700/50 hover:border-fuchsia-500/30 transition">
+              <div class="text-sm text-slate-400 mb-1">Pending Follow-ups</div>
+              <div class="text-3xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">4</div>
+              <div class="flex items-center gap-2 mt-2">
+                <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.185 6 8.371 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+                <span class="text-xs text-orange-400">Due today/tomorrow</span>
+              </div>
+            </div>
+            
+            <div class="bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-sm p-5 rounded-2xl border border-slate-700/50 hover:border-fuchsia-500/30 transition">
+              <div class="text-sm text-slate-400 mb-1">Avg. Score</div>
+              <div class="text-3xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">7.8/10</div>
+              <div class="flex items-center gap-2 mt-2">
+                <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                </svg>
+                <span class="text-xs text-purple-400">Based on 120</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Application Cards with glassmorphism -->
+          <div class="space-y-4">
+            <h5 class="font-semibold text-white mb-3 flex items-center gap-2">
+              <span>🔥</span> Hot Applications (Needs Attention)
+            </h5>
+            
+            <!-- Card 1 -->
+            <div class="group relative bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-5 hover:border-fuchsia-500/40 transition-all duration-300 overflow-hidden">
+              
+              <!-- Gradient animation on hover -->
+              <div class="absolute inset-0 bg-gradient-to-r from-fuchsia-500/10 to-violet-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              
+              <div class="relative z-10">
+                <div class="flex items-start justify-between mb-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-lg font-bold">N</div>
+                    <div>
+                      <h6 class="font-semibold text-white">Nocode Inc.</h6>
+                      <p class="text-sm text-slate-400">Product Designer</p>
+                    </div>
+                  </div>
+                  <span class="px-3 py-1 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 text-yellow-300 rounded-full text-xs font-medium">Follow-up Due</span>
+                </div>
+                
+                <div class="space-y-3 text-sm">
+                  <div class="flex items-center justify-between p-2 bg-slate-950/40 rounded-lg">
+                    <span class="text-slate-400">Score</span>
+                    <span class="font-semibold text-white">8.9/10</span>
+                  </div>
+                  
+                  <div class="flex items-center justify-between p-2 bg-slate-950/40 rounded-lg">
+                    <span class="text-slate-400">Next Action</span>
+                    <span class="font-semibold text-white">Email recruiter • Today, 10:00 AM</span>
+                  </div>
+                  
+                  <div class="flex items-center justify-between p-2 bg-slate-950/40 rounded-lg">
+                    <span class="text-slate-400">Last Contact</span>
+                    <span class="font-semibold text-white">2 days ago • Interview #1</span>
+                  </div>
+                </div>
+                
+                <div class="flex gap-2 mt-4 pt-3 border-t border-slate-700/50">
+                  <button class="px-4 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 rounded-lg text-sm font-medium transition shadow-lg shadow-fuchsia-900/20">
+                    Draft Follow-up
+                  </button>
+                  <button class="px-4 py-2 border border-slate-600 rounded-lg text-sm font-medium hover:border-slate-500 transition text-slate-300">
+                    View Details
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 2 -->
+            <div class="group relative bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-5 hover:border-fuchsia-500/40 transition-all duration-300 overflow-hidden">
+              <div class="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              
+              <div class="relative z-10">
+                <div class="flex items-start justify-between mb-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center text-lg font-bold">T</div>
+                    <div>
+                      <h6 class="font-semibold text-white">TechCorp</h6>
+                      <p class="text-sm text-slate-400">Full Stack Engineer</p>
+                    </div>
+                  </div>
+                  <span class="px-3 py-1 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/30 text-blue-300 rounded-full text-xs font-medium">Interviewing</span>
+                </div>
+                
+                <div class="space-y-3 text-sm">
+                  <div class="flex items-center justify-between p-2 bg-slate-950/40 rounded-lg">
+                    <span class="text-slate-400">Score</span>
+                    <span class="font-semibold text-white">8.5/10</span>
+                  </div>
+                  
+                  <div class="flex items-center justify-between p-2 bg-slate-950/40 rounded-lg">
+                    <span class="text-slate-400">Next Action</span>
+                    <span class="font-semibold text-white">Review offer • Tomorrow, 2:00 PM</span>
+                  </div>
+                  
+                  <div class="flex items-center justify-between p-2 bg-slate-950/40 rounded-lg">
+                    <span class="text-slate-400">Last Contact</span>
+                    <span class="font-semibold text-white">3 days ago • Phone screen passed</span>
+                  </div>
+                </div>
+                
+                <div class="flex gap-2 mt-4 pt-3 border-t border-slate-700/50">
+                  <button class="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg text-sm font-medium transition shadow-lg shadow-blue-900/20">
+                    Review Offer
+                  </button>
+                  <button class="px-4 py-2 border border-slate-600 rounded-lg text-sm font-medium hover:border-slate-500 transition text-slate-300">
+                    View Details
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- UX Notes -->
+      <div class="mt-6 grid md:grid-cols-2 gap-6">
+        <div class="bg-slate-950/50 rounded-xl p-6 border border-slate-800">
+          <h5 class="font-semibold mb-3 flex items-center gap-2">
+            <span>💫</span> Visual Effects
+          </h5>
+          <ul class="space-y-2 text-sm text-slate-400">
+            <li class="flex items-start gap-2">
+              <span class="text-fuchsia-500 mt-0.5">•</span>
+              <span>Vibrant gradients (violet → fuchsia)</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-fuchsia-500 mt-0.5">•</span>
+              <span>Glassmorphism with backdrop blur</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-fuchsia-500 mt-0.5">•</span>
+              <span>Animated hover states on cards</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-fuchsia-500 mt-0.5">•</span>
+              <span>Glowing backgrounds for depth</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="bg-slate-950/50 rounded-xl p-6 border border-slate-800">
+          <h5 class="font-semibold mb-3 flex items-center gap-2">
+            <span>🎭</span> Personality
+          </h5>
+          <ul class="space-y-2 text-sm text-slate-400">
+            <li class="flex items-start gap-2">
+              <span class="text-fuchsia-500 mt-0.5">•</span>
+              <span>Creative, expressive & energetic</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-fuchsia-500 mt-0.5">•</span>
+              <span>Color-coded for quick emotional cues</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-fuchsia-500 mt-0.5">•</span>
+              <span>Bold typography with subtle variations</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-fuchsia-500 mt-0.5">•</span>
+              <span>Premium feel for serious applications</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Concept 3: Dark Pro -->
+    <section id="concept-3" class="scroll-mt-24">
+      <div class="flex items-center gap-3 mb-8">
+        <span class="text-5xl">🎯</span>
+        <div>
+          <h3 class="text-3xl font-bold text-white">Concept 3: Dark Pro</h3>
+          <p class="text-slate-400">Professional, data-rich, developer-focused</p>
+        </div>
+      </div>
+
+      <!-- Dashboard Preview -->
+      <div class="bg-gradient-to-br from-gray-950 to-slate-900 rounded-3xl p-8 border border-gray-800">
+        
+        <div class="flex items-center justify-between mb-8">
+          <div>
+            <h4 class="text-2xl font-bold text-white">Dashboard</h4>
+            <p class="text-sm text-slate-500">Professional overview with detailed analytics</p>
+          </div>
+          <div class="flex gap-3">
+            <span class="px-3 py-1 bg-emerald-950/50 border border-emerald-800 text-emerald-400 rounded-full text-xs font-medium">12 active</span>
+            <span class="px-3 py-1 bg-blue-950/50 border border-blue-800 text-blue-400 rounded-full text-xs font-medium">8 interviews</span>
+          </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div class="bg-gray-900/50 border border-gray-800 p-4 rounded-xl">
+            <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Total Apps</div>
+            <div class="text-3xl font-bold text-white">142</div>
+            <div class="text-xs text-emerald-400 mt-1 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+              12 this week
+            </div>
+          </div>
+
+          <div class="bg-gray-900/50 border border-gray-800 p-4 rounded-xl">
+            <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Interviews</div>
+            <div class="text-3xl font-bold text-white">8</div>
+            <div class="text-xs text-blue-400 mt-1 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              Next: 2 days
+            </div>
+          </div>
+
+          <div class="bg-gray-900/50 border border-gray-800 p-4 rounded-xl">
+            <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Follow-ups</div>
+            <div class="text-3xl font-bold text-white">4</div>
+            <div class="text-xs text-orange-400 mt-1 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.185 6 8.371 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+              Today/tomorrow
+            </div>
+          </div>
+
+          <div class="bg-gray-900/50 border border-gray-800 p-4 rounded-xl">
+            <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Avg Score</div>
+            <div class="text-3xl font-bold text-white">7.8</div>
+            <div class="text-xs text-purple-400 mt-1">Based on 120 postings</div>
+          </div>
+        </div>
+
+        <!-- Flux Row -->
+        <div class="bg-gray-900/50 border border-gray-800 rounded-xl p-4 mb-6">
+          <div class="flex items-center justify-between mb-3">
+            <h5 class="font-semibold text-white">Job Market Flux</h5>
+            <span class="text-xs text-slate-500">Last 7 days</span>
+          </div>
+          
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-slate-400">Senior Frontend Dev</span>
+              <div class="flex items-center gap-3">
+                <div class="flex items-center gap-1">
+                  <span class="text-xs text-slate-500">-</span>
+                  <div class="w-24 bg-gray-800 rounded-full h-2 overflow-hidden">
+                    <div class="bg-green-500 w-[95%] h-full"></div>
+                  </div>
+                  <span class="text-xs text-green-400">+95%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-slate-400">Full Stack Engineer</span>
+              <div class="flex items-center gap-3">
+                <div class="flex items-center gap-1">
+                  <span class="text-xs text-slate-500">-</span>
+                  <div class="w-24 bg-gray-800 rounded-full h-2 overflow-hidden">
+                    <div class="bg-green-500 w-[73%] h-full"></div>
+                  </div>
+                  <span class="text-xs text-green-400">+73%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-slate-400">Product Designer</span>
+              <div class="flex items-center gap-3">
+                <div class="flex items-center gap-1">
+                  <span class="text-xs text-slate-500">-</span>
+                  <div class="w-24 bg-gray-800 rounded-full h-2 overflow-hidden">
+                    <div class="bg-orange-500 w-[55%] h-full"></div>
+                  </div>
+                  <span class="text-xs text-orange-400">+55%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Applications Grid -->
+        <div class="grid md:grid-cols-2 gap-6">
+          <!-- Offer Received -->
+          <div class="bg-gray-900/50 border border-gray-800 rounded-xl p-5 hover:border-emerald-700 transition duration-300">
+            <div class="flex items-center justify-between mb-4">
+              <h6 class="font-semibold text-white flex items-center gap-2">
+                <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Offer Received
+              </h6>
+              <span class="px-2 py-1 bg-emerald-950/50 border border-emerald-800 text-emerald-400 rounded text-xs font-medium">Acme Inc.</span>
+            </div>
+
+            <div class="space-y-3 text-sm">
+              <div class="flex items-center justify-between p-2 bg-gray-800/50 rounded-lg">
+                <span class="text-slate-400">Position</span>
+                <span class="text-white font-medium">Senior Frontend Developer</span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3 p-2 bg-gray-800/50 rounded-lg">
+                <div>
+                  <span class="text-xs text-slate-500">Salary</span>
+                  <span class="text-white font-medium">$145k - $165k</span>
+                </div>
+                <div>
+                  <span class="text-xs text-slate-500">Type</span>
+                  <span class="text-white font-medium">Full-time</span>
+                </div>
+              </div>
+
+              <div class="p-2 bg-gray-800/50 rounded-lg">
+                <span class="text-xs text-slate-500">Score</span>
+                <span class="text-emerald-400 font-bold">9.2/10</span>
+              </div>
+            </div>
+
+            <div class="flex gap-2 mt-4 pt-3 border-t border-gray-800">
+              <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium transition">
+                Negotiate Offer
+              </button>
+              <button class="px-4 py-2 border border-gray-600 rounded-lg text-sm font-medium hover:border-gray-500 transition text-slate-300">
+                View Details
+              </button>
+            </div>
+          </div>
+
+          <!-- Interviewing -->
+          <div class="bg-gray-900/50 border border-gray-800 rounded-xl p-5 hover:border-blue-700 transition duration-300">
+            <div class="flex items-center justify-between mb-4">
+              <h6 class="font-semibold text-white flex items-center gap-2">
+                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                Interviewing
+              </h6>
+              <span class="px-2 py-1 bg-blue-950/50 border border-blue-800 text-blue-400 rounded text-xs font-medium">TechCorp</span>
+            </div>
+
+            <div class="space-y-3 text-sm">
+              <div class="flex items-center justify-between p-2 bg-gray-800/50 rounded-lg">
+                <span class="text-slate-400">Position</span>
+                <span class="text-white font-medium">Full Stack Engineer</span>
+              </div>
+
+              <div class="p-2 bg-gray-800/50 rounded-lg">
+                <span class="text-xs text-slate-500">Score</span>
+                <span class="text-blue-400 font-bold">8.5/10</span>
+              </div>
+
+              <div class="p-2 bg-gray-800/50 rounded-lg border-l-2 border-orange-500">
+                <span class="text-xs text-orange-400">Next Action</span>
+                <span class="text-white font-medium">Review offer • Tomorrow, 2:00 PM</span>
+              </div>
+            </div>
+
+            <div class="flex gap-2 mt-4 pt-3 border-t border-gray-800">
+              <button class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium transition">
+                Review Offer
+              </button>
+              <button class="px-4 py-2 border border-gray-600 rounded-lg text-sm font-medium hover:border-gray-500 transition text-slate-300">
+                View Details
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- UX Notes -->
+      <div class="mt-6 grid md:grid-cols-2 gap-6">
+        <div class="bg-slate-950/50 rounded-xl p-6 border border-slate-800">
+          <h5 class="font-semibold mb-3 flex items-center gap-2">
+            <span>🔧</span> Technical Features
+          </h5>
+          <ul class="space-y-2 text-sm text-slate-400">
+            <li class="flex items-start gap-2">
+              <span class="text-purple-500 mt-0.5">•</span>
+              <span>Developer-friendly data visualization</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-purple-500 mt-0.5">•</span>
+              <span>Detailed metrics and analytics panels</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-purple-500 mt-0.5">•</span>
+              <span>Compact information density</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-purple-500 mt-0.5">•</span>
+              <span>Keyboard-shortcut friendly layout</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="bg-slate-950/50 rounded-xl p-6 border border-slate-800">
+          <h5 class="font-semibold mb-3 flex items-center gap-2">
+            <span>📊</span> Data-Rich Design
+          </h5>
+          <ul class="space-y-2 text-sm text-slate-400">
+            <li class="flex items-start gap-2">
+              <span class="text-purple-500 mt-0.5">•</span>
+              <span>Monochrome palette with semantic colors</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-purple-500 mt-0.5">•</span>
+              <span>Progress bars for trend visualization</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-purple-500 mt-0.5">•</span>
+              <span>Clean borders and grid lines</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-purple-500 mt-0.5">•</span>
+              <span>Serious, focused atmosphere</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- UX Improvements -->
+    <section id="ux-improvements" class="scroll-mt-24">
+      <div class="flex items-center gap-3 mb-8">
+        <span class="text-5xl">💡</span>
+        <div>
+            <h3 class="text-3xl font-bold text-white">UX Improvements & Features</h3>
+            <p class="text-slate-400">Enhancements that work across all designs</p>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        <!-- Mobile Home -->
+        <div class="bg-slate-950/50 rounded-xl p-6 border border-slate-800">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="text-2xl">📱</span>
+                <h4 class="font-semibold text-white">Mobile Home Dashboard</h4>
+            </div>
+            <p class="text-sm text-slate-400 mb-4">Quick overview with swipe actions and gesture navigation.</p>
+            
+            <div class="bg-gradient-to-br from-emerald-950/80 to-teal-950/80 backdrop-blur-sm rounded-xl p-4 border border-emerald-800/50 mb-4">
+                <h5 class="text-xs font-semibold text-emerald-300 uppercase tracking-wider mb-2">Actionable Summary</h5>
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-slate-300">Follow-ups Today</span>
+                        <span class="px-2 py-1 bg-red-500/20 border border-red-500/40 text-red-300 rounded-full text-xs font-medium">2</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-slate-300">Interview This Week</span>
+                        <span class="px-2 py-1 bg-blue-500/20 border border-blue-500/40 text-blue-300 rounded-full text-xs font-medium">1</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-slate-300">New Applications</span>
+                        <span class="px-2 py-1 bg-green-500/20 border border-green-500/40 text-green-300 rounded-full text-xs font-medium">+5</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between text-sm">
+                <span class="text-slate-400">Swipe Left:</span>
+                <span class="text-white font-medium">Quick archive / snooze</span>
+            </div>
+        </div>
+
+        <!-- Quick Actions Panel -->
+        <div class="bg-slate-950/50 rounded-xl p-6 border border-slate-800">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="text-2xl">⚡</span>
+                <h4 class="font-semibold text-white">Quick Actions Panel</h4>
+            </div>
+            <p class="text-sm text-slate-400 mb-4">Contextual actions that appear when hovering job cards or via keyboard shortcuts.</p>
+            
+            <div class="bg-gradient-to-br from-violet-950/80 to-purple-950/80 backdrop-blur-sm rounded-xl p-4 border border-violet-800/50 mb-4">
+                <h5 class="text-xs font-semibold text-violet-300 uppercase tracking-wider mb-2">Available Actions</h5>
+                <div class="grid grid-cols-2 gap-2">
+                    <button class="px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-xs text-white transition">Email Template</button>
+                    <button class="px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-xs text-white transition">Generate CV</button>
+                    <button class="px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-xs text-white transition">Draft Follow-up</button>
+                    <button class="px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-xs text-white transition">Snooze (7d)</button>
+                </div>
+            </div>
+
+            <div class="text-sm text-slate-400">
+                Keyboard shortcuts:<br>
+                <kbd class="px-2 py-1 bg-slate-800 rounded border border-slate-700 text-xs">E</kbd> Email • 
+                <kbd class="px-2 py-1 bg-slate-800 rounded border border-slate-700 text-xs">C</kbd> CV • 
+                <kbd class="px-2 py-1 bg-slate-800 rounded border border-slate-700 text-xs">F</kbd> Follow-up
+            </div>
+        </div>
+
+        <!-- Timeline View -->
+        <div class="bg-slate-950/50 rounded-xl p-6 border border-slate-800">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="text-2xl">📅</span>
+                <h4 class="font-semibold text-white">Timeline View</h4>
+            </div>
+            <p class="text-sm text-slate-400 mb-4">Visual timeline showing all interactions with each application.</p>
+            
+            <div class="bg-gradient-to-br from-blue-950/80 to-indigo-950/80 backdrop-blur-sm rounded-xl p-4 border border-blue-800/50 mb-4">
+                <h5 class="text-xs font-semibold text-blue-300 uppercase tracking-wider mb-2">Timeline Example</h5>
+                
+                <div class="space-y-3 relative pl-6 before:content-[''] before:absolute before:left-2 before:top-0 before:bottom-0 before:w-0.5 before:bg-slate-700">
+                    <div class="relative">
+                        <div class="absolute -left-1 top-1 w-3 h-3 bg-orange-500 rounded-full ring-4 ring-gray-900"></div>
+                        <div class="text-sm text-white">Today, 10:00 AM</div>
+                        <div class="text-xs text-slate-400">Follow-up email due</div>
+                    </div>
+
+                    <div class="relative">
+                        <div class="absolute -left-1 top-1 w-3 h-3 bg-blue-500 rounded-full ring-4 ring-gray-900"></div>
+                        <div class="text-sm text-white">Yesterday</div>
+                        <div class="text-xs text-slate-400">Phone screening completed</div>
+                    </div>
+
+                    <div class="relative">
+                        <div class="absolute -left-1 top-1 w-3 h-3 bg-green-500 rounded-full ring-4 ring-gray-900"></div>
+                        <div class="text-sm text-white">Nov 15</div>
+                        <div class="text-xs text-slate-400">Application submitted</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 text-sm">
+                <span class="text-slate-400">Status:</span>
+                <span class="inline-flex items-center gap-1 px-2 py-1 bg-orange-950/30 border border-orange-800/50 rounded-full text-xs text-orange-300">
+                    ⚠️ Due today (1 follow-up)
+                </span>
+            </div>
+        </div>
+
+        <!-- AI Insights Card -->
+        <div class="bg-slate-950/50 rounded-xl p-6 border border-slate-800">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="text-2xl">🤖</span>
+                <h4 class="font-semibold text-white">AI Insights Card</h4>
+            </div>
+            <p class="text-sm text-slate-400 mb-4">Smart suggestions based on your activity patterns.</p>
+            
+            <div class="bg-gradient-to-br from-fuchsia-950/80 to-pink-950/80 backdrop-blur-sm rounded-xl p-4 border border-fuchsia-800/50 mb-4">
+                <h5 class="text-xs font-semibold text-fuchsia-300 uppercase tracking-wider mb-2">AI Suggestions</h5>
+                
+                <div class="space-y-3">
+                    <div class="p-3 bg-white/5 rounded-lg border border-white/10">
+                        <div class="text-sm text-white flex items-start gap-2">
+                            <span class="mt-0.5">💡</span>
+                            <div>
+                                <div class="font-medium">You're behind on follow-ups</div>
+                                <div class="text-xs text-slate-400 mt-1">3 applications need attention today. Click "Next Action" to see what.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-white/5 rounded-lg border border-white/10">
+                        <div class="text-sm text-white flex items-start gap-2">
+                            <span class="mt-0.5">📈</span>
+                            <div>
+                                <div class="font-medium">Interview prep needed</div>
+                                <div class="text-xs text-slate-400 mt-1">TechCorp interview in 2 days. Use STAR Generator to prepare.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="px-4 py-2 bg-fuchsia-600 hover:bg-fuchsia-500 rounded-lg text-xs font-medium transition w-full">
+                Show more insights
+            </button>
+        </div>
+
+        <!-- Search Enhancement -->
+        <div class="bg-slate-950/50 rounded-xl p-6 border border-slate-800">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="text-2xl">🔍</span>
+                <h4 class="font-semibold text-white">Enhanced Search</h4>
+            </div>
+            <p class="text-sm text-slate-400 mb-4">Smart filtering with natural language understanding.</p>
+            
+            <div class="bg-gradient-to-br from-emerald-950/80 to-teal-950/80 backdrop-blur-sm rounded-xl p-4 border border-emerald-800/50 mb-4">
+                <h5 class="text-xs font-semibold text-emerald-300 uppercase tracking-wider mb-2">Smart Filters</h5>
+                
+                <div class="space-y-2">
+                    <input type="text" value="Interviews next week with score above 8" placeholder="Try: 'Interviews this week'" 
+                        class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-xs text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500">
+                    
+                    <div class="text-xs text-slate-400">Recent filters:</div>
+                    <div class="flex flex-wrap gap-1">
+                        <span class="px-2 py-1 bg-white/10 border border-white/10 rounded text-xs text-slate-300 cursor-pointer hover:bg-white/20 transition">Score 8+</span>
+                        <span class="px-2 py-1 bg-white/10 border border-white/10 rounded text-xs text-slate-300 cursor-pointer hover:bg-white/20 transition">Follow-up due</span>
+                        <span class="px-2 py-1 bg-white/10 border border-white/10 rounded text-xs text-slate-300 cursor-pointer hover:bg-white/20 transition">Offer received</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-xs text-slate-500">Natural language understanding for faster filtering.</div>
+        </div>
+
+        <!-- Bulk Actions -->
+        <div class="bg-slate-950/50 rounded-xl p-6 border border-slate-800">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="text-2xl">⚡</span>
+                <h4 class="font-semibold text-white">Bulk Actions</h4>
+            </div>
+            <p class="text-sm text-slate-400 mb-4">Select multiple applications and perform actions efficiently.</p>
+            
+            <div class="bg-gradient-to-br from-orange-950/80 to-red-950/80 backdrop-blur-sm rounded-xl p-4 border border-orange-800/50 mb-4">
+                <h5 class="text-xs font-semibold text-orange-300 uppercase tracking-wider mb-2">Bulk Actions</h5>
+                
+                <div class="space-y-2">
+                    <button class="w-full px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-xs text-white transition flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                        Send all follow-ups
+                    </button>
+                    
+                    <button class="w-full px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-xs text-white transition flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        Generate CVs for all
+                    </button>
+                    
+                    <button class="w-full px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-xs text-white transition flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        Move to archive
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-400">Selected:</span>
+                <span class="text-emerald-400 font-medium">3 applications</span>
+            </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 bg-slate-950/50 mt-24">
+    <div class="max-w-7xl mx-auto px-6 py-12">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="text-center md:text-left">
+          <h4 class="text-lg font-bold mb-2 bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">SmartJobTracker</h4>
+          <p class="text-sm text-slate-500">v1.5.1 - Design Prototypes for UX Review</p>
+        </div>
+
+        <div class="flex flex-wrap justify-center gap-3 text-sm text-slate-400">
+          <a href="#design-system" onclick="scrollToSection('design-system')" class="px-3 py-1 hover:text-white transition">Design System</a>
+          <a href="#concept-1" onclick="scrollToSection('concept-1')" class="px-3 py-1 hover:text-white transition">Modern Clean</a>
+          <a href="#concept-2" onclick="scrollToSection('concept-2')" class="px-3 py-1 hover:text-white transition">Gradient Flow</a>
+          <a href="#concept-3" onclick="scrollToSection('concept-3')" class="px-3 py-1 hover:text-white transition">Dark Pro</a>
+        </div>
+
+        <div class="text-center md:text-right text-sm text-slate-500">
+          <p>Review and select your preferred design.</p>
+          <p class="mt-1">We'll implement the chosen concept in v1.6</p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    function scrollToSection(id) {
+      document.getElementById(id).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  </script>
+</body>
+</html>

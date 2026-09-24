@@ -218,7 +218,8 @@ Deploy is automatic on push to `main`.
   prompt; commit `d38969a` (data-loss/parsing/security pass) may have closed it — **unverified**.
 - Old Gmail accounts connected before `GOOGLE_CLIENT_SECRET` was configured have no refresh
   token and fall back to interactive re-auth.
-- `ALLOWED_ORIGINS` still permits `jobtracking-three.vercel.app` — legacy, safe to drop.
+- The legacy `jobtracking-three.vercel.app` origin is gone from the code defaults (`api/_lib/http.js`,
+  2026-09-24) but may still sit in the Vercel `ALLOWED_ORIGINS` env var — drop it there too.
 - Local Cursor files often out of sync with AI container copies. Verify before overwriting.
 
 ## Repository hygiene

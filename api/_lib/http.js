@@ -22,8 +22,6 @@ function allowedOrigins() {
   const defaults = [
     'https://smartjobtracker.com',
     'https://www.smartjobtracker.com',
-    // Legacy Vercel host — kept during the domain transition, remove once fully moved.
-    'https://jobtracking-three.vercel.app',
     'http://localhost:5173',
     'http://localhost:3000',
   ]
