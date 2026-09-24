@@ -51,6 +51,12 @@ function buildExtras(record) {
   return Object.keys(extras).length ? extras : null
 }
 
+// A failure that no retry can fix until the session is restored.
+function isAuthError(err) {
+  const msg = String(err?.message || err || '')
+  return err?.status === 401 || /not authenticated|jwt|401/i.test(msg)
+}
+
 // Simple UUID generation
 function generateId() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -66,9 +72,11 @@ class SyncManager {
     this.syncInProgress = false
     this.listeners = []
     this.debounceTimer = null
-    this.retryCount = {}
+    // Attempts a queued mutation gets before it is dropped (see flushQueue).
     this.maxRetries = 5
-    this.maxBackoffMs = 30000
+    // Last userId seen by mutate()/flushQueue(). The 'online' handler below has no
+    // caller to hand it one, so it flushes with this.
+    this.userId = null
 
     // Listen to online/offline events
     window.addEventListener('online', () => this.handleOnline())
@@ -78,8 +86,11 @@ class SyncManager {
   handleOnline() {
     this.isOnline = true
     this.notifyListeners({ status: 'online' })
-    // Flush queue when coming online
-    this.flushQueue()
+    // Flush queue when coming online. Only when we know the user: an unauthenticated
+    // flush used to grab the syncInProgress lock first, fail on 'User not
+    // authenticated', and thereby make the coordinator's authenticated flush (same
+    // 'online' event) a no-op — so coming back online never drained the queue.
+    if (this.userId) this.flushQueue(this.userId)
   }
 
   handleOffline() {
@@ -125,6 +136,7 @@ class SyncManager {
 
   // Execute mutation and queue if offline
   async mutate(userId, table, type, record, options = {}) {
+    if (userId) this.userId = userId
     // Apply to local cache first (optimistic update)
     await this.applyToLocalCache(table, type, record)
 
@@ -146,6 +158,9 @@ class SyncManager {
       console.log('🔄 Syncing to Supabase:', type, table, record.id)
       const result = await this.sendMutationToSupabase(userId, table, type, record, options)
       console.log('✓ Sync successful:', result)
+      // The connection just proved healthy: retry anything still queued from an
+      // earlier failure, without waiting for the next online event / manual sync.
+      this.flushQueue(userId).catch(() => {})
       return result
     } catch (err) {
       console.error('✗ Mutation failed, queuing for retry:', err)
@@ -501,48 +516,70 @@ class SyncManager {
     return remote
   }
 
-  // Flush queue when online
+  // Drain the offline/retry queue (FIFO). Called on 'online', before each poll, after a
+  // successful online mutate, and from the manual "Sync now" button.
+  //
+  // Failure handling — the old loop did `break` on the first error, so ONE mutation
+  // that failed every time (a 4xx on a bad row, a job the server no longer accepts…)
+  // blocked every later mutation forever, with the indicator still saying "synced".
+  // Now a failure only parks the mutations of THAT record for this pass (a later
+  // update must not overtake its own failed insert), everything else proceeds, and
+  // a mutation that has failed maxRetries times is dropped. Dropping is safe: a
+  // queued record is a whole snapshot, so the next edit of that record re-sends it
+  // all. Auth failures don't count as attempts — nothing can succeed until the
+  // session is back, so the pass just stops.
   async flushQueue(userId) {
-    if (this.syncInProgress || !isSupabaseConfigured()) return
+    if (userId) this.userId = userId
+    userId = userId || this.userId
+    if (!userId || this.syncInProgress || !isSupabaseConfigured()) return
 
     try {
       this.syncInProgress = true
-      this.notifyListeners({ status: 'syncing', queueSize: 0 })
-
       const mutations = await indexeddb.getQueuedMutations()
+      // Quiet when there is nothing to do: this runs before every poll/focus.
+      if (mutations.length === 0) return
 
-      if (mutations.length === 0) {
-        this.notifyListeners({ status: 'synced' })
-        return
-      }
-
+      this.notifyListeners({ status: 'syncing', queueSize: mutations.length })
       console.log(`Flushing ${mutations.length} queued mutations...`)
 
-      // Process mutations in order (FIFO)
-      for (const mutation of mutations) {
-        try {
-          await this.sendMutationToSupabase(
-            userId,
-            mutation.table,
-            mutation.type,
-            mutation.record
-          )
-          await indexeddb.removeFromQueue(mutation.id)
+      const blockedRecords = new Set()
+      let failures = 0
+      let lastError = null
 
-          // Notify progress
-          const remaining = await this.getQueueSize()
-          this.notifyListeners({
-            status: remaining > 0 ? 'syncing' : 'synced',
-            queueSize: remaining
-          })
+      for (const mutation of mutations) {
+        const recordKey = `${mutation.table}:${mutation.record?.id ?? mutation.id}`
+        if (blockedRecords.has(recordKey)) continue
+        try {
+          await this.sendMutationToSupabase(userId, mutation.table, mutation.type, mutation.record)
+          await indexeddb.removeFromQueue(mutation.id)
+          this.notifyListeners({ status: 'syncing', queueSize: await this.getQueueSize() })
         } catch (err) {
-          console.error('Failed to flush mutation:', mutation, err)
-          // Don't retry immediately, will retry on next online event
-          break
+          failures++
+          lastError = err
+          if (isAuthError(err)) {
+            console.warn('Queue flush paused: not authenticated yet', err?.message)
+            break
+          }
+          blockedRecords.add(recordKey)
+          const attempts = (mutation.attempts || 0) + 1
+          if (attempts >= this.maxRetries) {
+            console.error(`Dropping queued mutation after ${attempts} failed attempts:`, mutation, err)
+            await indexeddb.removeFromQueue(mutation.id).catch(() => {})
+          } else {
+            console.error(`Failed to flush mutation (attempt ${attempts}/${this.maxRetries}):`, mutation, err)
+            await indexeddb.updateQueuedMutation({
+              ...mutation, attempts, lastError: String(err?.message || err), lastAttemptAt: Date.now(),
+            }).catch(() => {})
+          }
         }
       }
 
-      this.notifyListeners({ status: 'synced', queueSize: 0 })
+      const remaining = await this.getQueueSize()
+      if (failures && remaining > 0) {
+        this.notifyListeners({ status: 'error', queueSize: remaining, error: lastError?.message || 'sync failed' })
+      } else {
+        this.notifyListeners({ status: 'synced', queueSize: remaining })
+      }
     } catch (err) {
       console.error('Queue flush error:', err)
       this.notifyListeners({ status: 'error', error: err.message })

@@ -156,6 +156,10 @@ class SyncCoordinator {
     }
 
     this.lastPollAt = Date.now()
+    // Push before pull: anything still queued from a failed write goes out first, so
+    // the poll can't merge a stale server row over it, and every poll doubles as the
+    // retry tick for the queue (no-op when it is empty).
+    await syncManager.flushQueue(this.userId).catch(() => {})
     return pollManager.poll(this.userId, options)
   }
 

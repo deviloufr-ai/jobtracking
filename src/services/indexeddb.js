@@ -245,6 +245,17 @@ class IndexedDBService {
     })
   }
 
+  // Rewrite a queued mutation in place (attempt count, last error). Same key, so
+  // its FIFO position in the timestamp index is preserved.
+  async updateQueuedMutation(mutation) {
+    const store = await this.getStore(STORES.SYNC_QUEUE, 'readwrite')
+    return new Promise((resolve, reject) => {
+      const request = store.put(mutation)
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve(request.result)
+    })
+  }
+
   async clearQueue() {
     const store = await this.getStore(STORES.SYNC_QUEUE, 'readwrite')
     return new Promise((resolve, reject) => {

@@ -21,7 +21,7 @@ prose ("v0.7", "v1.0") are documentation artifacts. Do not trust them.
 | Layer | Choice |
 | --- | --- |
 | Frontend | React 19 + Vite 8 + Tailwind 3 — 69 components, 45 services, 25 hooks |
-| Auth & data | Supabase (Postgres + Auth + RLS) — 15 tables, 14 migration files |
+| Auth & data | Supabase (Postgres + Auth + RLS) — 15 tables, 16 migration files |
 | Local cache | IndexedDB — offline-first, this is the read path |
 | Serverless | Vercel Functions in `/api/` — 12 endpoints (Hobby plan caps functions per deploy; add AI features via the shared `/api/claude` proxy, not new endpoints) |
 | AI | Claude Haiku 4.5 (default) via the `/api/claude` proxy, OR a user-chosen Google Gemini / OpenAI-compatible provider (Groq, OpenRouter…). Claude model pinned by `VITE_CLAUDE_MODEL`; provider abstraction in `api/_lib/aiProvider.js` |
@@ -29,7 +29,7 @@ prose ("v0.7", "v1.0") are documentation artifacts. Do not trust them.
 | Mobile | Capacitor 8 → Android, `com.smartjobtracker.app` |
 | Extension | Firefox MV3 in `jobtrackr-extension/` (folder name is legacy, left deliberately) |
 | Analytics | Vercel Analytics, mounted in `Root.jsx` |
-| Tests | Vitest + jsdom — 11 test files |
+| Tests | Vitest + jsdom — 21 test files |
 
 ## Architecture
 
@@ -82,7 +82,11 @@ plugin changes).
 ### Sync engine — the part most likely to break
 
 - Reads come from IndexedDB (`indexeddb.js`); the UI never waits on the network.
-- Writes are optimistic and queue in IndexedDB, flushed with exponential backoff (`syncManager.js`).
+- Writes are optimistic; a failed or offline write queues in IndexedDB (`syncManager.js`
+  `flushQueue`). The queue drains on `online`, before every poll, after the next successful
+  write, and on "Sync now". A failing mutation blocks only its own record for that pass and is
+  dropped after 5 attempts (records are whole snapshots, so the next edit re-sends it). Auth
+  errors pause the pass without counting. There is no timed backoff — the poll is the retry tick.
 - Server changes arrive by polling — `POLL_INTERVAL = 300000` (**5 minutes**, not 30 seconds).
 - Conflicts are last-write-wins on `last_modified_at`, with `version` and `device_id` on each row.
 - **Deletes are tombstones** (`tombstoneService.js`, tables `deleted_jobs` and
@@ -104,6 +108,9 @@ plugin changes).
   device holds. Without the union, a device that edits a job before polling a peer's freshly-added
   extra field wiped it from the server (score/CV/letter/interview data silently not syncing across
   devices). `buildExtras` never emits null, so the union only ever adds — it can't clear a field.
+  **To clear an extras field cross-device, write `{}` (not null)**: the union then overwrites the
+  server key with an empty object, and the reader treats `{}` as absent (`hasMindMap`,
+  `interviewExamples` reset).
 
 ### Gmail ingestion
 
