@@ -20,6 +20,7 @@ import { THEMES } from '../utils/themes'
 import { getFlag, setFlag, FLAGS } from '../services/featureFlags'
 import { loadLocalProfile, pushProfile, pushLocalPrefs, PROFILE_SYNCED_EVENT } from '../services/profileSync'
 import { runSyncDiagnostic } from '../services/syncDiagnostic'
+import SyncQueueInspector from './SyncQueueInspector'
 import { runCalendarDiagnostic } from '../services/calendarDiagnostic'
 import { withUserApiKey, getProviderKey, setProviderKey } from '../services/apiKey'
 import { extractToolsFromJobs, extractToolsFromCVs } from '../utils/toolsExtract'
@@ -1460,6 +1461,10 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                     </pre>
                   </div>
                 )}
+              </Card>
+
+              <Card title={t('settingsDebug.queueTitle')} subtitle={t('settingsDebug.queueSubtitle')}>
+                <SyncQueueInspector t={t} />
               </Card>
 
               <Card title="📅 Diagnostic du calendrier" subtitle="Teste l'accès Google Calendar de CHAQUE compte connecté (60 j à venir). Montre le vrai code HTTP (401/403) que l'app masque, et si un entretien est bien sur l'agenda et accepté.">
