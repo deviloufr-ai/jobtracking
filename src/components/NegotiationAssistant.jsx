@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import AIPanelBoundary from './AIPanelBoundary'
-import { aiFetch } from '../services/apiKey'
+import { aiText } from '../services/apiKey'
 import { useDragDock } from '../hooks/useDragDock'
 import { summarizeComp, hasCompensation } from '../utils/compensation'
 import { CLAUDE_MODEL } from '../constants/aiModel'
@@ -114,17 +114,11 @@ function NegotiationAssistantPanel({ job, onClose, onSave, t = (k) => k }) {
         company: job.company, position: job.position, comp,
         target, context, language, wantsScript: format === 'script',
       })
-      const res = await aiFetch('/api/claude', {
+      const { text } = await aiText({
         model: CLAUDE_MODEL,
         max_tokens: 2000,
         messages: [{ role: 'user', content: prompt }],
       })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || `Generation failed: ${res.status}`)
-      }
-      const data = await res.json()
-      const text = data.content?.[0]?.text || ''
       if (looksLikeRefusal(text)) {
         throw new Error(tx('negotiation.unusable', 'Could not draft a message from these details. Add the offer figures and what you would like to ask for, then try again.'))
       }

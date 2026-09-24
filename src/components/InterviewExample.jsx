@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import AIPanelBoundary from './AIPanelBoundary'
-import { aiFetch } from '../services/apiKey'
+import { aiText } from '../services/apiKey'
 import { useDragDock } from '../hooks/useDragDock'
 import { CLAUDE_MODEL } from '../constants/aiModel'
 
@@ -144,22 +144,16 @@ function InterviewExamplePanel({ job, round, roundName, roundFocus, cv, guidance
         company: job.company, position: job.position, description: job.description || job.jobDescription,
         cv, roundName, roundFocus, language, guidance,
       })
-      const res = await aiFetch('/api/claude', {
+      const { text, stopReason } = await aiText({
         model: CLAUDE_MODEL,
         max_tokens: 4000, // proxy clamps trial keys to 4000; enough for 6 full answers
         messages: [{ role: 'user', content: prompt }],
       })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || `Generation failed: ${res.status}`)
-      }
-      const json = await res.json()
-      const text = json.content?.[0]?.text || ''
       const parsed = parseExample(text)
       if (parsed && Array.isArray(parsed.questions) && parsed.questions.length) {
         // If the model still hit the token ceiling, the last block's answer is
         // likely cut off mid-sentence — drop it so we never show a partial answer.
-        if (json.stop_reason === 'max_tokens' && parsed.questions.length > 1) {
+        if (stopReason === 'max_tokens' && parsed.questions.length > 1) {
           parsed.questions = parsed.questions.slice(0, -1)
         }
         setData(parsed); setRaw('')

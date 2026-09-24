@@ -121,6 +121,20 @@ export function signalTrialExhausted() {
  * the raw Response so callers keep their existing res.ok / res.json() handling.
  * Throws TrialExhaustedError on a 402 so the trial wall short-circuits cleanly.
  */
+// One AI round-trip in Anthropic shape: POST to the proxy, surface the proxy's
+// error message (string or {message}), return the first text block. Shared by the
+// generate() of every AI panel so none of them re-implement the error plumbing.
+export async function aiText(body, init = {}) {
+  const res = await aiFetch('/api/claude', body, init)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const msg = typeof err?.error === 'string' ? err.error : err?.error?.message
+    throw new Error(msg || `Generation failed: ${res.status}`)
+  }
+  const json = await res.json()
+  return { text: json?.content?.[0]?.text || '', stopReason: json?.stop_reason, json }
+}
+
 export async function aiFetch(url, body = {}, init = {}) {
   const res = await fetch(url, {
     method: 'POST',

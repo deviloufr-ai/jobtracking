@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import AIPanelBoundary from './AIPanelBoundary'
-import { aiFetch } from '../services/apiKey'
+import { aiText } from '../services/apiKey'
 import { useDragDock } from '../hooks/useDragDock'
 import { CLAUDE_MODEL } from '../constants/aiModel'
 import { detectLanguage } from '../utils/detectLanguage'
@@ -392,17 +392,12 @@ function InterviewMindMapPanel({ job, guidance: guidanceProp = '', onClose, onSa
         job, cv: job.cvSaved?.markdown || '', profile: loadProfile(),
         rounds: jobRoundKeys(job).map(k => roundLabel(k, t)), language, guidance,
       })
-      const res = await aiFetch('/api/claude', {
+      const { text } = await aiText({
         model: CLAUDE_MODEL,
         max_tokens: 4000, // proxy clamps trial keys to 4000; a full 6×3 map fits well under
         messages: [{ role: 'user', content: prompt }],
       })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error?.message || err.error || `Generation failed: ${res.status}`)
-      }
-      const json = await res.json()
-      const parsed = parseMindMap(json.content?.[0]?.text || '')
+      const parsed = parseMindMap(text)
       if (!parsed) throw new Error(tx('mindMap.failed', 'Could not build the mind map. Try again.'))
       const lang = language === 'auto' ? detectLanguage(job) : language
       const next = { ...parsed, lang, guidance, generatedAt: new Date().toISOString() }
