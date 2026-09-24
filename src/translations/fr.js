@@ -255,6 +255,9 @@ export const fr = {
     interviewer: 'Recruteur',
     you: 'Vous',
     saved: 'Enregistré sur cette candidature',
+    reset: 'Réinitialiser',
+    resetConfirm: 'Supprimer l’exemple enregistré pour cette étape ? Vous pourrez en générer un nouveau.',
+    resetDone: 'Exemple réinitialisé',
   },
 
   // Focus (une ligne) affiché sur chaque tuile d’entraînement — ce que teste ce niveau.

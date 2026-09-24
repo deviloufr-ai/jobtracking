@@ -255,6 +255,9 @@ export const en = {
     interviewer: 'Interviewer',
     you: 'You',
     saved: 'Saved to this candidature',
+    reset: 'Reset',
+    resetConfirm: 'Delete the saved example for this stage? You can generate a new one afterwards.',
+    resetDone: 'Example reset',
   },
 
   // One-line focus shown on each training tile — what that interview level tests.

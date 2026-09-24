@@ -113,6 +113,7 @@ function InterviewExamplePanel({ job, round, roundName, roundFocus, cv, guidance
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [savedFlag, setSavedFlag] = useState(false)
+  const [resetFlag, setResetFlag] = useState(false)
 
   const persist = (payload) => {
     if (!onSave) return
@@ -120,6 +121,19 @@ function InterviewExamplePanel({ job, round, roundName, roundFocus, cv, guidance
     onSave(job.id, { interviewExamples: next })
     setSavedFlag(true)
     setTimeout(() => setSavedFlag(false), 2500)
+  }
+
+  // Drop this round's saved example (and its focus) so the user starts from a clean
+  // slate. Writes {} rather than null when it was the last round: buildExtras skips
+  // null and the extras write is a union, so null would leave the old copy on the
+  // server and it would come back on the next poll.
+  const reset = () => {
+    if (!window.confirm(tx('interviewExample.resetConfirm', 'Delete the saved example for this stage? You can generate a new one afterwards.'))) return
+    const { [storeKey(round)]: _dropped, ...rest } = job.interviewExamples || {}
+    onSave?.(job.id, { interviewExamples: rest })
+    setData(null); setRaw(''); setGuidance(''); setError(null); setSavedFlag(false)
+    setResetFlag(true)
+    setTimeout(() => setResetFlag(false), 2500)
   }
 
   const generate = async () => {
@@ -245,6 +259,7 @@ function InterviewExamplePanel({ job, round, roundName, roundFocus, cv, guidance
           )}
 
           {savedFlag && <p className="text-xs text-green-600">✅ {tx('interviewExample.saved', 'Saved to this candidature')}</p>}
+          {resetFlag && <p className="text-xs text-gray-500">↺ {tx('interviewExample.resetDone', 'Example reset')}</p>}
         </div>
 
         {/* Footer */}
@@ -253,6 +268,12 @@ function InterviewExamplePanel({ job, round, roundName, roundFocus, cv, guidance
             {tx('common.close', 'Close')}
           </button>
           <div className="flex items-center gap-2">
+            {hasContent && (
+              <button onClick={reset} disabled={loading}
+                className="text-sm text-gray-600 hover:text-red-600 px-3 py-2 rounded-lg border border-gray-300 hover:border-red-300 hover:bg-red-50 transition-colors disabled:opacity-50">
+                ↺ {tx('interviewExample.reset', 'Reset')}
+              </button>
+            )}
             <select value={language} onChange={e => setLanguage(e.target.value)} disabled={loading}
               className="text-sm border border-gray-300 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
               <option value="auto">{tx('negotiation.langAuto', 'Detect (auto)')}</option>
