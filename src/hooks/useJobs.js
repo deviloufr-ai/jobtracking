@@ -1461,6 +1461,16 @@ export function isDeletedHistoryEntry(jobId, entry) {
   return deleted.includes(`${jobId}::${historyEntryKey(entry)}`)
 }
 
+// Canonical keys of the entries deleted on THIS device for a job — the server rows
+// syncManager.writeJobHistory removes alongside its upsert (migration 016).
+export function deletedHistoryKeysFor(jobId) {
+  try {
+    const deleted = JSON.parse(localStorage.getItem(DELETED_HISTORY_ENTRIES_KEY) || '[]')
+    const prefix = `${jobId}::`
+    return deleted.filter(k => typeof k === 'string' && k.startsWith(prefix)).map(k => k.slice(prefix.length)).filter(Boolean)
+  } catch { return [] }
+}
+
 export function markHistoryEntryAsDeleted(jobId, entry) {
   const deleted = JSON.parse(localStorage.getItem(DELETED_HISTORY_ENTRIES_KEY) || '[]')
   const entryKey = historyEntryKey(entry)

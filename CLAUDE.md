@@ -21,7 +21,7 @@ prose ("v0.7", "v1.0") are documentation artifacts. Do not trust them.
 | Layer | Choice |
 | --- | --- |
 | Frontend | React 19 + Vite 8 + Tailwind 3 — 69 components, 45 services, 25 hooks |
-| Auth & data | Supabase (Postgres + Auth + RLS) — 15 tables, 16 migration files |
+| Auth & data | Supabase (Postgres + Auth + RLS) — 15 tables, 17 migration files |
 | Local cache | IndexedDB — offline-first, this is the read path |
 | Serverless | Vercel Functions in `/api/` — 12 endpoints (Hobby plan caps functions per deploy; add AI features via the shared `/api/claude` proxy, not new endpoints) |
 | AI | Claude Haiku 4.5 (default) via the `/api/claude` proxy, OR a user-chosen Google Gemini / OpenAI-compatible provider (Groq, OpenRouter…). Claude model pinned by `VITE_CLAUDE_MODEL`; provider abstraction in `api/_lib/aiProvider.js` |
@@ -29,7 +29,7 @@ prose ("v0.7", "v1.0") are documentation artifacts. Do not trust them.
 | Mobile | Capacitor 8 → Android, `com.smartjobtracker.app` |
 | Extension | Firefox MV3 in `jobtrackr-extension/` (folder name is legacy, left deliberately) |
 | Analytics | Vercel Analytics, mounted in `Root.jsx` |
-| Tests | Vitest + jsdom — 21 test files |
+| Tests | Vitest + jsdom — 22 test files |
 
 ## Architecture
 
@@ -93,6 +93,11 @@ plugin changes).
   `deleted_history_entries`). Never delete a row outright — without a tombstone, a delete on
   one device is indistinguishable from a row another device has not yet received, and the row
   resurrects.
+- **History rows are UPSERTED on `(job_id, entry_key)`** (`syncManager.writeJobHistory`, migration 016;
+  `entry_key` = `historyEntryKey`, the same key the 013 tombstones use). A write never empties a
+  timeline and a peer's fresh entries survive it; only legacy key-less rows and this device's
+  tombstoned keys are deleted server-side. Pre-016 the app auto-detects the missing column and
+  falls back to the old replace-all for the session. **Migration 016 must be applied in prod.**
 - `syncCoordinator.js` sequences all of the above; `syncDiagnostic.js` is the debugging entry point.
 - **Rich per-job fields ride `jobs.extras` (jsonb, migration 007), not dedicated columns.** The
   whitelist lives in `syncManager.js` `EXTRA_FIELDS`: generated CV/cover letter (`cvSaved`,

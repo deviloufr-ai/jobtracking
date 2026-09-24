@@ -1,7 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
 import { convertHistoryToSupabase, settingsToSupabaseRow } from './fieldConversion'
-import { historyEntryKey } from '../hooks/useJobs'
+import { historyEntryKey, deletedHistoryKeysFor } from '../hooks/useJobs'
 
 // Rich per-job fields with no dedicated column — bundled into the `jobs.extras`
 // jsonb blob so generated CVs, cover letters, scores and interview data sync
@@ -49,6 +49,16 @@ function buildExtras(record) {
     if (record[f] !== undefined && record[f] !== null) extras[f] = record[f]
   }
   return Object.keys(extras).length ? extras : null
+}
+
+// The job_history.entry_key column / UNIQUE(job_id, entry_key) constraint from
+// migration 016 is not there yet: PostgREST schema-cache miss, unknown column, or
+// "no unique constraint matching the ON CONFLICT specification".
+function isSchemaMissingError(err) {
+  const code = String(err?.code || '')
+  const msg = String(err?.message || '')
+  return code === 'PGRST204' || code === '42703' || code === '42P10' ||
+    (/entry_key/i.test(msg) && /column|constraint|conflict/i.test(msg))
 }
 
 // A failure that no retry can fix until the session is restored.
@@ -350,46 +360,68 @@ class SyncManager {
     if (options.syncHistory !== false && table === 'jobs' && history && Array.isArray(history) && result.data && result.data[0]) {
       const jobId = result.data[0].id || record.id
 
-      // Deduplicate history before syncing, using the canonical entry key
-      // (gmailId-first) so it matches every other dedup/tombstone path.
-      const seen = new Set()
-      const deduped = []
-      for (const entry of history) {
-        const key = historyEntryKey(entry)
-        if (!seen.has(key)) {
-          seen.add(key)
-          deduped.push(entry)
-        }
-      }
-
-      const historyEntries = deduped.map(entry => ({
-        job_id: jobId,
-        user_id: userId,
-        ...convertHistoryToSupabase(entry)
-      }))
-
+      // History is secondary to the job row: never fail the mutation over it.
       try {
-        // Delete all old history for this job (clean slate, prevents deleted entries from coming back)
-        const deleteResult = await supabase.from('job_history').delete().eq('job_id', jobId)
-        if (deleteResult.error) {
-          console.warn('Warning deleting old history:', deleteResult.error)
-          // Continue anyway - old entries might not exist
-        }
-
-        // Insert the new deduplicated history
-        if (historyEntries.length > 0) {
-          const insertResult = await supabase.from('job_history').insert(historyEntries)
-          if (insertResult.error) {
-            console.error('Error inserting job history:', insertResult.error)
-          }
-        }
+        await this.writeJobHistory(userId, jobId, history)
       } catch (err) {
         console.error('Error syncing job history:', err)
-        // Don't throw - history is secondary to job sync
       }
     }
 
     return { success: true, data: result.data }
+  }
+
+  // Server-side write of ONE job's timeline.
+  //
+  // Post-migration 016 (job_history.entry_key + UNIQUE(job_id, entry_key)): UPSERT on
+  // the canonical historyEntryKey. Rows keep a stable identity, there is no
+  // delete-then-reinsert window where a concurrent poll sees an empty timeline, and a
+  // peer device's entries written since our last poll SURVIVE (replace-all dropped
+  // them). Only two kinds of rows are deleted: legacy rows with no key (all present
+  // locally after the poll merge, so replacing them loses nothing) and rows whose key
+  // this device tombstoned (migration 013 carries the same key to peers).
+  //
+  // Pre-016 (column/constraint missing): falls back to the old replace-all and
+  // remembers that for the session, so the app is deployable before the migration.
+  async writeJobHistory(userId, jobId, history) {
+    const seen = new Set()
+    const rows = []
+    for (const entry of Array.isArray(history) ? history : []) {
+      const key = historyEntryKey(entry)
+      if (!key || seen.has(key)) continue
+      seen.add(key)
+      rows.push({ job_id: jobId, user_id: userId, entry_key: key, ...convertHistoryToSupabase(entry) })
+    }
+
+    if (this.historyUpsertSupported !== false) {
+      const res = rows.length
+        ? await supabase.from('job_history').upsert(rows, { onConflict: 'job_id,entry_key' })
+        : { error: null }
+      if (!res.error) {
+        this.historyUpsertSupported = true
+        const legacy = await supabase.from('job_history').delete().eq('job_id', jobId).eq('user_id', userId).is('entry_key', null)
+        if (legacy.error) console.warn('history: legacy row cleanup failed:', legacy.error.message)
+        const dead = deletedHistoryKeysFor(jobId)
+        if (dead.length) {
+          const del = await supabase.from('job_history').delete().eq('job_id', jobId).eq('user_id', userId).in('entry_key', dead)
+          if (del.error) console.warn('history: tombstoned row cleanup failed:', del.error.message)
+        }
+        return { mode: 'upsert', count: rows.length }
+      }
+      if (!isSchemaMissingError(res.error)) throw res.error
+      this.historyUpsertSupported = false
+      console.warn('job_history.entry_key not available yet (apply migration 016) — using replace-all history sync this session')
+    }
+
+    // Legacy: replace the whole timeline (pre-016 schema has no entry_key column).
+    const legacyRows = rows.map(({ entry_key: _k, ...r }) => r)
+    const deleteResult = await supabase.from('job_history').delete().eq('job_id', jobId)
+    if (deleteResult.error) console.warn('Warning deleting old history:', deleteResult.error)
+    if (legacyRows.length > 0) {
+      const insertResult = await supabase.from('job_history').insert(legacyRows)
+      if (insertResult.error) throw insertResult.error
+    }
+    return { mode: 'replace', count: legacyRows.length }
   }
 
   // One-time bulk upload of local jobs to Supabase. Replaces the legacy
@@ -420,31 +452,12 @@ class SyncManager {
         console.warn('Bulk job upsert failed:', upsertErr.message)
       }
 
-      // Replace history per job (delete + insert deduped via canonical key).
+      // History per job — the same write a normal mutation does (upsert post-016).
       for (const job of jobs) {
         const history = Array.isArray(job.history) ? job.history : []
         if (history.length === 0) continue
-
-        const seen = new Set()
-        const deduped = []
-        for (const entry of history) {
-          const key = historyEntryKey(entry)
-          if (!seen.has(key)) {
-            seen.add(key)
-            deduped.push(entry)
-          }
-        }
-
         try {
-          await supabase.from('job_history').delete().eq('job_id', job.id)
-          const rows = deduped.map(entry => ({
-            job_id: job.id,
-            user_id: userId,
-            ...convertHistoryToSupabase(entry)
-          }))
-          if (rows.length > 0) {
-            await supabase.from('job_history').insert(rows)
-          }
+          await this.writeJobHistory(userId, job.id, history)
         } catch (err) {
           console.warn('Failed to push history for job', job.id, err.message)
         }
