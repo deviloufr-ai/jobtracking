@@ -563,17 +563,17 @@ export default function CandidatureDrawer({
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="min-w-0">
-                <div className="text-sm font-semibold text-gray-900">Interview mind map</div>
+                <div className="text-sm font-semibold text-gray-900">{t('mindMap.title')}</div>
                 <div className="text-xs text-gray-400">{job.mindMap.generatedAt ? new Date(job.mindMap.generatedAt).toLocaleDateString() : ''}</div>
               </div>
-              <button className={btnP} onClick={() => setShowMindMap(true)}>↻ Regenerate</button>
+              <button className={btnP} onClick={() => setShowMindMap(true)}>↻ {t('common.regenerate')}</button>
             </div>
             <MindMapWorkspace key={job.mindMap.generatedAt} map={job.mindMap} job={job} t={t} />
           </div>
         ) : (
           <div className="text-center py-10">
-            <p className="text-sm text-gray-500 mb-4">No mind map yet — turn your CV and STAR stories into a handful of keywords that map every likely question to an answer.</p>
-            <button className={btnP} onClick={() => setShowMindMap(true)}>🧠 Build a mind map</button>
+            <p className="text-sm text-gray-500 mb-4">{t('mindMap.subtitle')}</p>
+            <button className={btnP} onClick={() => setShowMindMap(true)}>🧠 {t('mindMap.generate')}</button>
           </div>
         ))}
 

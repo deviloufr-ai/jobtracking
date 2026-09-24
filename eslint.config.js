@@ -7,7 +7,9 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   // The Firefox extension lives in its own non-git folder and has its own runtime
   // (webextension `browser`/`chrome` globals); it's not part of the app's lint scope.
-  globalIgnores(['dist', 'jobtrackr-extension']),
+  // `android` holds only the Capacitor copy of the built bundle (gitignored) and `.claude`
+  // holds app-created worktrees — both are generated trees, not sources to lint.
+  globalIgnores(['dist', 'jobtrackr-extension', 'android', '.claude']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
