@@ -97,7 +97,7 @@ plugin changes).
   `entry_key` = `historyEntryKey`, the same key the 013 tombstones use). A write never empties a
   timeline and a peer's fresh entries survive it; only legacy key-less rows and this device's
   tombstoned keys are deleted server-side. Pre-016 the app auto-detects the missing column and
-  falls back to the old replace-all for the session. **Migration 016 must be applied in prod.**
+  falls back to the old replace-all for the session (016 applied in prod 2026-09-24).
 - `syncCoordinator.js` sequences all of the above; `syncDiagnostic.js` is the debugging entry point.
 - **Rich per-job fields ride `jobs.extras` (jsonb, migration 007), not dedicated columns.** The
   whitelist lives in `syncManager.js` `EXTRA_FIELDS`: generated CV/cover letter (`cvSaved`,
