@@ -568,7 +568,8 @@ export default function CandidatureDrawer({
               </div>
               <button className={btnP} onClick={() => setShowMindMap(true)}>↻ {t('common.regenerate')}</button>
             </div>
-            <MindMapWorkspace key={job.mindMap.generatedAt} map={job.mindMap} job={job} t={t} />
+            <MindMapWorkspace key={job.mindMap.generatedAt} map={job.mindMap} job={job} t={t}
+              onSaveMap={(m) => onUpdateJob?.(job.id, { mindMap: m })} />
           </div>
         ) : (
           <div className="text-center py-10">

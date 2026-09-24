@@ -74,6 +74,23 @@ export function drillDeck(map) {
   return deck
 }
 
+// Questions an interviewer ACTUALLY asked this candidate: the interviewer turns of
+// saved mock/voice sessions (real recordings keep a raw, unlabelled transcript we
+// can't split reliably, so they are not mined). An interviewer turn often carries
+// feedback before the next question, so keep only its last question sentence.
+export function askedQuestions(job) {
+  const out = []
+  for (const s of job?.interviewSessions || []) {
+    for (const m of s?.transcript || []) {
+      if (m?.role !== 'interviewer') continue
+      const sentences = String(m.text || '').replace(/\s+/g, ' ').match(/[^.?!]*\?/g)
+      const q = sentences?.at(-1)?.trim()
+      if (q && q.length >= 12 && q.length <= 300) out.push(q)
+    }
+  }
+  return [...new Set(out)]
+}
+
 // Prep material already saved on the job — the map should reuse these stories
 // rather than invent new ones.
 export function mindMapSources(job) {
@@ -83,7 +100,44 @@ export function mindMapSources(job) {
       .flatMap(e => e?.data?.questions || [])
       .map(q => q?.q).filter(Boolean),
   )]
-  return { stars, exampleQuestions }
+  return { stars, exampleQuestions, askedQuestions: askedQuestions(job) }
+}
+
+// ── Drill memory (map.drill) ──────────────────────────────────────────────────
+// Per-question tallies survive across sessions on the map itself (so a regenerated
+// map starts clean): { results: { [question]: { got, miss, lastOk, lastAt } },
+// sessions, lastAt, lastTotal, lastMissed }.
+
+// Deck order for a session: questions missed more than nailed first, then the ones
+// never drilled, then the well-known ones — random within each tier.
+export function drillOrder(deck, drill) {
+  const res = drill?.results || {}
+  const weight = (q) => { const r = res[q]; return r ? r.miss - r.got : 0.5 }
+  return deck.map((c, i) => ({ i, w: weight(c.q), r: Math.random() }))
+    .sort((a, b) => b.w - a.w || a.r - b.r)
+    .map(x => x.i)
+}
+
+export function recordDrillResult(drill, q, ok) {
+  const prev = drill?.results?.[q] || { got: 0, miss: 0 }
+  return {
+    ...drill,
+    results: {
+      ...(drill?.results || {}),
+      [q]: { got: prev.got + (ok ? 1 : 0), miss: prev.miss + (ok ? 0 : 1), lastOk: ok, lastAt: new Date().toISOString() },
+    },
+  }
+}
+
+export function finishDrill(drill, total, missed) {
+  return { ...drill, sessions: (drill?.sessions || 0) + 1, lastAt: new Date().toISOString(), lastTotal: total, lastMissed: missed }
+}
+
+// null until the first completed drill session.
+export function drillSummary(map) {
+  const d = map?.drill
+  if (!d?.sessions) return null
+  return { sessions: d.sessions, lastAt: d.lastAt, lastTotal: d.lastTotal || 0, lastMissed: d.lastMissed || 0 }
 }
 
 export function buildMindMapPrompt({ job, cv, profile, rounds = [], language = 'auto', guidance = '' }) {
@@ -93,7 +147,7 @@ export function buildMindMapPrompt({ job, cv, profile, rounds = [], language = '
     : language === 'en' ? 'Write ALL text values in ENGLISH.'
     : 'DETECT the language from the role/company/description below and write ALL text values in THAT language (keep the JSON keys in English). If unsure, use French.'
 
-  const { stars, exampleQuestions } = mindMapSources(job)
+  const { stars, exampleQuestions, askedQuestions: asked } = mindMapSources(job)
   const description = job?.description || job?.jobDescription
   const profileText = profile ? [
     profile.title && `Title: ${profile.title}`,
@@ -107,6 +161,7 @@ export function buildMindMapPrompt({ job, cv, profile, rounds = [], language = '
     profileText && `Candidate profile:\n${profileText}`,
     stars.length && `Candidate's prepared STAR stories (REUSE these as the stories behind keywords):\n${stars.slice(0, 5).map((s, i) =>
       `${i + 1}. Q: ${clip(s.question, 200)}\n   S: ${clip(s.S, 200)} | T: ${clip(s.T, 200)} | A: ${clip(s.A, 250)} | R: ${clip(s.R, 200)}`).join('\n')}`,
+    asked.length && `Questions an interviewer ACTUALLY asked this candidate in earlier rounds or mock interviews for this application (HIGHEST priority — every one of these must map to a keyword):\n${asked.slice(0, 10).map(q => `- ${clip(q, 200)}`).join('\n')}`,
     exampleQuestions.length && `Questions already expected for this application (make sure each one maps to a keyword):\n${exampleQuestions.slice(0, 12).map(q => `- ${clip(q, 200)}`).join('\n')}`,
     rounds.length && `Interview rounds reached so far: ${rounds.join(', ')}`,
     guidance?.trim() && `CANDIDATE'S REQUESTED FOCUS — make the map reflect this: ${guidance.trim()}`,

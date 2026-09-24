@@ -5,7 +5,7 @@ import { useDragDock } from '../hooks/useDragDock'
 import { CLAUDE_MODEL } from '../constants/aiModel'
 import { detectLanguage } from '../utils/detectLanguage'
 import { jobRoundKeys, roundLabel } from '../utils/interviewRounds'
-import { buildMindMapPrompt, parseMindMap, mnemonicFor, drillDeck, mindMapSources, hasMindMap } from '../utils/mindMap'
+import { buildMindMapPrompt, parseMindMap, mnemonicFor, drillDeck, drillOrder, recordDrillResult, finishDrill, mindMapSources, hasMindMap } from '../utils/mindMap'
 
 // InterviewMindMap — the candidate's interview prep on one page, built to be
 // REMEMBERED: themes (branches) → 1-3 word keywords → the story each keyword
@@ -192,26 +192,29 @@ function OutlineView({ map, lang, hidden, revealed, onReveal, tx }) {
 }
 
 // ── Drill: see a question, recall the keyword that answers it ─────────────────
-const shuffled = (n) => {
-  const a = Array.from({ length: n }, (_, i) => i)
-  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] }
-  return a
-}
-
-function DrillView({ map, lang, tx }) {
+// Results persist on map.drill (via onSaveMap, once per completed session) so the
+// next session opens on the questions missed last time.
+function DrillView({ map, lang, tx, onSaveMap }) {
   const deck = drillDeck(map)
-  const [queue, setQueue] = useState(() => shuffled(deck.length))
+  const [drill, setDrill] = useState(() => map.drill || {})
+  const [queue, setQueue] = useState(() => drillOrder(deck, map.drill))
+  const [missed, setMissed] = useState(() => new Set())
   const [shown, setShown] = useState(false)
   const [got, setGot] = useState(0)
+  const [saved, setSaved] = useState(false)
+  const hasHistory = !!map.drill?.sessions
 
   if (deck.length === 0) return <p className="text-sm text-gray-500 text-center py-8">{tx('mindMap.drillEmpty', 'No questions to drill yet — regenerate the map.')}</p>
+
+  const restart = () => { setQueue(drillOrder(deck, drill)); setMissed(new Set()); setGot(0); setShown(false); setSaved(false) }
 
   if (queue.length === 0) {
     return (
       <div className="text-center py-10">
         <div className="text-4xl mb-2">🎉</div>
         <p className="text-sm font-semibold text-gray-800">{tx('mindMap.drillDone', 'All {n} questions mapped to an answer.').replace('{n}', deck.length)}</p>
-        <button onClick={() => { setQueue(shuffled(deck.length)); setGot(0); setShown(false) }}
+        {saved && <p className="text-[12px] text-gray-500 mt-1">{tx('mindMap.drillSaved', 'Drill saved — the questions you missed come first next time.')}</p>}
+        <button onClick={restart}
           className="mt-4 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg">↻ {tx('mindMap.drillRestart', 'Start over')}</button>
       </div>
     )
@@ -223,11 +226,23 @@ function DrillView({ map, lang, tx }) {
   const color = colorAt(card.bi)
   const next = (ok) => {
     setShown(false)
-    if (ok) { setGot(g => g + 1); setQueue(q => q.slice(1)) } else setQueue(q => [...q.slice(1), q[0]])
+    const d = recordDrillResult(drill, card.q, ok)
+    setDrill(d)
+    const m = ok ? missed : new Set(missed).add(card.q)
+    if (!ok) setMissed(m)
+    const g = got + (ok ? 1 : 0)
+    const q = ok ? queue.slice(1) : [...queue.slice(1), queue[0]]
+    setGot(g)
+    setQueue(q)
+    if (q.length === 0 && onSaveMap) {
+      onSaveMap({ ...map, drill: finishDrill(d, deck.length, m.size) })
+      setSaved(true)
+    }
   }
 
   return (
     <div className="max-w-xl mx-auto">
+      {hasHistory && <p className="text-[12px] text-gray-500 mb-2">🎯 {tx('mindMap.drillWeakFirst', 'Questions you missed last time come first.')}</p>}
       <div className="flex items-center justify-between text-[12px] text-gray-500 mb-2">
         <span>{tx('mindMap.drillProgress', '{left} left · {got} nailed').replace('{left}', queue.length).replace('{got}', got)}</span>
         <div className="flex-1 mx-3 h-1.5 rounded-full bg-gray-100 overflow-hidden">
@@ -256,7 +271,7 @@ function DrillView({ map, lang, tx }) {
 }
 
 // ── Workspace (map + outline + drill), reused inline in the candidature drawer ─
-export function MindMapWorkspace({ map, job, t = (k) => k }) {
+export function MindMapWorkspace({ map, job, t = (k) => k, onSaveMap }) {
   const tx = txOf(t)
   const lang = map.lang || detectLanguage(job)
   const [view, setView] = useState(() => (typeof window !== 'undefined' && window.innerWidth < 640 ? 'outline' : 'map'))
@@ -326,7 +341,7 @@ export function MindMapWorkspace({ map, job, t = (k) => k }) {
         </>
       )}
       {view === 'outline' && <OutlineView map={map} lang={lang} hidden={hidden} revealed={revealed} onReveal={reveal} tx={tx} />}
-      {view === 'drill' && <DrillView map={map} lang={lang} tx={tx} />}
+      {view === 'drill' && <DrillView map={map} lang={lang} tx={tx} onSaveMap={onSaveMap} />}
 
       {/* How to remember */}
       <div className="rounded-xl border border-gray-100 bg-white">
@@ -451,7 +466,10 @@ function InterviewMindMapPanel({ job, guidance: guidanceProp = '', onClose, onSa
 
           {error && <div className="bg-red-50 border border-red-200 rounded-lg p-3"><p className="text-xs text-red-700">{error}</p></div>}
 
-          {data && !loading && <MindMapWorkspace key={data.generatedAt} map={data} job={job} t={t} />}
+          {data && !loading && (
+            <MindMapWorkspace key={data.generatedAt} map={data} job={job} t={t}
+              onSaveMap={(m) => { setData(m); onSave?.(job.id, { mindMap: m }) }} />
+          )}
 
           {flash && <p className="text-xs text-gray-500">{flash}</p>}
         </div>

@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { parseMindMap, normalizeMindMap, mnemonicFor, drillDeck, hasMindMap, buildMindMapPrompt, initialOf } from './mindMap'
+import {
+  parseMindMap, normalizeMindMap, mnemonicFor, drillDeck, hasMindMap, buildMindMapPrompt, initialOf,
+  askedQuestions, drillOrder, recordDrillResult, finishDrill, drillSummary,
+} from './mindMap'
 
 const kw = (word, questions = ['Q?']) => ({ word, story: 's', questions, cue: { S: 's', T: 't', A: 'a', R: 'r' }, proof: '+10%' })
 const sample = {
@@ -62,5 +65,37 @@ describe('mindMap', () => {
     })
     expect(prompt).toContain('CTO wanted ML')
     expect(prompt).toContain('- Why Acme?')
+  })
+
+  it('mines the questions an interviewer actually asked in saved mock sessions', () => {
+    const job = {
+      interviewSessions: [
+        { kind: 'mock', transcript: [
+          { role: 'interviewer', text: 'Good answer, concrete. Now, how did you prioritise when the CTO disagreed?' },
+          { role: 'candidate', text: 'I ran a scoring workshop.' },
+          { role: 'interviewer', text: 'Thanks, that is all.' },
+        ] },
+        { kind: 'real', transcript: [{ role: 'transcript', text: 'raw unlabelled text? maybe' }] },
+      ],
+    }
+    expect(askedQuestions(job)).toEqual(['Now, how did you prioritise when the CTO disagreed?'])
+    expect(buildMindMapPrompt({ job })).toContain('ACTUALLY asked')
+  })
+
+  it('orders a drill session weak-first, then never-drilled, then nailed', () => {
+    const deck = [{ q: 'A' }, { q: 'B' }, { q: 'C' }]
+    let drill = recordDrillResult(recordDrillResult({}, 'A', true), 'A', true)
+    drill = recordDrillResult(recordDrillResult(drill, 'B', false), 'B', false)
+    expect(drillOrder(deck, drill)).toEqual([1, 2, 0])
+    expect(drill.results.B).toMatchObject({ got: 0, miss: 2, lastOk: false })
+  })
+
+  it('summarises the last completed session, and none before the first', () => {
+    expect(drillSummary({ branches: [] })).toBeNull()
+    const done = finishDrill(recordDrillResult({}, 'A', false), 4, 1)
+    expect(done.sessions).toBe(1)
+    expect(drillSummary({ drill: done })).toMatchObject({ sessions: 1, lastTotal: 4, lastMissed: 1 })
+    // Model output never carries drill state, so a regenerated map starts clean.
+    expect(normalizeMindMap({ branches: [{ label: 'x', keywords: [{ word: 'k' }] }], drill: done }).drill).toBeUndefined()
   })
 })

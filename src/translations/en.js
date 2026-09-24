@@ -232,6 +232,8 @@ export const en = {
     toolMindMap: 'Interview mind map',
     toolMindMapDesc: 'A few keywords to memorise — each one maps a likely question to your answer.',
     toolMindMapSaved: 'Map ready — review it, take the recall test or drill the questions.',
+    toolMindMapDrilled: 'Last drill {date}: {missed} of {total} questions to review.',
+    toolMindMapNailed: 'Last drill {date}: all {total} nailed — one more pass the morning of.',
   },
 
   // Interview round / type labels (detected from the calendar & email content)
@@ -296,6 +298,8 @@ export const en = {
     drillDone: 'All {n} questions mapped to an answer.',
     drillRestart: 'Start over',
     drillEmpty: 'No questions to drill yet — regenerate the map.',
+    drillWeakFirst: 'Questions you missed last time come first.',
+    drillSaved: 'Drill saved — the questions you missed come first next time.',
     tips: 'How to remember it',
     tipKeywords: 'Learn the keywords, not the sentences — a keyword brings back the story, and telling it fresh sounds natural.',
     tipDrill: 'Drill the day before and the morning of: each question you get right leaves the deck, each miss comes back.',
@@ -1355,6 +1359,16 @@ export const en = {
     consoleLogs: 'Console Logs',
     enableLogs: 'Enable Console Logs',
     enableLogsHint: 'Show detailed logs in the browser console for debugging',
+    queueTitle: '📤 Pending sync writes',
+    queueSubtitle: 'Writes that have not reached the server yet (offline, or failed). Each is retried before every poll and dropped after 5 failed attempts; the local copy is never touched.',
+    queuePending: 'pending',
+    queueEmpty: 'Nothing pending — every write reached the server.',
+    queueRetryAll: 'Retry now',
+    queueDiscard: 'Discard',
+    queueDiscardConfirm: 'Discard this pending write? The local copy stays; the next edit of this item re-sends it whole.',
+    queueAttempts: 'failed attempt(s)',
+    queueNeverTried: 'not tried yet',
+    queueQueuedAt: 'queued',
   },
 
   // Common

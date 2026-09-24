@@ -20,7 +20,7 @@ import InterviewRecorder from '../InterviewRecorder'
 import NegotiationAssistant from '../NegotiationAssistant'
 import InterviewExample from '../InterviewExample'
 import InterviewMindMap from '../InterviewMindMap'
-import { hasMindMap } from '../../utils/mindMap'
+import { hasMindMap, drillSummary } from '../../utils/mindMap'
 import CandidatureDrawer from './CandidatureDrawer'
 
 const PALETTE = ['#4f46e5', '#2563eb', '#0d9488', '#d97706', '#db2777', '#7c3aed', '#dc2626', '#059669']
@@ -228,6 +228,17 @@ function InterviewStepper({ job, prepRound, onPick, t }) {
   )
 }
 
+// Mind-map tool card copy: not built yet / built / last drill result (weak spots
+// first is the whole point of persisting the drill, so surface it here).
+function mindMapDesc(job, t) {
+  if (!hasMindMap(job)) return t('interviews.toolMindMapDesc')
+  const s = drillSummary(job.mindMap)
+  if (!s) return t('interviews.toolMindMapSaved')
+  const date = s.lastAt ? new Date(s.lastAt).toLocaleDateString() : ''
+  return t(s.lastMissed ? 'interviews.toolMindMapDrilled' : 'interviews.toolMindMapNailed')
+    .replace('{date}', date).replace('{missed}', s.lastMissed).replace('{total}', s.lastTotal)
+}
+
 function InterviewDetail({ job, prepRound, onPickRound, onOpenFull, onTrain, onExample, onSTAR, onMindMap, onGenerateCV, onNegotiate, onToggleFavorite, t }) {
   const effective = deriveStatusFromHistory(job.history) || job.status
   const status = getStatus(effective)
@@ -312,7 +323,7 @@ function InterviewDetail({ job, prepRound, onPickRound, onOpenFull, onTrain, onE
         <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">{t('interviews.moreTools')}</p>
         <div className="grid grid-cols-2 gap-2">
           <ToolCard tone="indigo" icon="🧠" wide label={t('interviews.toolMindMap')}
-            desc={hasMindMap(job) ? t('interviews.toolMindMapSaved') : t('interviews.toolMindMapDesc')}
+            desc={mindMapDesc(job, t)}
             onClick={() => onMindMap?.(job, guidance)} />
           <ToolCard tone="indigo" icon="🎯" label={t('interviews.toolStar')} desc={t('interviews.toolStarDesc')} onClick={() => onSTAR?.(job)} />
           <ToolCard tone="gray" icon="🎤" label={t('interviews.toolFreePractice')} desc={t('interviews.toolFreePracticeDesc')} onClick={() => onTrain(job, null, guidance)} />

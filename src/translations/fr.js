@@ -232,6 +232,8 @@ export const fr = {
     toolMindMap: 'Carte mentale d’entretien',
     toolMindMapDesc: 'Quelques mots-clés à retenir — chacun relie une question probable à votre réponse.',
     toolMindMapSaved: 'Carte prête — relisez-la, testez votre mémoire ou entraînez-vous sur les questions.',
+    toolMindMapDrilled: 'Dernier entraînement le {date} : {missed} question(s) sur {total} à revoir.',
+    toolMindMapNailed: 'Dernier entraînement le {date} : les {total} acquises — un dernier passage le matin même.',
   },
 
   // Libellés des tours / types d’entretien (détectés depuis le calendrier & l’email)
@@ -296,6 +298,8 @@ export const fr = {
     drillDone: 'Les {n} questions sont reliées à une réponse.',
     drillRestart: 'Recommencer',
     drillEmpty: 'Aucune question à travailler — régénérez la carte.',
+    drillWeakFirst: 'Les questions ratées la dernière fois passent en premier.',
+    drillSaved: 'Entraînement enregistré — les questions ratées reviendront en premier la prochaine fois.',
     tips: 'Comment la retenir',
     tipKeywords: 'Apprenez les mots-clés, pas les phrases — le mot-clé ramène l’histoire, et la raconter à neuf sonne naturel.',
     tipDrill: 'Entraînez-vous la veille et le matin même : chaque question réussie sort du paquet, chaque oubli revient.',
@@ -1352,6 +1356,16 @@ export const fr = {
     consoleLogs: 'Journaux de la console',
     enableLogs: 'Activer les journaux de la console',
     enableLogsHint: 'Afficher les journaux détaillés dans la console du navigateur pour le débogage',
+    queueTitle: '📤 Écritures en attente de synchro',
+    queueSubtitle: 'Écritures qui n’ont pas encore atteint le serveur (hors ligne ou en échec). Chacune est retentée avant chaque poll et abandonnée après 5 échecs ; la copie locale n’est jamais touchée.',
+    queuePending: 'en attente',
+    queueEmpty: 'Rien en attente — toutes les écritures ont atteint le serveur.',
+    queueRetryAll: 'Réessayer maintenant',
+    queueDiscard: 'Abandonner',
+    queueDiscardConfirm: 'Abandonner cette écriture en attente ? La copie locale reste ; la prochaine modification de cet élément la renverra entièrement.',
+    queueAttempts: 'tentative(s) échouée(s)',
+    queueNeverTried: 'pas encore tentée',
+    queueQueuedAt: 'mise en file le',
   },
 
   // Common
