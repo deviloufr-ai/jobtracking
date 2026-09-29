@@ -1233,6 +1233,8 @@ export const en = {
   tour: {
     aria: 'Product tour',
     replay: 'Take the tour',
+    replayTitle: 'Guided tour',
+    replayHint: 'A 30-second refresher on where everything lives.',
     skip: 'Skip',
     back: 'Back',
     next: 'Next',
@@ -1254,7 +1256,7 @@ export const en = {
     settingsTitle: 'Make it yours',
     settingsBody: 'Pick your AI (Claude, Gemini, or OpenAI), a theme, follow-up reminders, and manage your CV.',
     doneTitle: "You're all set 🎉",
-    doneBody: 'Start by adding an application or connecting Gmail. Good luck with your search!',
+    doneBody: 'Start by adding an application or connecting Gmail. You can replay this tour from Settings → About. Good luck!',
   },
 
   // Settings - Followups Tab

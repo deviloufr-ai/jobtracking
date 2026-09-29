@@ -139,7 +139,7 @@ const getCATEGORIES = (t) => [
   { id: 'about', label: IS_EN ? 'About' : 'À propos', icon: 'ℹ️', group: t('settingsSidebar.groupAdvanced') },
 ]
 
-export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdateJob, initialTab }) {
+export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdateJob, initialTab, onReplayTour }) {
   const { settings, updateSetting, resetSettings, loading: settingsLoading } = useSettings()
   const { deduplicateViaServer } = useJobs()
   const { t, language, setLanguage, availableLanguages } = useLanguage()
@@ -1556,6 +1556,19 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
             )}
 
             {activeTab === 'about' && <UpdateChecker />}
+
+            {/* The rail/header replay buttons hide once the tour is done or skipped;
+                this is the one entry point that always stays. */}
+            {activeTab === 'about' && onReplayTour && (
+              <Card title={t('tour.replayTitle')} subtitle={t('tour.replayHint')}>
+                <button
+                  onClick={onReplayTour}
+                  className="text-sm font-semibold bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all"
+                >
+                  🧭 {t('tour.replay')}
+                </button>
+              </Card>
+            )}
           </div>
         </div>
       </div>

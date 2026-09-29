@@ -505,6 +505,8 @@ export const fr = {
   tour: {
     aria: 'Visite guidée',
     replay: 'Faire la visite',
+    replayTitle: 'Visite guidée',
+    replayHint: 'Revoyez en 30 secondes où se trouve chaque fonction.',
     skip: 'Passer',
     back: 'Retour',
     next: 'Suivant',
@@ -526,7 +528,7 @@ export const fr = {
     settingsTitle: 'Personnaliser',
     settingsBody: 'Choisissez votre IA (Claude, Gemini ou OpenAI), un thème, les rappels de relance, et gérez votre CV.',
     doneTitle: 'Tout est prêt 🎉',
-    doneBody: 'Commencez par ajouter une candidature ou connecter Gmail. Bonne chance dans votre recherche !',
+    doneBody: 'Commencez par ajouter une candidature ou connecter Gmail. Cette visite reste disponible dans Réglages → À propos. Bonne chance !',
   },
 
   // Footer Actions
