@@ -455,6 +455,16 @@ export const en = {
     addManually: '+ Add manually',
     noResults: 'No applications found',
     resetFilters: 'Reset filters',
+    firstRunTitle: 'Add your first application',
+    firstRunDesc: 'Fastest: connect Gmail. Applications you already sent are found in your inbox and sorted automatically.',
+    firstRunGmail: 'Connect Gmail',
+    firstRunGmailDesc: 'Automatic, read-only import',
+    firstRunScreenshot: 'Screenshot',
+    firstRunScreenshotDesc: 'Paste a screenshot of a posting',
+    firstRunLink: 'LinkedIn link',
+    firstRunLinkDesc: 'Paste a job link',
+    firstRunManual: 'Manual entry',
+    firstRunManualDesc: 'Company, role, date',
   },
 
   // Stats & Actions

@@ -209,8 +209,54 @@ function StatusEditor({ jobId, current, onStatusChange, t }) {
   )
 }
 
+// Zero-applications welcome. Gmail is the primary path (it back-fills what the
+// user already sent); the other three mirror the "+ Ajouter" chooser.
+function FirstRunEmpty({ onConnectGmail, onImportScreenshot, onImportLink, onAddManual, t }) {
+  const secondary = [
+    { icon: '🖼️', label: t('empty.firstRunScreenshot'), desc: t('empty.firstRunScreenshotDesc'), onClick: onImportScreenshot },
+    { icon: '💼', label: t('empty.firstRunLink'), desc: t('empty.firstRunLinkDesc'), onClick: onImportLink },
+    { icon: '✏️', label: t('empty.firstRunManual'), desc: t('empty.firstRunManualDesc'), onClick: onAddManual },
+  ].filter(a => a.onClick)
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-10 md:py-14 text-center">
+      <div className="text-4xl mb-3">📭</div>
+      <h2 className="text-lg font-bold text-gray-900 tracking-tight">{t('empty.firstRunTitle')}</h2>
+      <p className="text-sm text-gray-500 mt-1.5 max-w-md mx-auto">{t('empty.firstRunDesc')}</p>
+      {onConnectGmail && (
+        <button
+          onClick={onConnectGmail}
+          className="mt-6 inline-flex flex-col items-center bg-indigo-600 text-white px-6 py-2.5 rounded-xl hover:bg-indigo-700 active:scale-[0.98] transition-all"
+        >
+          <span className="text-sm font-semibold">📧 {t('empty.firstRunGmail')}</span>
+          <span className="text-[11px] text-indigo-100">{t('empty.firstRunGmailDesc')}</span>
+        </button>
+      )}
+      <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-2.5 max-w-xl mx-auto">
+        {secondary.map(a => (
+          <button
+            key={a.label}
+            onClick={a.onClick}
+            className="flex items-center gap-3 sm:flex-col sm:gap-1 p-3 rounded-xl border border-gray-200 hover:border-indigo-200 hover:bg-indigo-50/40 transition-colors text-left sm:text-center"
+          >
+            <span className="text-xl">{a.icon}</span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-gray-800">{a.label}</span>
+              <span className="block text-xs text-gray-400">{a.desc}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function TrackerHomeE({
   jobs = [],
+  // first-run (0 applications) entry points
+  onConnectGmail,
+  onImportScreenshot,
+  onImportLink,
+  onAddManual,
   filtered = [],
   userName,
   // filter / view state (reused from App)
@@ -391,6 +437,18 @@ export default function TrackerHomeE({
         <UpcomingMeetings jobs={jobs} t={t} />
       </div>
 
+      {/* Brand-new account: a welcome with the ways to add a first application,
+          instead of an empty list + toolbar whose "no results / reset filters"
+          reads like a failed search. */}
+      {jobs.length === 0 ? (
+        <FirstRunEmpty
+          onConnectGmail={onConnectGmail}
+          onImportScreenshot={onImportScreenshot}
+          onImportLink={onImportLink}
+          onAddManual={onAddManual}
+          t={t}
+        />
+      ) : (<>
       {/* Per-status count strip (ongoing total + count pills that double as
           filters) — brought over from the legacy home, sits above the toolbar. */}
       <StatusCounts jobs={jobs} filters={filters} onChange={onFilterChange} t={t} />
@@ -574,6 +632,7 @@ export default function TrackerHomeE({
         </div>
         </>
       )}
+      </>)}
 
       {/* Master-detail drawer */}
       {openJob && (

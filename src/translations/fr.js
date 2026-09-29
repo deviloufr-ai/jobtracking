@@ -448,13 +448,23 @@ export const fr = {
 
   // Empty States
   empty: {
-    noApplications: 'Aucune candidature pour l instant',
-    noApplicationsDesc: 'Ajoutez-en une manuellement, importez depuis Gmail ou via screenshot',
-    screenshot: '🖼️ Screenshot',
+    noApplications: 'Aucune candidature pour l’instant',
+    noApplicationsDesc: 'Ajoutez-en une manuellement, importez depuis Gmail ou via une capture d’écran',
+    screenshot: '🖼️ Capture d’écran',
     gmail: '📧 Gmail',
     addManually: '+ Ajouter manuellement',
-    noResults: 'Aucune candidature trouvee',
-    resetFilters: 'Reinitialiser les filtres',
+    noResults: 'Aucune candidature trouvée',
+    resetFilters: 'Réinitialiser les filtres',
+    firstRunTitle: 'Ajoutez votre première candidature',
+    firstRunDesc: 'Le plus rapide : connectez Gmail. Les candidatures déjà envoyées sont retrouvées dans vos emails et classées automatiquement.',
+    firstRunGmail: 'Connecter Gmail',
+    firstRunGmailDesc: 'Import automatique, en lecture seule',
+    firstRunScreenshot: 'Capture d’écran',
+    firstRunScreenshotDesc: 'Collez une capture d’une offre',
+    firstRunLink: 'Lien LinkedIn',
+    firstRunLinkDesc: 'Collez le lien d’une offre',
+    firstRunManual: 'Saisie manuelle',
+    firstRunManualDesc: 'Entreprise, poste, date',
   },
 
   // Stats & Actions

@@ -29,7 +29,7 @@ prose ("v0.7", "v1.0") are documentation artifacts. Do not trust them.
 | Mobile | Capacitor 8 → Android, `com.smartjobtracker.app` |
 | Extension | Firefox MV3 in `jobtrackr-extension/` (folder name is legacy, left deliberately) |
 | Analytics | Vercel Analytics, mounted in `Root.jsx` |
-| Tests | Vitest + jsdom — 22 test files |
+| Tests | Vitest + jsdom — 23 test files |
 
 ## Architecture
 

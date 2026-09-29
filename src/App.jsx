@@ -1587,6 +1587,10 @@ export default function App() {
         ) : layoutE ? (
           <TrackerHomeE
             jobs={jobs}
+            onConnectGmail={() => setShowGmail(true)}
+            onImportScreenshot={() => setShowImageImport(true)}
+            onImportLink={() => setLinkedInImport({ url: '' })}
+            onAddManual={() => setModal('add')}
             filtered={filtered}
             userName={gmailUser?.name}
             filters={filters}
