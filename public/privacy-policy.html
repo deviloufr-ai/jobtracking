@@ -136,14 +136,21 @@
       <h3>Données d'entretien blanc</h3>
       <ul>
         <li>Transcriptions texte de vos réponses et analyses/scores associés</li>
-        <li>L'audio de votre voix est transcrit <strong>localement dans votre navigateur</strong> (modèle Whisper WASM) et n'est jamais envoyé ni stocké sur nos serveurs</li>
+        <li>L'audio de votre voix n'est jamais envoyé ni stocké sur nos serveurs. Selon votre appareil, il est transcrit par le service de reconnaissance vocale de votre navigateur ou de votre téléphone, ou localement (voir section 7)</li>
       </ul>
 
       <h3>Données de profil et préférences</h3>
       <ul>
         <li>Informations professionnelles optionnelles (expérience, compétences, coordonnées de contact)</li>
         <li>Préférences de l'application (thème, langue, paramètres de génération)</li>
-        <li>Votre clé API Anthropic, le cas échéant, stockée localement sur votre appareil</li>
+        <li>Votre clé API personnelle (Anthropic, Google Gemini ou compatible OpenAI), le cas échéant, stockée localement sur votre appareil ; le fournisseur et le modèle choisis sont synchronisés avec votre compte</li>
+      </ul>
+
+      <h3>Données d'usage</h3>
+      <ul>
+        <li>Événements d'utilisation des fonctionnalités (ex. : connexion de Gmail, candidature ajoutée, CV généré, entretien blanc terminé), avec la plateforme (web ou Android) et la source d'arrivée</li>
+        <li>Ces événements sont rattachés à l'identifiant de votre compte, ainsi qu'à votre adresse email et à votre nom</li>
+        <li>Ils ne contiennent jamais le contenu de vos emails, CV, lettres ou notes</li>
       </ul>
     </section>
 
@@ -159,7 +166,7 @@
           <tr><td>Fonctionnalités IA : CV adaptés, lettres, relances, entretien blanc, réponses STAR</td><td>Consentement (usage volontaire de chaque feature)</td></tr>
           <tr><td>Synchronisation multi-appareils de vos données</td><td>Exécution du service</td></tr>
           <tr><td>Recommandations (relances en retard, entretiens imminents)</td><td>Intérêt légitime</td></tr>
-          <tr><td>Statistiques d'usage anonymisées pour améliorer l'app</td><td>Intérêt légitime</td></tr>
+          <tr><td>Mesure d'usage des fonctionnalités pour améliorer l'app (Mixpanel)</td><td>Intérêt légitime</td></tr>
         </tbody>
       </table>
     </section>
@@ -190,18 +197,32 @@
         </thead>
         <tbody>
           <tr><td>Google</td><td>Authentification OAuth, API Gmail et Calendar (à votre demande explicite)</td></tr>
-          <tr><td>Anthropic</td><td>API Claude pour le traitement IA (voir section 7)</td></tr>
+          <tr><td>Anthropic</td><td>API Claude pour le traitement IA — fournisseur par défaut (voir section 7)</td></tr>
+          <tr><td>Google (Gemini) ou fournisseur compatible OpenAI</td><td>Traitement IA, uniquement si vous choisissez ce fournisseur avec votre propre clé (voir section 7)</td></tr>
           <tr><td>Supabase</td><td>Stockage et synchronisation multi-appareils</td></tr>
-          <tr><td>Vercel</td><td>Hébergement et fonctions serverless (proxy API)</td></tr>
-          <tr><td>Adzuna</td><td>Recherche d'offres, uniquement lors de requêtes volontaires</td></tr>
+          <tr><td>Vercel</td><td>Hébergement, fonctions serverless (proxy API) et mesure d'audience</td></tr>
+          <tr><td>Mixpanel</td><td>Mesure d'usage des fonctionnalités (données hébergées dans l'Union européenne)</td></tr>
+          <tr><td>Adzuna, France Travail</td><td>Recherche d'offres, uniquement lors de requêtes volontaires</td></tr>
+          <tr><td>Google Maps</td><td>Calcul du temps de trajet vers une offre, uniquement si vous l'utilisez</td></tr>
         </tbody>
       </table>
     </section>
 
     <section>
       <h2>7. Traitement par intelligence artificielle</h2>
-      <p>Lorsque vous utilisez une fonctionnalité IA (analyse d'emails, réponses STAR, relances, adaptation de CV, lettres de motivation, entretien blanc), le contenu concerné est transmis à <strong>Anthropic (Claude)</strong> via un proxy serverless Vercel. Ce contenu est traité de manière temporaire pour produire le résultat demandé et <strong>n'est pas utilisé pour entraîner les modèles</strong> d'Anthropic. Voir la <a href="https://www.anthropic.com/privacy" target="_blank" rel="noreferrer">politique de confidentialité d'Anthropic</a>.</p>
-      <p><strong>Voix :</strong> pour l'entretien blanc, votre voix est transcrite localement dans votre navigateur. Seule la transcription texte peut ensuite être envoyée à Claude pour l'analyse — l'audio ne quitte jamais votre appareil.</p>
+      <p>Lorsque vous utilisez une fonctionnalité IA (analyse d'emails, réponses STAR, relances, adaptation de CV, lettres de motivation, entretien blanc), le contenu concerné est transmis, via un proxy serverless Vercel, au fournisseur d'IA sélectionné dans vos Paramètres :</p>
+      <ul>
+        <li><strong>Anthropic (Claude)</strong>, par défaut. Le contenu est traité de manière temporaire pour produire le résultat demandé et <strong>n'est pas utilisé pour entraîner les modèles</strong> d'Anthropic. Voir la <a href="https://www.anthropic.com/privacy" target="_blank" rel="noreferrer">politique de confidentialité d'Anthropic</a>.</li>
+        <li><strong>Google Gemini</strong> ou un <strong>fournisseur compatible OpenAI</strong> (OpenAI, Groq, OpenRouter…), uniquement si vous le choisissez avec votre propre clé. Le traitement relève alors des conditions de ce fournisseur, qui peuvent autoriser l'utilisation de vos données pour entraîner ses modèles (c'est notamment le cas de certaines offres gratuites). Consultez-les avant de choisir.</li>
+      </ul>
+      <p>Votre clé personnelle transite par notre proxy le temps de chaque requête ; elle n'y est ni enregistrée ni journalisée.</p>
+      <p><strong>Voix :</strong> pour l'entretien blanc, la transcription de votre voix dépend de votre appareil :</p>
+      <ul>
+        <li><strong>Chrome, Edge et navigateurs similaires :</strong> reconnaissance vocale intégrée au navigateur (Web Speech API), qui peut envoyer l'audio aux serveurs de l'éditeur du navigateur (Google, Microsoft) pour le transcrire</li>
+        <li><strong>Application Android :</strong> service de reconnaissance vocale du téléphone (généralement Google), qui peut également traiter l'audio en ligne</li>
+        <li><strong>Autres navigateurs (ex. Firefox) :</strong> transcription <strong>locale</strong> dans votre navigateur (modèle Whisper) — l'audio ne quitte pas votre appareil</li>
+      </ul>
+      <p>Dans tous les cas, l'audio n'est jamais envoyé ni stocké sur nos serveurs ; seule la transcription texte peut être transmise au fournisseur d'IA pour l'analyse.</p>
     </section>
 
     <section>
@@ -224,12 +245,16 @@
 
     <section>
       <h2>10. Cookies et traceurs</h2>
-      <p><strong>Aucun cookie de traçage publicitaire.</strong> SmartJobTracker n'utilise pas de cookies pour vous suivre ou vous profiler. Le stockage local sert uniquement au fonctionnement de l'application. L'hébergeur (Vercel) peut collecter des statistiques d'audience anonymisées ; vous pouvez les limiter via les paramètres de votre navigateur.</p>
+      <p><strong>Aucun cookie de traçage publicitaire.</strong> SmartJobTracker n'utilise pas de cookies à des fins publicitaires et ne revend aucune donnée. Le stockage local sert au fonctionnement de l'application et à la mesure d'usage décrite ci-dessous.</p>
+      <ul>
+        <li><strong>Vercel Analytics :</strong> statistiques d'audience agrégées, sans cookie</li>
+        <li><strong>Mixpanel :</strong> mesure d'usage des fonctionnalités, rattachée à votre compte (voir section 3), avec un identifiant conservé dans le stockage local de votre navigateur. La capture automatique des clics et des saisies est désactivée. Mixpanel respecte le réglage « Do Not Track » de votre navigateur : s'il est activé, aucun événement n'est envoyé</li>
+      </ul>
     </section>
 
     <section>
       <h2>11. Transferts internationaux</h2>
-      <p>Certains prestataires (Anthropic, Vercel) peuvent traiter des données en dehors de l'Union européenne, notamment aux États-Unis. Ces transferts s'appuient sur les garanties appropriées prévues par ces prestataires (clauses contractuelles types).</p>
+      <p>Certains prestataires (Anthropic, Google, les fournisseurs d'IA compatibles OpenAI, Vercel) peuvent traiter des données en dehors de l'Union européenne, notamment aux États-Unis. Ces transferts s'appuient sur les garanties appropriées prévues par ces prestataires (clauses contractuelles types).</p>
     </section>
 
     <section>
@@ -254,8 +279,8 @@
     </section>
 
     <div class="meta">
-      <p><strong>Dernière mise à jour :</strong> Août 2026</p>
-      <p><strong>Version :</strong> 1.1</p>
+      <p><strong>Dernière mise à jour :</strong> Septembre 2026</p>
+      <p><strong>Version :</strong> 1.2</p>
       <a class="back" href="/">← Retour à l'application</a>
     </div>
   </div>

@@ -191,7 +191,7 @@ export default function LandingPage({ onLogin }) {
             <span className="dot" />
             SmartJobTracker
           </div>
-          <button onClick={onLogin} className="btn btn-primary">Se connecter avec Google</button>
+          <button onClick={onLogin} className="btn btn-primary">Se connecter</button>
         </nav>
 
         {/* HERO */}
@@ -205,7 +205,7 @@ export default function LandingPage({ onLogin }) {
               <Icon name="github" size={17} /> Voir le code
             </a>
           </div>
-          <p className="free">Gratuit pour commencer — 15 actions IA offertes. Ensuite, branchez votre propre clé API gratuite (Claude, Gemini ou OpenAI). Vos données restent les vôtres.</p>
+          <p className="free">Gratuit pour commencer — 15 actions IA offertes, sans carte bancaire. Ensuite, reliez votre propre compte IA (Claude, Gemini ou OpenAI — Gemini propose une formule gratuite). Vos données restent les vôtres.</p>
 
           {/* LIFECYCLE */}
           <div className="flow">
