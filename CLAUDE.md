@@ -7,7 +7,7 @@
 ## Project
 
 - **Production**: https://smartjobtracker.com
-- **GitHub**: https://github.com/deviloufr-ai/jobtracking (**public** — linked from the landing page; no LICENSE file yet)
+- **GitHub**: https://github.com/deviloufr-ai/jobtracking (**public** — linked from the landing page; source-available under PolyForm Noncommercial 1.0.0, see `LICENSE` — not open source, commercial use needs written permission)
 - **Notion**: `373cc77e6ec181219e83f3eb51390690` — full technical docs under "Documentation technique"
 - **Owner**: Alexandre Leblanc — Senior PM, FR/EN/JP
 - **Origin**: built as a technical test for Publidata (Rémi Wetteren), since grown well past it

@@ -94,3 +94,12 @@ and since developed well beyond that scope.
 Note: the project has no semantic version and no git tags. `package.json` reads `0.0.0`;
 the `versionName` in `android/app/build.gradle` tracks the APK only. Version numbers found
 in older documents are prose, not releases.
+
+---
+
+## License
+
+Source-available, **not open source**: [PolyForm Noncommercial 1.0.0](LICENSE).
+You may read, run and modify the code for personal, research, educational or other
+noncommercial purposes. Any commercial use requires written permission from
+Alexandre Leblanc. The "SmartJobTracker" name and logo are not licensed.

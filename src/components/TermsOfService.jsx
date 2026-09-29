@@ -148,7 +148,7 @@ export default function TermsOfService({ onClose }) {
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-3">10. Propriété Intellectuelle</h2>
               <p>
-                <strong>Code source:</strong> Le code source de SmartJobTracker est disponible sur <a href="https://github.com/deviloufr-ai/jobtracking" className="text-indigo-600 hover:underline" target="_blank" rel="noreferrer">GitHub sous licence MIT</a>. Vous pouvez l'utiliser selon les termes de cette licence.
+                <strong>Code source:</strong> Le code source de SmartJobTracker est disponible sur <a href="https://github.com/deviloufr-ai/jobtracking" className="text-indigo-600 hover:underline" target="_blank" rel="noreferrer">GitHub sous licence PolyForm Noncommercial 1.0.0</a> (source-available, non open source). Toute utilisation commerciale requiert une autorisation écrite.
               </p>
 
               <p className="font-semibold mt-4">Marques:</p>
