@@ -361,7 +361,7 @@ export const fr = {
     gmail: 'Gmail',
     gmailDesc: 'Sync automatique des emails',
     screenshot: 'Screenshot',
-    screenshotDesc: "Colle une capture d'écran",
+    screenshotDesc: "Coller une capture d'écran",
     installExt: 'Installer Extension',
     installExtDesc: "Importer depuis n'importe quelle offre",
     extActive: 'Extension Firefox',
@@ -375,7 +375,7 @@ export const fr = {
   // LinkedIn share-link import
   linkedinImport: {
     title: 'Ajouter depuis LinkedIn',
-    subtitle: "Colle ou partage un lien d'offre LinkedIn",
+    subtitle: "Collez ou partagez un lien d'offre LinkedIn",
     urlLabel: "Lien de l'offre LinkedIn",
     hint: "Astuce : sur l'appli LinkedIn, touche Partager sur une offre puis choisis SmartJobTracker.",
     notLinkedin: "Ce lien n'a pas l'air d'être une offre LinkedIn — tu peux quand même essayer.",

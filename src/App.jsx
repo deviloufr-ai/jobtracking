@@ -1236,8 +1236,8 @@ export default function App() {
         className={`min-h-screen transition-colors duration-300${layoutE ? ' md:pl-[220px]' : ''}`}
       >
 
-      {/* ── Mobile: Add bottom sheet (FAB) ─────────────────────────────────── */}
-      <BottomSheet open={addSheet} onClose={() => setAddSheet(false)} title={t('addMenu.import')}>
+      {/* ── Add chooser: mobile FAB bottom sheet + desktop rail "Ajouter" (centered) */}
+      <BottomSheet open={addSheet} onClose={() => setAddSheet(false)} title={t('addMenu.import')} centerOnDesktop>
         <div className="space-y-2">
           {[
             { icon: '📧', label: t('mobileMenu.gmail'), sub: t('addMenu.gmailDesc'), tint: 'bg-indigo-50', action: () => { setAddSheet(false); setShowGmail(true) } },
@@ -1317,7 +1317,7 @@ export default function App() {
           items={NAV_TABS}
           activeTab={activeTab}
           onNav={goTab}
-          onAdd={() => setModal('add')}
+          onAdd={() => setAddSheet(true)}
           jobs={jobs}
           gmailUser={gmailUser}
           account={railAccount}

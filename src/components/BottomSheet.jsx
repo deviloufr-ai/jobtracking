@@ -15,6 +15,8 @@ export default function BottomSheet({
   children,
   maxHeight = '85vh',
   className = '',
+  // Render as a centered dialog on md+ (for sheets that desktop also opens).
+  centerOnDesktop = false,
 }) {
   const panelRef = useRef(null)
 
@@ -37,7 +39,7 @@ export default function BottomSheet({
   if (!open) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-[300] flex flex-col justify-end">
+    <div className={`fixed inset-0 z-[300] flex flex-col justify-end${centerOnDesktop ? ' md:justify-center md:p-6' : ''}`}>
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm animate-backdrop-in"
@@ -47,7 +49,7 @@ export default function BottomSheet({
       {/* Panel */}
       <div
         ref={panelRef}
-        className={`relative bg-white rounded-t-3xl shadow-2xl w-full max-w-screen-sm mx-auto flex flex-col animate-sheet-up ${className}`}
+        className={`relative bg-white rounded-t-3xl shadow-2xl w-full max-w-screen-sm mx-auto flex flex-col animate-sheet-up${centerOnDesktop ? ' md:rounded-3xl md:max-w-md' : ''} ${className}`}
         style={{ maxHeight }}
       >
         {/* Drag handle (tap to close) */}
