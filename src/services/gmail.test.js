@@ -1,5 +1,24 @@
 import { describe, it, expect } from 'vitest'
-import { isInsufficientScopeError, GmailScopeError } from './gmail'
+import { isInsufficientScopeError, GmailScopeError, encodeMimeHeader } from './gmail'
+
+describe('encodeMimeHeader', () => {
+  it('leaves plain ASCII headers untouched', () => {
+    expect(encodeMimeHeader('Follow-up: Product Builder')).toBe('Follow-up: Product Builder')
+  })
+
+  it('wraps non-ASCII text in an RFC 2047 UTF-8 encoded-word that round-trips', () => {
+    const subject = 'Suivi candidature — Product Builder (Léa)'
+    const out = encodeMimeHeader(subject)
+    const m = out.match(/^=\?UTF-8\?B\?([A-Za-z0-9+/=]+)\?=$/)
+    expect(m).not.toBeNull()
+    expect(new TextDecoder().decode(Uint8Array.from(atob(m[1]), c => c.charCodeAt(0)))).toBe(subject)
+  })
+
+  it('handles empty / missing values', () => {
+    expect(encodeMimeHeader('')).toBe('')
+    expect(encodeMimeHeader()).toBe('')
+  })
+})
 
 describe('isInsufficientScopeError', () => {
   it('matches the Gmail API 403 scope message (any casing)', () => {

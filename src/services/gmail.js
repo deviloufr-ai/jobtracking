@@ -569,17 +569,26 @@ export async function getGmailUserInfo() {
 }
 
 // ── Send email ────────────────────────────────────────────────────────────────
+// Header values must be 7-bit ASCII (RFC 5322); non-ASCII text goes in an RFC 2047
+// encoded-word. Raw UTF-8 in Subject got mangled by Gmail (an em dash came back
+// in recruiters' "Re:" subjects as mojibake).
+export function encodeMimeHeader(value = '') {
+  const s = String(value)
+  if (![...s].some(c => c.charCodeAt(0) > 127)) return s
+  return `=?UTF-8?B?${btoa(unescape(encodeURIComponent(s)))}?=`
+}
+
 // fromAccount: email address of the account to send from (defaults to first connected)
 export async function sendEmail({ to, subject, body, fromAccount, threadId, inReplyTo }) {
   const email = fromAccount || Object.keys(accounts)[0]
   const acct = accounts[email]
   if (!acct?.token) throw new Error('Non connecté à Gmail')
 
-  const from = acct.user?.email ? `${acct.user.name || ''} <${acct.user.email}>`.trim() : 'me'
+  const from = acct.user?.email ? `${encodeMimeHeader(acct.user.name || '')} <${acct.user.email}>`.trim() : 'me'
   const headers = [
     `From: ${from}`,
     `To: ${to}`,
-    `Subject: ${subject}`,
+    `Subject: ${encodeMimeHeader(subject)}`,
     `Content-Type: text/plain; charset=utf-8`,
     `MIME-Version: 1.0`,
   ]
