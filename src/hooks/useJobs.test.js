@@ -27,6 +27,7 @@ import {
   filterDeletedHistory,
   partitionJobsByTombstones,
   deriveStatusFromHistory,
+  mergeHistoryBySameDayTopic,
   isDiscoverySeed,
   dropMisplacedSeeds,
   deduplicateHistory,
@@ -502,5 +503,39 @@ describe('reconcileExactDuplicateJobs — timer-safe dedup never deletes distinc
     ]
     const out = reconcileExactDuplicateJobs(jobs)
     expect(out).toHaveLength(1)
+  })
+})
+
+describe('mergeHistoryBySameDayTopic — outcome survives the merge', () => {
+  // Real case (Mozza): the candidate's follow-up and the company's reply rejecting
+  // them land the same day on the same topic. The merged entry's status drives the
+  // job status (latest-entry-wins), so a rejection outvoted by follow-up noise left
+  // the job "waiting" — and NextAction suggested following up with a company that
+  // had already said no.
+  const day = '2026-09-18'
+  const rejection = { date: day, status: 'rejected', source: 'email', gmailId: 'g-rej', note: 'Refus explicite candidature Product Builder — profils BtoC et AI native privilégiés' }
+  const followUp = (id) => ({ date: day, status: 'waiting', source: 'email', gmailId: id, note: 'Relance candidature Product Builder après plusieurs semaines — statut en attente' })
+
+  it('keeps the rejection when follow-ups outnumber it', () => {
+    const out = mergeHistoryBySameDayTopic([followUp('g-1'), rejection, followUp('g-2')])
+    expect(out).toHaveLength(1)
+    expect(out[0].status).toBe('rejected')
+    expect(deriveStatusFromHistory(out)).toBe('rejected')
+  })
+
+  it('keeps an interview over same-day review noise', () => {
+    const review = (id) => ({ date: day, status: 'reviewing', source: 'email', gmailId: id, note: 'Candidature Product Builder en cours examen équipe' })
+    const invite = { date: day, status: 'interview', source: 'email', gmailId: 'g-int', note: 'Invitation entretien candidature Product Builder équipe' }
+    const out = mergeHistoryBySameDayTopic([review('g-a'), review('g-b'), invite])
+    expect(out).toHaveLength(1)
+    expect(out[0].status).toBe('interview')
+  })
+
+  it('still uses the dominant stage when no outcome is in the group', () => {
+    const r = (id) => ({ date: day, status: 'reviewing', source: 'email', gmailId: id, note: 'Candidature Product Builder en cours examen' })
+    const w = { date: day, status: 'waiting', source: 'email', gmailId: 'g-w', note: 'Candidature Product Builder examen en attente' }
+    const out = mergeHistoryBySameDayTopic([r('g-a'), r('g-b'), w])
+    expect(out).toHaveLength(1)
+    expect(out[0].status).toBe('reviewing')
   })
 })

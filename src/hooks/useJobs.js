@@ -1179,6 +1179,8 @@ function combineTopicNotes(notes) {
 }
 
 const TOPIC_STATUS_ORDER = ['todo', 'sent', 'reviewing', 'interview', 'waiting', 'done', 'offer', 'rejected', 'rejected_ats', 'cancelled', 'archived']
+// Statuses that mark a decisive event, first match wins inside a same-day merge.
+const TOPIC_EVENT_PRIORITY = ['rejected_ats', 'rejected', 'offer', 'interview']
 
 // Hide a discovery seed that POST-dates a real application. In the normal flow the
 // seed is the oldest entry (found → applied → …) and is kept as useful context. But
@@ -1204,15 +1206,22 @@ function mergeTopicGroup(group) {
   const rep = group.reduce((a, b) => (score(b) > score(a) ? b : a))
   const note = combineTopicNotes(group.map(e => e.note))
 
-  // Status = the most frequent status in the group (the dominant stage),
-  // tie-broken by the most advanced status. Per-entry status is cosmetic
-  // (timeline dot) and does not change the job's top-level status.
-  const counts = new Map()
-  for (const e of group) counts.set(e.status, (counts.get(e.status) || 0) + 1)
-  let status = group[0].status, bestN = -1
-  for (const [s, n] of counts) {
-    if (n > bestN || (n === bestN && TOPIC_STATUS_ORDER.indexOf(s) > TOPIC_STATUS_ORDER.indexOf(status))) {
-      status = s; bestN = n
+  // Per-entry status is NOT cosmetic: the job's status is derived from its latest
+  // history entry (deriveStatusFromHistory). So a one-off event in the group —
+  // a rejection, an offer, an interview invite — must win over same-day noise
+  // (follow-ups, "under review" acks); a frequency vote let two follow-ups outvote
+  // a rejection and left the job "waiting". Without such an event, fall back to
+  // the most frequent status (the dominant stage), tie-broken by the most advanced.
+  const event = TOPIC_EVENT_PRIORITY.find(s => group.some(e => e.status === s))
+  let status = event || group[0].status
+  if (!event) {
+    const counts = new Map()
+    for (const e of group) counts.set(e.status, (counts.get(e.status) || 0) + 1)
+    let bestN = -1
+    for (const [s, n] of counts) {
+      if (n > bestN || (n === bestN && TOPIC_STATUS_ORDER.indexOf(s) > TOPIC_STATUS_ORDER.indexOf(status))) {
+        status = s; bestN = n
+      }
     }
   }
 
