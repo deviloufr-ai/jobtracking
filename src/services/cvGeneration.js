@@ -157,6 +157,17 @@ export async function fetchJobDescription(job) {
   }
 }
 
+// Build an Error carrying the server's own message ({ error }) — "HTTP 500"
+// alone hides whether the key, the model, or the provider's quota is at fault.
+async function responseError(res) {
+  let msg = ''
+  try {
+    const body = await res.json()
+    msg = typeof body?.error === 'string' ? body.error : (body?.error?.message || '')
+  } catch { /* non-JSON body */ }
+  return new Error(msg ? `${msg} (HTTP ${res.status})` : `HTTP ${res.status}`)
+}
+
 // Call /api/generate-cv with the current generation settings and return the
 // adapted CV. `additions` are the "Points manquants" the candidate confirmed —
 // each { role, company, bullet } is woven into the CV under its role (see the
@@ -176,7 +187,7 @@ export async function generateTailoredCV({ cvText, jobDescription, company, posi
     learnedRules: enabledLearnedRulesText('cv'),
     additions,
   })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  if (!res.ok) throw await responseError(res)
   const data = await res.json()
   return { cv: data.cv, atsScore: data.atsScore ?? null, impactScore: data.impactScore ?? null, verdict: data.verdict ?? null }
 }
@@ -198,7 +209,7 @@ export async function suggestCvPoints({ cvText, jobDescription, company, positio
     language,
     knownGaps,
   })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  if (!res.ok) throw await responseError(res)
   const data = await res.json()
   return Array.isArray(data.suggestions) ? data.suggestions : []
 }

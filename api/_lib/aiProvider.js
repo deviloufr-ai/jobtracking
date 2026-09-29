@@ -124,6 +124,17 @@ function mapGeminiFinish(reason) {
   return 'end_turn'
 }
 
+// Gemini 2.5+ models "think" by default and those thinking tokens are charged
+// against maxOutputTokens — with Claude-sized budgets (e.g. 600 for a JSON score)
+// the thinking alone exhausts it and the answer comes back EMPTY. Add headroom so
+// the caller's budget stays available for the visible answer. Older non-thinking
+// models (1.x / 2.0) cap output at 8192 and would 400 on the larger value.
+export const GEMINI_THINKING_HEADROOM = 4096
+export function geminiMaxOutputTokens(model, maxTokens) {
+  const base = Number(maxTokens) || 2000
+  return /^gemini-(1\.|2\.0)/i.test(model || '') ? base : base + GEMINI_THINKING_HEADROOM
+}
+
 async function callGemini({ apiKey, model, system, messages, max_tokens }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`
   const body = {
@@ -131,7 +142,7 @@ async function callGemini({ apiKey, model, system, messages, max_tokens }) {
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: toGeminiParts(m.content),
     })),
-    generationConfig: { maxOutputTokens: Number(max_tokens) || 2000 },
+    generationConfig: { maxOutputTokens: geminiMaxOutputTokens(model, max_tokens) },
   }
   const sysText = systemToText(system)
   if (sysText) body.system_instruction = { parts: [{ text: sysText }] }
@@ -149,7 +160,15 @@ async function callGemini({ apiKey, model, system, messages, max_tokens }) {
     return { status: response.status, data: { error: data?.error?.message || `Gemini API ${response.status}` } }
   }
   const cand = data.candidates?.[0]
-  const text = (cand?.content?.parts || []).map(p => p.text || '').join('')
+  // Thought-summary parts (thought:true) are not part of the answer.
+  const text = (cand?.content?.parts || []).filter(p => !p.thought).map(p => p.text || '').join('')
+  // A blocked prompt (no candidate) or a safety/recitation/length stop with no
+  // text is a failure, not an empty success — callers would otherwise store ''
+  // or fail later on a JSON parse with a meaningless error.
+  if (!text) {
+    const why = data.promptFeedback?.blockReason || cand?.finishReason || 'no content'
+    return { status: 502, data: { error: `Gemini returned an empty answer (${why}). Try again or pick another Gemini model in Settings.` } }
+  }
   return {
     status: 200,
     data: {

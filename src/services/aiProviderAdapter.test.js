@@ -7,6 +7,8 @@ import {
   resolveAiCredentials,
   missingKeyMessage,
   callAiMessages,
+  geminiMaxOutputTokens,
+  GEMINI_THINKING_HEADROOM,
 } from '../../api/_lib/aiProvider.js'
 
 afterEach(() => { vi.unstubAllGlobals() })
@@ -116,7 +118,41 @@ describe('callAiMessages → Gemini', () => {
     const body = JSON.parse(opts.body)
     expect(body.system_instruction.parts[0].text).toBe('sys')
     expect(body.contents[0]).toEqual({ role: 'user', parts: [{ text: 'hello' }] })
-    expect(body.generationConfig.maxOutputTokens).toBe(100)
+    // Thinking model → the caller's budget plus thinking headroom.
+    expect(body.generationConfig.maxOutputTokens).toBe(100 + GEMINI_THINKING_HEADROOM)
+  })
+
+  it('adds no thinking headroom for non-thinking 1.x / 2.0 models', () => {
+    expect(geminiMaxOutputTokens('gemini-2.0-flash', 600)).toBe(600)
+    expect(geminiMaxOutputTokens('gemini-1.5-pro', 600)).toBe(600)
+    expect(geminiMaxOutputTokens('gemini-3.6-flash', 600)).toBe(600 + GEMINI_THINKING_HEADROOM)
+  })
+
+  it('turns an empty / blocked answer into an error, not an empty success', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, status: 200,
+      json: async () => ({ candidates: [{ content: { parts: [] }, finishReason: 'MAX_TOKENS' }] }),
+    })))
+    const out = await callAiMessages({ provider: 'gemini', apiKey: 'k', model: 'gemini-3.6-flash', messages: [{ role: 'user', content: 'x' }] })
+    expect(out.status).toBe(502)
+    expect(out.data.error).toMatch(/MAX_TOKENS/)
+
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, status: 200,
+      json: async () => ({ promptFeedback: { blockReason: 'SAFETY' } }),
+    })))
+    const blocked = await callAiMessages({ provider: 'gemini', apiKey: 'k', model: 'gemini-3.6-flash', messages: [{ role: 'user', content: 'x' }] })
+    expect(blocked.status).toBe(502)
+    expect(blocked.data.error).toMatch(/SAFETY/)
+  })
+
+  it('drops thought-summary parts from the answer', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, status: 200,
+      json: async () => ({ candidates: [{ content: { parts: [{ text: 'thinking…', thought: true }, { text: '{"ok":1}' }] }, finishReason: 'STOP' }] }),
+    })))
+    const out = await callAiMessages({ provider: 'gemini', apiKey: 'k', model: 'gemini-3.6-flash', messages: [{ role: 'user', content: 'x' }] })
+    expect(out.data.content[0].text).toBe('{"ok":1}')
   })
 
   it('passes a provider error through as { status, data.error }', async () => {

@@ -43,9 +43,19 @@ async function callClaude(cred, { maxTokens, prompt }) {
     messages: [{ role: 'user', content: prompt }],
   })
   if (status < 200 || status >= 300) {
-    throw new Error(data?.error?.message || data?.error || `AI API ${status}`)
+    const err = new Error(data?.error?.message || data?.error || `AI API ${status}`)
+    err.status = status
+    throw err
   }
   return data.content?.[0]?.text || ''
+}
+
+// Pass the provider's own status through (bad key 400/401/403, unknown model 404,
+// quota 429, overloaded 503…) so the client can tell them apart from a crash.
+// Never 402: the client reads that as OUR free-trial wall.
+function errorStatus(err) {
+  const s = Number(err?.status)
+  return s >= 400 && s <= 599 && s !== 402 ? s : 500
 }
 
 function buildGeneratePrompt({ cvText, jobDescription, company, position, languageInstruction, feedback, targetScore, atsGuidance, contact, tools, customRules, rules, additions, learnedRules }) {
@@ -431,11 +441,13 @@ function extractJSON(rawText) {
 }
 
 async function scoreCV(cred, { cv, jobDescription, company, position }) {
-  const raw = await callClaude(cred, {
-    maxTokens: 600,
-    prompt: buildScorePrompt({ cv, jobDescription, company, position }),
-  })
   try {
+    // Inside the try: the CV is already generated — a failed scoring call (empty
+    // Gemini answer, transient 5xx…) must not throw that draft away.
+    const raw = await callClaude(cred, {
+      maxTokens: 600,
+      prompt: buildScorePrompt({ cv, jobDescription, company, position }),
+    })
     const parsed = extractJSON(raw)
     return {
       score: typeof parsed.score === 'number' ? parsed.score : 0,
@@ -577,7 +589,7 @@ export default async function handler(req, res) {
   // generation call still consumes a trial credit.
   if (cred.usesSharedKey && req.body?.mode !== 'suggest') {
     const quota = await enforceSharedKeyQuota(req)
-    if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
+    if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own AI key (Claude, Gemini or OpenAI) in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
   }
 
   const { cvText, jobDescription, company, position, language, atsLevel, contact, tools, customRules, rules, mode, additions, knownGaps, learnedRules } = req.body
@@ -659,7 +671,7 @@ export default async function handler(req, res) {
       })
       res.status(200).json({ suggestions })
     } catch (err) {
-      res.status(500).json({ error: err.message })
+      res.status(errorStatus(err)).json({ error: err.message })
     }
     return
   }
@@ -720,6 +732,6 @@ export default async function handler(req, res) {
       targetScore,
     })
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(errorStatus(err)).json({ error: err.message })
   }
 }
