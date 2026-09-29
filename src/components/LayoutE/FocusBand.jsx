@@ -30,7 +30,7 @@ export default function FocusBand({ jobs = [], userName, onOpenJob, onGenerateCV
   const urgent = actions.filter(a => a.urgency === 'high').length
 
   return (
-    <section className="mb-5">
+    <section data-tour="focus" className="mb-5">
       <div className="flex items-center gap-2 mb-3">
         <h2 className="text-lg font-bold text-gray-900 tracking-tight">
           {userName ? `${userName} 👋` : '👋'}

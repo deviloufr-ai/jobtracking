@@ -1242,9 +1242,9 @@ export const en = {
     addTitle: 'Add applications',
     addBody: 'Add a job manually, from a screenshot, or import a batch — this is your starting point.',
     gmailTitle: 'Connect Gmail',
-    gmailBody: 'Connect your inbox and Claude turns recruiter emails into tracked applications automatically.',
+    gmailBody: 'Click here to connect your inbox: the AI turns recruiter emails into tracked applications automatically.',
     navTitle: 'Move around',
-    navBody: 'Switch between your Tracker, Analytics, and Settings from here.',
+    navBody: 'Move between your Applications, interview Training, Analytics, and Settings from here.',
     viewsTitle: 'View & filter',
     viewsBody: 'See your applications as a table, a kanban board, or grouped by platform — and filter by status or period.',
     focusTitle: 'Your daily focus',
@@ -1252,9 +1252,9 @@ export const en = {
     refreshTitle: 'Stay in sync',
     refreshBody: 'Pull in new recruiter emails anytime with a single click.',
     settingsTitle: 'Make it yours',
-    settingsBody: 'Add your Claude API key, pick a theme, set follow-up reminders, and manage your CV.',
+    settingsBody: 'Pick your AI (Claude, Gemini, or OpenAI), a theme, follow-up reminders, and manage your CV.',
     doneTitle: "You're all set 🎉",
-    doneBody: 'Replay this tour anytime from the ? button in the top bar. Good luck with your search!',
+    doneBody: 'Start by adding an application or connecting Gmail. Good luck with your search!',
   },
 
   // Settings - Followups Tab

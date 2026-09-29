@@ -89,7 +89,7 @@ export default function ListToolbar({
           <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-[10px]">▾</span>
         </div>
 
-        <div className="flex bg-gray-100 rounded-xl p-1">
+        <div data-tour="views" className="flex bg-gray-100 rounded-xl p-1">
           {VIEWS.map(v => (
             <button
               key={v.id}

@@ -514,9 +514,9 @@ export const fr = {
     addTitle: 'Ajouter des candidatures',
     addBody: "Ajoutez une offre manuellement, depuis une capture d'écran, ou importez un lot — c'est votre point de départ.",
     gmailTitle: 'Connecter Gmail',
-    gmailBody: 'Connectez votre boîte mail et Claude transforme les emails de recruteurs en candidatures suivies automatiquement.',
+    gmailBody: "Cliquez ici pour connecter votre boîte mail : l'IA transforme les emails de recruteurs en candidatures suivies automatiquement.",
     navTitle: 'Naviguer',
-    navBody: 'Basculez entre votre Suivi, les Statistiques et les Réglages depuis ici.',
+    navBody: 'Passez de vos Candidatures à la Préparation des entretiens, à l’Analyse ou aux Réglages depuis ici.',
     viewsTitle: 'Afficher & filtrer',
     viewsBody: 'Visualisez vos candidatures en tableau, en kanban ou par plateforme — et filtrez par statut ou période.',
     focusTitle: 'Votre focus du jour',
@@ -524,9 +524,9 @@ export const fr = {
     refreshTitle: 'Rester synchronisé',
     refreshBody: 'Récupérez les nouveaux emails de recruteurs à tout moment en un clic.',
     settingsTitle: 'Personnaliser',
-    settingsBody: 'Ajoutez votre clé API Claude, choisissez un thème, réglez les rappels de relance et gérez votre CV.',
+    settingsBody: 'Choisissez votre IA (Claude, Gemini ou OpenAI), un thème, les rappels de relance, et gérez votre CV.',
     doneTitle: 'Tout est prêt 🎉',
-    doneBody: 'Rejouez cette visite à tout moment via le bouton ? de la barre du haut. Bonne chance dans votre recherche !',
+    doneBody: 'Commencez par ajouter une candidature ou connecter Gmail. Bonne chance dans votre recherche !',
   },
 
   // Footer Actions
