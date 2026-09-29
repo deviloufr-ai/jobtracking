@@ -26,6 +26,7 @@ import { withUserApiKey, getProviderKey, setProviderKey } from '../services/apiK
 import { extractToolsFromJobs, extractToolsFromCVs } from '../utils/toolsExtract'
 import { AI_PROVIDERS, AI_PROVIDER_IDS, DEFAULT_AI_PROVIDER } from '../constants/aiProviders'
 import { Capacitor } from '@capacitor/core'
+import { getAnalyticsConsent, setAnalyticsConsent, ANALYTICS_CONSENT_EVENT } from '../services/analytics'
 
 const PROFILE_KEY = 'jobtrackr_profile'
 // CV generation preferences (ATS level, rules checklist, custom rules, base CV)
@@ -146,6 +147,12 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
   const { cvs } = useCVs()
   const extensionInstalled = useExtensionDetect()
   const extUpdate = useExtensionUpdate()
+  const [analyticsConsent, setAnalyticsConsentState] = useState(getAnalyticsConsent)
+  useEffect(() => {
+    const onChange = () => setAnalyticsConsentState(getAnalyticsConsent())
+    window.addEventListener(ANALYTICS_CONSENT_EVENT, onChange)
+    return () => window.removeEventListener(ANALYTICS_CONSENT_EVENT, onChange)
+  }, [])
   const CATEGORIES = getCATEGORIES(t).filter(c => !(IS_NATIVE && c.id === 'extension'))
   const [activeTab, setActiveTab] = useState(initialTab || 'profile')
   // Mobile: Settings is a grouped-list landing that pushes into a section.
@@ -1176,6 +1183,27 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
             {/* Data Tab */}
             {activeTab === 'data' && (
               <>
+                <Card>
+                  <Row label={t('analyticsConsent.settingsTitle')} hint={t('analyticsConsent.settingsHint')}>
+                    <div className="inline-flex bg-gray-100 rounded-lg p-1" role="radiogroup" aria-label={t('analyticsConsent.settingsTitle')}>
+                      {[['granted', t('analyticsConsent.on')], ['denied', t('analyticsConsent.off')]].map(([value, label]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          role="radio"
+                          aria-checked={analyticsConsent === value}
+                          onClick={() => setAnalyticsConsent(value)}
+                          className={`text-sm font-medium px-3 py-1.5 rounded-md transition-colors ${
+                            analyticsConsent === value ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </Row>
+                </Card>
+
                 <Card title={t('settingsData.exportImport')}>
                   <Row label={t('settingsData.exportApplications')} hint={`${jobs.length} applications in JSON`}>
                     <button

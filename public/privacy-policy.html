@@ -146,8 +146,9 @@
         <li>Votre clé API personnelle (Anthropic, Google Gemini ou compatible OpenAI), le cas échéant, stockée localement sur votre appareil ; le fournisseur et le modèle choisis sont synchronisés avec votre compte</li>
       </ul>
 
-      <h3>Données d'usage</h3>
+      <h3>Données d'usage (uniquement avec votre accord)</h3>
       <ul>
+        <li>Collectées seulement si vous acceptez la mesure d'usage (bandeau affiché après votre connexion). Sans accord, rien n'est envoyé</li>
         <li>Événements d'utilisation des fonctionnalités (ex. : connexion de Gmail, candidature ajoutée, CV généré, entretien blanc terminé), avec la plateforme (web ou Android) et la source d'arrivée</li>
         <li>Ces événements sont rattachés à l'identifiant de votre compte, ainsi qu'à votre adresse email et à votre nom</li>
         <li>Ils ne contiennent jamais le contenu de vos emails, CV, lettres ou notes</li>
@@ -166,7 +167,7 @@
           <tr><td>Fonctionnalités IA : CV adaptés, lettres, relances, entretien blanc, réponses STAR</td><td>Consentement (usage volontaire de chaque feature)</td></tr>
           <tr><td>Synchronisation multi-appareils de vos données</td><td>Exécution du service</td></tr>
           <tr><td>Recommandations (relances en retard, entretiens imminents)</td><td>Intérêt légitime</td></tr>
-          <tr><td>Mesure d'usage des fonctionnalités pour améliorer l'app (Mixpanel)</td><td>Intérêt légitime</td></tr>
+          <tr><td>Mesure d'usage des fonctionnalités pour améliorer l'app (Mixpanel)</td><td>Consentement (bandeau à la connexion, retirable à tout moment)</td></tr>
         </tbody>
       </table>
     </section>
@@ -201,7 +202,7 @@
           <tr><td>Google (Gemini) ou fournisseur compatible OpenAI</td><td>Traitement IA, uniquement si vous choisissez ce fournisseur avec votre propre clé (voir section 7)</td></tr>
           <tr><td>Supabase</td><td>Stockage et synchronisation multi-appareils</td></tr>
           <tr><td>Vercel</td><td>Hébergement, fonctions serverless (proxy API) et mesure d'audience</td></tr>
-          <tr><td>Mixpanel</td><td>Mesure d'usage des fonctionnalités (données hébergées dans l'Union européenne)</td></tr>
+          <tr><td>Mixpanel</td><td>Mesure d'usage des fonctionnalités, uniquement avec votre accord (données hébergées dans l'Union européenne)</td></tr>
           <tr><td>Adzuna, France Travail</td><td>Recherche d'offres, uniquement lors de requêtes volontaires</td></tr>
           <tr><td>Google Maps</td><td>Calcul du temps de trajet vers une offre, uniquement si vous l'utilisez</td></tr>
         </tbody>
@@ -248,7 +249,7 @@
       <p><strong>Aucun cookie de traçage publicitaire.</strong> SmartJobTracker n'utilise pas de cookies à des fins publicitaires et ne revend aucune donnée. Le stockage local sert au fonctionnement de l'application et à la mesure d'usage décrite ci-dessous.</p>
       <ul>
         <li><strong>Vercel Analytics :</strong> statistiques d'audience agrégées, sans cookie</li>
-        <li><strong>Mixpanel :</strong> mesure d'usage des fonctionnalités, rattachée à votre compte (voir section 3), avec un identifiant conservé dans le stockage local de votre navigateur. La capture automatique des clics et des saisies est désactivée. Mixpanel respecte le réglage « Do Not Track » de votre navigateur : s'il est activé, aucun événement n'est envoyé</li>
+        <li><strong>Mixpanel :</strong> mesure d'usage des fonctionnalités, rattachée à votre compte (voir section 3), <strong>uniquement si vous l'acceptez</strong>. Un bandeau vous le demande après votre connexion ; refuser est aussi simple qu'accepter. Tant que vous n'avez pas accepté, Mixpanel n'est pas chargé et aucun identifiant n'est déposé. Vous pouvez retirer votre accord à tout moment dans Réglages → Données : l'envoi s'arrête immédiatement. Votre choix est enregistré sur chaque appareil. La capture automatique des clics et des saisies est désactivée, et le réglage « Do Not Track » de votre navigateur est respecté</li>
       </ul>
     </section>
 

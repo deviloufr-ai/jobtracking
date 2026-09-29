@@ -38,6 +38,42 @@ const FREE_TRIAL_LIMIT = 15
 const JOURNEY_KEY = 'jobtrackr_mp_journey'
 const UTM_KEY = 'jobtrackr_mp_utm'
 
+// ── consent (opt-in) ──────────────────────────────────────────────────────────
+// Mixpanel events are tied to the account (uid + email + name), so they need the
+// user's prior consent (ePrivacy/GDPR). Until the user says yes, nothing loads:
+// no SDK init, no network call, no Mixpanel storage. Per device on purpose —
+// consent is given on a terminal. Undecided = null → the app shows the banner.
+const CONSENT_KEY = 'jobtrackr_analytics_consent'
+export const ANALYTICS_CONSENT_EVENT = 'jobtrackr:analytics-consent'
+
+export function getAnalyticsConsent() {
+  try {
+    const v = localStorage.getItem(CONSENT_KEY)
+    return v === 'granted' || v === 'denied' ? v : null
+  } catch { return null }
+}
+
+const hasConsent = () => getAnalyticsConsent() === 'granted'
+
+// Last signed-in user seen by onAuthChange, so granting consent mid-session can
+// identify them right away instead of waiting for the next auth event.
+let lastUser = null
+
+export function setAnalyticsConsent(value) {
+  if (value !== 'granted' && value !== 'denied') return
+  try { localStorage.setItem(CONSENT_KEY, value) } catch { /* ignore */ }
+  if (value === 'granted') {
+    if (initialized) { try { mixpanel.opt_in_tracking() } catch { /* ignore */ } }
+    if (lastUser) identifyUser(lastUser)
+    else ensureInit()
+  } else if (initialized) {
+    // Withdrawal: stop sending now and drop the SDK's stored identity.
+    try { mixpanel.opt_out_tracking() } catch { /* ignore */ }
+    try { mixpanel.reset() } catch { /* ignore */ }
+  }
+  try { window.dispatchEvent(new CustomEvent(ANALYTICS_CONSENT_EVENT, { detail: value })) } catch { /* ignore */ }
+}
+
 let initialized = false
 
 // ── init ──────────────────────────────────────────────────────────────────────
@@ -48,7 +84,8 @@ export function initAnalytics() {
 }
 
 function ensureInit() {
-  if (initialized || DISABLED) return initialized
+  if (DISABLED || !hasConsent()) return false
+  if (initialized) return true
   try {
     mixpanel.init(MIXPANEL_TOKEN, {
       // The Mixpanel project is on EU data residency, so ingestion MUST target the
@@ -177,6 +214,8 @@ function readJourney() {
 }
 
 function writeJourney(j) {
+  // The funnel timeline only exists to feed Mixpanel — don't keep it without consent.
+  if (!hasConsent()) return
   try { localStorage.setItem(JOURNEY_KEY, JSON.stringify(j)) } catch { /* ignore */ }
 }
 
@@ -194,9 +233,10 @@ export function onAuthChange(event, session) {
   if (DISABLED) return
   const user = session?.user
   if (event === 'SIGNED_OUT' || !user) {
-    if (event === 'SIGNED_OUT') resetAnalytics()
+    if (event === 'SIGNED_OUT') { lastUser = null; resetAnalytics() }
     return
   }
+  lastUser = user
   identifyUser(user)
 }
 

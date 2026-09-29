@@ -1201,6 +1201,19 @@ export const en = {
     keySaved: '✓ Saved',
   },
 
+  // Product analytics consent (Mixpanel)
+  analyticsConsent: {
+    title: 'Usage analytics',
+    body: 'May we record which features you use (e.g. "Gmail connected", "CV generated") to improve the app? These events are tied to your account, never to the content of your emails, CVs, or notes. You can change this anytime in Settings → Data.',
+    more: 'Learn more',
+    accept: 'Accept',
+    decline: 'Decline',
+    settingsTitle: 'Usage analytics (Mixpanel)',
+    settingsHint: 'Feature-usage events tied to your account, without the content of your emails, CVs, or notes. Choice saved on this device.',
+    on: 'On',
+    off: 'Off',
+  },
+
   // First-time user onboarding
   onboarding: {
     welcome: 'Welcome to SmartJobTracker 👋',

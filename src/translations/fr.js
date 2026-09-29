@@ -473,6 +473,19 @@ export const fr = {
     otherApplications: 'Autres candidatures',
   },
 
+  // Consentement à la mesure d'usage (Mixpanel)
+  analyticsConsent: {
+    title: 'Mesure d’usage',
+    body: 'Pouvons-nous enregistrer quelles fonctions vous utilisez (ex. « Gmail connecté », « CV généré ») pour améliorer l’app ? Ces événements sont liés à votre compte, jamais au contenu de vos emails, CV ou notes. Modifiable à tout moment dans Réglages → Données.',
+    more: 'En savoir plus',
+    accept: 'Accepter',
+    decline: 'Refuser',
+    settingsTitle: 'Mesure d’usage (Mixpanel)',
+    settingsHint: 'Événements d’utilisation des fonctions, liés à votre compte, sans le contenu de vos emails, CV ou notes. Choix enregistré sur cet appareil.',
+    on: 'Activée',
+    off: 'Désactivée',
+  },
+
   // Onboarding nouvel utilisateur
   onboarding: {
     welcome: 'Bienvenue sur SmartJobTracker 👋',

@@ -103,6 +103,7 @@ import { useDebugLogs } from './hooks/useDebugLogs'
 import LandingPage from './components/LandingPage'
 import LandingPageEN from './components/LandingPageEN'
 import OnboardingModal from './components/OnboardingModal'
+import AnalyticsConsentBanner from './components/AnalyticsConsentBanner'
 import ExtensionUpdateModal from './components/ExtensionUpdateModal'
 import GuidedTour from './components/GuidedTour'
 import BottomSheet from './components/BottomSheet'
@@ -1926,6 +1927,8 @@ export default function App() {
       )}
       {mergeModal && <MergeModal jobs={mergeModal} onConfirm={handleMergeConfirm} onCancel={() => setMergeModal(null)} t={t} />}
       {showOnboarding && <OnboardingModal onAddKey={handleOnboardingAddKey} onSkip={dismissOnboarding} extensionInstalled={extensionInstalled} t={t} />}
+      {/* Analytics opt-in — after sign-in, never stacked on the onboarding or the tour */}
+      {session && !showOnboarding && !tourActive && <AnalyticsConsentBanner t={t} />}
       {showExtUpdate && (
         <ExtensionUpdateModal
           installedVersion={extUpdatePreview ? (extUpdate.installedVersion || '1.5.1') : extUpdate.installedVersion}
