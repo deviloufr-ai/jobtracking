@@ -4,6 +4,7 @@ import { convertHistoryFromSupabase, snakeToCamel, deserializeJobFields, normali
 import { isDeletedJobId, deduplicateHistory, filterDeletedHistory, historyEntryKey, markJobIdAsDeletedLocal, markHistoryEntryKeysDeletedLocal, partitionJobsByTombstones, deriveStatusFromHistory } from '../hooks/useJobs'
 import { flushPendingTombstones, fetchRemoteTombstones, flushPendingHistoryTombstones, fetchRemoteHistoryTombstones } from './tombstoneService'
 import { getFlag, FLAGS } from './featureFlags'
+import { reconcileRemoteCVs } from './cvSync'
 
 const POLL_INTERVAL = 300000 // 5 minutes
 
@@ -176,7 +177,8 @@ class PollManager {
         // Don't fail the whole poll for settings error
       }
 
-      // Fetch CVs
+      // Fetch CVs (always the full list — reconcileRemoteCVs relies on that)
+      const cvsFetchedAt = Date.now()
       const { data: cvs, error: cvsError } = await supabase
         .from('cvs')
         .select('*')
@@ -248,9 +250,24 @@ class PollManager {
         } catch {}
       }
 
+      // CV deletions: drop local CVs another device deleted, and don't re-download
+      // ones deleted here whose remote delete is still pending. Only on a
+      // successful fetch — a failed one says nothing about what exists.
+      let skipCvIds = new Set()
+      if (!cvsError && Array.isArray(cvs)) {
+        try {
+          const { skipIds, removed } = await reconcileRemoteCVs(cvs, userId, cvsFetchedAt)
+          skipCvIds = skipIds
+          if (removed > 0) hasChanges = true
+        } catch (err) {
+          console.warn('CV reconcile failed (non-critical):', err?.message)
+        }
+      }
+
       if (cvs && cvs.length > 0) {
         hasChanges = true
         for (const cv of cvs) {
+          if (skipCvIds.has(cv.id)) continue
           const cvInCamel = snakeToCamel(cv)
           // Supabase stores CV text in `content_raw`; the app reads `text`.
           await indexeddb.saveCV({

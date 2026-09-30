@@ -97,6 +97,13 @@ plugin changes).
   `deleted_history_entries`). Never delete a row outright — without a tombstone, a delete on
   one device is indistinguishable from a row another device has not yet received, and the row
   resurrects.
+- **Base CVs have no tombstone table** — deletion sync is per-device bookkeeping in `cvSync.js`
+  (`reconcileRemoteCVs`, called by the poll, which always fetches the full `cvs` list): a CV this
+  device has already seen on the server (`jobtrackr_cv_synced_ids`) and that a later *non-empty*
+  fetch no longer returns was deleted elsewhere → removed locally instead of re-uploaded by
+  `pushAllCVs`; a CV deleted here whose remote delete failed (`jobtrackr_cv_pending_deletes`) is
+  not re-downloaded and the delete is retried each poll. An empty server list never deletes
+  anything (it is also what an expired session looks like under RLS).
 - **History rows are UPSERTED on `(job_id, entry_key)`** (`syncManager.writeJobHistory`, migration 016;
   `entry_key` = `historyEntryKey`, the same key the 013 tombstones use). A write never empties a
   timeline and a peer's fresh entries survive it; only legacy key-less rows and this device's
