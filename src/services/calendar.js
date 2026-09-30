@@ -7,6 +7,8 @@ function extractLink(text = '') {
     /(https:\/\/meet\.google\.com\/[a-z0-9-]+)/i,
     /(https:\/\/[a-z0-9]+\.zoom\.us\/j\/[^\s"<>]+)/i,
     /(https:\/\/teams\.microsoft\.com\/l\/meetup-join\/[^\s"<>]+)/i,
+    // Newer Teams short links: https://teams.microsoft.com/meet/<id>?p=<code>
+    /(https:\/\/teams\.(?:microsoft|live)\.com\/meet\/[^\s"<>]+)/i,
     /(https:\/\/whereby\.com\/[^\s"<>]+)/i,
     /(https:\/\/[a-z0-9]+\.webex\.com\/[^\s"<>]+)/i,
   ]
@@ -61,10 +63,16 @@ async function fetchCalendarEventsForToken(token, companyName, monthsBack = 12) 
         isUpcoming, source: 'calendar',
         type: detectEventType(e.summary || ''),
         meetingLink: meetingLink || undefined,
+        // Who/when, for matching invites that don't name the company (a Calendly
+        // booking is organised from the recruiter's mailbox) — see meetingMatch.js.
+        created: e.created || undefined,
+        organizerEmail: e.organizer?.email || undefined,
+        attendeeEmails: (e.attendees || []).filter(a => !a.self && a.email).map(a => a.email),
+        eventType: e.eventType,
       }
     }).filter(e => {
       // Exclude birthdays, anniversaries, and personal events
-      const title = (e.summary || '').toLowerCase()
+      const title = (e.title || '').toLowerCase()
       const isBirthday = title.includes('birthday') || title.includes('anniversaire') ||
                          title.includes('anniversary') || e.eventType === 'birthday'
       return e.date && !isBirthday

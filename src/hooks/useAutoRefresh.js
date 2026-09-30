@@ -3,6 +3,7 @@ import { isConnected, fetchJobEmails, fetchJobEmailsForAccount, getConnectedAcco
 import { parseEmailsForJobs, validateAndCleanJobs } from '../services/claude'
 import { fetchCalendarEvents } from '../services/calendar'
 import { enrichJobTimeline } from '../services/enrichTimeline'
+import { matchEventToJob } from '../utils/meetingMatch'
 import { extractJobUrlsFromEmail, rankUrlsByJobRelevance } from '../services/positionChecker'
 import { isAtsRejection, isDeletedJob, mergeHistoryBySameDayTopic, splitMeetingDatesInHistory, deriveStatusFromHistory, historyEntryKey, ATS_DOMAINS } from './useJobs'
 import { normalize, isJobBoard, JOB_BOARD_NAMES } from '../constants/jobBoards'
@@ -681,9 +682,26 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
         const interviewJobs = jobsRef.current.filter(
           j => (deriveStatusFromHistory(j.history) || j.status) === 'interview'
         )
+        // Upcoming events the company search can't find (a Calendly booking named
+        // "Alexandre et Maher", organised from the recruiter's mailbox) — attributed
+        // by organizer / pending invitation instead (utils/meetingMatch.js).
+        const now = Date.now()
+        const extrasByJob = new Map()
+        for (const e of calendarEvents) {
+          if (new Date(e.rawStart || e.date || 0).getTime() < now) continue
+          const m = matchEventToJob(e, jobsRef.current)
+          if (!m || m.reason === 'company') continue
+          const list = extrasByJob.get(m.job.id) || []
+          list.push({ ...e, type: e.type === 'event' ? 'interview' : e.type })
+          extrasByJob.set(m.job.id, list)
+        }
         let linked = 0
         for (const j of interviewJobs) {
-          const r = await enrichJobTimeline(j, { calendarOnly: true })
+          // One unnamed booking per candidature: the soonest.
+          const extras = (extrasByJob.get(j.id) || [])
+            .sort((a, b) => new Date(a.rawStart || a.date) - new Date(b.rawStart || b.date))
+            .slice(0, 1)
+          const r = await enrichJobTimeline(j, { calendarOnly: true, extraCalendarEvents: extras })
           if (r?.history && r.newCount > 0) { updateJob(j.id, { history: r.history }); linked++ }
         }
         if (linked) log(`📅 Linked calendar meeting(s) to ${linked} interview candidature(s)`)

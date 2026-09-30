@@ -15,6 +15,7 @@ export function extractMeetingLink(text = '') {
     /(https:\/\/[a-z0-9]+\.zoom\.us\/j\/[^\s"<>]+)/i,
     // Microsoft Teams
     /(https:\/\/teams\.microsoft\.com\/l\/meetup-join\/[^\s"<>]+)/i,
+    /(https:\/\/teams\.(?:microsoft|live)\.com\/meet\/[^\s"<>]+)/i,
     // Whereby
     /(https:\/\/whereby\.com\/[^\s"<>]+)/i,
     // Around
@@ -52,7 +53,7 @@ function hasSimilarMeeting(note, date, history) {
 function detectMeetingPlatform(url = '') {
   if (url.includes('meet.google.com')) return { name: 'Google Meet', emoji: '🟢' }
   if (url.includes('zoom.us')) return { name: 'Zoom', emoji: '🔵' }
-  if (url.includes('teams.microsoft.com')) return { name: 'Teams', emoji: '🟣' }
+  if (url.includes('teams.microsoft.com') || url.includes('teams.live.com')) return { name: 'Teams', emoji: '🟣' }
   if (url.includes('whereby.com')) return { name: 'Whereby', emoji: '🟠' }
   if (url.includes('webex.com')) return { name: 'Webex', emoji: '🔷' }
   return { name: 'Visio', emoji: '📹' }
@@ -198,7 +199,10 @@ function getMockTimeline(company) {
   ]
 }
 
-export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
+// `extraCalendarEvents`: events the caller already attributed to this job that the
+// company-token calendar search can't find (e.g. a Calendly booking that never names
+// the company — see utils/meetingMatch.js). Merged through the same dedup below.
+export async function enrichJobTimeline(job, { calendarOnly = false, extraCalendarEvents = [] } = {}) {
   const events = []
 
   // 1. Email enrichment — skipped when calendarOnly (already done during Gmail import)
@@ -224,6 +228,8 @@ export async function enrichJobTimeline(job, { calendarOnly = false } = {}) {
   try {
     if (isCalendarConnected()) {
       const calEvents = await fetchCalendarEvents(job.company, 12)
+      const seenIds = new Set(calEvents.map(e => e.id))
+      for (const e of extraCalendarEvents) if (!seenIds.has(e.id)) { seenIds.add(e.id); calEvents.push(e) }
       const calTimeline = calEvents
         // Skip meetings already in the past — a passed meeting should not be freshly added.
         .filter(e => (typeof e.isUpcoming === 'boolean'

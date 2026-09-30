@@ -1,15 +1,14 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { fetchCalendarEvents, isCalendarConnected } from '../services/calendar'
-import { textMatchesCompany } from '../utils/companyMatch'
+import { matchEventToJob } from '../utils/meetingMatch'
 
 // A calendar event is "job-related" if its title shares a distinctive token with
 // a tracked company (see companyMatch.js) — full-name containment missed links
-// like "Wivoo, a Wavestone Company" ↔ "… premier échange Wivoo".
+// like "Wivoo, a Wavestone Company" ↔ "… premier échange Wivoo" — or, when the
+// invite never names the company (a Calendly booking), by organizer / pending
+// interview invitation (meetingMatch.js).
 function matchJob(event, activeJobs) {
-  for (const job of activeJobs) {
-    if (textMatchesCompany(event.title, job.company)) return job
-  }
-  return null
+  return matchEventToJob(event, activeJobs)?.job || null
 }
 
 // Shared data source for the upcoming-interviews surfaces: the full home widget
