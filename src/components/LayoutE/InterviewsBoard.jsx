@@ -29,8 +29,10 @@ const initials = (s = '') =>
   s.replace(/[^A-Za-z0-9 ]/g, '').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?'
 const shortDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '')
 
+// `done` = the interview happened and we're waiting for the verdict — still an
+// active process, not an outcome (it used to be filed under "Offres & embauches").
 const SECTION_OF = (status) => {
-  if (status === 'offer' || status === 'done') return 'outcome'
+  if (status === 'offer') return 'outcome'
   if (status === 'rejected' || status === 'rejected_ats' || status === 'cancelled' || status === 'archived') return 'past'
   return 'active'
 }
@@ -393,10 +395,15 @@ export default function InterviewsBoard({
   const exampleJob = example ? (jobs.find(j => j.id === example.job.id) || example.job) : null
   const mindMapJob = mindMap ? jobs.find(j => j.id === mindMap.id) || null : null
 
-  // Esc closes the full-details drawer.
+  // Esc closes the full-details drawer — unless a modal (`fixed inset-0 z-50`)
+  // is stacked above it; Escape belongs to that modal (see TrackerHomeE).
   useEffect(() => {
     if (!openJob) return
-    const onKey = e => { if (e.key === 'Escape') setOpenId(null) }
+    const onKey = e => {
+      if (e.key !== 'Escape') return
+      if (document.querySelector('.fixed.inset-0.z-50')) return
+      setOpenId(null)
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [openJob])
@@ -467,7 +474,8 @@ export default function InterviewsBoard({
       score: result.score, hire_decision: result.hire_decision, feedback: result.feedback, transcript: result.transcript,
     }
     onUpdateJob?.(job.id, { interviewSessions: [...(job.interviewSessions || []), session], updated_at: new Date().toISOString() })
-    setMock(null)
+    // Keep the modal open so the feedback card it renders after analysis is seen;
+    // the user closes it (onClose → setMock(null)) when done.
   }
 
   // Save a real interview recorded from the "Join" button (session already carries

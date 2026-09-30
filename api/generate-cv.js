@@ -25,6 +25,13 @@ const MAX_ATTEMPTS = 2 // 1 initial generation + up to 1 refinement pass (fewer 
 // included). Nothing changes until CV_MODEL is set.
 const GEN_MODEL = process.env.CV_MODEL || 'claude-haiku-4-5-20251001'
 
+// Free-trial input bounds (shared key only — own-key callers are unclamped).
+// Wider than the letter endpoint's 8000/6000: that one silently slices, while
+// the CV must keep every role, so an oversize request is rejected (413) instead
+// and the caps leave room for a 3-4 page CV.
+const CV_CHARS = 12000
+const JD_CHARS = 8000
+
 // Per-level guidance injected into the generation prompt. Higher levels push
 // harder on reusing the posting's exact wording; all levels forbid fabrication.
 const ATS_GUIDANCE = {
@@ -583,18 +590,24 @@ export default async function handler(req, res) {
 
   const cred = resolveAiCredentials(req, GEN_MODEL)
   if (cred.missingKey) { res.status(401).json({ error: missingKeyMessage(cred) }); return }
-  // Suggest mode ("Points manquants") is a small pre-generation helper that runs
-  // before EVERY generation — don't charge it against the shared-key free trial
-  // (it would halve the number of free CVs). Still rate-limited above. The actual
-  // generation call still consumes a trial credit.
-  if (cred.usesSharedKey && req.body?.mode !== 'suggest') {
-    const quota = await enforceSharedKeyQuota(req)
-    if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own AI key (Claude, Gemini or OpenAI) in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
-  }
 
   const { cvText, jobDescription, company, position, language, atsLevel, contact, tools, customRules, rules, mode, additions, knownGaps, learnedRules } = req.body
-  if (!cvText || !jobDescription) {
+  if (!cvText || !jobDescription || typeof cvText !== 'string' || typeof jobDescription !== 'string') {
     res.status(400).json({ error: 'cvText and jobDescription required' }); return
+  }
+  // Shared (free-trial) key: bound the prompt inputs so a tampered client can't
+  // run up the owner's bill with a huge CV/JD. Own-key callers pay for their own
+  // tokens and are left unclamped. Checked BEFORE the quota so a rejected request
+  // doesn't burn a trial credit.
+  if (cred.usesSharedKey && (cvText.length > CV_CHARS || jobDescription.length > JD_CHARS)) {
+    res.status(413).json({ error: `Input too large for the free trial (CV max ${CV_CHARS} chars, job description max ${JD_CHARS} chars). Shorten it or add your own AI key in Settings.` }); return
+  }
+  // Every mode — including 'suggest' ("Points manquants") — counts against the
+  // shared-key trial: it is a real AI call, and an unmetered mode would be a
+  // free-trial bypass for anyone hitting it directly.
+  if (cred.usesSharedKey) {
+    const quota = await enforceSharedKeyQuota(req)
+    if (!quota.ok) { res.status(402).json({ error: 'Free trial used up. Add your own AI key (Claude, Gemini or OpenAI) in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' }); return }
   }
 
   // Candidate's reusable tools set (Mon Profil). Bound the count + each token so a

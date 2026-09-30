@@ -7,6 +7,29 @@ import { getFlag, FLAGS } from './featureFlags'
 
 const POLL_INTERVAL = 300000 // 5 minutes
 
+// PostgREST caps every select at 1000 rows (Supabase default max-rows) and says
+// nothing about it — a full sync of >1000 jobs, or a history batch over 1000
+// entries, came back silently truncated. With history ordered ascending it was
+// the NEWEST entries that got cut. Page with .range() until a short page.
+const PAGE_SIZE = 1000
+// Chunk `.in('job_id', ids)` so the query string stays well under URL limits.
+const IN_CHUNK = 100
+
+// `build` returns a FRESH query each call (the PostgREST builder is mutable, so
+// a page can't be re-issued on the previous one). Every page must carry an
+// explicit .order() for the ranges to be stable. Returns { data, error } like a
+// single query would.
+export async function fetchAllPages(build) {
+  const rows = []
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await build().range(from, from + PAGE_SIZE - 1)
+    if (error) return { data: null, error }
+    rows.push(...(data || []))
+    if (!data || data.length < PAGE_SIZE) break
+  }
+  return { data: rows, error: null }
+}
+
 class PollManager {
   constructor() {
     this.isPolling = false
@@ -67,18 +90,20 @@ class PollManager {
       // additive merge can't resurrect an entry another device deleted (migration 013).
       await this.applyRemoteHistoryTombstones(userId, fullSync)
 
-      // Fetch jobs changed since last sync
-      const jobsQuery = supabase
-        .from('jobs')
-        .select('*')
-        .eq('user_id', userId)
+      // Fetch jobs changed since last sync (paged — see fetchAllPages)
+      const { data: changedJobs, error: jobsError } = await fetchAllPages(() => {
+        const jobsQuery = supabase
+          .from('jobs')
+          .select('*')
+          .eq('user_id', userId)
+          .order('id', { ascending: true })
 
-      // If we have a last sync time, only fetch changes (unless a full sync is requested)
-      if (this.lastSyncTime && !fullSync) {
-        jobsQuery.gt('updated_at', this.lastSyncTime)
-      }
-
-      const { data: changedJobs, error: jobsError } = await jobsQuery
+        // If we have a last sync time, only fetch changes (unless a full sync is requested)
+        if (this.lastSyncTime && !fullSync) {
+          jobsQuery.gt('updated_at', this.lastSyncTime)
+        }
+        return jobsQuery
+      })
 
       if (jobsError) {
         console.error('Poll error fetching jobs:', jobsError)
@@ -88,15 +113,24 @@ class PollManager {
 
       console.log('✓ Fetched', changedJobs?.length || 0, 'jobs from Supabase')
 
-      // Fetch job history only for changed jobs (batch query, not N+1)
+      // Fetch job history only for changed jobs (batch query, not N+1), in chunks
+      // of IN_CHUNK job ids, each chunk paged past the 1000-row cap.
       const historyByJobId = new Map()
       if (changedJobs && changedJobs.length > 0) {
         const jobIds = changedJobs.map(j => j.id)
-        const { data: allHistory, error: historyError } = await supabase
-          .from('job_history')
-          .select('*')
-          .in('job_id', jobIds)
-          .order('date', { ascending: true })
+        const allHistory = []
+        let historyError = null
+        for (let i = 0; i < jobIds.length && !historyError; i += IN_CHUNK) {
+          const chunk = jobIds.slice(i, i + IN_CHUNK)
+          const { data, error } = await fetchAllPages(() => supabase
+            .from('job_history')
+            .select('*')
+            .in('job_id', chunk)
+            .order('date', { ascending: true })
+            .order('id', { ascending: true }))
+          if (error) historyError = error
+          else allHistory.push(...(data || []))
+        }
 
         if (historyError) {
           console.error('Poll error fetching history:', historyError)

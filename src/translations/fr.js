@@ -630,7 +630,8 @@ export const fr = {
     rejected_ats: 'Rejetée (ATS)',
     cancelled: 'Annulée',
     archived: 'Archivée',
-    done: 'Terminée',
+    // Entretien passé, verdict en attente — le process est toujours ouvert.
+    done: 'Entretien passé',
   },
 
   // Bandeau de comptage par statut au-dessus des filtres
@@ -769,6 +770,7 @@ export const fr = {
 
   // Settings - Automation Tab
   settingsAutomation: {
+    saveAndSync: 'Enregistrer et synchroniser',
     title: 'Paramètres d\'automatisation',
     autoArchiveNoResponse: 'Archiver automatiquement après X jours sans réponse',
     autoArchiveNoResponseHint: 'Pour: Envoyée, En examen, En attente',
@@ -857,6 +859,7 @@ export const fr = {
     exported: '✓ Exporté',
     importApplications: 'Importer les candidatures',
     importApplicationsHint: 'Fusionne sans créer de doublons',
+    importResult: '{added} candidature(s) importée(s), {skipped} ignorée(s) (déjà présentes ou invalides)',
     import: 'Importer',
     salaryTitle: 'Rémunération',
     salarySubtitle: 'Recherche la rémunération de chaque candidature active sur le web (Glassdoor, Payscale, l\'annonce…) et la renseigne automatiquement.',
@@ -903,8 +906,8 @@ export const fr = {
     historyDeleted: '✓ {{count}} entrées d\'historique supprimées de {{jobCount}} candidature(s)',
     dangerZone: 'Zone dangereuse',
     dangerZoneSubtitle: 'Avertissement : cette action est irréversible',
-    resetCompletely: 'Réinitialiser complètement',
-    resetCompletelyHint: 'Supprime tout : candidatures, paramètres, données',
+    resetCompletely: 'Réinitialiser cet appareil',
+    resetCompletelyHint: 'Efface le cache local (candidatures, paramètres, clés API). Les données synchronisées seront re-téléchargées depuis le serveur.',
     yesDeleteEverything: 'Oui, tout supprimer',
   },
 

@@ -3,6 +3,7 @@ import { CLAUDE_MODEL } from '../constants/aiModel'
 import { getStatus } from '../hooks/useJobs'
 import { withUserApiKey } from '../services/apiKey'
 import { useDragDock } from '../hooks/useDragDock'
+import { localDateISO } from '../utils/localDate'
 
 const IS_DEV = import.meta.env.DEV
 
@@ -127,7 +128,7 @@ export default function ImageImport({ onImport, onClose, existingJobs }) {
         position: r.position || 'Poste non précisé',
         url: '',
         status: r.status || 'sent',
-        date: r.date || new Date().toISOString().split('T')[0],
+        date: r.date || localDateISO(),
         notes: r.notes || '',
       }))
     onImport(toImport)

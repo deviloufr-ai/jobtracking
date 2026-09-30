@@ -5,6 +5,7 @@ import { ScoreBadge } from './ScoreJob'
 import CompanyAvatar from './CompanyAvatar'
 import BottomSheet from './BottomSheet'
 import { getJobHealth, HEALTH_DOT_CLASS } from '../utils/jobHealth'
+import { localDateISO } from '../utils/localDate'
 
 // Sender label for a timeline entry — "You", a recruiter first name, or null.
 // Mirrors JobRow.getSourceLabel so mobile and desktop read the same.
@@ -94,7 +95,7 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
   const [newStep, setNewStep] = useState({
     status: displayStatusKey,
     note: '',
-    date: now.toISOString().split('T')[0],
+    date: localDateISO(now),
     time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
   })
 
@@ -182,7 +183,7 @@ function JobCard({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHis
       date: newStep.time ? `${newStep.date}T${newStep.time}:00` : newStep.date,
     })
     const n = new Date()
-    setNewStep({ status: displayStatusKey, note: '', date: n.toISOString().split('T')[0], time: `${pad(n.getHours())}:${pad(n.getMinutes())}` })
+    setNewStep({ status: displayStatusKey, note: '', date: localDateISO(n), time: `${pad(n.getHours())}:${pad(n.getMinutes())}` })
     setShowAddStep(false)
   }
 

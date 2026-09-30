@@ -5,8 +5,9 @@ import { fetchCalendarEvents } from '../services/calendar'
 import { buildJobsFromEmails } from '../hooks/useAutoRefresh'
 import { clearEmailCache } from '../services/claude'
 import { getStatus, isAtsRejection, findDuplicateJob } from '../hooks/useJobs'
+import { localDateISO } from '../utils/localDate'
 
-const STEPS = { idle: 'idle', connecting: 'connecting', fetching: 'fetching', parsing: 'parsing', review: 'review' }
+const STEPS ={ idle: 'idle', connecting: 'connecting', fetching: 'fetching', parsing: 'parsing', review: 'review' }
 
 const MONTH_OPTIONS = [
   { value: 14/30,  label: '2 semaines' },
@@ -35,9 +36,9 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
   const [dateMode, setDateMode] = useState('relative') // 'relative' | 'range'
   const [startDate, setStartDate] = useState(() => {
     const d = new Date(); d.setMonth(d.getMonth() - 3)
-    return d.toISOString().split('T')[0]
+    return localDateISO(d)
   })
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [endDate, setEndDate] = useState(() => localDateISO())
 
   // backward compat
   const gmailUser = connectedAccounts[0] || null
@@ -111,7 +112,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
 
       // Build date range param
       const dateRange = dateMode === 'range' && startDate && endDate
-        ? { startDate, endDate: endDate < new Date().toISOString().split('T')[0] ? endDate : new Date().toISOString().split('T')[0] }
+        ? { startDate, endDate: endDate < localDateISO() ? endDate : localDateISO() }
         : null
 
       // Extract companies from existing jobs for targeted search
@@ -395,7 +396,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
         company: r.company || 'Inconnu',
         position: r.position || 'Poste non précisé',
         url: '', status: r.status || 'sent',
-        date: r.date || new Date().toISOString().split('T')[0],
+        date: r.date || localDateISO(),
         notes: r.notes || '',
         lastSyncTime: now,
         _gmailId: r.gmailId, _fromEmail: r.fromEmail, _fromMe: r.fromMe,
@@ -705,7 +706,7 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
                         type="date"
                         value={endDate}
                         min={startDate}
-                        max={new Date().toISOString().split('T')[0]}
+                        max={localDateISO()}
                         onChange={e => setEndDate(e.target.value)}
                         className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200"
                       />

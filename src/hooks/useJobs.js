@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { loadSettings } from './useSettings'
+import { localDateISO } from '../utils/localDate'
 import { extractUrlsFromEmail, rankUrlsByJobRelevance, checkPositionUrl } from '../services/positionChecker'
 import { indexeddb } from '../services/indexeddb'
 import { syncManager, EXTRA_FIELDS } from '../services/syncManager'
@@ -189,9 +190,11 @@ export function hasInterviewProcess(job) {
 }
 
 // An interview candidature that has LEFT the active pipeline — won (offer/hired),
-// lost (rejected/cancelled), or shelved (archived). `done` is a resolved-past
-// interview. Everything else with an interview process is still in progress.
-const INTERVIEW_RESOLVED_STATUSES = new Set(['offer', 'done', 'rejected', 'rejected_ats', 'cancelled', 'archived'])
+// lost (rejected/cancelled), or shelved (archived). `done` is NOT resolved: the
+// interview happened but the verdict is pending — the process is still live and
+// it's precisely the moment a follow-up matters. Everything else with an
+// interview process is still in progress.
+const INTERVIEW_RESOLVED_STATUSES = new Set(['offer', 'rejected', 'rejected_ats', 'cancelled', 'archived'])
 
 // A candidature that reached an interview AND is still IN PROGRESS — mirrors the
 // "En cours" bucket on the Interviews board (SECTION_OF === 'active'). Drives the
@@ -1307,7 +1310,9 @@ function revalidateArchives(jobs) {
   return jobs.map(j => {
     if (j.status === 'archived') return j
 
-    const isSent = ['sent', 'reviewing', 'waiting'].includes(j.status)
+    // `done` = interview happened, no verdict yet — silence after N days is the
+    // same "no response" as a sent/reviewing candidature and archives the same way.
+    const isSent = ['sent', 'reviewing', 'waiting', 'done'].includes(j.status)
     const isRejected = ['rejected', 'rejected_ats', 'cancelled'].includes(j.status)
     const ref = lastActivityDate(j)
 
@@ -1585,6 +1590,32 @@ function markJobAsDeleted(company, position) {
   if (!deleted.includes(normalized)) {
     deleted.push(normalized)
     localStorage.setItem('jobtrackr_deleted_jobs', JSON.stringify(deleted))
+  }
+}
+
+// Lift the company/position tombstones that would swallow this candidature. The
+// fuzzy guard above is deliberately broad for Gmail re-imports, but nothing ever
+// cleared it: after deleting a stale "Acme / Product Manager", a later REAL
+// application at Acme (any title matching the same role family) was silently
+// "⏭️ Skipped deleted job" on every refresh, forever. A deliberate manual add is
+// the user saying "track this one" — drop the tombstones it matches.
+export function unmarkJobAsDeleted(company, position) {
+  let deleted
+  try { deleted = JSON.parse(localStorage.getItem('jobtrackr_deleted_jobs') || '[]') } catch { return }
+  if (!Array.isArray(deleted) || deleted.length === 0) return
+  const targetCo = normalizeCompany(company)
+  const targetPos = (position || '').toLowerCase().trim()
+  const kept = deleted.filter(tomb => {
+    const sep = tomb.indexOf('_')
+    const tombCo = sep === -1 ? tomb : tomb.slice(0, sep)
+    const tombPos = sep === -1 ? '' : tomb.slice(sep + 1)
+    if (tombCo !== targetCo) return true
+    // Same compatibility rule as isDeletedJob — whatever would block it, lift it.
+    return !(tombPos === targetPos || isGenericPosition(targetPos) || isGenericPosition(tombPos) ||
+      (targetPos && tombPos && (targetPos.includes(tombPos) || tombPos.includes(targetPos))))
+  })
+  if (kept.length !== deleted.length) {
+    localStorage.setItem('jobtrackr_deleted_jobs', JSON.stringify(kept))
   }
 }
 
@@ -1866,7 +1897,7 @@ export function useJobs() {
       status,
       id: crypto.randomUUID(),
       updated_at: new Date().toISOString(),
-      sentAt: ['sent','reviewing','waiting'].includes(status) ? (data.date || new Date().toISOString().split('T')[0]) : undefined,
+      sentAt: ['sent','reviewing','waiting'].includes(status) ? (data.date || localDateISO()) : undefined,
       positionLinks: positionLinks || [],
       positionChecks: {},
       history: data._history || [{
@@ -1886,6 +1917,12 @@ export function useJobs() {
     delete job._fromMe
     delete job._history
     delete job._emailBody
+
+    // A deliberate (non-Gmail) add lifts any company/position tombstone that
+    // would otherwise re-skip this candidature on every refresh.
+    if (!data._gmailId && !data._history && !data._fromEmail) {
+      unmarkJobAsDeleted(job.company, job.position)
+    }
 
     setJobs(prev => [job, ...prev])
 
@@ -1912,8 +1949,13 @@ export function useJobs() {
   }
 
   const updateJob = (id, data) => {
-    // Extract job BEFORE state update to avoid race condition
-    const job = jobs.find(j => j.id === id)
+    // Read the CURRENT job from jobsRef, not the render closure: useAutoRefresh
+    // captures one updateJob for a whole run and calls it several times for the
+    // same job (calendar link, then lastSyncTime…). With the closure, the second
+    // call rebuilt `final` from the pre-first-call snapshot and silently reverted
+    // the first (meeting link flip-flopping every hour). jobsRef is written
+    // through below so back-to-back calls in one tick see each other.
+    const job = (jobsRef.current || jobs).find(j => j.id === id) || jobs.find(j => j.id === id)
     if (!job) return
 
     // If history shrank, tombstone the removed entries so the additive poll
@@ -1940,8 +1982,10 @@ export function useJobs() {
       }
     } catch { /* ignore */ }
 
-    // Update local state
+    // Update local state (+ write-through to jobsRef so a second updateJob for the
+    // same job in this tick builds on this result, not on the stale render).
     setJobs(prev => prev.map(j => j.id !== id ? j : final))
+    if (Array.isArray(jobsRef.current)) jobsRef.current = jobsRef.current.map(j => j.id !== id ? j : final)
 
     // Save to IndexedDB immediately (fallback if coordinator not ready)
     indexeddb.saveJob(final).catch(err => console.warn('Failed to save job:', err))
@@ -1997,7 +2041,7 @@ export function useJobs() {
       status,
       updated_at: new Date().toISOString(),
       history: [...(job.history || []), {
-        date: new Date().toISOString().split('T')[0],
+        date: localDateISO(),
         status,
         note: st ? `Statut mis à jour → ${st.label}` : 'Statut mis à jour',
       }]
@@ -2212,7 +2256,7 @@ export function useJobs() {
         history: [
           ...(job.history || []),
           {
-            date: new Date().toISOString().split('T')[0],
+            date: localDateISO(),
             status: 'rejected',
             note: `🔍 Poste fermé — détecté: ${result.reason || 'Position not available'}`,
           }
@@ -2251,6 +2295,9 @@ export function useJobs() {
 
   const clearDeletedJobs = async () => {
     localStorage.removeItem(DELETED_JOB_IDS_KEY)
+    // The fuzzy company/position guard (Gmail re-import) must go too — it was the
+    // one list "clear deleted jobs" never touched, so re-imports stayed blocked.
+    localStorage.removeItem('jobtrackr_deleted_jobs')
     // Also erase the remote tombstones + reset the poll watermark, otherwise the
     // next poll re-applies them and the re-imported jobs vanish again.
     try {

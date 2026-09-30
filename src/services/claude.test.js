@@ -1,5 +1,26 @@
 import { describe, it, expect } from 'vitest'
-import { isBoardSendConfirmation, isHelloWorkOfferGone, isRejectionEmail } from './claude'
+import { isBoardSendConfirmation, isHelloWorkOfferGone, isRejectionEmail, enqueueClaudeRequest } from './claude'
+
+describe('enqueueClaudeRequest — one rejected call must not poison the queue', () => {
+  it('delivers a rejection to its own caller and still runs the next call', async () => {
+    await expect(enqueueClaudeRequest(async () => { throw new Error('429 boom') })).rejects.toThrow('429 boom')
+    // Previously the chain tail WAS the rejected promise, so this rejected with
+    // the same '429 boom' without ever running fn.
+    await expect(enqueueClaudeRequest(async () => 'ok')).resolves.toBe('ok')
+  })
+
+  it('still serialises: the second call does not start before the first settles', async () => {
+    const order = []
+    let release
+    const first = enqueueClaudeRequest(() => new Promise(r => { release = r }).then(() => order.push('first')))
+    const second = enqueueClaudeRequest(async () => { order.push('second') })
+    await Promise.resolve()
+    expect(order).toEqual([])
+    release()
+    await Promise.all([first, second])
+    expect(order).toEqual(['first', 'second'])
+  })
+})
 
 describe('isBoardSendConfirmation — job-board "application forwarded" = sent, not reviewing', () => {
   it('matches an Indeed send confirmation', () => {

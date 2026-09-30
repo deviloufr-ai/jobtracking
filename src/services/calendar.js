@@ -1,6 +1,7 @@
 // Google Calendar service - reuses Gmail OAuth token (same scope request)
 import { getAccessToken, getConnectedAccounts, ensureValidToken } from './gmail'
 import { distinctiveCompanyToken } from '../utils/companyMatch'
+import { localDateISO } from '../utils/localDate'
 
 function extractLink(text = '') {
   const patterns = [
@@ -51,7 +52,9 @@ async function fetchCalendarEventsForToken(token, companyName, monthsBack = 12) 
     const data = await res.json()
     return (data.items || []).map(e => {
       const start = e.start?.dateTime || e.start?.date || ''
-      const date = start ? new Date(start).toISOString().split('T')[0] : ''
+      // Local calendar day (an all-day event's `date` is already a plain day).
+      // The UTC day put a 00:30 interview on the previous day in the timeline.
+      const date = !start ? '' : /^\d{4}-\d{2}-\d{2}$/.test(start) ? start : localDateISO(start)
       const isUpcoming = start && new Date(start) > new Date()
       const desc = e.description || ''
       const loc = e.location || ''

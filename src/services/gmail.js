@@ -19,6 +19,18 @@ export class GmailScopeError extends Error {
     this.account = account || null
   }
 }
+// The refresh token itself was rejected (revoked, expired, or an old-format
+// account that never had one): a silent refresh can't recover and the account
+// needs the interactive connectGmail() popup. Subclass of GmailScopeError on
+// purpose — the remedy is identical (reconnect the account), so every caller that
+// already collects scope failures into a "reconnect X" prompt surfaces this too.
+export class GmailReauthRequiredError extends GmailScopeError {
+  constructor(account, reason = '') {
+    super(account)
+    this.message = `gmail_reauth_required${reason ? `: ${reason}` : ''}`
+    this.name = 'GmailReauthRequiredError'
+  }
+}
 export function isInsufficientScopeError(e) {
   if (e instanceof GmailScopeError) return true
   const m = (e?.message || '').toLowerCase()
@@ -375,6 +387,11 @@ export async function connectGmail(hint = '') {
         // account would NOT re-request the missing scope and it stays unreadable.
         prompt: 'consent',
         ux_mode: 'popup',
+        // Without this GIS reports a blocked/closed popup nowhere and the promise
+        // never settles (a background caller then hangs forever on it).
+        error_callback: (err) => {
+          reject(new Error(err?.message || err?.type || 'oauth_popup_failed'))
+        },
         callback: async (response) => {
           if (response.error) { reject(new Error(response.error)); return }
 
@@ -457,8 +474,16 @@ export async function adoptGoogleAccount(accessToken, refreshTokenValue) {
   return { token: accessToken, user }
 }
 
-// Auto-refresh token if expired (using refresh token for silent refresh)
-export async function ensureValidToken(email = '') {
+// Auto-refresh token if expired (using refresh token for silent refresh).
+// `interactive` (default FALSE) decides what happens when the silent refresh
+// can't help: open the connectGmail() popup, or throw. Every current caller runs
+// from a background path (auto-refresh timer, per-job sync, calendar widgets)
+// where GIS has no user gesture — the popup was blocked, nothing rejected, and
+// the awaiting caller hung for the session (auto-refresh's `refreshingRef` never
+// released). Background callers now get a typed GmailReauthRequiredError (a
+// GmailScopeError, so the existing "reconnect X" prompts pick it up); the Connect
+// buttons call connectGmail() directly and are unaffected.
+export async function ensureValidToken(email = '', { interactive = false } = {}) {
   const targetEmail = email || Object.keys(accounts)[0] || null
   if (!targetEmail) return null
 
@@ -473,6 +498,8 @@ export async function ensureValidToken(email = '') {
     // Token expired or expiring soon
     if (acct.refreshToken) {
       // Silent refresh using refresh token (no user interaction)
+      let rejected = null  // the refresh token itself was refused (4xx, e.g. invalid_grant)
+      let transient = null // network / 5xx — not a consent problem
       try {
         const refreshRes = await fetch('/api/oauth', {
           method: 'POST',
@@ -480,36 +507,39 @@ export async function ensureValidToken(email = '') {
           body: JSON.stringify({ refreshToken: acct.refreshToken }),
         })
 
-        if (!refreshRes.ok) {
-          const err = await refreshRes.json()
-          console.warn('Silent token refresh failed:', err.error)
-          // Fall back to interactive re-auth
-          await connectGmail(targetEmail)
-          return accounts[targetEmail]?.token || acct.token
+        if (refreshRes.ok) {
+          const newTokens = await refreshRes.json()
+          accounts[targetEmail] = {
+            ...acct,
+            token: newTokens.accessToken,
+            tokenExpiry: new Date(Date.now() + (newTokens.expiresIn || 3600) * 1000).toISOString(),
+          }
+          saveAccounts(accounts)
+          console.log(`🔄 Silently refreshed token for ${targetEmail}`)
+          return newTokens.accessToken
         }
 
-        const newTokens = await refreshRes.json()
-        accounts[targetEmail] = {
-          ...acct,
-          token: newTokens.accessToken,
-          tokenExpiry: new Date(Date.now() + (newTokens.expiresIn || 3600) * 1000).toISOString(),
-        }
-        saveAccounts(accounts)
-        console.log(`🔄 Silently refreshed token for ${targetEmail}`)
-        return newTokens.accessToken
+        const err = await refreshRes.json().catch(() => ({}))
+        console.warn('Silent token refresh failed:', err.error)
+        if (refreshRes.status < 500) rejected = err.error || `HTTP ${refreshRes.status}`
+        else transient = new Error(`Silent refresh failed: ${err.error || refreshRes.status}`)
       } catch (e) {
         console.warn('Silent refresh error:', e.message)
-        // Fall back to interactive re-auth
-        try {
-          await connectGmail(targetEmail)
-          return accounts[targetEmail]?.token || acct.token
-        } catch (reAuthErr) {
-          console.warn('Re-auth also failed:', reAuthErr.message)
-          return acct.token // Return stale token as last resort
-        }
+        transient = e
+      }
+      // Background caller: report, never open a popup it can't show.
+      if (!interactive) throw transient || new GmailReauthRequiredError(targetEmail, rejected)
+      // Fall back to interactive re-auth
+      try {
+        await connectGmail(targetEmail)
+        return accounts[targetEmail]?.token || acct.token
+      } catch (reAuthErr) {
+        console.warn('Re-auth also failed:', reAuthErr.message)
+        return acct.token // Return stale token as last resort
       }
     } else {
       // No refresh token (old format), fall back to interactive re-auth
+      if (!interactive) throw new GmailReauthRequiredError(targetEmail, 'no refresh token')
       console.log(`No refresh token for ${targetEmail}, triggering interactive re-auth`)
       try {
         await connectGmail(targetEmail)
@@ -726,17 +756,23 @@ export async function fetchJobEmails(maxResults = null, months = null, dateRange
   // Smart period: 3 months on first import, 1 day on refreshes with lastSyncTime
   const actualMonths = months !== null ? months : (lastSyncTime ? 1/30 : 3)
 
-  // Ensure all tokens are valid and refresh if expired
+  // Ensure all tokens are valid and refresh if expired. An account whose refresh
+  // token is dead (GmailReauthRequiredError) is skipped like a scope failure below,
+  // so one stale account can't take the others' emails down with it.
+  const scopeErrors = []
   const validTokens = await Promise.all(
-    accountEntries.map(([email]) => ensureValidToken(email))
+    accountEntries.map(([email]) => ensureValidToken(email).catch(e => {
+      if (isInsufficientScopeError(e)) { scopeErrors.push(email); return null }
+      throw e
+    }))
   )
 
   // Fetch from all accounts in parallel using valid tokens. Tolerate a per-account
   // scope failure: keep the working accounts' emails and collect the broken ones so
   // the caller can prompt a reconnect (throwing here would discard everything).
-  const scopeErrors = []
   const results = await Promise.all(
     accountEntries.map(async ([email], i) => {
+      if (!validTokens[i]) return []
       try {
         return await _fetchJobEmails(validTokens[i], maxResults, actualMonths, dateRange, lastSyncTime, companies, email)
       } catch (e) {
@@ -746,7 +782,20 @@ export async function fetchJobEmails(maxResults = null, months = null, dateRange
     })
   )
 
-  // Merge and deduplicate by email ID + data (prevents same email from multiple queries)
+  const merged = dedupeFetchedEmails(results)
+  // Report accounts whose Gmail scope is missing (side-channel on the array so no
+  // caller signature changes). Callers that care read merged.scopeErrors.
+  if (scopeErrors.length) merged.scopeErrors = scopeErrors
+  return merged
+}
+
+// Merge the per-account result lists and deduplicate. Gmail message ids are
+// per-mailbox, so the same mail delivered to two connected accounts (an alias, a
+// forward) carries two different ids — the secondary key collapses those. It
+// must NOT collapse two distinct mails that merely share sender + subject + day
+// (two Indeed "Candidature envoyée" on the same day = two applications; the
+// second one was silently never imported), so the key also carries the snippet.
+export function dedupeFetchedEmails(results) {
   const seenIds = new Set()
   const seenData = new Set()
   const merged = []
@@ -754,9 +803,9 @@ export async function fetchJobEmails(maxResults = null, months = null, dateRange
     for (const e of emails) {
       // Primary dedup: email ID
       if (seenIds.has(e.id)) continue
-      // Secondary dedup: prevent same email from appearing via different queries
+      // Secondary dedup: the same mail seen through another mailbox / query
       // e.g., query ⑤ and ⑤b both returning the same Winside email
-      const dataKey = `${e.from || ''}_${e.subject || ''}_${e.date || ''}`
+      const dataKey = `${e.from || ''}_${e.subject || ''}_${e.date || ''}_${(e.snippet || e.body || '').slice(0, 200)}`
       if (seenData.has(dataKey)) continue
 
       seenIds.add(e.id)
@@ -764,9 +813,6 @@ export async function fetchJobEmails(maxResults = null, months = null, dateRange
       merged.push(e)
     }
   }
-  // Report accounts whose Gmail scope is missing (side-channel on the array so no
-  // caller signature changes). Callers that care read merged.scopeErrors.
-  if (scopeErrors.length) merged.scopeErrors = scopeErrors
   return merged
 }
 

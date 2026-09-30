@@ -264,14 +264,21 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
     // refusal email rather than starting a new conversation. The subject the user
     // sees/edits is used as-is.
     let threadId, inReplyTo
-    if (type === 'remerciement' && refusalEntry?.gmailId) {
-      const ctx = await getReplyContext(refusalEntry.gmailId, receivedBy || undefined)
-      if (ctx?.threadId) {
-        threadId = ctx.threadId
-        inReplyTo = ctx.messageId || undefined
-      }
-    }
     try {
+      // Inside the try: a rejected lookup (expired token, network) used to escape
+      // as an unhandled rejection and leave the Send button stuck on "Envoi…".
+      // Threading is best-effort — fall back to a fresh conversation.
+      if (type === 'remerciement' && refusalEntry?.gmailId) {
+        try {
+          const ctx = await getReplyContext(refusalEntry.gmailId, receivedBy || undefined)
+          if (ctx?.threadId) {
+            threadId = ctx.threadId
+            inReplyTo = ctx.messageId || undefined
+          }
+        } catch (ctxErr) {
+          console.warn('Reply context lookup failed, sending as a new thread:', ctxErr)
+        }
+      }
       await sendEmail({ to: to.trim(), subject: subject.trim(), body: draft, fromAccount: receivedBy || undefined, threadId, inReplyTo })
       setSendStatus('sent')
 

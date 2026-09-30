@@ -13,6 +13,12 @@ const STORES = {
   METADATA: 'metadata'
 }
 
+// Last timestamp handed to a queued mutation. Two mutations enqueued in the same
+// millisecond would otherwise tie, and a tie falls back to the store's primary
+// key (a random UUID) — i.e. arbitrary replay order. Strictly increasing keeps
+// the queue FIFO within a session; across reloads the clock has moved on anyway.
+let lastQueueTimestamp = 0
+
 class IndexedDBService {
   constructor() {
     this.db = null
@@ -214,9 +220,10 @@ class IndexedDBService {
   // Sync Queue
   async addToQueue(mutation) {
     const store = await this.getStore(STORES.SYNC_QUEUE, 'readwrite')
+    lastQueueTimestamp = Math.max(Date.now(), lastQueueTimestamp + 1)
     const data = {
       ...mutation,
-      timestamp: Date.now(),
+      timestamp: lastQueueTimestamp,
       status: 'pending'
     }
     return new Promise((resolve, reject) => {
@@ -226,13 +233,19 @@ class IndexedDBService {
     })
   }
 
+  // Pending mutations in enqueue (FIFO) order. index.getAll() returns rows in
+  // primary-key order — a random UUID here — so an insert queued before an update
+  // of the same record could replay AFTER it (update matches 0 rows, then the
+  // insert re-sends the pre-update snapshot). Sort on the enqueue timestamp.
   async getQueuedMutations() {
     const store = await this.getStore(STORES.SYNC_QUEUE)
     const index = store.index('status')
     return new Promise((resolve, reject) => {
       const request = index.getAll('pending')
       request.onerror = () => reject(request.error)
-      request.onsuccess = () => resolve(request.result || [])
+      request.onsuccess = () => resolve(
+        (request.result || []).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
+      )
     })
   }
 
@@ -245,8 +258,8 @@ class IndexedDBService {
     })
   }
 
-  // Rewrite a queued mutation in place (attempt count, last error). Same key, so
-  // its FIFO position in the timestamp index is preserved.
+  // Rewrite a queued mutation in place (attempt count, last error). Same key and
+  // same `timestamp`, so its FIFO position in getQueuedMutations() is preserved.
   async updateQueuedMutation(mutation) {
     const store = await this.getStore(STORES.SYNC_QUEUE, 'readwrite')
     return new Promise((resolve, reject) => {

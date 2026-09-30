@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { STATUSES, getStatusLabel } from '../hooks/useJobs'
 
 // Statuses that are no longer "in play" — excluded from the ongoing total.
-const CLOSED = new Set(['rejected', 'rejected_ats', 'cancelled', 'archived', 'done'])
+// `done` (interview happened, verdict pending) is still in play.
+const CLOSED = new Set(['rejected', 'rejected_ats', 'cancelled', 'archived'])
 
 // Compact per-status count strip shown just above the filter bar. Gives an
 // at-a-glance read of how many candidatures sit in each status, headlined by the

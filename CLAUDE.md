@@ -186,13 +186,22 @@ Anything prefixed `VITE_` is public. Never move a secret behind that prefix.
 
 ## Job statuses
 
-`todo` | `sent` | `reviewing` | `interview` | `waiting` | `offer` | `rejected` | `rejected_ats` | `cancelled` | `archived`
+`todo` | `sent` | `reviewing` | `interview` | `done` | `waiting` | `offer` | `rejected` | `rejected_ats` | `cancelled` | `archived`
+
+`done` ("Entretien passé" / "Interview done") is what an `interview` entry resolves to once its day has
+passed (`resolveInterviewStatus`, calendar auto-complete). It is an **open** status — verdict pending —
+not an outcome: it counts as ongoing, stays on the Kanban, sits under "En cours" on the Préparation
+board, triggers the post-interview relance rule, and auto-archives like `sent` after the no-response
+window. Treat it as closed nowhere (that misfiling was audit finding #6, 2026-09-30).
 
 ## Business rules
 
 - `sent` / `reviewing` / `waiting` with no response after **60 days** → auto-archived
 - `rejected` / `rejected_ats` / `cancelled` after **90 days** → auto-archived
 - Notes containing ` | ` are split into separate history entries (`splitPipeNotes`)
+- **"Today" is the local calendar day**: use `localDateISO()` / `localTimeHM()` (`src/utils/localDate.js`),
+  never `new Date().toISOString().split('T')[0]` (UTC day — a Paris user's 00:30 entry landed on
+  yesterday). Fixture/demo data and filenames are the only places the UTC form is still acceptable.
 - ATS rejections auto-detected: ashbyhq, greenhouse, lever, workable, teamtailor
 - **`mergeSameDateEntries` is NOT applied.** The function (defined at `useJobs.js:777`) exists
   but is deliberately skipped (see the "Skip mergeSameDateEntries" comment near `useJobs.js:2069`)

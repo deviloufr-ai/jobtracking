@@ -170,7 +170,10 @@ function getUrgentRules(t = (key) => key) {
     // Post-interview silence — the interview happened (no upcoming event) and
     // there's been no feedback for a while. Distinct from the "prepare interview"
     // nudges below, which only help BEFORE the interview.
-    match: j => j.status === 'interview' && !hasUpcomingCalendar(j) && daysSince(j) > s.followUpReviewingDays && hasRealEmail(j) && !hasFollowUpSent(j),
+    // `done` is the resolved-past form of `interview` (the day has passed) — that's
+    // exactly the post-interview silence this rule is for; without it no relance
+    // was ever suggested once an interview date went by.
+    match: j => (j.status === 'interview' || j.status === 'done') && !hasUpcomingCalendar(j) && daysSince(j) > s.followUpReviewingDays && hasRealEmail(j) && !hasFollowUpSent(j),
     icon: '📨', urgency: 'medium', emailType: 'relance',
     label: job => formatTrans(t('nextActionRules.followUpInterview'), { company: job.company }),
     tip: job => formatTrans(t('nextActionRules.interviewNoFeedback'), { days: Math.round(daysSince(job)) }),

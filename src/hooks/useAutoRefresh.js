@@ -4,6 +4,7 @@ import { parseEmailsForJobs, validateAndCleanJobs } from '../services/claude'
 import { fetchCalendarEvents } from '../services/calendar'
 import { enrichJobTimeline } from '../services/enrichTimeline'
 import { matchEventToJob } from '../utils/meetingMatch'
+import { localDateISO } from '../utils/localDate'
 import { extractJobUrlsFromEmail, rankUrlsByJobRelevance } from '../services/positionChecker'
 import { isAtsRejection, isDeletedJob, mergeHistoryBySameDayTopic, splitMeetingDatesInHistory, deriveStatusFromHistory, historyEntryKey, ATS_DOMAINS } from './useJobs'
 import { normalize, isJobBoard, JOB_BOARD_NAMES } from '../constants/jobBoards'
@@ -882,7 +883,7 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
             company: p.company || 'Inconnu',
             position: p.position || 'Poste non précisé',
             url: '', status: p.status || 'sent',
-            date: p.date || new Date().toISOString().split('T')[0],
+            date: p.date || localDateISO(),
             notes: p.notes || '',
             lastSyncTime: now,
             _history: p.history?.length > 0 ? p.history : undefined,

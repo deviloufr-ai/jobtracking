@@ -1,6 +1,10 @@
 import { applyCors, getClientIp, rateLimit, enforceSharedKeyQuota } from './_lib/http.js'
 import { resolveAiCredentials, callAiMessages, missingKeyMessage } from './_lib/aiProvider.js'
 
+// Same 8 MB decoded bound as compress-pdf, expressed in base64 chars (×4/3) since
+// the blob is forwarded as-is — bounds the request body + the AI call size.
+const MAX_PDF_BASE64_CHARS = Math.ceil(8 * 1024 * 1024 * 4 / 3)
+
 export default async function handler(req, res) {
   if (applyCors(req, res, 'POST, OPTIONS')) return
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return }
@@ -10,7 +14,8 @@ export default async function handler(req, res) {
 
   try {
     const { base64, filename } = req.body
-    if (!base64) { res.status(400).json({ error: 'No PDF data' }); return }
+    if (!base64 || typeof base64 !== 'string') { res.status(400).json({ error: 'No PDF data' }); return }
+    if (base64.length > MAX_PDF_BASE64_CHARS) { res.status(413).json({ error: 'PDF too large (max 8 MB).' }); return }
 
     // Extract text from the PDF natively. Claude and Gemini accept the base64
     // document as an inline block; an OpenAI-compatible provider can't parse a

@@ -159,18 +159,24 @@ export async function enforceSharedKeyQuota(req, weight = 1) {
     // callers both read N and both write N+1, bypassing the per-IP cap.
     for (let attempt = 0; attempt < 5; attempt++) {
       const getRes = await fetch(`${rowUrl}&select=count,window_start`, { headers })
-      const rows = getRes.ok ? await getRes.json() : []
+      // A failed read must NOT look like "new IP": the insert below would reset the
+      // count to `weight`, so any storage blip would hand out a fresh free trial.
+      // Throw → the catch below applies the in-memory cap instead.
+      if (!getRes.ok) throw new Error(`shared_key_usage read failed: HTTP ${getRes.status}`)
+      const rows = await getRes.json()
       const existing = rows[0]
       const windowExpired = existing && (now - new Date(existing.window_start).getTime() > windowMs)
 
       // New IP, or its window rolled over → start a fresh window at `weight`.
       // merge-duplicates makes the insert idempotent under the ip unique constraint.
       if (!existing || windowExpired) {
-        await fetch(`${cfg.url}/rest/v1/shared_key_usage`, {
+        const insRes = await fetch(`${cfg.url}/rest/v1/shared_key_usage`, {
           method: 'POST',
           headers: { ...headers, Prefer: 'resolution=merge-duplicates,return=minimal' },
           body: JSON.stringify({ ip, count: weight, window_start: new Date(now).toISOString(), updated_at: new Date(now).toISOString() }),
         })
+        // Nothing recorded → don't allow freely; same in-memory fallback as a thrown error.
+        if (!insRes.ok) throw new Error(`shared_key_usage insert failed: HTTP ${insRes.status}`)
         return { ok: weight <= limit, used: weight, limit }
       }
 

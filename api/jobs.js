@@ -328,6 +328,12 @@ export default async function handler(req, res) {
     }
 
     const text = await response.text()
+    // France Travail answers an empty result set with 204 No Content: the body is
+    // '' (which is `ok`), and JSON.parse('') would throw → 500. Hand the client the
+    // empty shape it already tolerates (`data.resultats || []`).
+    if (response.status === 204 || !text.trim()) {
+      return res.status(200).json(provider === 'francetravail' ? { resultats: [] } : {})
+    }
     let data
     try {
       data = JSON.parse(text)

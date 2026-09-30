@@ -14,7 +14,13 @@ export default function MobileHome({ jobs, userName, onOpenJob, onDraftEmail, on
   const tr = (key, fr, en) => { const v = t(key); return v && v !== key ? v : (isEN ? en : fr) }
 
   const eff = (j) => deriveStatusFromHistory(j.history) || j.status
-  const active = jobs.filter(j => !['rejected', 'rejected_ats', 'cancelled', 'archived'].includes(eff(j)))
+  // archived/cancelled are explicit terminal flags on the RAW status (auto-archive
+  // writes no history entry), so check both — deriving from history alone counted
+  // every auto-archived candidature as active ("157 actives" vs 36 on desktop) and
+  // fed them to the next-action engine (same guard as NextAction's activeJobs).
+  const active = jobs.filter(j =>
+    !['cancelled', 'archived'].includes(j.status) &&
+    !['rejected', 'rejected_ats', 'cancelled', 'archived'].includes(eff(j)))
   const interviews = jobs.filter(j => eff(j) === 'interview').length
   const offers = jobs.filter(j => eff(j) === 'offer').length
 

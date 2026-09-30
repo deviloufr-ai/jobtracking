@@ -4,6 +4,7 @@ import { useExtensionImport } from './hooks/useExtensionImport'
 import { useExtensionDetect } from './hooks/useExtensionDetect'
 import { useExtensionUpdate } from './hooks/useExtensionUpdate'
 import { EXTENSION_XPI_PATH } from './constants/extension'
+import { localDateISO } from './utils/localDate'
 import { Capacitor } from '@capacitor/core'
 
 // The Firefox extension is irrelevant inside the native Android app — hide every
@@ -943,7 +944,7 @@ export default function App() {
   const handleEmailSent = (type, to) => {
     if (!emailDraft?.job) return
     const job = emailDraft.job
-    const today = new Date().toISOString().split('T')[0]
+    const today = localDateISO()
 
     let note = ''
     if (type === 'remerciement') {

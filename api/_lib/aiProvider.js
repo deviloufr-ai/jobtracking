@@ -14,7 +14,7 @@
 // Only Anthropic has a shared project key (the free trial). Gemini / OpenAI
 // require the user to bring their own key — there is no shared fallback for them.
 
-import { assertSafeUrl } from './http.js'
+import { assertSafeUrl, safeFetch } from './http.js'
 
 export const PROVIDERS = ['anthropic', 'gemini', 'openai']
 
@@ -226,7 +226,10 @@ async function callOpenAI({ apiKey, baseUrl, model, system, messages, max_tokens
     oaMessages.push({ role: m.role === 'assistant' ? 'assistant' : 'user', content: toOpenAIContent(m.content) })
   }
 
-  const response = await fetch(endpoint, {
+  // safeFetch (not plain fetch): re-validates every redirect hop and pins the
+  // socket to the checked IP, so a redirect or DNS rebind can't slip past the
+  // one-shot assertSafeUrl above.
+  const response = await safeFetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({ model, max_tokens: Number(max_tokens) || 2000, messages: oaMessages }),
@@ -235,7 +238,11 @@ async function callOpenAI({ apiKey, baseUrl, model, system, messages, max_tokens
   let data
   try { data = await response.json() } catch { return { status: response.status || 502, data: { error: 'Provider returned invalid JSON' } } }
   if (!response.ok) {
-    return { status: response.status, data: { error: data?.error?.message || data?.error || `Provider API ${response.status}` } }
+    // Upstream error bodies are user-controlled (their own endpoint) — surface a
+    // bounded excerpt, not the whole thing.
+    const raw = data?.error?.message || data?.error
+    const msg = typeof raw === 'string' ? raw : (raw ? JSON.stringify(raw) : '')
+    return { status: response.status, data: { error: (msg || `Provider API ${response.status}`).slice(0, 300) } }
   }
   const choice = data.choices?.[0]
   const text = typeof choice?.message?.content === 'string'

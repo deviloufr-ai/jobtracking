@@ -1,5 +1,110 @@
-import { describe, it, expect } from 'vitest'
-import { isInsufficientScopeError, GmailScopeError, encodeMimeHeader } from './gmail'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import {
+  isInsufficientScopeError, GmailScopeError, GmailReauthRequiredError, encodeMimeHeader,
+  dedupeFetchedEmails, ensureValidToken, autoReuseStoredTokens,
+} from './gmail'
+
+describe('dedupeFetchedEmails — secondary key must not merge distinct same-day mails', () => {
+  const indeed = (id, snippet) => ({
+    id, from: 'noreply@indeed.com', subject: 'Candidature envoyée', date: '2026-09-30', snippet, body: snippet,
+  })
+
+  it('keeps two different Indeed confirmations sent the same day', () => {
+    const out = dedupeFetchedEmails([[indeed('m1', 'envoyés à Hublo'), indeed('m2', 'envoyés à Doctolib')]])
+    expect(out.map(e => e.id)).toEqual(['m1', 'm2'])
+  })
+
+  it('still collapses the same mail seen through two mailboxes (different Gmail ids)', () => {
+    const out = dedupeFetchedEmails([[indeed('acct-a-1', 'envoyés à Hublo')], [indeed('acct-b-7', 'envoyés à Hublo')]])
+    expect(out.map(e => e.id)).toEqual(['acct-a-1'])
+  })
+
+  it('collapses the same message id returned by two queries', () => {
+    const out = dedupeFetchedEmails([[indeed('m1', 'x')], [indeed('m1', 'x')]])
+    expect(out).toHaveLength(1)
+  })
+})
+
+describe('ensureValidToken — background callers never open the OAuth popup', () => {
+  const EMAIL = 'me@example.com'
+  const seed = (acct) => {
+    localStorage.setItem('jt_gmail_accounts', JSON.stringify({ [EMAIL]: { token: 'stale', user: { email: EMAIL }, ...acct } }))
+    autoReuseStoredTokens()
+  }
+  const expired = new Date(Date.now() - 60000).toISOString()
+  const oauthResponse = (status, body) => ({ ok: status < 300, status, json: async () => body })
+  let initCodeClient
+
+  beforeEach(() => {
+    localStorage.clear()
+    initCodeClient = vi.fn()
+    window.google = { accounts: { oauth2: { initCodeClient } } }
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+    delete window.google
+    localStorage.clear()
+    autoReuseStoredTokens()
+  })
+
+  it('returns the stored token untouched while it is still valid', async () => {
+    seed({ refreshToken: 'r', tokenExpiry: new Date(Date.now() + 3600000).toISOString() })
+    vi.spyOn(globalThis, 'fetch')
+    await expect(ensureValidToken(EMAIL)).resolves.toBe('stale')
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('silently refreshes an expiring token', async () => {
+    seed({ refreshToken: 'r', tokenExpiry: expired })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(oauthResponse(200, { accessToken: 'fresh', expiresIn: 3600 }))
+    await expect(ensureValidToken(EMAIL)).resolves.toBe('fresh')
+    expect(JSON.parse(localStorage.getItem('jt_gmail_accounts'))[EMAIL].token).toBe('fresh')
+  })
+
+  it('throws a typed GmailReauthRequiredError when Google refuses the refresh token (no popup)', async () => {
+    seed({ refreshToken: 'r', tokenExpiry: expired })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(oauthResponse(400, { error: 'invalid_grant' }))
+    const err = await ensureValidToken(EMAIL).catch(e => e)
+    expect(err).toBeInstanceOf(GmailReauthRequiredError)
+    expect(err.account).toBe(EMAIL)
+    expect(err.message).toMatch(/invalid_grant/)
+    // The existing "reconnect X" prompts key off this predicate.
+    expect(isInsufficientScopeError(err)).toBe(true)
+    expect(initCodeClient).not.toHaveBeenCalled()
+  })
+
+  it('throws a plain error on a transient failure (5xx / network) — not a reconnect prompt', async () => {
+    seed({ refreshToken: 'r', tokenExpiry: expired })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(oauthResponse(500, { error: 'Server misconfigured' }))
+    let err = await ensureValidToken(EMAIL).catch(e => e)
+    expect(err).toBeInstanceOf(Error)
+    expect(err).not.toBeInstanceOf(GmailScopeError)
+
+    fetch.mockRejectedValue(new TypeError('Failed to fetch'))
+    err = await ensureValidToken(EMAIL).catch(e => e)
+    expect(err).toBeInstanceOf(TypeError)
+    expect(initCodeClient).not.toHaveBeenCalled()
+  })
+
+  it('throws GmailReauthRequiredError for an old-format account with no refresh token', async () => {
+    seed({ tokenExpiry: expired })
+    await expect(ensureValidToken(EMAIL)).rejects.toBeInstanceOf(GmailReauthRequiredError)
+    expect(initCodeClient).not.toHaveBeenCalled()
+  })
+
+  it('interactive: true falls back to the popup, and a blocked popup now rejects instead of hanging', async () => {
+    seed({ refreshToken: 'r', tokenExpiry: expired })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(oauthResponse(400, { error: 'invalid_grant' }))
+    initCodeClient.mockImplementation((opts) => ({
+      // GIS reports a blocked popup ONLY through error_callback.
+      requestCode: () => opts.error_callback({ type: 'popup_failed_to_open', message: 'Popup blocked' }),
+    }))
+    // connectGmail rejected → last-resort stale token, exactly as before.
+    await expect(ensureValidToken(EMAIL, { interactive: true })).resolves.toBe('stale')
+    expect(initCodeClient).toHaveBeenCalledTimes(1)
+  })
+})
 
 describe('encodeMimeHeader', () => {
   it('leaves plain ASCII headers untouched', () => {

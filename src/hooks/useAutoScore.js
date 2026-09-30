@@ -1,9 +1,26 @@
 import { useEffect, useRef } from 'react'
 import { useCVs } from './useCVs'
 import { scoreJobMatch } from '../services/scoreJob'
+import { getAiProvider, getProviderKey, TRIAL_EXHAUSTED_FLAG } from '../services/apiKey'
 
 // Statuses where a CV-match score is no longer useful — skip to save API calls.
 const SKIP_STATUSES = new Set(['archived', 'rejected', 'rejected_ats', 'cancelled'])
+
+// Cap scoring calls per session (mirrors useAutoSalary): a fresh device with a CV
+// and hundreds of imported jobs used to fan out into hundreds of trial calls on
+// load. New jobs trickle in; each session tops up a batch.
+const MAX_PER_SESSION = 25
+
+// Only Claude has a shared project key (free trial); Gemini / OpenAI-compatible
+// need the user's own key. Without this gate, provider=Gemini + no key burned a
+// failing `/api/claude → 401` per job on EVERY page load, silently. A shared-key
+// caller whose trial is exhausted is skipped too (402 on each call otherwise).
+function canScore() {
+  const provider = getAiProvider()
+  if (getProviderKey(provider)) return true
+  if (provider !== 'anthropic') return false
+  try { return localStorage.getItem(TRIAL_EXHAUSTED_FLAG) !== '1' } catch { return true }
+}
 
 // Stable, tiny string hash (used to detect JD changes without storing the full text twice).
 function hashStr(s) {
@@ -60,12 +77,15 @@ export function useAutoScore(jobs, updateJob) {
   const { cvs } = useCVs()
   const processingRef = useRef(false)
   const attemptedRef = useRef(new Set()) // job+signature pairs tried this session (don't retry failures in a loop)
+  const spentRef = useRef(0)             // scoring calls issued this session (cost bound)
   const updateRef = useRef(updateJob)
   updateRef.current = updateJob
 
   useEffect(() => {
     if (!jobs?.length || !cvs?.length) return
     if (processingRef.current) return
+    if (spentRef.current >= MAX_PER_SESSION) return
+    if (!canScore()) return
 
     const baseCV = [...cvs].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
 
@@ -73,6 +93,8 @@ export function useAutoScore(jobs, updateJob) {
       processingRef.current = true
       try {
         for (const job of jobs) {
+          if (spentRef.current >= MAX_PER_SESSION) break
+          if (!canScore()) break                      // key removed / trial exhausted mid-run
           if (SKIP_STATUSES.has(job.status)) continue
 
           const cv = cvForJob(job, baseCV)
@@ -89,6 +111,7 @@ export function useAutoScore(jobs, updateJob) {
 
           const jd = await resolveJD(job)
           if (!jd) continue
+          spentRef.current += 1
 
           try {
             const data = await scoreJobMatch({ cvText: cv.text, jobDescription: jd, company: job.company, position: job.position })

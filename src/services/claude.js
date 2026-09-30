@@ -10,6 +10,17 @@ let claudeRequestQueue = Promise.resolve()
 let claudeRequestCount = 0
 const MAX_CONCURRENT_REQUESTS = 1
 
+// Serialise `fn` behind every call queued before it. The tail is advanced on a
+// SETTLED promise: a rejected call still rejects for its own caller, but the
+// chain itself never becomes rejected — previously `queue = queue.then(fn)` kept
+// the rejection as the tail, so every later callClaude rejected instantly with
+// that stale error until the page was reloaded.
+export function enqueueClaudeRequest(fn) {
+  const result = claudeRequestQueue.then(fn)
+  claudeRequestQueue = result.catch(() => {})
+  return result
+}
+
 // A cached result is "stale" only if it lazily put a job board as the company
 // WITHOUT marking it as an intentional ATS fallback. When companyFromAts is set,
 // the ATS name IS the company on purpose (ATS that hides the real employer) — keep it.
@@ -262,7 +273,7 @@ async function callClaude(systemPrompt, userContent, retries = 3) {
     : { provider: 'anthropic', apiKey: null, model: MODEL, baseUrl: null }
 
   // Queue requests to prevent cascading rate limits
-  return claudeRequestQueue = claudeRequestQueue.then(async () => {
+  return enqueueClaudeRequest(async () => {
     claudeRequestCount++
     const requestId = claudeRequestCount
     try {

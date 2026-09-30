@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { searchJobs, getSavedAPI, setActiveAPI, getAvailableAPIs, getAPIName } from '../services/jobSearch'
 import { FRENCH_LOCATIONS, getLocationsByQuery, getLocationLabel } from '../services/adzunaLocations'
 import { ROME_CODES, searchRomeCodes, detectRomeCode } from '../services/romeCodesRef'
+import { localDateISO } from '../utils/localDate'
 
 const CONTRACT_LABELS = {
   permanent: 'CDI',
@@ -107,7 +108,7 @@ export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) 
       position: job.title,
       url: job.url,
       status: 'todo',
-      date: new Date().toISOString().split('T')[0],
+      date: localDateISO(),
       notes: job.salary ? `Salaire: ${job.salary}` : '',
       jobDescription: job.description || '',
     })

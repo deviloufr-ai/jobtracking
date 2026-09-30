@@ -549,7 +549,8 @@ export const en = {
     rejected_ats: 'Rejected (ATS)',
     cancelled: 'Cancelled',
     archived: 'Archived',
-    done: 'Done',
+    // Interview happened, verdict pending — the process is still open.
+    done: 'Interview done',
   },
 
   // Per-status count strip above the filter bar
@@ -1315,6 +1316,7 @@ export const en = {
     exported: '✓ Exported',
     importApplications: 'Import applications',
     importApplicationsHint: 'Merges without creating duplicates',
+    importResult: '{added} application(s) imported, {skipped} skipped (already present or invalid)',
     import: 'Import',
     salaryTitle: 'Compensation',
     salarySubtitle: 'Researches each active application\'s pay on the web (Glassdoor, Payscale, the posting…) and fills it in automatically.',
@@ -1361,8 +1363,8 @@ export const en = {
     historyDeleted: '✓ {{count}} history entries deleted from {{jobCount}} application(s)',
     dangerZone: 'Danger Zone',
     dangerZoneSubtitle: 'Warning: this action is irreversible',
-    resetCompletely: 'Reset completely',
-    resetCompletelyHint: 'Deletes everything: applications, settings, data',
+    resetCompletely: 'Reset this device',
+    resetCompletelyHint: 'Clears the local cache (applications, settings, API keys). Synced data is re-downloaded from the server.',
     yesDeleteEverything: 'Yes, delete everything',
   },
 

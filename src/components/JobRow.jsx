@@ -5,6 +5,7 @@ import { STATUSES, getStatus, getStatusLabel, resolveInterviewStatus } from '../
 import { gmailMessageUrl } from '../services/gmail'
 import { isNoReply } from './EmailDraft'
 import { parseSender } from '../utils/parseSender'
+import { localDateISO } from '../utils/localDate'
 import UseCasePanel from './UseCasePanel'
 import RowActions from './RowActions'
 import MotivationLetterGenerator from './MotivationLetterGenerator'
@@ -202,7 +203,7 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
     return {
       status: getCurrentDisplayStatus(),
       note: '',
-      date: now.toISOString().split('T')[0],
+      date: localDateISO(now),
       time: `${hh}:${mm}`
     }
   })
@@ -277,7 +278,7 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
     const now = new Date()
     const hh = String(now.getHours()).padStart(2, '0')
     const mm = String(now.getMinutes()).padStart(2, '0')
-    setNewStep({ status: job.status, note: '', date: now.toISOString().split('T')[0], time: `${hh}:${mm}` })
+    setNewStep({ status: job.status, note: '', date: localDateISO(now), time: `${hh}:${mm}` })
     setShowAddStep(false)
   }
 
@@ -576,7 +577,7 @@ function JobRow({ job, onEdit, onDelete, onStatusChange, onAddStep, onUpdateHist
               interviewSessions: [...(job.interviewSessions || []), session],
               updated_at: new Date().toISOString()
             })
-            setShowMockInterview(false)
+            // Keep the modal open so the feedback card it renders is actually seen.
           }}
         />
       )}

@@ -9,6 +9,7 @@
 import { useState, useEffect, useRef, Fragment } from 'react'
 import { STATUSES, getStatus, getStatusLabel, historyEntryKey, resolveInterviewStatus } from '../../hooks/useJobs'
 import { classifyInterviewRound, isInterviewEntry, INTERVIEW_ROUND_META, roundLabel } from '../../utils/interviewRounds'
+import { localDateISO, localTimeHM } from '../../utils/localDate'
 import { gmailMessageUrl, openGmailNative } from '../../services/gmail'
 import { scoreColorClasses, ScoreBreakdown } from '../ScoreJob'
 import CVViewer from '../CVViewer'
@@ -38,7 +39,7 @@ const shortDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { day: '
 const fullDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) : '—')
 const nowStep = (status) => {
   const n = new Date()
-  return { status, note: '', date: n.toISOString().split('T')[0], time: `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}` }
+  return { status, note: '', date: localDateISO(n), time: localTimeHM(n) }
 }
 const TABS = [['overview', 'Overview'], ['cv', 'CV'], ['letter', 'Cover letter'], ['star', 'STAR'], ['mindmap', 'Mind map'], ['preparation', 'Preparation'], ['interview', 'Interview']]
 
@@ -710,7 +711,9 @@ export default function CandidatureDrawer({
             // onUpdateJob is updateJob(id, data) — pass id + patch, not a whole job object,
             // or jobs.find(id) never matches and the session is silently discarded.
             onUpdateJob?.(job.id, { interviewSessions: [...(job.interviewSessions || []), session], updated_at: new Date().toISOString() })
-            setShowMock(false)
+            // Keep the modal open: it renders the recruiter feedback card + "New
+            // interview" right after analysis. Closing here hid that result and the
+            // user had to dig it out of the Interview tab.
           }} />
       )}
       {showRecorder && (

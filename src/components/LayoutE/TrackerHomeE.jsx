@@ -379,10 +379,17 @@ export default function TrackerHomeE({
     if (openId && !jobs.some(j => j.id === openId)) setOpenId(null)
   }, [jobs, openId])
 
-  // Esc closes the drawer.
+  // Esc closes the drawer — unless a modal is stacked above it (mock interview,
+  // letter / mind-map generators, edit form, email draft…; all `fixed inset-0
+  // z-50`, the drawer backdrop is z-40). Escape there belongs to the modal;
+  // unmounting the drawer underneath destroyed the modal and its in-flight session.
   useEffect(() => {
     if (!openJob) return
-    const onKey = e => { if (e.key === 'Escape') setOpenId(null) }
+    const onKey = e => {
+      if (e.key !== 'Escape') return
+      if (document.querySelector('.fixed.inset-0.z-50')) return
+      setOpenId(null)
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [openJob])
@@ -652,7 +659,10 @@ export default function TrackerHomeE({
               <span className={`h-10 w-1 rounded-full transition-colors ${resizingDrawer ? 'bg-indigo-400' : 'bg-gray-200 group-hover/dw:bg-indigo-400'}`} />
             </div>
             <div className="flex-1 overflow-y-auto">
+              {/* key: remount per candidature so tab / step draft / edit form /
+                  commute address state never leaks from job A into job B. */}
               <CandidatureDrawer
+                key={openJob.id}
                 job={openJob}
                 onClose={close}
                 onEdit={onEdit}

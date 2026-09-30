@@ -2,12 +2,13 @@ import { useState, useEffect, useRef } from 'react'
 import { STATUSES, getStatusLabel } from '../hooks/useJobs'
 import { useDragDock } from '../hooks/useDragDock'
 import { extractUrl, isLinkedInUrl } from '../services/linkedinShare'
+import { localDateISO } from '../utils/localDate'
 
 // Statuses a freshly-shared candidature realistically starts in. Sharing a job
 // link is usually "I found this and want to track it", so we default to "todo".
 const START_STATUSES = ['todo', 'sent', 'reviewing', 'interview', 'waiting', 'offer']
 
-const today = () => new Date().toISOString().split('T')[0]
+const today = () => localDateISO()
 
 // Ask the server (which reads LinkedIn's public guest fragment) for the job's
 // company / position / location. Falls back gracefully — the caller lets the

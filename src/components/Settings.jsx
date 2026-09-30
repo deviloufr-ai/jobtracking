@@ -6,7 +6,8 @@ import { useSettings, SETTINGS_DEFAULTS } from '../hooks/useSettings'
 import { useExtensionDetect } from '../hooks/useExtensionDetect'
 import { useExtensionUpdate } from '../hooks/useExtensionUpdate'
 import { EXTENSION_XPI_PATH } from '../constants/extension'
-import { useJobs } from '../hooks/useJobs'
+import { useJobs, findDuplicateJob } from '../hooks/useJobs'
+import { localDateISO } from '../utils/localDate'
 import { useLanguage } from '../hooks/useLanguage'
 import { useCVs } from '../hooks/useCVs'
 import CVManager from './CVManager'
@@ -14,7 +15,6 @@ import CVGenerationSettings from './CVGenerationSettings'
 import BatchCVGenerator from './BatchCVGenerator'
 import NotificationSettings from './NotificationSettings'
 import UpdateChecker from './UpdateChecker'
-import { supabase } from '../services/supabase'
 import { indexeddb } from '../services/indexeddb'
 import { THEMES } from '../utils/themes'
 import { getFlag, setFlag, FLAGS } from '../services/featureFlags'
@@ -142,7 +142,7 @@ const getCATEGORIES = (t) => [
 
 export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdateJob, initialTab, onReplayTour }) {
   const { settings, updateSetting, resetSettings, loading: settingsLoading } = useSettings()
-  const { deduplicateViaServer } = useJobs()
+  const { deduplicateViaServer, addJob } = useJobs()
   const { t, language, setLanguage, availableLanguages } = useLanguage()
   const { cvs } = useCVs()
   const extensionInstalled = useExtensionDetect()
@@ -194,6 +194,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
   const [deleteHistoryError, setDeleteHistoryError] = useState(null)
   const [exportDone, setExportDone] = useState(false)
   const [importError, setImportError] = useState(null)
+  const [importResult, setImportResult] = useState(null) // { added, skipped }
   const [serverDedupLoading, setServerDedupLoading] = useState(false)
   const [serverDedupResult, setServerDedupResult] = useState(null)
   const [serverDedupError, setServerDedupError] = useState(null)
@@ -420,7 +421,9 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
   async function handleExtractFromCV() {
     try {
       if (!cvs.length) { setExtractError('No CV uploaded — go to My CV to add one.'); return }
-      const cv = cvs.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))[0]
+      // Most recent CV, like App's baseCV (this used to pick the OLDEST and sort
+      // the hook's array in place).
+      const cv = [...cvs].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
       setExtracting(true)
       setExtractError(null)
       const res = await fetch('/api/extract-profile', {
@@ -457,17 +460,32 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
     const file = e.target.files?.[0]
     if (!file) return
     setImportError(null)
+    setImportResult(null)
     const reader = new FileReader()
     reader.onload = ev => {
       try {
         const data = JSON.parse(ev.target.result)
         const incoming = data.jobs || (Array.isArray(data) ? data : null)
-        if (!incoming) throw new Error('Invalid format')
-        const existing = JSON.parse(localStorage.getItem('jobtrackr_applications') || '[]')
-        const existingIds = new Set(existing.map(j => j.id))
-        const merged = [...existing, ...incoming.filter(j => !existingIds.has(j.id))]
-        localStorage.setItem('jobtrackr_applications', JSON.stringify(merged))
-        window.location.reload()
+        if (!Array.isArray(incoming)) throw new Error('Invalid format')
+        // Go through addJob (IndexedDB + sync queue) — the read path is IndexedDB,
+        // so the old localStorage `jobtrackr_applications` write was a silent no-op
+        // (its only reader, the legacy migration, never runs). "Merge without
+        // duplicates": skip a row whose id is already known or whose
+        // company+position already exists (same rule as the add form).
+        const known = jobs || []
+        const knownIds = new Set(known.map(j => j.id))
+        let added = 0, skipped = 0
+        for (const raw of incoming) {
+          if (!raw || typeof raw !== 'object' || !raw.company) { skipped++; continue }
+          if ((raw.id && knownIds.has(raw.id)) || findDuplicateJob(known, raw.company, raw.position)) { skipped++; continue }
+          // addJob mints a fresh id/updated_at and reads the timeline from _history.
+          const { id: _id, updated_at: _u, history, ...rest } = raw
+          addJob({ ...rest, status: rest.status || 'sent', date: rest.date || localDateISO(), _history: Array.isArray(history) && history.length ? history : undefined })
+          added++
+        }
+        setImportResult({ added, skipped })
+        // The app's own useJobs instance re-reads IndexedDB on reload.
+        if (added > 0) setTimeout(() => window.location.reload(), 1500)
       } catch (err) {
         setImportError(err.message || 'Error reading file')
       }
@@ -503,40 +521,31 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
     setDeleteHistoryResult(null)
 
     try {
+      // Auth check BEFORE touching anything — the old flow wiped IndexedDB first
+      // and only then threw here, leaving local and server out of step.
+      if (!syncUserId) throw new Error('User not authenticated')
+      if (typeof onUpdateJob !== 'function') throw new Error('Job updater unavailable')
+
       const allJobs = jobs || []
       let deletedCount = 0
 
-      // Delete from IndexedDB for all jobs
+      // Go through updateJob (App's instance): it tombstones every removed entry
+      // key locally + in deleted_history_entries and upserts the (empty) timeline
+      // server-side. A raw `job_history.delete()` + IndexedDB write bypassed both,
+      // so a peer device's next write re-upserted its copy and the history came
+      // back (tombstones are the ONLY thing that makes a deletion stick).
       for (const job of allJobs) {
         if (job.history?.length > 0) {
           deletedCount += job.history.length
-          const updatedJob = { ...job, history: [] }
-          await indexeddb.saveJob(updatedJob)
+          onUpdateJob(job.id, { history: [] })
         }
-      }
-
-      // Delete from Supabase - delete all history for current user
-      if (syncUserId) {
-        const { error: deleteError } = await supabase
-          .from('job_history')
-          .delete()
-          .eq('user_id', syncUserId)
-
-        if (deleteError) {
-          console.error('Supabase delete error:', deleteError)
-          throw new Error(`Failed to delete from Supabase: ${deleteError.message}`)
-        }
-      } else {
-        throw new Error('User not authenticated')
       }
 
       setDeleteHistoryResult({ deletedCount, jobsAffected: deleteHistoryDetails.jobsWithHistory })
       setConfirmDeleteHistory(false)
       setDeleteHistoryDetails(null)
-
-      // Wait 2 seconds then reload to let deletion propagate
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      window.location.reload()
+      // No reload: state updates in place, and a reload could cut the queued
+      // Supabase writes short.
     } catch (err) {
       setDeleteHistoryError(err.message)
       console.error('Delete history error:', err)
@@ -545,9 +554,18 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
     }
   }
 
-  function handleFullReset() {
-    ['jobtrackr_applications', 'jobtrackr_settings', 'jobtrackr_email_cache',
-      'jobtrackr_notifications', 'jobtrackr_cvs', 'jobtrackr_last_refresh'].forEach(k => localStorage.removeItem(k))
+  // Reset THIS DEVICE: wipe the IndexedDB read path + every local jobtrackr_/jt_ key.
+  // The old version removed six legacy localStorage keys and reloaded — the app
+  // reads IndexedDB, so nothing visibly changed. Synced data is re-pulled from
+  // Supabase on the next sign-in (this is a local reset, not an account wipe — the
+  // hint copy says so). The Supabase session itself (sb-* keys) is kept.
+  async function handleFullReset() {
+    try { await indexeddb.clear() } catch (err) { console.warn('IndexedDB clear failed:', err) }
+    try {
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('jobtrackr_') || k.startsWith('jt_'))
+        .forEach(k => localStorage.removeItem(k))
+    } catch { /* ignore */ }
     window.location.reload()
   }
 
@@ -1224,6 +1242,11 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                     </label>
                   </Row>
                   {importError && <p className="text-xs text-red-500">{importError}</p>}
+                  {importResult && (
+                    <p className="text-xs text-green-600">
+                      {t('settingsData.importResult').replace('{added}', importResult.added).replace('{skipped}', importResult.skipped)}
+                    </p>
+                  )}
                 </Card>
 
                 <Card title={`💰 ${t('settingsData.salaryTitle')}`} subtitle={t('settingsData.salarySubtitle')}>
