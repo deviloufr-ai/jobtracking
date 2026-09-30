@@ -1349,7 +1349,10 @@ export function mergeNotes(...noteStrings) {
 
 // Fields carried over from an exact-duplicate loser onto its keeper when the keeper
 // lacks them: every jobs.extras field plus the posting text/link.
-const RICH_MERGE_FIELDS = [...EXTRA_FIELDS, 'url', 'jobDescription', 'description']
+// Built lazily: syncManager imports this module (circular), so EXTRA_FIELDS is still
+// undefined while useJobs.js evaluates — spreading it at module load crashed the app
+// on boot ("can't access property Symbol.iterator").
+const richMergeFields = () => [...EXTRA_FIELDS, 'url', 'jobDescription', 'description']
 const isBlankField = (v) =>
   v == null || v === '' ||
   (Array.isArray(v) && v.length === 0) ||
@@ -1388,7 +1391,7 @@ function deduplicateExactMatches(jobs) {
       // survive the merge too. reconcileExactDuplicateJobs deletes + tombstones the
       // loser right after this, so anything only the loser held was lost on every
       // device. Keeper-wins per field: only fill what the keeper doesn't have.
-      for (const field of RICH_MERGE_FIELDS) {
+      for (const field of richMergeFields()) {
         if (isBlankField(existing[field]) && !isBlankField(job[field])) existing[field] = job[field]
       }
       if (job.favorite && !existing.favorite) existing.favorite = true
