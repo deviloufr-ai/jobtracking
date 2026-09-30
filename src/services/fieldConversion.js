@@ -1,5 +1,18 @@
 // Utility functions for converting between camelCase (local) and snake_case (Supabase)
 
+// jobs.updated_at / *.last_modified_at are Postgres `timestamp` WITHOUT time zone
+// (migration 001). The client stamps them with an ISO `…Z` string, Postgres drops
+// the `Z` on write, and PostgREST hands them back offset-less
+// ("2026-09-30T10:00:00"). `new Date()` parses an offset-less date-time as LOCAL
+// time, so in UTC+2 every remote row looked 2 h older than it was and the
+// last-write-wins merge kept a stale local copy over a peer's newer edit made
+// less than 2 h later. Re-attach the `Z` so both sides compare in UTC.
+const OFFSETLESS_ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/
+export function normalizeServerTimestamp(value) {
+  if (typeof value !== 'string') return value
+  return OFFSETLESS_ISO_RE.test(value) ? value + 'Z' : value
+}
+
 export function snakeToCamel(obj) {
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj
   const camel = {}

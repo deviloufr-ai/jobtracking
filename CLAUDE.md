@@ -21,7 +21,7 @@ prose ("v0.7", "v1.0") are documentation artifacts. Do not trust them.
 | Layer | Choice |
 | --- | --- |
 | Frontend | React 19 + Vite 8 + Tailwind 3 — 69 components, 45 services, 25 hooks |
-| Auth & data | Supabase (Postgres + Auth + RLS) — 15 tables, 17 migration files |
+| Auth & data | Supabase (Postgres + Auth + RLS) — 15 tables, 18 migration files |
 | Local cache | IndexedDB — offline-first, this is the read path |
 | Serverless | Vercel Functions in `/api/` — 12 endpoints (Hobby plan caps functions per deploy; add AI features via the shared `/api/claude` proxy, not new endpoints) |
 | AI | Claude Haiku 4.5 (default) via the `/api/claude` proxy, OR a user-chosen Google Gemini / OpenAI-compatible provider (Groq, OpenRouter…). Claude model pinned by `VITE_CLAUDE_MODEL`; provider abstraction in `api/_lib/aiProvider.js` |
@@ -89,6 +89,10 @@ plugin changes).
   errors pause the pass without counting. There is no timed backoff — the poll is the retry tick.
 - Server changes arrive by polling — `POLL_INTERVAL = 300000` (**5 minutes**, not 30 seconds).
 - Conflicts are last-write-wins on `last_modified_at`, with `version` and `device_id` on each row.
+  **`updated_at` / `last_modified_at` are Postgres `timestamp` WITHOUT time zone** (migration 001):
+  the client writes `…Z`, PostgREST returns the value offset-less, and `new Date()` reads that as
+  *local* time (2 h off in Paris — peer edits < 2 h after a local one were discarded). Always pass a
+  server timestamp through `normalizeServerTimestamp` (`fieldConversion.js`) before comparing.
 - **Deletes are tombstones** (`tombstoneService.js`, tables `deleted_jobs` and
   `deleted_history_entries`). Never delete a row outright — without a tombstone, a delete on
   one device is indistinguishable from a row another device has not yet received, and the row

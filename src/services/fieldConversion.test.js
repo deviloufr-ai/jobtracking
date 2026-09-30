@@ -5,7 +5,26 @@ import {
   convertHistoryToSupabase,
   convertHistoryFromSupabase,
   deserializeJobFields,
+  normalizeServerTimestamp,
 } from './fieldConversion'
+
+describe('normalizeServerTimestamp', () => {
+  it('re-attaches Z to an offset-less server timestamp so it parses as UTC', () => {
+    expect(normalizeServerTimestamp('2026-09-30T10:00:00')).toBe('2026-09-30T10:00:00Z')
+    expect(normalizeServerTimestamp('2026-09-30T10:00:00.123456')).toBe('2026-09-30T10:00:00.123456Z')
+    // Remote written at 10:00Z must NOT read as older than a local 09:30Z edit.
+    expect(new Date(normalizeServerTimestamp('2026-09-30T10:00:00')).getTime())
+      .toBeGreaterThan(new Date('2026-09-30T09:30:00Z').getTime())
+  })
+
+  it('leaves values that already carry an offset, dates, and non-strings alone', () => {
+    expect(normalizeServerTimestamp('2026-09-30T10:00:00Z')).toBe('2026-09-30T10:00:00Z')
+    expect(normalizeServerTimestamp('2026-09-30T10:00:00+00:00')).toBe('2026-09-30T10:00:00+00:00')
+    expect(normalizeServerTimestamp('2026-09-30')).toBe('2026-09-30')
+    expect(normalizeServerTimestamp(null)).toBe(null)
+    expect(normalizeServerTimestamp(undefined)).toBe(undefined)
+  })
+})
 
 describe('deserializeJobFields', () => {
   it('parses camelCase positionLinks/positionChecks (the post-snakeToCamel poll path)', () => {

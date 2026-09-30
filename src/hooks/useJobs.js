@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { loadSettings } from './useSettings'
 import { extractUrlsFromEmail, rankUrlsByJobRelevance, checkPositionUrl } from '../services/positionChecker'
 import { indexeddb } from '../services/indexeddb'
-import { syncManager } from '../services/syncManager'
+import { syncManager, EXTRA_FIELDS } from '../services/syncManager'
 import { getSyncCoordinator } from '../services/syncCoordinator'
 import { supabase, isSupabaseConfigured, resolveAuthUserId } from '../services/supabase'
 import { enqueueRemoteTombstone, clearRemoteTombstones, enqueueHistoryTombstone } from '../services/tombstoneService'
@@ -1347,6 +1347,14 @@ export function mergeNotes(...noteStrings) {
   return out
 }
 
+// Fields carried over from an exact-duplicate loser onto its keeper when the keeper
+// lacks them: every jobs.extras field plus the posting text/link.
+const RICH_MERGE_FIELDS = [...EXTRA_FIELDS, 'url', 'jobDescription', 'description']
+const isBlankField = (v) =>
+  v == null || v === '' ||
+  (Array.isArray(v) && v.length === 0) ||
+  (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0)
+
 function deduplicateExactMatches(jobs) {
   const seen = new Map()
   const result = []
@@ -1375,6 +1383,15 @@ function deduplicateExactMatches(jobs) {
         })
         existing.history = [...(existing.history || []), ...newEntries].sort((a, b) => new Date(a.date) - new Date(b.date))
       }
+      // Rich per-job data (generated CV/letter, score, contacts, interview sessions,
+      // compensation… — everything that rides jobs.extras) plus the JD/URL must
+      // survive the merge too. reconcileExactDuplicateJobs deletes + tombstones the
+      // loser right after this, so anything only the loser held was lost on every
+      // device. Keeper-wins per field: only fill what the keeper doesn't have.
+      for (const field of RICH_MERGE_FIELDS) {
+        if (isBlankField(existing[field]) && !isBlankField(job[field])) existing[field] = job[field]
+      }
+      if (job.favorite && !existing.favorite) existing.favorite = true
     } else {
       // Normalize notes on first insert so existing bloated data gets cleaned,
       // not just jobs that happen to merge this pass.

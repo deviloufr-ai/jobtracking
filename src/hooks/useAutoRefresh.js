@@ -105,9 +105,21 @@ export function isNewHistoryEntry(existingKeys, entry) {
 }
 
 // ─── Semantic deduplication for history entries ───────────────────────────────
-// Group similar entries on same date by keyword overlap (e.g., multiple "test technique" notes)
-function deduplicateHistoryBySemantics(history) {
+// Group similar entries on same date by keyword overlap (e.g., multiple "test technique" notes).
+//
+// Two guards keep this lossy heuristic from destroying real data:
+//   • Entries only ever group with the SAME status. A same-day `sent` +
+//     `rejected` pair that happens to share "product manager chez acme" used to
+//     collapse to whichever note was longer — silently deleting the rejection.
+//   • `protectedKeys` (historyEntryKey of entries ALREADY STORED on the job) are
+//     never dropped. This runs on `existing.history` during a refresh, and every
+//     stored key that disappears is then tombstoned cross-device by updateJob —
+//     so a shorter stored note losing to a fresh re-parse was a permanent,
+//     multi-device deletion. Stored entries win; similar NEW entries are the ones
+//     folded away (their gmailIds are kept on the survivor).
+function deduplicateHistoryBySemantics(history, protectedKeys = null) {
   if (!history || history.length <= 1) return history
+  const isProtected = (e) => !!protectedKeys && protectedKeys.has(historyEntryKey(e))
 
   // Extract keywords from a note (words > 3 chars)
   const getKeywords = note => {
@@ -139,6 +151,8 @@ function deduplicateHistoryBySemantics(history) {
 
       // Check if this entry is similar to any existing group
       for (const group of groups) {
+        // Different statuses are different events, never the same topic.
+        if ((group[0].status || '') !== (entry.status || '')) continue
         const groupKw = getKeywords(group[0].note)
         // At least 2 shared keywords = likely same topic
         const shared = [...kw].filter(k => groupKw.includes(k)).length
@@ -152,23 +166,32 @@ function deduplicateHistoryBySemantics(history) {
       if (!foundGroup) groups.push([entry])
     }
 
-    // For each group, keep the longest/most informative entry but preserve all gmailIds
+    // For each group: stored (protected) entries are all kept; otherwise keep the
+    // longest/most informative entry. Either way preserve every gmailId.
     for (const group of groups) {
-      const best = group.reduce((a, b) =>
-        ((a.note || '').length > (b.note || '').length ? a : b)
-      )
+      const protectedEntries = group.filter(isProtected)
+      const survivors = protectedEntries.length > 0
+        ? protectedEntries
+        : [group.reduce((a, b) => ((a.note || '').length > (b.note || '').length ? a : b))]
       // Collect all unique gmailIds from the entire group
       const allIds = new Set()
       for (const entry of group) {
         if (entry.gmailId) allIds.add(entry.gmailId)
       }
-      // Store multiple IDs if they exist
-      if (allIds.size > 1) {
+      // Store multiple IDs if they exist. A protected (stored) survivor keeps its
+      // own gmailId untouched — gmailId IS its historyEntryKey, so rewriting it
+      // would make the stored key vanish and get tombstoned. Extra ids only ever
+      // go into the secondary gmailIds list, which is not part of the key.
+      const best = survivors[0]
+      if (isProtected(best)) {
+        const extra = [...allIds].filter(id => id !== best.gmailId)
+        if (extra.length > 0) best.gmailIds = [...new Set([...(best.gmailIds || []), ...extra])]
+      } else if (allIds.size > 1) {
         best.gmailIds = [...allIds]
       } else if (allIds.size === 1) {
         best.gmailId = [...allIds][0]
       }
-      result.push(best)
+      result.push(...survivors)
     }
   }
 
@@ -909,7 +932,8 @@ export function useAutoRefresh(jobs, addJob, updateJob, showToast, reprocessJobs
             log(`📝 Updating ${p.company}/${p.position}: adding ${newEntries.length} new history entries`)
             const merged = [...(existing.history || []), ...newEntries]
               .sort((a, b) => new Date(a.date) - new Date(b.date))
-            const deduplicated = deduplicateHistoryBySemantics(merged)
+            // Stored entries are protected: only the incoming ones may be folded away.
+            const deduplicated = deduplicateHistoryBySemantics(merged, existingHistKeys)
             const mergedHistory = mergeHistoryBySameDayTopic(autoCompletePastMeetings(deduplicated))
             // Status follows the latest meaningful timeline entry (not a monotonic
             // max), so a newer update can correct a wrong earlier one. The merged

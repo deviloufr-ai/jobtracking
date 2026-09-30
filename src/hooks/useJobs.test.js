@@ -504,6 +504,27 @@ describe('reconcileExactDuplicateJobs — timer-safe dedup never deletes distinc
     const out = reconcileExactDuplicateJobs(jobs)
     expect(out).toHaveLength(1)
   })
+
+  // The loser is hard-deleted + tombstoned right after the merge, so any rich data
+  // only IT held (generated CV, score, contacts, JD…) used to vanish on every device.
+  it('carries the loser\'s extras/JD/URL onto the keeper, keeper-wins per field', () => {
+    const jobs = [
+      { id: 'a', company: 'Acme', position: 'PM', date: '2026-01-01', status: 'sent', history: [], score: 80, contacts: [] },
+      {
+        id: 'b', company: 'Acme', position: 'PM', date: '2026-01-01', status: 'sent', history: [],
+        cvSaved: { markdown: '# CV' }, score: 55, contacts: [{ name: 'Sam' }],
+        jobDescription: 'the JD', url: 'https://acme.example/job', favorite: true,
+      },
+    ]
+    const [keeper] = reconcileExactDuplicateJobs(jobs)
+    expect(keeper.id).toBe('a')
+    expect(keeper.cvSaved).toEqual({ markdown: '# CV' })   // filled from loser
+    expect(keeper.score).toBe(80)                          // keeper wins
+    expect(keeper.contacts).toEqual([{ name: 'Sam' }])     // empty [] counts as blank
+    expect(keeper.jobDescription).toBe('the JD')
+    expect(keeper.url).toBe('https://acme.example/job')
+    expect(keeper.favorite).toBe(true)
+  })
 })
 
 describe('mergeHistoryBySameDayTopic — outcome survives the merge', () => {

@@ -1,12 +1,12 @@
 import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
-import { convertHistoryToSupabase, settingsToSupabaseRow } from './fieldConversion'
+import { convertHistoryToSupabase, settingsToSupabaseRow, normalizeServerTimestamp } from './fieldConversion'
 import { historyEntryKey, deletedHistoryKeysFor } from '../hooks/useJobs'
 
 // Rich per-job fields with no dedicated column — bundled into the `jobs.extras`
 // jsonb blob so generated CVs, cover letters, scores and interview data sync
 // across devices. Requires migration 007 (jobs.extras jsonb).
-const EXTRA_FIELDS = [
+export const EXTRA_FIELDS = [
   'cvSaved', 'letterSaved', 'starSaved',
   'score', 'scoreDetails', 'scoreSignature',
   'interviewSessions', 'useCase',
@@ -501,7 +501,7 @@ class SyncManager {
     }
 
     const localTime = new Date(local.last_modified_at).getTime()
-    const remoteTime = new Date(remote.last_modified_at).getTime()
+    const remoteTime = new Date(normalizeServerTimestamp(remote.last_modified_at)).getTime()
 
     if (localTime > remoteTime) {
       return local

@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabase'
 import { indexeddb } from './indexeddb'
-import { convertHistoryFromSupabase, snakeToCamel, deserializeJobFields } from './fieldConversion'
+import { convertHistoryFromSupabase, snakeToCamel, deserializeJobFields, normalizeServerTimestamp } from './fieldConversion'
 import { isDeletedJobId, deduplicateHistory, filterDeletedHistory, historyEntryKey, markJobIdAsDeletedLocal, markHistoryEntryKeysDeletedLocal, partitionJobsByTombstones, deriveStatusFromHistory } from '../hooks/useJobs'
 import { flushPendingTombstones, fetchRemoteTombstones, flushPendingHistoryTombstones, fetchRemoteHistoryTombstones } from './tombstoneService'
 import { getFlag, FLAGS } from './featureFlags'
@@ -318,6 +318,10 @@ class PollManager {
   mergeJob(local, remote) {
     // Convert remote snake_case fields to camelCase (shared util in fieldConversion)
     const remoteConverted = snakeToCamel(remote)
+    // Server timestamps come back offset-less (timestamp w/o tz) — re-attach the
+    // `Z` before comparing, or the remote side reads as local time and loses LWW.
+    if (remoteConverted.updated_at) remoteConverted.updated_at = normalizeServerTimestamp(remoteConverted.updated_at)
+    if (remoteConverted.lastModifiedAt) remoteConverted.lastModifiedAt = normalizeServerTimestamp(remoteConverted.lastModifiedAt)
 
     // Scalar fields: last-write-wins on timestamp. Local wins ties (>=) so a
     // device's own just-made edit isn't clobbered by Supabase's server timestamp.
@@ -368,7 +372,7 @@ class PollManager {
     // still survive from the loser — e.g. debugLogsEnabled is never synced (no
     // column), and bare remote-wins used to wipe it every poll.
     const localTime = local?.lastModifiedAt ? new Date(local.lastModifiedAt).getTime() : 0
-    const remoteTime = remote?.lastModifiedAt ? new Date(remote.lastModifiedAt).getTime() : 0
+    const remoteTime = remote?.lastModifiedAt ? new Date(normalizeServerTimestamp(remote.lastModifiedAt)).getTime() : 0
     const [winner, loser] = remoteTime > localTime ? [remote, local] : [local, remote]
     const merged = { ...(loser || {}), ...(winner || {}) }
     return stripSettingsMeta(merged)
