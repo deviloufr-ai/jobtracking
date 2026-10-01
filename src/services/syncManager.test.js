@@ -6,6 +6,7 @@ const h = vi.hoisted(() => ({
   configured: true,
   queue: [],
   deadKeys: [],
+  meta: {},
   sb: { calls: [], respond: null },
 }))
 
@@ -43,6 +44,8 @@ vi.mock('./indexeddb', () => ({
     deleteJob: async () => {},
     saveCV: async () => {},
     saveSettings: async () => {},
+    getMetadata: async (k) => h.meta[k],
+    setMetadata: async (k, v) => { h.meta[k] = v },
   },
 }))
 vi.mock('./fieldConversion', () => ({
@@ -146,6 +149,61 @@ describe('syncManager.flushQueue', () => {
     h.queue = [mut('b', 'job-2')]
     syncManager.handleOnline()
     await vi.waitFor(() => expect(ids()).toEqual([]))
+  })
+})
+
+describe('syncManager.pushAllJobs — only changed timelines are re-uploaded', () => {
+  const job = (id, history) => ({ id, company: 'Acme', position: 'PM', status: 'sent', history })
+  const historyWrites = () => h.sb.calls.filter(c => c.table === 'job_history' && c.op === 'upsert').map(c => c.args[0][0].job_id)
+
+  beforeEach(() => {
+    h.sb.calls = []
+    h.sb.respond = null
+    h.deadKeys = []
+    h.meta = {}
+    h.configured = true
+    syncManager.historyUpsertSupported = undefined
+  })
+
+  it('pushes every timeline the first time, none on an unchanged second run, then only the edited one', async () => {
+    const a = job('a', [{ date: '2026-01-01', status: 'sent', note: 'Applied' }])
+    const b = job('b', [{ date: '2026-01-02', status: 'sent', note: 'Applied' }])
+
+    const first = await syncManager.pushAllJobs('user-1', [a, b])
+    expect(first.historyPushed).toBe(2)
+    expect(historyWrites()).toEqual(['a', 'b'])
+
+    h.sb.calls = []
+    const second = await syncManager.pushAllJobs('user-1', [a, b])
+    expect(second.historyPushed).toBe(0)
+    expect(historyWrites()).toEqual([])
+    // The job rows themselves still go up in the single bulk upsert.
+    expect(h.sb.calls.filter(c => c.table === 'jobs' && c.op === 'upsert')).toHaveLength(1)
+
+    h.sb.calls = []
+    const b2 = job('b', [...b.history, { date: '2026-01-09', status: 'interview', note: 'Call' }])
+    const third = await syncManager.pushAllJobs('user-1', [a, b2])
+    expect(third.historyPushed).toBe(1)
+    expect(historyWrites()).toEqual(['b'])
+  })
+
+  it('retries a timeline whose write failed (no signature recorded)', async () => {
+    const a = job('a', [{ date: '2026-01-01', status: 'sent', note: 'Applied' }])
+    h.sb.respond = (c) => (c.table === 'job_history' && c.op === 'upsert' ? { error: { code: '500', message: 'boom' } } : null)
+    const first = await syncManager.pushAllJobs('user-1', [a])
+    expect(first.historyPushed).toBe(0)
+
+    h.sb.respond = null
+    h.sb.calls = []
+    const second = await syncManager.pushAllJobs('user-1', [a])
+    expect(second.historyPushed).toBe(1)
+  })
+
+  it('keeps signatures per user', async () => {
+    const a = job('a', [{ date: '2026-01-01', status: 'sent', note: 'Applied' }])
+    await syncManager.pushAllJobs('user-1', [a])
+    const other = await syncManager.pushAllJobs('user-2', [a])
+    expect(other.historyPushed).toBe(1)
   })
 })
 

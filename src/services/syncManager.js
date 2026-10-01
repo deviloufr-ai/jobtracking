@@ -40,6 +40,15 @@ export const EXTRA_FIELDS = [
   'positionLinks', 'positionChecks',
 ]
 
+// Cheap content signature of a timeline (length + string hash of its JSON), used
+// by pushAllJobs to skip re-uploading timelines that haven't changed.
+function historySignature(history) {
+  const s = JSON.stringify(history)
+  let h = 0
+  for (let i = 0; i < s.length; i++) { h = (h << 5) - h + s.charCodeAt(i); h |= 0 }
+  return `${history.length}:${s.length}:${h}`
+}
+
 // Collect the present extra fields off a full job record into a jsonb blob.
 // Returns null when none are set (so we don't overwrite a stored blob with {}).
 function buildExtras(record) {
@@ -453,18 +462,34 @@ class SyncManager {
       }
 
       // History per job — the same write a normal mutation does (upsert post-016).
+      // This runs on EVERY coordinator init, and each timeline costs 2-3 sequential
+      // requests: with ~300 jobs that was 230+ writes on every app open. Skip the
+      // timelines whose content is identical to what this device last pushed
+      // (signature kept in IndexedDB metadata, per user). First run after this
+      // ships pushes everything once; afterwards only changed timelines go out.
+      const sigKey = `history_push_sigs:${userId}`
+      let sigs = {}
+      try { sigs = (await indexeddb.getMetadata(sigKey)) || {} } catch { /* no metadata store → push all */ }
+      const nextSigs = {}
+      let pushed = 0
       for (const job of jobs) {
         const history = Array.isArray(job.history) ? job.history : []
         if (history.length === 0) continue
+        const sig = historySignature(history)
+        if (sigs[job.id] === sig) { nextSigs[job.id] = sig; continue }
         try {
           await this.writeJobHistory(userId, job.id, history)
+          nextSigs[job.id] = sig
+          pushed++
         } catch (err) {
+          // No signature recorded → retried on the next init.
           console.warn('Failed to push history for job', job.id, err.message)
         }
       }
+      try { await indexeddb.setMetadata(sigKey, nextSigs) } catch { /* non-critical */ }
 
-      console.log('📤 Bulk-uploaded', jobs.length, 'local jobs to Supabase')
-      return { success: true }
+      console.log('📤 Bulk-uploaded', jobs.length, 'local jobs to Supabase —', pushed, 'timeline(s) changed')
+      return { success: true, historyPushed: pushed }
     } catch (err) {
       console.warn('pushAllJobs failed (non-critical):', err.message)
       return { success: false, error: err.message }
