@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { CLAUDE_MODEL } from '../constants/aiModel'
 import AIPanelBoundary from './AIPanelBoundary'
 import { detectLanguage } from '../utils/detectLanguage'
-import { withUserApiKey } from '../services/apiKey'
+import { aiText } from '../services/apiKey'
 import { useDragDock } from '../hooks/useDragDock'
 
 const IS_DEV = import.meta.env.DEV
@@ -135,18 +135,14 @@ Réponds UNIQUEMENT en JSON valide (sans backticks) :
 [{"question":"...","S":"...","T":"...","A":"...","R":"..."},...]`
 
     try {
-      const res = await fetch('/api/claude', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(withUserApiKey({
-          model: CLAUDE_MODEL,
-          max_tokens: 1800,
-          messages: [{ role: 'user', content: prompt }]
-        }))
+      // aiText (→ aiFetch): a 402 from the shared-key trial raises the
+      // "add your key" prompt instead of a bare "Erreur API".
+      const { text } = await aiText({
+        model: CLAUDE_MODEL,
+        max_tokens: 1800,
+        messages: [{ role: 'user', content: prompt }]
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error?.message || data.error || 'Erreur API')
-      const raw = (data.content?.[0]?.text || '[]').replace(/```json|```/g, '').trim()
+      const raw = (text || '[]').replace(/```json|```/g, '').trim()
       const start = raw.indexOf('['), end = raw.lastIndexOf(']')
       const parsed = JSON.parse(start !== -1 ? raw.slice(start, end + 1) : '[]')
       setStars(parsed)

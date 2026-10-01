@@ -1714,9 +1714,11 @@ export function useJobs() {
             console.warn('Failed to backup to Supabase:', e)
           }
 
-          // NOW clear the corrupted data from IndexedDB after sync attempt
+          // NOW clear the corrupted data from IndexedDB after sync attempt. Jobs
+          // only — indexeddb.clear() also wipes the sync QUEUE, silently discarding
+          // every pending offline write because one job was oversized.
           try {
-            await indexeddb.clear()
+            await indexeddb.clearJobs()
           } catch (e) {
             console.warn('Failed to clear IndexedDB:', e)
           }
@@ -1744,7 +1746,7 @@ export function useJobs() {
         if (err.message?.includes('allocation') || err.name === 'RangeError') {
           console.warn('⚠ Allocation error detected, clearing IndexedDB...')
           try {
-            await indexeddb.clear()
+            await indexeddb.clearJobs() // keep the sync queue (pending offline writes)
           } catch (e) {
             console.error('Failed to clear IndexedDB:', e)
           }

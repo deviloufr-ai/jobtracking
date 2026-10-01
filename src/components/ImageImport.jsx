@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { CLAUDE_MODEL } from '../constants/aiModel'
-import { getStatus } from '../hooks/useJobs'
-import { withUserApiKey } from '../services/apiKey'
+import { getStatus, findDuplicateJob } from '../hooks/useJobs'
+import { aiText } from '../services/apiKey'
 import { useDragDock } from '../hooks/useDragDock'
 import { localDateISO } from '../utils/localDate'
 
@@ -18,10 +18,9 @@ async function analyzeJobImage(base64Image, mimeType) {
     ]
   }
 
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(withUserApiKey({
+  // aiText (→ aiFetch): a 402 from the shared-key trial raises the "add your key"
+  // prompt, and a provider error surfaces its real message instead of "Erreur API".
+  const { text } = await aiText({
       model: CLAUDE_MODEL,
       max_tokens: 1500,
       messages: [{
@@ -56,15 +55,10 @@ Réponds UNIQUEMENT avec un tableau JSON valide, sans texte avant ou après, san
           }
         ]
       }]
-    }))
   })
 
-  if (!res.ok) throw new Error('Erreur API Claude')
-  const data = await res.json()
-  const text = data.content?.[0]?.text || '[]'
-  
   try {
-    const clean = text.replace(/```json|```/g, '').trim()
+    const clean = (text || '[]').replace(/```json|```/g, '').trim()
     return JSON.parse(clean)
   } catch {
     return []
@@ -100,9 +94,11 @@ export default function ImageImport({ onImport, onClose, existingJobs }) {
 
       const parsed = await analyzeJobImage(base64, file.type)
       
-      const existingNames = existingJobs.map(j => j.company.toLowerCase())
-      const newOnly = parsed.filter(p => 
-        p.company && !existingNames.includes(p.company.toLowerCase()) && p.confidence >= 50
+      // Drop only true duplicates (same company AND position). Filtering on the
+      // company name alone hid a re-application or a second role at a tracked
+      // company ("Aucune candidature détectée").
+      const newOnly = parsed.filter(p =>
+        p.company && p.confidence >= 50 && !findDuplicateJob(existingJobs || [], p.company, p.position)
       )
 
       setResults(newOnly)

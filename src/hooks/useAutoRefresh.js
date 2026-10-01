@@ -4,6 +4,7 @@ import { parseEmailsForJobs, validateAndCleanJobs } from '../services/claude'
 import { fetchCalendarEvents } from '../services/calendar'
 import { enrichJobTimeline } from '../services/enrichTimeline'
 import { matchEventToJob } from '../utils/meetingMatch'
+import { textMatchesCompany } from '../utils/companyMatch'
 import { localDateISO } from '../utils/localDate'
 import { extractJobUrlsFromEmail, rankUrlsByJobRelevance } from '../services/positionChecker'
 import { isAtsRejection, isDeletedJob, mergeHistoryBySameDayTopic, splitMeetingDatesInHistory, deriveStatusFromHistory, historyEntryKey, ATS_DOMAINS } from './useJobs'
@@ -521,9 +522,14 @@ export async function buildJobsFromEmails(emails, calendarEvents = []) {
     // Skip meetings whose start is already in the past at import time — a meeting
     // that has passed should never be freshly added to the timeline. (Meetings
     // already recorded while they were upcoming stay; this only blocks new adds.)
-    const co = (sorted[0].company || '').toLowerCase()
+    // Token match with word boundaries on the title/location (same rule as
+    // matchEventToJob) — a raw `.includes(company)` attached "Dinner with Samantha"
+    // to a company called "Sam", and matching the description tied any invite
+    // with "Microsoft Teams" boilerplate to a Microsoft candidature. The entry is
+    // typed `waiting` for a non-interview event, so a false match flipped the status.
+    const co = sorted[0].company || ''
     const calEntries = calendarEvents
-      .filter(e => e.title.toLowerCase().includes(co) || (e.description || '').toLowerCase().includes(co))
+      .filter(e => co && textMatchesCompany(`${e.title || ''} ${(e.location || '').replace(/\bhttps?:\/\/\S+/gi, ' ')}`, co))
       .filter(e => !isPastMeeting(e))
       .map(e => {
         const meetingLink = extractMeetingLink((e.description || '') + ' ' + (e.location || ''))

@@ -22,7 +22,7 @@ import { loadLocalProfile, pushProfile, pushLocalPrefs, PROFILE_SYNCED_EVENT } f
 import { runSyncDiagnostic } from '../services/syncDiagnostic'
 import SyncQueueInspector from './SyncQueueInspector'
 import { runCalendarDiagnostic } from '../services/calendarDiagnostic'
-import { withUserApiKey, getProviderKey, setProviderKey } from '../services/apiKey'
+import { aiFetch, getProviderKey, setProviderKey } from '../services/apiKey'
 import { extractToolsFromJobs, extractToolsFromCVs } from '../utils/toolsExtract'
 import { AI_PROVIDERS, AI_PROVIDER_IDS, DEFAULT_AI_PROVIDER } from '../constants/aiProviders'
 import { Capacitor } from '@capacitor/core'
@@ -448,11 +448,8 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
       const cv = [...cvs].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
       setExtracting(true)
       setExtractError(null)
-      const res = await fetch('/api/extract-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(withUserApiKey({ cvText: cv.text }))
-      })
+      // aiFetch: a 402 from the shared-key trial raises the "add your key" prompt.
+      const res = await aiFetch('/api/extract-profile', { cvText: cv.text })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error?.message || data.error || 'Extraction error')
       // Preserve the user-curated tools bank across a re-extract — extract-profile
@@ -582,7 +579,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
   // Supabase on the next sign-in (this is a local reset, not an account wipe — the
   // hint copy says so). The Supabase session itself (sb-* keys) is kept.
   async function handleFullReset() {
-    try { await indexeddb.clear() } catch (err) { console.warn('IndexedDB clear failed:', err) }
+    try { await indexeddb.clearAll() } catch (err) { console.warn('IndexedDB clear failed:', err) }
     try {
       Object.keys(localStorage)
         .filter(k => k.startsWith('jobtrackr_') || k.startsWith('jt_'))

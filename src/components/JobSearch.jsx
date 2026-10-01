@@ -3,6 +3,7 @@ import { searchJobs, getSavedAPI, setActiveAPI, getAvailableAPIs, getAPIName } f
 import { FRENCH_LOCATIONS, getLocationsByQuery, getLocationLabel } from '../services/adzunaLocations'
 import { ROME_CODES, searchRomeCodes, detectRomeCode } from '../services/romeCodesRef'
 import { localDateISO } from '../utils/localDate'
+import { findDuplicateJob } from '../hooks/useJobs'
 
 const CONTRACT_LABELS = {
   permanent: 'CDI',
@@ -115,9 +116,11 @@ export default function JobSearch({ onAddJob, existingJobs, t = (key) => key }) 
     setAdded(prev => new Set([...prev, job.id]))
   }
 
+  // Same company AND same position (the add form's duplicate rule). Matching on
+  // the company name alone marked every other posting at a tracked company as
+  // "✓ Ajouté" and disabled its Add button.
   const isAlreadyAdded = (job) => {
-    return added.has(job.id) ||
-      existingJobs.some(j => j.company.toLowerCase() === job.company.toLowerCase())
+    return added.has(job.id) || !!findDuplicateJob(existingJobs || [], job.company, job.title)
   }
 
   const formatDate = (d) => {

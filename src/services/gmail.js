@@ -832,13 +832,14 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
 
   if (lastSyncTime) {
     // Incremental sync: only fetch emails after last sync
+    // Gmail's `after:` takes a date (YYYY/MM/DD) or an EPOCH in seconds — not a
+    // time of day. The old "after:2026/09/30 10:15" made "10:15" a free-text
+    // search term, so the per-job sync matched almost nothing. Epoch seconds keep
+    // the minute precision.
     const lastSync = new Date(lastSyncTime)
-    const year = lastSync.getFullYear()
-    const month = String(lastSync.getMonth() + 1).padStart(2, '0')
-    const day = String(lastSync.getDate()).padStart(2, '0')
-    const hours = String(lastSync.getHours()).padStart(2, '0')
-    const mins = String(lastSync.getMinutes()).padStart(2, '0')
-    dateFilter = `after:${year}/${month}/${day} ${hours}:${mins}`
+    dateFilter = isNaN(lastSync.getTime())
+      ? 'newer_than:30d'
+      : `after:${Math.floor(lastSync.getTime() / 1000)}`
     effectiveMonths = 1  // Focus on recent results
   } else if (dateRange?.startDate && dateRange?.endDate) {
     const fmt = d => d.replace(/-/g, '/')

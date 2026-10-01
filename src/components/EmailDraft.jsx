@@ -3,7 +3,7 @@ import { CLAUDE_MODEL } from '../constants/aiModel'
 import { useDragDock } from '../hooks/useDragDock'
 import { detectLanguage } from '../utils/detectLanguage'
 import { isConnected, sendEmail, connectGmail, getCachedUser, getReplyContext } from '../services/gmail'
-import { withUserApiKey } from '../services/apiKey'
+import { aiText } from '../services/apiKey'
 import { trackFollowUpDrafted } from '../services/analytics'
 
 // Map the UI email type to the Mixpanel follow_up_type taxonomy.
@@ -324,21 +324,17 @@ export default function EmailDraft({ job, type = 'remerciement', onClose, onEmai
 
     const promptFn = PROMPTS[type]?.[lang] || PROMPTS[type]?.fr
     try {
-      const res = await fetch('/api/claude', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(withUserApiKey({
-          model: CLAUDE_MODEL,
-          max_tokens: 600,
-          // Feed the recruiter's actual refusal message into the thank-you so it
-          // can rebound on the specific reason given, and their name so it greets
-          // them personally.
-          messages: [{ role: 'user', content: promptFn(job, profile, refusalContent, recruiterName) }]
-        }))
+      // aiText (→ aiFetch): a 402 from the shared-key trial raises the
+      // "add your key" prompt instead of a bare "Erreur API".
+      const { text: rawText } = await aiText({
+        model: CLAUDE_MODEL,
+        max_tokens: 600,
+        // Feed the recruiter's actual refusal message into the thank-you so it
+        // can rebound on the specific reason given, and their name so it greets
+        // them personally.
+        messages: [{ role: 'user', content: promptFn(job, profile, refusalContent, recruiterName) }]
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error?.message || data.error || 'Erreur API')
-      let text = (data.content?.[0]?.text || '').trim()
+      let text = (rawText || '').trim()
         .replace(/\s*—\s*/g, ', ')
         .replace(/…/g, '.')
       // Append the deterministic signature block (the model is told not to add

@@ -312,6 +312,22 @@ class IndexedDBService {
       this.clearQueue()
     ])
   }
+
+  // Wipe EVERY store (jobs, history, CVs, settings, queue, metadata) — the
+  // "reset this device" action. clear() above only drops jobs + queue, which left
+  // CVs, settings and sync watermarks behind.
+  async clearAll() {
+    await this.init()
+    const names = Object.values(STORES).filter(n => this.db.objectStoreNames.contains(n))
+    if (!names.length) return
+    await new Promise((resolve, reject) => {
+      const tx = this.db.transaction(names, 'readwrite')
+      names.forEach(n => tx.objectStore(n).clear())
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+      tx.onabort = () => reject(tx.error)
+    })
+  }
 }
 
 export const indexeddb = new IndexedDBService()

@@ -239,7 +239,7 @@ export const en = {
     disableAllConfirm: 'Disable all notifications? You can re-enable them here.',
     allDisabled: '🔕 All notifications have been disabled',
     scenarioLabels: {
-      n01_no_response_14d: 'Follow-up without response (Day 14)',
+      n01_no_response_14d: 'Follow-up without response (delays set in Reminders)',
       n02_interview_24h: 'Interview in 24 hours',
       n03_offer_received: 'Offer received',
       n04_rejection: 'Rejection received',
@@ -965,6 +965,10 @@ export const en = {
     followUp: 'Follow-up email',
     star: 'Add to favorites',
     archive: 'Archive',
+    useCase: 'Case study / test',
+    checkPosition: 'Check whether the posting is still open',
+    positionOpen: 'Posting still open — check again',
+    positionClosed: 'Posting closed — check again',
   },
 
   // JobCard

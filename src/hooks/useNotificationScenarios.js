@@ -7,6 +7,70 @@ import {
   isScenarioAutoDisabled,
 } from '../services/notificationRules'
 import { sendBrowserNotification, isWithinNotificationHours, getTimeZone } from './useNotificationPermission'
+import { loadSettings } from './useSettings'
+
+const DAY_MS = 1000 * 60 * 60 * 24
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/
+
+// ── Pure helpers (exported for tests) ─────────────────────────────────────────
+
+// Follow-up delay for a status, from the user's Rappels settings. These were
+// hard-coded (14 d) here, so the notification ignored what the user configured
+// and disagreed with the "Prochaines étapes" rules that do read the settings.
+export function followUpThresholdDays(status, appSettings = {}) {
+  if (status === 'sent') return appSettings.followUpSentDays ?? 14
+  if (status === 'reviewing') return appSettings.followUpReviewingDays ?? 10
+  if (status === 'waiting') return appSettings.followUpWaitingDays ?? 7
+  return null
+}
+
+// Last activity on a candidature: its most recent timeline entry, else the
+// application date. "No response for N days" counts from here, not from the day
+// the application was first sent (a reply last week isn't 30 days of silence).
+export function lastActivityMs(job) {
+  let latest = NaN
+  for (const h of job?.history || []) {
+    const t = new Date(h?.date).getTime()
+    if (!isNaN(t) && !(t <= latest)) latest = t
+  }
+  if (isNaN(latest)) latest = new Date(job?.date).getTime()
+  return latest
+}
+
+// When an interview entry takes place. A date-only entry (the `job_history.date`
+// column drops the time) is taken as 09:00 LOCAL that day — `new Date('YYYY-MM-DD')`
+// is UTC midnight, which made "hours until" wrong and the body read "à 02:00".
+export function interviewStartMs(entry) {
+  const raw = entry?.rawStart || entry?.date || entry?.plannedDate
+  if (!raw) return NaN
+  return new Date(DATE_ONLY_RE.test(raw) ? `${raw}T09:00:00` : raw).getTime()
+}
+
+// The NEXT interview still ahead (soonest first). The old code took
+// history.find(status === 'interview') — the OLDEST one — so with a second round
+// tomorrow it looked at the first (past) interview and never sent the reminder.
+export function nextInterviewEntry(history, now = Date.now()) {
+  let best = null
+  for (const h of history || []) {
+    if (h?.status !== 'interview') continue
+    const t = interviewStartMs(h)
+    if (isNaN(t) || t <= now) continue
+    if (!best || t < best.at) best = { entry: h, at: t }
+  }
+  return best
+}
+
+// Start of the CURRENT "reviewing" stretch: the earliest entry of the trailing run
+// of reviewing entries (not the first reviewing entry ever recorded).
+export function reviewingSinceMs(history) {
+  const dated = (history || [])
+    .map(h => ({ status: h?.status, t: new Date(h?.date).getTime() }))
+    .filter(h => !isNaN(h.t))
+    .sort((a, b) => a.t - b.t)
+  let since = NaN
+  for (let i = dated.length - 1; i >= 0 && dated[i].status === 'reviewing'; i--) since = dated[i].t
+  return since
+}
 
 const LAST_CHECK_KEY = 'jobtrackr_notif_last_check'
 const PREVIOUS_JOBS_KEY = 'jobtrackr_notif_previous_jobs'
@@ -68,10 +132,13 @@ export function useNotificationScenarios(jobs, permission) {
     if (permission !== 'granted') return
 
     const settings = loadNotificationSettings()
+    const appSettings = loadSettings()
     const timezone = getTimeZone()
 
     // Only run checks during notification hours
     if (!isWithinNotificationHours(timezone)) return
+
+    const previousJobs = getPreviousJobs()
 
     jobs.forEach(job => {
       const {
@@ -84,16 +151,43 @@ export function useNotificationScenarios(jobs, permission) {
         notes = '',
       } = job
 
-      // Skip archived jobs
-      if (status === 'archived') return
+      // ─ N07: Auto-archived (system-triggered) ────────────────────────────────
+      // Must run BEFORE the archived early-return below (it sat after it, so it
+      // could never fire). Only on a real transition: the job was in the previous
+      // snapshot with a non-archived status. A job absent from the snapshot (first
+      // run, cleared storage) is NOT a transition — that used to qualify every
+      // already-archived candidature at once.
+      if (status === 'archived') {
+        const prevStatus = previousJobs[jobId]?.status
+        if (settings.n07_auto_archived && !isScenarioAutoDisabled('n07_auto_archived') && prevStatus && prevStatus !== 'archived') {
+          const check = canSendNotification('n07_auto_archived', jobId, job)
+          if (check.allowed) {
+            const wasRejection = ['rejected', 'rejected_ats', 'cancelled'].includes(prevStatus)
+            const days = wasRejection ? appSettings.archiveRejectedDays : appSettings.archiveSentDays
+            sendBrowserNotification(`Archivée — ${company}`, {
+              tag: `n07-${jobId}`,
+              body: buildBody(
+                position,
+                wasRejection
+                  ? `Archivée automatiquement ${days} jour(s) après le refus`
+                  : `Archivée automatiquement après ${days} jours sans réponse`,
+              ),
+              data: { jobId, company, position, scenario: 'n07_auto_archived' },
+            })
+            recordNotificationSent('n07_auto_archived', jobId, { company, position })
+          }
+        }
+        return // nothing else applies to an archived candidature
+      }
 
       const now = Date.now()
-      const jobDateMs = new Date(jobDate).getTime()
-      const daysSinceApplication = Math.floor((now - jobDateMs) / (1000 * 60 * 60 * 24))
+      // Days of silence since the LAST activity on the candidature.
+      const daysSinceApplication = Math.floor((now - lastActivityMs({ date: jobDate, history })) / DAY_MS)
 
-      // ─ N01: No response after 14 days ────────────────────────────────────────
+      // ─ N01: No response after the follow-up delay set in Réglages → Rappels ──
       if (settings.n01_no_response_14d && !isScenarioAutoDisabled('n01_no_response_14d')) {
-        if (['sent', 'reviewing', 'waiting'].includes(status) && daysSinceApplication >= 14) {
+        const threshold = followUpThresholdDays(status, appSettings)
+        if (threshold != null && daysSinceApplication >= threshold) {
           const check = canSendNotification('n01_no_response_14d', jobId, job)
           if (check.allowed && isScenarioStillTriggered('n01_no_response_14d', job)) {
             sendBrowserNotification(`Relancer ${company}`, {
@@ -112,18 +206,18 @@ export function useNotificationScenarios(jobs, permission) {
       // ─ N02: Interview in 24h ────────────────────────────────────────────────
       if (settings.n02_interview_24h && !isScenarioAutoDisabled('n02_interview_24h')) {
         if (status === 'interview') {
-          const interviewHistoryEntry = history.find(e => e.status === 'interview')
-          if (interviewHistoryEntry) {
-            const interviewDateStr = interviewHistoryEntry.date || interviewHistoryEntry.plannedDate
-            if (interviewDateStr) {
-              const interviewDate = new Date(interviewDateStr).getTime()
-              const hoursUntilInterview = (interviewDate - now) / (1000 * 60 * 60)
+          const next = nextInterviewEntry(history, now)
+          if (next) {
+            const interviewDateStr = next.entry.rawStart || next.entry.date || next.entry.plannedDate
+            {
+              const hoursUntilInterview = (next.at - now) / (1000 * 60 * 60)
 
               // Trigger between 24 and 0 hours before interview
               if (hoursUntilInterview <= 24 && hoursUntilInterview > 0) {
                 const check = canSendNotification('n02_interview_24h', jobId, job)
                 if (check.allowed && isScenarioStillTriggered('n02_interview_24h', job)) {
-                  const interviewTime = formatTime(interviewDateStr)
+                  // No clock time to show for a date-only entry.
+                  const interviewTime = DATE_ONLY_RE.test(interviewDateStr) ? '' : formatTime(interviewDateStr)
                   const hoursLabel = Math.max(1, Math.round(hoursUntilInterview))
                   sendBrowserNotification(`Entretien demain — ${company}`, {
                     tag: `n02-${jobId}`,
@@ -181,10 +275,9 @@ export function useNotificationScenarios(jobs, permission) {
       // ─ N05: Profile under review > 7 days ───────────────────────────────────
       if (settings.n05_reviewing_7d && !isScenarioAutoDisabled('n05_reviewing_7d')) {
         if (status === 'reviewing') {
-          const reviewingHistoryEntry = history.find(e => e.status === 'reviewing')
-          if (reviewingHistoryEntry) {
-            const reviewStartDate = new Date(reviewingHistoryEntry.date).getTime()
-            const daysSinceReviewStart = Math.floor((now - reviewStartDate) / (1000 * 60 * 60 * 24))
+          const reviewStartDate = reviewingSinceMs(history)
+          if (!isNaN(reviewStartDate)) {
+            const daysSinceReviewStart = Math.floor((now - reviewStartDate) / DAY_MS)
 
             if (daysSinceReviewStart >= 7) {
               const check = canSendNotification('n05_reviewing_7d', jobId, job)
@@ -204,28 +297,7 @@ export function useNotificationScenarios(jobs, permission) {
         }
       }
 
-      // ─ N07: Auto-archived after 60 days (system-triggered) ─────────────────
-      if (settings.n07_auto_archived && !isScenarioAutoDisabled('n07_auto_archived')) {
-        // Detect when a job just transitioned to archived
-        const previousJobs = getPreviousJobs()
-        const wasNotArchived = previousJobs[jobId]?.status !== 'archived'
-        const isNowArchived = status === 'archived'
-
-        if (wasNotArchived && isNowArchived) {
-          const check = canSendNotification('n07_auto_archived', jobId, job)
-          if (check.allowed) {
-            sendBrowserNotification(`Archivée — ${company}`, {
-              tag: `n07-${jobId}`,
-              body: buildBody(
-                position,
-                'Archivée automatiquement après 60 jours sans réponse',
-              ),
-              data: { jobId, company, position, scenario: 'n07_auto_archived' },
-            })
-            recordNotificationSent('n07_auto_archived', jobId, { company, position })
-          }
-        }
-      }
+      // (N07 — auto-archived — is handled at the top, before the archived early-return.)
 
       // ─ N08: Deadline reminder 2 days before ────────────────────────────────
       if (settings.n08_deadline_reminder && !isScenarioAutoDisabled('n08_deadline_reminder')) {

@@ -358,7 +358,12 @@ export default function CandidatureDrawer({
                             <select value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value })} className="flex-1 text-sm border border-gray-200 rounded-lg px-2.5 py-2 bg-white">
                               {STATUSES.map(s => <option key={s.key} value={s.key}>{getStatusLabel(s.key, t)}</option>)}
                             </select>
-                            <input type="date" value={(editForm.date || '').slice(0, 10)} onChange={e => setEditForm({ ...editForm, date: e.target.value })} className="text-sm border border-gray-200 rounded-lg px-2.5 py-2 bg-white" />
+                            {/* Changing the DAY keeps the entry's time-of-day (and offset): writing the
+                                bare YYYY-MM-DD dropped "T10:30…", so an interview jumped to
+                                midnight and lost its "upcoming" state. */}
+                            <input type="date" value={(editForm.date || '').slice(0, 10)}
+                              onChange={e => setEditForm({ ...editForm, date: e.target.value ? e.target.value + (editForm.date || '').slice(10) : editForm.date })}
+                              className="text-sm border border-gray-200 rounded-lg px-2.5 py-2 bg-white" />
                           </div>
                           <textarea value={editForm.note || ''} onChange={e => setEditForm({ ...editForm, note: e.target.value })} rows={2} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white resize-none" />
                           <div className="flex gap-2">

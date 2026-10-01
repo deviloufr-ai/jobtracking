@@ -29,7 +29,7 @@ prose ("v0.7", "v1.0") are documentation artifacts. Do not trust them.
 | Mobile | Capacitor 8 → Android, `com.smartjobtracker.app` |
 | Extension | Firefox MV3 in `jobtrackr-extension/` (folder name is legacy, left deliberately) |
 | Analytics | Vercel Analytics (cookieless, `Root.jsx`) + Mixpanel product funnel (`services/analytics.js`) — Mixpanel is **opt-in**: nothing inits/sends until `jobtrackr_analytics_consent === 'granted'` (banner after sign-in, toggle in Settings → Data) |
-| Tests | Vitest + jsdom — 25 test files |
+| Tests | Vitest + jsdom — 30 test files |
 
 ## Architecture
 

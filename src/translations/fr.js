@@ -239,7 +239,7 @@ export const fr = {
     disableAllConfirm: 'Désactiver toutes les notifications ? Vous pourrez les réactiver ici.',
     allDisabled: '🔕 Toutes les notifications ont été désactivées',
     scenarioLabels: {
-      n01_no_response_14d: 'Relance sans réponse (J+14)',
+      n01_no_response_14d: 'Relance sans réponse (délais réglés dans Rappels)',
       n02_interview_24h: 'Entretien dans 24 heures',
       n03_offer_received: 'Offre reçue',
       n04_rejection: 'Refus reçu',
@@ -1260,6 +1260,10 @@ export const fr = {
     followUp: 'Email de relance',
     star: 'Ajouter aux favoris',
     archive: 'Archiver',
+    useCase: 'Cas pratique / test',
+    checkPosition: 'Vérifier si l’offre est toujours ouverte',
+    positionOpen: 'Offre toujours ouverte — revérifier',
+    positionClosed: 'Offre fermée — revérifier',
   },
 
   // JobCard

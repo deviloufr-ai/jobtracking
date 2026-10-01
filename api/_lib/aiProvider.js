@@ -232,7 +232,14 @@ async function callOpenAI({ apiKey, baseUrl, model, system, messages, max_tokens
   const response = await safeFetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model, max_tokens: Number(max_tokens) || 2000, messages: oaMessages }),
+    // OpenAI's reasoning families (o1/o3/o4…, gpt-5…) reject `max_tokens` with
+    // "Unsupported parameter" and require `max_completion_tokens`; every other
+    // OpenAI-compatible backend (Groq, OpenRouter, Mistral…) expects `max_tokens`.
+    body: JSON.stringify({
+      model,
+      [/^(o\d|gpt-5)/i.test(String(model || '').replace(/^.*\//, '')) ? 'max_completion_tokens' : 'max_tokens']: Number(max_tokens) || 2000,
+      messages: oaMessages,
+    }),
   })
 
   let data

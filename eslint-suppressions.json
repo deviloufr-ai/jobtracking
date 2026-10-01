@@ -200,7 +200,7 @@
   },
   "src/components/NotificationSettings.jsx": {
     "no-unused-vars": {
-      "count": 3
+      "count": 2
     }
   },
   "src/components/ScoreJob.jsx": {

@@ -37,7 +37,7 @@ export default function RowActions({
       {
         id: 'case',
         icon: '📋',
-        label: t('rowActions.draftEmail'),
+        label: t('rowActions.useCase'),
         onClick: onUseCase,
         color: hasUseCase ? 'text-purple-600 hover:text-purple-700 hover:bg-purple-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
       },
@@ -45,7 +45,8 @@ export default function RowActions({
         {
           id: 'check',
           icon: positionStatus === true ? '✓' : positionStatus === false ? '✗' : '🔍',
-          label: positionStatus === true ? t('filters.all') : positionStatus === false ? t('empty.noResults') : t('filters.search'),
+          // These used to borrow unrelated keys ("Tous" / "Aucun résultat" / "Rechercher").
+          label: positionStatus === true ? t('rowActions.positionOpen') : positionStatus === false ? t('rowActions.positionClosed') : t('rowActions.checkPosition'),
           onClick: onCheckPosition,
           disabled: checkingPosition,
           color: positionStatus === true ? 'text-green-600 hover:text-green-700 hover:bg-green-50' : positionStatus === false ? 'text-red-600 hover:text-red-700 hover:bg-red-50' : 'text-orange-600 hover:text-orange-700 hover:bg-orange-50'

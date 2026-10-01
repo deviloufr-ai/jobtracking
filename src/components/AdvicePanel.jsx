@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CLAUDE_MODEL } from '../constants/aiModel'
-import { withUserApiKey } from '../services/apiKey'
+import { aiText } from '../services/apiKey'
 
 const IS_DEV = import.meta.env.DEV
 
@@ -61,10 +61,9 @@ async function generateAIAdvice(company, position, status, notes, history) {
     .map(h => `${h.date}: ${h.note || h.status}`)
     .join('\n')
 
-  const res = await fetch('/api/claude', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(withUserApiKey({
+  // aiText (→ aiFetch): a 402 from the shared-key trial raises the "add your key"
+  // prompt, and a provider error surfaces its real message instead of "Erreur API".
+  const { text } = await aiText({
       model: CLAUDE_MODEL,
       max_tokens: 600,
       messages: [{
@@ -87,14 +86,10 @@ Règles :
 Réponds UNIQUEMENT avec un tableau JSON de 3 strings, sans texte avant ou après, sans backticks.
 Exemple: ["Conseil 1", "Conseil 2", "Conseil 3"]`
       }]
-    }))
   })
 
-  if (!res.ok) throw new Error('Erreur API')
-  const data = await res.json()
-  const text = data.content?.[0]?.text || '[]'
   try {
-    return JSON.parse(text.replace(/```json|```/g, '').trim())
+    return JSON.parse((text || '[]').replace(/```json|```/g, '').trim())
   } catch { return [] }
 }
 

@@ -10,6 +10,14 @@ let claudeRequestQueue = Promise.resolve()
 let claudeRequestCount = 0
 const MAX_CONCURRENT_REQUESTS = 1
 
+// Error text from the proxy. Claude replies `{ error: { message } }`, while the
+// Gemini / OpenAI-compatible adapters reply `{ error: '<string>' }` — reading only
+// `.error.message` lost the real reason and showed "Claude API 400" to a Gemini user.
+function apiErrorMessage(data, status) {
+  const err = data?.error
+  return (typeof err === 'string' ? err : err?.message) || `AI API ${status}`
+}
+
 // Serialise `fn` behind every call queued before it. The tail is advanced on a
 // SETTLED promise: a rejected call still rejects for its own caller, but the
 // chain itself never becomes rejected — previously `queue = queue.then(fn)` kept
@@ -346,7 +354,7 @@ async function callClaude(systemPrompt, userContent, retries = 3) {
 
           // Retry on 5xx errors (transient server issues)
           if (res.status >= 500 && res.status < 600) {
-            lastError = new Error(data?.error?.message || `Claude API ${res.status}`)
+            lastError = new Error(apiErrorMessage(data, res.status))
             if (attempt < retries) {
               const waitMs = 1000 * Math.pow(2, attempt)
               console.warn(`Claude 5xx error (${requestId}), retrying in ${waitMs}ms...`)
@@ -357,8 +365,8 @@ async function callClaude(systemPrompt, userContent, retries = 3) {
           }
 
           if (!res.ok) {
-            console.error('Claude API error:', data)
-            throw new Error(data?.error?.message || `Claude API ${res.status}`)
+            console.error('AI API error:', data)
+            throw new Error(apiErrorMessage(data, res.status))
           }
           const text = data.content?.[0]?.text || ''
           return text
