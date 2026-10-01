@@ -602,6 +602,7 @@ export const fr = {
     more: 'En savoir plus',
     accept: 'Accepter',
     decline: 'Refuser',
+    later: 'Plus tard',
     settingsTitle: 'Mesure d’usage (Mixpanel)',
     settingsHint: 'Événements d’utilisation des fonctions, liés à votre compte, sans le contenu de vos emails, CV ou notes. Choix enregistré sur cet appareil.',
     on: 'Activée',

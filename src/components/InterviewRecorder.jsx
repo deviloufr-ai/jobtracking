@@ -3,6 +3,7 @@ import { CLAUDE_MODEL } from '../constants/aiModel'
 import { aiFetch } from '../services/apiKey'
 import { transcribeBlob, canRecordAudio } from '../services/localSpeech'
 import { parseAnalysisJson } from '../services/rejectionAnalysis'
+import { isAppEnglish } from '../utils/appLanguage'
 
 // Real-interview recorder.
 // Captures a live Meet/Zoom call by sharing the call tab's audio + the mic, mixes
@@ -151,12 +152,23 @@ Format as JSON with keys: hire_decision, score, strengths, concerns, weak_exampl
   }
 
   const btn = 'px-4 py-2 rounded-lg text-sm font-semibold'
+  const busy = ['recording', 'transcribing', 'analyzing'].includes(stage)
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={stage === 'recording' ? undefined : onClose}>
+    // While recording, transcribing or analysing, a click on the backdrop must not
+    // close the window — the recording (and its long local transcription) would be
+    // lost. The × still closes, after a confirmation.
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={busy ? undefined : onClose}>
       <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-gray-900 dark:text-gray-100">🎙️ Record real interview</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+          <button
+            onClick={() => {
+              if (busy && !window.confirm(isAppEnglish()
+                ? 'Close now? The recording in progress will be lost.'
+                : 'Fermer maintenant ? L’enregistrement en cours sera perdu.')) return
+              onClose?.()
+            }}
+            className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
         </div>
 
         {stage === 'idle' && (

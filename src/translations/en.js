@@ -1335,6 +1335,7 @@ export const en = {
     more: 'Learn more',
     accept: 'Accept',
     decline: 'Decline',
+    later: 'Later',
     settingsTitle: 'Usage analytics (Mixpanel)',
     settingsHint: 'Feature-usage events tied to your account, without the content of your emails, CVs, or notes. Choice saved on this device.',
     on: 'On',

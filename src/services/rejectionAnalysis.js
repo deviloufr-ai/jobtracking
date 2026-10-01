@@ -55,11 +55,12 @@ export function parseAnalysisJson(rawText) {
 }
 
 function buildPrompt(evidence, language) {
-  const langLine = language === 'fr'
-    ? 'Write ALL human-readable text (summary, findings, recommendations, rules) in FRENCH.'
-    : language === 'jp'
-    ? 'Write ALL human-readable text in JAPANESE.'
-    : 'Write ALL human-readable text in ENGLISH.'
+  // Every string VALUE must be in one language. The model used to drift into
+  // franglais ("Location/relocation uncertainty killing conversion…") because the
+  // evidence and this prompt are in English — so be explicit about titles and
+  // evidence phrasing, and repeat it at the very end where it weighs most.
+  const langName = language === 'fr' ? 'FRENCH' : language === 'jp' ? 'JAPANESE' : 'ENGLISH'
+  const langLine = `Write ALL human-readable text (summary, every finding title/detail/evidence, every recommendation, every rule) in ${langName} — full sentences in ${langName}, no English mixed in. Keep only proper nouns (company, product, tool names) and verbatim quotes from emails as they are. JSON keys and the enum values (leak, severity, area) stay in English exactly as specified.`
 
   return `You are a senior technical recruiter and career coach doing a forensic review of ONE candidate's job-search rejections. Your job is to find WHY applications are being rejected and produce concrete fixes — grounded ONLY in the evidence below (plus web search, if available, for company/role context). Never invent facts about the candidate.
 
@@ -90,7 +91,9 @@ Respond with ONLY a JSON object (no markdown, no preamble) with this exact struc
 }
 Keep findings to the 3-6 highest-leverage. cvRules/letterRules: at most 5 each, each a single actionable sentence a CV/letter generator can follow (e.g. "Lead the profile with quantified P&L/impact, not tools" or "Mirror the exact seniority title from the posting"). If the leak is clearly after-interview, say so in the summary and keep cvRules/letterRules minimal.
 
-OUTPUT FORMAT (strict): return ONLY the JSON object, MINIFIED onto a single line, with NO literal newline characters inside any string value (write flowing text, no line breaks). Keep each "summary" under ~400 characters and every "detail"/"evidence" string under ~200 characters so the whole object fits well within the token budget and is never truncated.`
+OUTPUT FORMAT (strict): return ONLY the JSON object, MINIFIED onto a single line, with NO literal newline characters inside any string value (write flowing text, no line breaks). Keep each "summary" under ~400 characters and every "detail"/"evidence" string under ~200 characters so the whole object fits well within the token budget and is never truncated.
+
+LANGUAGE (strict): all string values in ${langName}.`
 }
 
 function normalize(parsed) {

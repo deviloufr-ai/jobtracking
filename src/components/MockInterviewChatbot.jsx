@@ -7,6 +7,7 @@ import { parseAnalysisJson } from '../services/rejectionAnalysis'
 import { deliverText } from '../services/fileSave'
 import { trackMockInterviewCompleted } from '../services/analytics'
 import { useDragDock } from '../hooks/useDragDock'
+import { isAppEnglish } from '../utils/appLanguage'
 import { Capacitor } from '@capacitor/core'
 import { SpeechRecognition as NativeSpeech } from '@capacitor-community/speech-recognition'
 
@@ -796,7 +797,16 @@ Format as JSON with keys: hire_decision, score, strengths, concerns, weak_exampl
               ))}
             </select>
             <button
-              onClick={onClose}
+              onClick={() => {
+                // The transcript is only saved on "End & Analyze": closing mid-interview
+                // (after at least one answer, before the analysis) used to drop a whole
+                // session on a stray click.
+                const answered = messages.some((m) => m.role !== 'interviewer')
+                if (answered && !feedback && !window.confirm(isAppEnglish()
+                  ? 'Close this interview? Your answers have not been analysed or saved yet.'
+                  : 'Fermer cet entretien ? Vos réponses n’ont pas encore été analysées ni enregistrées.')) return
+                onClose?.()
+              }}
               className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
             >
               ✕
