@@ -4,6 +4,7 @@ import { aiFetch } from '../services/apiKey'
 import { pushProfile } from '../services/profileSync'
 import CVGenerator from './CVGenerator'
 import CVEditModal from './CVEditModal'
+import ConfirmButton from './ConfirmButton'
 
 const PROFILE_KEY = 'jobtrackr_profile'
 
@@ -215,11 +216,12 @@ export default function CVManager({ jobs, preselectedJob, onUpdateJob, manageOnl
                       ? <><span className="w-2.5 h-2.5 border border-indigo-400 border-t-indigo-600 rounded-full animate-spin" /> {t('cvManagerUI.extracting')}</>
                       : '✦ ' + t('cvManagerUI.extractProfile')}
                   </button>
-                  <button
-                    onClick={() => deleteCV(cv.id)}
+                  {/* Two-step: a base CV feeds every generation and a delete has no undo. */}
+                  <ConfirmButton
+                    onConfirm={() => deleteCV(cv.id)}
                     className="text-xs text-gray-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
                     title={t('common.delete')}
-                  >🗑️</button>
+                  >🗑️</ConfirmButton>
                 </div>
                 {extractedCvName === cv.name && !justExtracted && (
                   <span className="text-[10px] font-semibold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full ml-1 shrink-0">{t('cvManagerUI.profileCheckmark')}</span>

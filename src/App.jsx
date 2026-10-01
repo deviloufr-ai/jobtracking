@@ -695,6 +695,7 @@ export default function App() {
   const [showFavOnly, setShowFavOnly] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [cvGenJob, setCvGenJob] = useState(null) // job whose tailored CV is being generated
+  const [cvGenDirty, setCvGenDirty] = useState(false) // CV generator has unsaved changes → confirm before closing its window
   const [cvGenEdit, setCvGenEdit] = useState(false) // true = open cvGenJob to edit its saved CV (thema/content/skills); false = generate fresh
   const [showImageImport, setShowImageImport] = useState(false)
   // { url } while the LinkedIn-import modal is open (url pre-fills it from a
@@ -1919,14 +1920,16 @@ export default function App() {
       {cvGenJob && (baseCV || cvGenEdit) && (
         <FloatingWindow
           title={`${cvGenEdit ? '✏️' : '✨'} ${cvGenJob.company} — ${cvGenJob.position}`}
-          onClose={() => { setCvGenJob(null); setCvGenEdit(false) }}
+          confirmClose={cvGenDirty ? t('cvGeneratorUI.unsavedClose') : null}
+          onClose={() => { setCvGenJob(null); setCvGenEdit(false); setCvGenDirty(false) }}
         >
           <CVGenerator
             cv={baseCV}
             cvs={cvs}
             job={jobs.find(j => j.id === cvGenJob.id) || cvGenJob}
             editSaved={cvGenEdit}
-            onBack={() => { setCvGenJob(null); setCvGenEdit(false) }}
+            onBack={() => { setCvGenJob(null); setCvGenEdit(false); setCvGenDirty(false) }}
+            onDirtyChange={setCvGenDirty}
             onSaveCV={updateJob}
             t={t}
           />

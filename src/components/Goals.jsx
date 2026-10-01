@@ -49,7 +49,15 @@ export default function Goals({ jobs, t = (key) => key }) {
   }, [jobs])
 
   const handleSave = () => {
-    updateSettings(draft)
+    // The inputs hold raw text while editing (clamping per keystroke made the
+    // fields impossible to retype: clear → 1, then "5" → 15). Coerce on save;
+    // an empty/invalid field keeps the current goal.
+    const clean = {}
+    for (const [key, raw] of Object.entries(draft || {})) {
+      const n = parseInt(raw, 10)
+      clean[key] = Number.isNaN(n) ? goals[key] : Math.max(1, n)
+    }
+    updateSettings(clean)
     setEditing(false)
   }
 
@@ -127,7 +135,7 @@ export default function Goals({ jobs, t = (key) => key }) {
                     type="number"
                     min="1"
                     value={draft[item.key]}
-                    onChange={e => setDraft(d => ({ ...d, [item.key]: Math.max(1, parseInt(e.target.value) || 1) }))}
+                    onChange={e => setDraft(d => ({ ...d, [item.key]: e.target.value }))}
                     className="w-16 text-xs border border-gray-200 rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
                   />
                   {item.isPercent && <span className="text-[10px] text-gray-400">%</span>}

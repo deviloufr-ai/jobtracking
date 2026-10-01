@@ -6,6 +6,7 @@ import { buildJobsFromEmails } from '../hooks/useAutoRefresh'
 import { clearEmailCache } from '../services/claude'
 import { getStatus, isAtsRejection, findDuplicateJob } from '../hooks/useJobs'
 import { localDateISO } from '../utils/localDate'
+import ConfirmButton from './ConfirmButton'
 
 const STEPS ={ idle: 'idle', connecting: 'connecting', fetching: 'fetching', parsing: 'parsing', review: 'review' }
 
@@ -775,9 +776,10 @@ export default function GmailImport({ onImport, onUpdate, onClose, existingJobs,
                 </div>
               )}
               <div className="flex gap-3 justify-center">
-                <button onClick={() => handleDisconnect()} className="text-xs text-gray-400 hover:text-gray-600 hover:underline">
+                {/* Two-step: this drops every account's tokens (re-consent needed). */}
+                <ConfirmButton onConfirm={() => handleDisconnect()} className="text-xs text-gray-400 hover:text-gray-600 hover:underline">
                   Tout déconnecter
-                </button>
+                </ConfirmButton>
                 <button onClick={handleScan} disabled={!connected} className={`text-white text-sm font-semibold px-6 py-2.5 rounded-xl active:scale-95 transition-all flex items-center gap-2 ${connected ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-400 cursor-not-allowed'}`}>
                   <span>🔍</span>
                   <span>

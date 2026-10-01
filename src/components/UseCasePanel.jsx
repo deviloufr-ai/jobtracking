@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { aiFetch } from '../services/apiKey'
+import ConfirmButton from './ConfirmButton'
 
 const DELIVERABLE_TYPES = [
   { key: 'github',  label: 'GitHub',   icon: '🐙' },
@@ -376,10 +377,10 @@ export default function UseCasePanel({ job, onUpdate }) {
                   >
                     {DELIVERABLE_STATUS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
                   </select>
-                  <button onClick={() => removeDeliverable(d.id)}
+                  <ConfirmButton onConfirm={() => removeDeliverable(d.id)}
                     className="opacity-0 group-hover/del:opacity-100 text-gray-300 hover:text-red-400 text-xs transition-opacity">
                     ✕
-                  </button>
+                  </ConfirmButton>
                 </div>
               )
             })}

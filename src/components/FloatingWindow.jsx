@@ -5,7 +5,9 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 // app behind — the user can keep working while content here runs. The children
 // stay mounted when minimized (body is hidden via CSS, not unmounted), so any
 // in-flight work (e.g. a CV generation request) continues uninterrupted.
-export default function FloatingWindow({ title, onClose, children, width = 1120 }) {
+// `confirmClose`: when set (a message), ✕ asks before closing — used by the CV
+// generator so unsaved edits aren't discarded by a stray click.
+export default function FloatingWindow({ title, onClose, children, width = 1120, confirmClose = null }) {
   const [pos, setPos] = useState(null)        // {x,y,w,h} — null until measured/centered
   const [minimized, setMinimized] = useState(false)
   const drag = useRef({ active: false, sx: 0, sy: 0, ox: 0, oy: 0 })
@@ -56,7 +58,7 @@ export default function FloatingWindow({ title, onClose, children, width = 1120 
       </button>
       <button
         onPointerDown={e => e.stopPropagation()}
-        onClick={onClose}
+        onClick={() => { if (confirmClose && !window.confirm(confirmClose)) return; onClose?.() }}
         title="Fermer"
         className="w-7 h-7 flex items-center justify-center rounded-md text-gray-500 hover:bg-red-100 hover:text-red-600 transition-colors text-sm leading-none"
       >

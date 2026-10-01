@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { isNoReply } from './EmailDraft'
 import { uid } from '../utils/uid'
 import { parseSender } from '../utils/parseSender'
+import ConfirmButton from './ConfirmButton'
 
 // Per-application networking mini-CRM. Managed contacts (name, role, email, phone,
 // LinkedIn, notes) with a touchpoint log and a "reconnect" nudge live on
@@ -133,7 +134,7 @@ export default function ContactsManager({ job, onUpdateJob, t = (k) => k }) {
                       {expanded ? tx('contacts.hideLog', 'Hide log') : `${tx('contacts.log', 'Log')}${(c.touchpoints?.length) ? ` (${c.touchpoints.length})` : ''}`}
                     </button>
                     <button onClick={() => startEdit(c)} className="text-gray-400 hover:text-gray-600">{tx('common.edit', 'Edit')}</button>
-                    <button onClick={() => removeContact(c.id)} className="text-gray-400 hover:text-red-500">{tx('common.delete', 'Delete')}</button>
+                    <ConfirmButton onConfirm={() => removeContact(c.id)} className="text-gray-400 hover:text-red-500">{tx('common.delete', 'Delete')}</ConfirmButton>
                   </div>
 
                   {expanded && (

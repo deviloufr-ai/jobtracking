@@ -493,7 +493,7 @@ export default function CVGenerator(props) {
   )
 }
 
-function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSaveCV, t = (key) => key }) {
+function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSaveCV, onDirtyChange, t = (key) => key }) {
   // When opened to *edit* an already-generated CV (a candidature's saved CV),
   // seed straight into the preview with its markdown/template/score instead of
   // running the fetch→suggest→generate flow. The JD is primed in the background
@@ -527,6 +527,10 @@ function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSave
   const [showLangPicker, setShowLangPicker] = useState(false)
   const [profilePic, setProfilePic] = useState(() => localStorage.getItem('cv_profile_picture') || null)
   const [saved, setSaved]           = useState(false)
+  // What is currently stored on the candidature ({ markdown, template }) — the
+  // baseline for "unsaved changes". null = nothing saved yet for this CV.
+  const [lastSaved, setLastSaved]   = useState(savedCV ? { markdown: savedCV.markdown || '', template: savedCV.template || 'standard' } : null)
+  const [exportError, setExportError] = useState(null)
   const [selectedLanguage, setSelectedLanguage] = useState('auto')
   const [isCompressing, setIsCompressing] = useState(false)
   const picInputRef = useRef()
@@ -743,29 +747,50 @@ function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSave
     } catch(e) { setJdError(e.message); setStep('ready_to_generate') }
   }
 
+  // ── Save to the candidature ───────────────────────────────────────────────
+  // Saving used to happen ONLY as a side effect of "Export PDF", so an edited or
+  // freshly generated CV was lost by closing the window. It is now its own
+  // action (💾), still performed first by the export, and the window asks before
+  // closing with unsaved changes (see `dirty` / onDirtyChange below).
+  const currentMarkdown = editableCV || generatedCV
+  const cvFilename = (md) => `${parseCV(md).name || 'CV'} - ${job.position}`
+  const saveCV = (md = currentMarkdown) => {
+    if (!onSaveCV || !md) return
+    onSaveCV(job.id, {
+      cvSaved: {
+        markdown: md,
+        template,
+        filename: cvFilename(md),
+        savedAt: new Date().toISOString(),
+        atsScore: atsScore ?? null, // ATS keyword-coverage score, surfaced in the candidature panel
+        impactScore: impactScore ?? null, // recruiter-impact/readability score (separate from ATS coverage)
+      }
+    })
+    setLastSaved({ markdown: md, template })
+    setSaved(true)
+    setTimeout(() => setSaved(false), 3000)
+  }
+
+  const dirty = step === 'preview' && !!currentMarkdown && !!onSaveCV &&
+    (!lastSaved || lastSaved.markdown !== currentMarkdown || lastSaved.template !== template)
+  useEffect(() => {
+    onDirtyChange?.(dirty)
+    return () => onDirtyChange?.(false)
+  }, [dirty, onDirtyChange])
+  const handleBack = () => {
+    if (dirty && !window.confirm(t('cvGeneratorUI.unsavedClose'))) return
+    onBack?.()
+  }
+
   // ── Export PDF with optional server-side compression ──────────────────────
   const handleExportPDF = async () => {
-    const md       = editableCV || generatedCV
+    const md       = currentMarkdown
     const html     = renderCV(md, template, profilePic)
-    const cvData   = parseCV(md)
-    const candidateName = cvData.name || 'CV'
-    const filename = `${candidateName} - ${job.position}`
+    const filename = cvFilename(md)
+    setExportError(null)
 
     // Save to candidature FIRST
-    if (onSaveCV) {
-      onSaveCV(job.id, {
-        cvSaved: {
-          markdown: md,
-          template,
-          filename,
-          savedAt: new Date().toISOString(),
-          atsScore: atsScore ?? null, // ATS keyword-coverage score, surfaced in the candidature panel
-          impactScore: impactScore ?? null, // recruiter-impact/readability score (separate from ATS coverage)
-        }
-      })
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
-    }
+    saveCV(md)
 
     // Create temporary container with PDF content (allows multiple pages for full content)
     const element = document.createElement('div')
@@ -835,7 +860,9 @@ function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSave
       const blob = await html2pdf().set(options).from(element).outputPdf('blob')
       await deliverFile(blob, options.filename || 'cv.pdf', 'application/pdf')
     } catch (err) {
+      // Was console-only: the button simply did nothing when html2pdf failed.
       console.error('PDF export error:', err)
+      setExportError(err?.message || String(err))
     }
   }
 
@@ -870,7 +897,7 @@ function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSave
       {/* Header */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-4 py-3 flex items-center justify-between flex-wrap gap-2 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="text-gray-400 hover:text-gray-600 p-1.5 hover:bg-gray-100 rounded-lg text-sm">{t('cvGeneratorUI.back')}</button>
+          <button onClick={handleBack} className="text-gray-400 hover:text-gray-600 p-1.5 hover:bg-gray-100 rounded-lg text-sm">{t('cvGeneratorUI.back')}</button>
           <div>
             <p className="text-sm font-semibold text-gray-800">✨ {job.company} — {job.position}</p>
             <p className="text-xs text-gray-400">{t('cvGeneratorUI.sourceCV')} {activeCV?.name}</p>
@@ -1027,11 +1054,20 @@ function CVGeneratorPanel({ cv, cvs = [], job, editSaved = false, onBack, onSave
             {activeCV && (
               <button onClick={() => generateCV()} className="text-xs font-medium border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50">{t('cvGeneratorUI.regenerate')}</button>
             )}
+            {onSaveCV && (
+              <button onClick={() => saveCV()} disabled={!dirty}
+                className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${dirty ? 'border-indigo-300 text-indigo-700 bg-indigo-50 hover:bg-indigo-100' : 'border-gray-200 text-gray-400 cursor-default'}`}>
+                {dirty ? t('cvGeneratorUI.save') : t('cvGeneratorUI.saved')}
+              </button>
+            )}
             <button onClick={handleExportPDF}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${saved ? 'bg-indigo-600 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}`}>
-              {saved ? t('cvGeneratorUI.saved') : t('cvGeneratorUI.exportPDF')}
+              {t('cvGeneratorUI.exportPDF')}
             </button>
           </div>
+        )}
+        {exportError && (
+          <p role="alert" className="w-full text-xs text-red-600 mt-2">{t('cvGeneratorUI.exportError')} {exportError}</p>
         )}
       </div>
 

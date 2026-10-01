@@ -94,15 +94,40 @@ function Row({ label, hint, children, wide = false }) {
   )
 }
 
+// Number field you can actually type in. The old version clamped on EVERY
+// keystroke (`parseInt('') || min`): clearing "14" snapped to the minimum, and
+// typing "5" after that produced "15". Now the text is a local draft — an
+// in-range value applies as you type, anything else (empty, out of range) waits
+// for blur/Enter, where it is clamped or reverted.
 function NumInput({ value, onChange, min = 1, max = 365, suffix }) {
+  const [draft, setDraft] = useState(String(value ?? ''))
+  // Re-seed the draft when the value changes from outside (reset, remote sync) —
+  // adjusted during render rather than in an effect.
+  const [seenValue, setSeenValue] = useState(value)
+  if (seenValue !== value) {
+    setSeenValue(value)
+    setDraft(String(value ?? ''))
+  }
+  const commit = () => {
+    const n = parseInt(draft, 10)
+    const next = Number.isNaN(n) ? value : Math.max(min, Math.min(max, n))
+    setDraft(String(next ?? ''))
+    if (next !== value) onChange(next)
+  }
   return (
     <div className="flex items-center gap-1.5">
       <input
         type="number"
         min={min}
         max={max}
-        value={value}
-        onChange={e => onChange(Math.max(min, Math.min(max, parseInt(e.target.value) || min)))}
+        value={draft}
+        onChange={e => {
+          setDraft(e.target.value)
+          const n = parseInt(e.target.value, 10)
+          if (!Number.isNaN(n) && n >= min && n <= max && n !== value) onChange(n)
+        }}
+        onBlur={commit}
+        onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
         className="w-20 text-sm text-center border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all"
       />
       {suffix && <span className="text-xs text-gray-500">{suffix}</span>}
