@@ -1,9 +1,10 @@
 import { Capacitor } from '@capacitor/core'
 import { useAppUpdate } from '../hooks/useAppUpdate'
 import { ANDROID_APK_DOWNLOAD_URL } from '../constants/appVersion'
+import { isAppEnglish } from '../utils/appLanguage'
 
-const isEN = typeof navigator !== 'undefined' && navigator.language.startsWith('en')
-const tr = (fr, en) => (isEN ? en : fr)
+// Follows the app language (not the browser's), resolved at render time.
+const tr = (fr, en) => (isAppEnglish() ? en : fr)
 
 // Bottom banner shown when a newer version is deployed. On Android (sideloaded,
 // no auto-update) it links to the fresh APK; on the web it reloads to pick up

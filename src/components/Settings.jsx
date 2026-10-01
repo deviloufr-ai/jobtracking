@@ -117,9 +117,6 @@ function TextInput({ value, onChange, placeholder, multiline = false, rows = 2 }
     : <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={cls} />
 }
 
-// Inline locale for the About entry (translations live in a file the other
-// session is editing — avoid touching it).
-const IS_EN = typeof navigator !== 'undefined' && navigator.language.startsWith('en')
 // The Firefox extension is irrelevant in the native app — drop its settings entry.
 const IS_NATIVE = Capacitor.isNativePlatform()
 
@@ -137,7 +134,7 @@ const getCATEGORIES = (t) => [
   { id: 'appearance', label: t('settingsSidebar.appearance'), icon: '🎨', group: t('settingsSidebar.groupAdvanced') },
   { id: 'extension', label: t('settingsSidebar.extension'), icon: '🦊', group: t('settingsSidebar.groupAdvanced') },
   { id: 'debug', label: t('settingsSidebar.debug'), icon: '🐛', group: t('settingsSidebar.groupAdvanced') },
-  { id: 'about', label: IS_EN ? 'About' : 'À propos', icon: 'ℹ️', group: t('settingsSidebar.groupAdvanced') },
+  { id: 'about', label: t('settingsMisc.about'), icon: 'ℹ️', group: t('settingsSidebar.groupAdvanced') },
 ]
 
 export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdateJob, initialTab, onReplayTour }) {
@@ -661,7 +658,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                 {activeTab === 'data' && t('settingsDesc.data')}
                 {activeTab === 'extension' && t('settingsDesc.extension')}
                 {activeTab === 'debug' && t('settingsDesc.debug')}
-                {activeTab === 'about' && (IS_EN ? 'App version and updates' : 'Version de l’app et mises à jour')}
+                {activeTab === 'about' && t('settingsMisc.aboutSubtitle')}
               </p>
             </div>
           </div>
@@ -722,8 +719,8 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                   </Row>
                 </Card>
 
-                <Card title="📍 Commute Settings" subtitle="Set your home address to calculate commute times to job locations">
-                  <Row label="Home Address" hint="Used to calculate driving time to company offices">
+                <Card title={t('settingsMisc.commuteTitle')} subtitle={t('settingsMisc.commuteSubtitle')}>
+                  <Row label={t('settingsMisc.homeAddress')} hint={t('settingsMisc.homeAddressHint')}>
                     <TextInput value={profile.homeAddress} onChange={v => updateProfile('homeAddress', v)} placeholder="123 Rue de Paris, Paris, France" />
                   </Row>
                 </Card>
@@ -1223,7 +1220,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                 </Card>
 
                 <Card title={t('settingsData.exportImport')}>
-                  <Row label={t('settingsData.exportApplications')} hint={`${jobs.length} applications in JSON`}>
+                  <Row label={t('settingsData.exportApplications')} hint={t('settingsMisc.exportCount').replace('{n}', jobs.length)}>
                     <button
                       onClick={handleExport}
                       className={`text-sm font-medium px-4 py-2 rounded-lg border transition-all ${
@@ -1474,7 +1471,7 @@ export default function Settings({ jobs, syncUserId, onMergeDuplicates, onUpdate
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
-                    {settings.debugLogsEnabled ? '✓ Enabled' : 'Disabled'}
+                    {settings.debugLogsEnabled ? t('settingsMisc.enabled') : t('settingsMisc.disabled')}
                   </button>
                 </Row>
               </Card>

@@ -32,6 +32,19 @@ describe('computeAnalytics', () => {
     expect(a.responseRate).toBe(50)
   })
 
+  // The funnel's "Replied" step sits right under the response-rate KPI: the two
+  // must be the same number (a direct rejection is a reply even though the
+  // application never reached "reviewing").
+  it('funnel "replied" step equals the response-rate numerator', () => {
+    const a = computeAnalytics([
+      { id: '1', company: 'A', status: 'rejected', date: daysAgo(20), history: [] },
+      { id: '2', company: 'B', status: 'reviewing', date: daysAgo(15), history: [] },
+      { id: '3', company: 'C', status: 'sent', date: daysAgo(10), history: [] },
+    ])
+    expect(a.responded).toBe(2)
+    expect(a.funnel.find(f => f.key === 'reviewing').count).toBe(a.responded)
+  })
+
   it('credits the furthest stage reached even after a later rejection', () => {
     // Interviewed, then rejected — current status is "rejected" but history records the interview.
     const a = computeAnalytics([

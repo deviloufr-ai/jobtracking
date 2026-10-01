@@ -5,6 +5,8 @@
 // different numbers on different screens. Every consumer now derives its rates
 // from here, so a metric is defined exactly once.
 
+import { detectPlatform } from '../services/jobPlatform'
+
 export const DAY = 86400000
 
 // Funnel stage ordering. waiting sits alongside reviewing (both = "in review").
@@ -100,10 +102,15 @@ export function groupByCompany(jobs) {
     if (rows.length === 1) { merged.push(rows[0]); continue }
     const history = []
     let source = ''
+    let url = ''
+    const positionLinks = []
     for (const r of rows) {
       for (const h of r.history || []) history.push(h)
       history.push({ status: r.status, date: r.date })
       if (!source) source = r.source || r.platform || r.site || ''
+      // Kept so detectPlatform() can still infer the channel on the merged row.
+      if (!url && r.url) url = r.url
+      if (Array.isArray(r.positionLinks)) positionLinks.push(...r.positionLinks)
     }
     const firstSent = rows.find(r => r.status !== 'todo')
     merged.push({
@@ -113,6 +120,8 @@ export function groupByCompany(jobs) {
       date: rows[0].date,
       history,
       source,
+      url,
+      positionLinks,
     })
   }
   return merged
@@ -164,11 +173,18 @@ export function rejectionBreakdown(jobs) {
     else if (stage === 2) byStage.afterScreen++
     else byStage.noResponse++
     if (ats) byType.ats++; else byType.human++
-    const src = (job.source || job.platform || job.site || '').trim() || 'unknown'
-    sources.set(src, (sources.get(src) || 0) + 1)
+    // `source`/`platform`/`site` are almost never set on a job, so this used to read
+    // "Unknown: <all of them>". Fall back to the same detection the Platforms view
+    // uses (email sender domain → posting URL → position links → board-named
+    // company). `id` lets the UI translate the catch-all "direct" bucket.
+    const explicit = (job.source || job.platform || job.site || '').trim()
+    const platform = explicit ? null : detectPlatform(job)
+    const src = explicit || platform.label
+    const cur = sources.get(src) || { source: src, count: 0, ...(explicit ? {} : { id: platform.id }) }
+    cur.count++
+    sources.set(src, cur)
   }
-  const bySource = [...sources.entries()]
-    .map(([source, count]) => ({ source, count }))
+  const bySource = [...sources.values()]
     .sort((a, b) => b.count - a.count)
   return { total, byStage, byType, bySource }
 }

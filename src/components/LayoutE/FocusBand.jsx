@@ -76,7 +76,10 @@ export default function FocusBand({ jobs = [], userName, onOpenJob, onGenerateCV
                 control to open the candidature (right). The whole card still runs
                 the action on click (see runAction); this open button is the
                 explicit escape hatch to the detail drawer. */}
-            <div className="mt-auto flex items-center justify-between gap-2 pt-0.5">
+            {/* flex-wrap + nowrap buttons: on a narrow card the open link drops to
+                its own line instead of sliding over the CTA (it is shrink-0, and
+                the CTA used to wrap its label and get overlapped below ~1000px). */}
+            <div className="mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 pt-0.5 [&_button]:whitespace-nowrap">
               <div className="min-w-0">
                 {rule.type === 'cv' && onGenerateCV && (
                   <button
@@ -106,7 +109,7 @@ export default function FocusBand({ jobs = [], userName, onOpenJob, onGenerateCV
               {onOpenJob && (
                 <button
                   onClick={e => { e.stopPropagation(); onOpenJob(job) }}
-                  className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-indigo-600 transition-colors"
+                  className="shrink-0 ml-auto inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-indigo-600 transition-colors"
                   title={t('candidature.open')}
                   aria-label={t('candidature.open')}
                 >

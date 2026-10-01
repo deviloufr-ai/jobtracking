@@ -1,7 +1,6 @@
 import { buildAllActions, loadDismissed, runPrimaryAction } from './NextAction'
 import { deriveStatusFromHistory } from '../hooks/useJobs'
-
-const isEN = typeof navigator !== 'undefined' && navigator.language.startsWith('en')
+import { isAppEnglish } from '../utils/appLanguage'
 
 /**
  * Mobile "Accueil" hero — the action-first home shown above the list on phones.
@@ -10,8 +9,10 @@ const isEN = typeof navigator !== 'undefined' && navigator.language.startsWith('
  * now?" before the user scrolls into the full list.
  */
 export default function MobileHome({ jobs, userName, onOpenJob, onDraftEmail, onGenerateCV, onSTAR, t = (k) => k }) {
+  // App language (the user's setting), not the browser's.
+  const isEN = isAppEnglish()
   // Bilingual fallback: use a real translation when present, else FR/EN default.
-  const tr = (key, fr, en) => { const v = t(key); return v && v !== key ? v : (isEN ? en : fr) }
+  const tr =(key, fr, en) => { const v = t(key); return v && v !== key ? v : (isEN ? en : fr) }
 
   const eff = (j) => deriveStatusFromHistory(j.history) || j.status
   // archived/cancelled are explicit terminal flags on the RAW status (auto-archive

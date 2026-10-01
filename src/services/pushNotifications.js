@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core'
 import { supabase, resolveAuthUserId } from './supabase'
+import { getAppLanguage } from '../utils/appLanguage'
 
 // Native (Android) FCM push registration. No-op on the web.
 //
@@ -19,7 +20,7 @@ async function saveToken(token) {
     const userId = await resolveAuthUserId()
     if (!userId) return // retried on the next auth change
     const base = { token, user_id: userId, platform: Capacitor.getPlatform(), updated_at: new Date().toISOString() }
-    const lang = (typeof navigator !== 'undefined' && navigator.language.startsWith('en')) ? 'en' : 'fr'
+    const lang = getAppLanguage()
     const { error } = await supabase.from('push_tokens').upsert({ ...base, lang }, { onConflict: 'token' })
     // The lang column may not exist yet (migration 012) — fall back without it.
     if (error) await supabase.from('push_tokens').upsert(base, { onConflict: 'token' })

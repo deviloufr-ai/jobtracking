@@ -15,6 +15,9 @@ import { AI_PROVIDERS, DEFAULT_AI_PROVIDER } from '../constants/aiProviders'
 // Kept for backward-compat (equals the Anthropic key slot). Some callers import it.
 export const API_KEY_STORAGE = AI_PROVIDERS.anthropic.keyStorage
 export const TRIAL_EXHAUSTED_FLAG = 'jobtrackr_trial_exhausted'
+// Fired when a provider key is saved/removed on this device (same-tab — the
+// `storage` event only reaches OTHER tabs), so UI reflecting key presence updates.
+export const AI_KEY_CHANGED_EVENT = 'jobtrackr:ai-key-changed'
 
 // The service layer runs outside React, so it reads the synced settings straight
 // from the localStorage mirror (`jobtrackr_settings`, written by useSettings and
@@ -51,6 +54,9 @@ export function setProviderKey(provider, key) {
     if (v) localStorage.setItem(meta.keyStorage, v)
     else localStorage.removeItem(meta.keyStorage)
   } catch {}
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(AI_KEY_CHANGED_EVENT))
+  }
 }
 
 // Active model for a provider: the synced override if set, else the provider

@@ -41,20 +41,21 @@ const nowStep = (status) => {
   const n = new Date()
   return { status, note: '', date: localDateISO(n), time: localTimeHM(n) }
 }
-const TABS = [['overview', 'Overview'], ['cv', 'CV'], ['letter', 'Cover letter'], ['star', 'STAR'], ['mindmap', 'Mind map'], ['preparation', 'Preparation'], ['interview', 'Interview']]
+// Tab ids — labels come from t('drawer.tabs.<id>').
+const TABS = ['overview', 'cv', 'letter', 'star', 'mindmap', 'preparation', 'interview']
 
 const btn = 'inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-xl border border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50 transition-colors'
 const btnP = 'inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:brightness-105 transition'
 const iconBtn = 'w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-colors'
 
-const decisionLabel = (d) => d === 'Yes' ? '✅ Move forward' : d === 'No' ? '❌ Not ready' : '⏳ On the fence'
+const decisionLabel = (d, t) => t(d === 'Yes' ? 'drawer.decisionYes' : d === 'No' ? 'drawer.decisionNo' : 'drawer.decisionMaybe')
 const decisionColor = (d) => d === 'Yes' ? 'text-green-700' : d === 'No' ? 'text-red-700' : 'text-orange-700'
 
 // Renders one mock-interview session's recruiter feedback inline (same layout as
 // the live MockInterviewChatbot result). `session.feedback` holds the AI analysis
 // { score, hire_decision, strengths[], concerns[], weak_example, better_answer } or
 // { raw } when the model didn't return clean JSON.
-function InterviewFeedback({ session }) {
+function InterviewFeedback({ session, t = (k) => k }) {
   let fb = session?.feedback || {}
   // Heal sessions saved before the fenced-JSON parse fix: their feedback is
   // { raw: "```json …" }, so parse the raw at render time and show the card
@@ -72,12 +73,12 @@ function InterviewFeedback({ session }) {
     <div className="space-y-3">
       <div className="text-center">
         <div className="text-5xl font-bold text-indigo-600">{score ?? '—'}</div>
-        <p className="text-xs text-gray-500">Recruiter score</p>
-        {decision && <p className={`text-xs font-bold mt-1 ${decisionColor(decision)}`}>{decisionLabel(decision)}</p>}
+        <p className="text-xs text-gray-500">{t('drawer.recruiterScore')}</p>
+        {decision && <p className={`text-xs font-bold mt-1 ${decisionColor(decision)}`}>{decisionLabel(decision, t)}</p>}
       </div>
       {fb.strengths && (
         <div>
-          <p className="text-xs font-bold text-green-700 mb-1">✅ What impressed</p>
+          <p className="text-xs font-bold text-green-700 mb-1">{t('drawer.whatImpressed')}</p>
           <ul className="text-xs text-gray-700 space-y-1">
             {(Array.isArray(fb.strengths) ? fb.strengths : [fb.strengths]).map((s, i) => <li key={i}>• {s}</li>)}
           </ul>
@@ -85,7 +86,7 @@ function InterviewFeedback({ session }) {
       )}
       {fb.concerns && (
         <div>
-          <p className="text-xs font-bold text-red-700 mb-1">⚠️ Concerns</p>
+          <p className="text-xs font-bold text-red-700 mb-1">{t('drawer.concerns')}</p>
           <ul className="text-xs text-gray-700 space-y-1">
             {(Array.isArray(fb.concerns) ? fb.concerns : [fb.concerns]).map((c, i) => <li key={i}>• {c}</li>)}
           </ul>
@@ -93,18 +94,18 @@ function InterviewFeedback({ session }) {
       )}
       {fb.weak_example && (
         <div>
-          <p className="text-xs font-bold text-orange-700 mb-1">📍 Weak moment</p>
+          <p className="text-xs font-bold text-orange-700 mb-1">{t('drawer.weakMoment')}</p>
           <p className="text-xs text-gray-700 italic">&ldquo;{fb.weak_example}&rdquo;</p>
         </div>
       )}
       {fb.better_answer && (
         <div>
-          <p className="text-xs font-bold text-blue-700 mb-1">💡 Better way to say it</p>
+          <p className="text-xs font-bold text-blue-700 mb-1">{t('drawer.betterAnswer')}</p>
           <p className="text-xs text-gray-700">{fb.better_answer}</p>
         </div>
       )}
       {fb.raw && <p className="text-xs text-gray-600 whitespace-pre-wrap">{fb.raw}</p>}
-      {!hasDetail && <p className="text-xs text-gray-400 text-center">No detailed feedback saved for this session.</p>}
+      {!hasDetail && <p className="text-xs text-gray-400 text-center">{t('drawer.noFeedback')}</p>}
     </div>
   )
 }
@@ -150,7 +151,7 @@ export default function CandidatureDrawer({
     return null
   })()
 
-  const [tab, setTab] = useState(initialTab && TABS.some(([id]) => id === initialTab) ? initialTab : 'overview')
+  const [tab, setTab] = useState(initialTab && TABS.includes(initialTab) ? initialTab : 'overview')
   const [showLetter, setShowLetter] = useState(false)
   const [showMindMap, setShowMindMap] = useState(false)
   const [showMock, setShowMock] = useState(false)
@@ -202,8 +203,8 @@ export default function CandidatureDrawer({
       const { address } = await searchCompanyAddress(job.company)
       if (!mountedRef.current) return
       if (address) { setCompanyAddress(job.id, address); setCompanyAddr(address); onUpdateJob?.(job.id, { companyAddress: address }) }
-      else setAddrError('Adresse introuvable')
-    } catch (e) { if (mountedRef.current) setAddrError(e.message || 'Échec de la recherche') } finally { if (mountedRef.current) setFetchingAddr(false) }
+      else setAddrError(t('drawer.addressNotFound'))
+    } catch (e) { if (mountedRef.current) setAddrError(e.message || t('drawer.searchFailed')) } finally { if (mountedRef.current) setFetchingAddr(false) }
   }
 
   return (
@@ -219,21 +220,21 @@ export default function CandidatureDrawer({
                 <p className="text-sm text-gray-400 truncate">{job.position}</p>
               </div>
               {typeof job.score === 'number' && (
-                <button onClick={() => job.scoreDetails && setShowScore(v => !v)} title={job.scoreDetails ? 'Score details' : ''}
+                <button onClick={() => job.scoreDetails && setShowScore(v => !v)} title={job.scoreDetails ? t('drawer.scoreDetails') : ''}
                   className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border shrink-0 ${scoreColorClasses(job.score)} ${job.scoreDetails ? 'hover:brightness-95' : 'cursor-default'}`}>
                   {Math.round(job.score)}
                 </button>
               )}
-              <button onClick={() => onEdit?.(job)} aria-label="edit" className={`${iconBtn} shrink-0`}>✎</button>
-              <button onClick={() => onDelete?.(job)} aria-label="delete" className={`${iconBtn} hover:text-red-600 hover:bg-red-50 shrink-0`}>🗑</button>
-              <button onClick={onClose} aria-label="close" className={`${iconBtn} shrink-0`}>✕</button>
+              <button onClick={() => onEdit?.(job)} aria-label={t('common.edit')} title={t('common.edit')} className={`${iconBtn} shrink-0`}>✎</button>
+              <button onClick={() => onDelete?.(job)} aria-label={t('common.delete')} title={t('common.delete')} className={`${iconBtn} hover:text-red-600 hover:bg-red-50 shrink-0`}>🗑</button>
+              <button onClick={onClose} aria-label={t('common.close')} title={t('common.close')} className={`${iconBtn} shrink-0`}>✕</button>
             </div>
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full ${getStatus(displayStatus)?.color || 'bg-gray-100 text-gray-500'}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${getStatus(displayStatus)?.dot || 'bg-gray-400'}`} />
                 {getStatusLabel(displayStatus, t)}
               </span>
-              {source && <span className="text-xs text-gray-400">via {source}</span>}
+              {source && <span className="text-xs text-gray-400">{t('drawer.via')} {source}</span>}
               {appliedDate && <span className="text-xs text-gray-400">{source ? '· ' : ''}{shortDate(appliedDate)}</span>}
             </div>
           </div>
@@ -258,9 +259,9 @@ export default function CandidatureDrawer({
         )}
 
         <div className="flex gap-1 mt-3 -mb-px overflow-x-auto no-scrollbar">
-          {TABS.map(([id, label]) => (
+          {TABS.map(id => (
             <button key={id} onClick={() => setTab(id)}
-              className={`shrink-0 whitespace-nowrap px-3 py-2 text-sm font-semibold border-b-2 transition-colors ${tab === id ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{label}</button>
+              className={`shrink-0 whitespace-nowrap px-3 py-2 text-sm font-semibold border-b-2 transition-colors ${tab === id ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{t(`drawer.tabs.${id}`)}</button>
           ))}
         </div>
       </div>
@@ -272,10 +273,10 @@ export default function CandidatureDrawer({
             {/* inline metric strip — no boxes */}
             <div className="flex items-center gap-5 mb-5 flex-wrap">
               {[
-                { label: 'Match', value: typeof job.score === 'number' ? Math.round(job.score) : '—' },
-                ...(job.cvSaved?.atsScore != null ? [{ label: 'ATS', value: Math.round(job.cvSaved.atsScore) }] : []),
-                { label: 'Applied', value: appliedDate ? shortDate(appliedDate) : '—' },
-                { label: 'Emails', value: emailCount },
+                { label: t('drawer.match'), value: typeof job.score === 'number' ? Math.round(job.score) : '—' },
+                ...(job.cvSaved?.atsScore != null ? [{ label: t('drawer.ats'), value: Math.round(job.cvSaved.atsScore) }] : []),
+                { label: t('drawer.applied'), value: appliedDate ? shortDate(appliedDate) : '—' },
+                { label: t('drawer.emails'), value: emailCount },
               ].map((m, i) => (
                 <Fragment key={m.label}>
                   {i > 0 && <span className="w-px h-8 hidden sm:block" style={{ background: 'var(--theme-border, #e8ebf1)' }} />}
@@ -287,7 +288,7 @@ export default function CandidatureDrawer({
               ))}
               {job.scoreDetails && (
                 <button onClick={() => setShowScore(v => !v)} className="text-xs font-medium text-indigo-600 hover:underline ml-auto self-center">
-                  {showScore ? 'Hide breakdown' : 'Score breakdown'}
+                  {showScore ? t('drawer.hideBreakdown') : t('drawer.scoreBreakdown')}
                 </button>
               )}
             </div>
@@ -299,7 +300,7 @@ export default function CandidatureDrawer({
               <div className="flex items-center justify-between gap-4 flex-wrap mb-6 pt-3 border-t border-gray-100">
                 {recruiterContact ? (
                   <div className="flex items-center gap-2 text-sm min-w-0">
-                    <span className="text-gray-400 shrink-0">Contact</span>
+                    <span className="text-gray-400 shrink-0">{t('drawer.contact')}</span>
                     <span className="font-medium text-gray-800 truncate">{recruiterContact.name}</span>
                     <a href={`mailto:${recruiterContact.email}`} className="text-xs text-indigo-600 hover:underline truncate">{recruiterContact.email}</a>
                   </div>
@@ -307,10 +308,10 @@ export default function CandidatureDrawer({
                 {!(companyAddr && homeAddress) && (
                   <div className="shrink-0">
                     {companyAddr && !homeAddress ? (
-                      <span className="text-xs text-gray-400">🚗 Add your address in Settings → Profile</span>
+                      <span className="text-xs text-gray-400">{t('drawer.addAddressHint')}</span>
                     ) : (
                       <button onClick={fetchAddress} disabled={fetchingAddr} className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:underline disabled:opacity-50">
-                        {fetchingAddr ? <><span className="w-3 h-3 border border-indigo-300 border-t-indigo-600 rounded-full animate-spin" /> Searching…</> : <>🚗 Calculate commute</>}
+                        {fetchingAddr ? <><span className="w-3 h-3 border border-indigo-300 border-t-indigo-600 rounded-full animate-spin" /> {t('drawer.searching')}</> : <>{t('drawer.calcCommute')}</>}
                       </button>
                     )}
                     {addrError && <p className="text-xs text-red-500 mt-1">{addrError}</p>}
@@ -339,9 +340,9 @@ export default function CandidatureDrawer({
               </div>
             )}
 
-            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">Timeline</h3>
+            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">{t('drawer.timeline')}</h3>
             {history.length === 0 ? (
-              <p className="text-sm text-gray-400">No steps yet.</p>
+              <p className="text-sm text-gray-400">{t('drawer.noSteps')}</p>
             ) : (
               <ul className="mb-2">
                 {[...history].reverse().map((h, i, arr) => {
@@ -361,8 +362,8 @@ export default function CandidatureDrawer({
                           </div>
                           <textarea value={editForm.note || ''} onChange={e => setEditForm({ ...editForm, note: e.target.value })} rows={2} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white resize-none" />
                           <div className="flex gap-2">
-                            <button onClick={saveEdit} className={btnP}>Save</button>
-                            <button onClick={() => { setEditIdx(null); setEditForm({}) }} className={btn}>Cancel</button>
+                            <button onClick={saveEdit} className={btnP}>{t('common.save')}</button>
+                            <button onClick={() => { setEditIdx(null); setEditForm({}) }} className={btn}>{t('common.cancel')}</button>
                           </div>
                         </div>
                       ) : (
@@ -381,8 +382,8 @@ export default function CandidatureDrawer({
                             })()}
                             <span className="text-xs text-gray-400">{fullDate(h.date)}</span>
                             <div className="ml-auto flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => { setEditIdx(entryKey); setEditForm({ status: h.status, date: h.date, note: h.note || '' }) }} aria-label="edit step" className={`${iconBtn} w-6 h-6`}>✎</button>
-                              <button onClick={() => setConfirmDel(entryKey)} aria-label="delete step" className={`${iconBtn} w-6 h-6 hover:text-red-600`}>🗑</button>
+                              <button onClick={() => { setEditIdx(entryKey); setEditForm({ status: h.status, date: h.date, note: h.note || '' }) }} aria-label={t('drawer.editStep')} title={t('drawer.editStep')} className={`${iconBtn} w-6 h-6`}>✎</button>
+                              <button onClick={() => setConfirmDel(entryKey)} aria-label={t('drawer.deleteStep')} title={t('drawer.deleteStep')} className={`${iconBtn} w-6 h-6 hover:text-red-600`}>🗑</button>
                             </div>
                           </div>
                           {h.note && (() => {
@@ -407,17 +408,17 @@ export default function CandidatureDrawer({
                             return (
                               <a href={url} target="_blank" rel="noopener noreferrer" onClick={e => { e.stopPropagation(); if (openGmailNative(url)) e.preventDefault() }}
                                 className={`inline-flex items-center gap-1 text-xs mt-1.5 font-medium transition-colors ${uncertain ? 'text-amber-500 hover:text-amber-600' : 'text-gray-400 hover:text-red-500'}`}
-                                title={account ? `Open in ${account}` : 'Open email'}>
+                                title={account ? t('drawer.openIn').replace('{account}', account) : t('drawer.openEmail')}>
                                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.909 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" /></svg>
-                                Open email{ids.length > 1 ? ` (${ids.length})` : ''}
+                                {t('drawer.openEmail')}{ids.length > 1 ? ` (${ids.length})` : ''}
                               </a>
                             )
                           })()}
                           {confirmDel === entryKey && (
                             <div className="flex items-center gap-2 mt-2 text-xs">
-                              <span className="text-gray-500">Delete this step?</span>
-                              <button onClick={deleteStep} className="font-semibold text-red-600 hover:underline">Delete</button>
-                              <button onClick={() => setConfirmDel(null)} className="text-gray-400 hover:underline">Cancel</button>
+                              <span className="text-gray-500">{t('drawer.deleteStepConfirm')}</span>
+                              <button onClick={deleteStep} className="font-semibold text-red-600 hover:underline">{t('common.delete')}</button>
+                              <button onClick={() => setConfirmDel(null)} className="text-gray-400 hover:underline">{t('common.cancel')}</button>
                             </div>
                           )}
                         </>
@@ -436,20 +437,20 @@ export default function CandidatureDrawer({
                   </select>
                   <input type="date" value={step.date} onChange={e => setStep({ ...step, date: e.target.value })} className="text-sm border border-gray-200 rounded-lg px-2.5 py-2 bg-white" />
                 </div>
-                <textarea value={step.note} onChange={e => setStep({ ...step, note: e.target.value })} rows={2} placeholder="Note…" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white resize-none" />
+                <textarea value={step.note} onChange={e => setStep({ ...step, note: e.target.value })} rows={2} placeholder={t('drawer.notePlaceholder')} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white resize-none" />
                 <div className="flex gap-2">
-                  <button onClick={submitStep} disabled={!step.note.trim()} className={`${btnP} disabled:opacity-40`}>Add</button>
-                  <button onClick={() => setAddOpen(false)} className={btn}>Cancel</button>
+                  <button onClick={submitStep} disabled={!step.note.trim()} className={`${btnP} disabled:opacity-40`}>{t('common.add')}</button>
+                  <button onClick={() => setAddOpen(false)} className={btn}>{t('common.cancel')}</button>
                 </div>
               </div>
             ) : (
-              <button onClick={() => setAddOpen(true)} className="text-sm font-medium text-indigo-600 hover:underline mt-1">+ Add step</button>
+              <button onClick={() => setAddOpen(true)} className="text-sm font-medium text-indigo-600 hover:underline mt-1">{t('drawer.addStep')}</button>
             )}
 
             <div className="flex gap-2 flex-wrap mt-6 pt-5 border-t border-gray-100">
-              <button className={btnP} onClick={() => onGenerateCV?.(job)}>Generate CV</button>
-              <button className={btn} onClick={() => onSTAR?.(job)}>STAR prep</button>
-              <button className={btn} onClick={() => onDraftEmail?.(job, 'relance')}>Draft email</button>
+              <button className={btnP} onClick={() => onGenerateCV?.(job)}>{t('drawer.generateCV')}</button>
+              <button className={btn} onClick={() => onSTAR?.(job)}>{t('drawer.starPrep')}</button>
+              <button className={btn} onClick={() => onDraftEmail?.(job, 'relance')}>{t('drawer.draftEmail')}</button>
             </div>
           </>
         )}
@@ -462,14 +463,14 @@ export default function CandidatureDrawer({
               <>
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-gray-900">Adapted CV</div>
+                    <div className="text-sm font-semibold text-gray-900">{t('drawer.adaptedCV')}</div>
                     <div className="text-xs text-gray-400">{job.cvSaved.savedAt ? new Date(job.cvSaved.savedAt).toLocaleDateString() : ''}</div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button className={btnP} onClick={() => onViewSavedCV?.(job)}>✏️ Edit CV</button>
+                    <button className={btnP} onClick={() => onViewSavedCV?.(job)}>{t('drawer.editCV')}</button>
                     <button className={`${btn} disabled:opacity-40 disabled:cursor-not-allowed`} disabled={!hasJobDetails}
-                      title={hasJobDetails ? '' : 'Add a job description, URL or notes to generate a tailored CV'}
-                      onClick={() => onGenerateCV?.(job)}>Regenerate</button>
+                      title={hasJobDetails ? '' : t('drawer.needJobDetails')}
+                      onClick={() => onGenerateCV?.(job)}>{t('drawer.regenerate')}</button>
                   </div>
                 </div>
                 <div className="cv-paper rounded-xl border border-gray-200 overflow-auto" style={{ height: 700 }}>
@@ -478,11 +479,11 @@ export default function CandidatureDrawer({
               </>
             ) : (
               <div className="text-center py-10">
-                <p className="text-sm text-gray-500 mb-4">No tailored CV yet — generate one adapted to this offer.</p>
+                <p className="text-sm text-gray-500 mb-4">{t('drawer.noCV')}</p>
                 <button className={`${btnP} disabled:opacity-40 disabled:cursor-not-allowed`} disabled={!hasJobDetails}
-                  title={hasJobDetails ? '' : 'Add a job description, URL or notes to generate a tailored CV'}
-                  onClick={() => onGenerateCV?.(job)}>📄 Generate tailored CV</button>
-                {!hasJobDetails && <p className="text-xs text-gray-400 mt-3">Add a job description, URL or notes first to generate a tailored CV.</p>}
+                  title={hasJobDetails ? '' : t('drawer.needJobDetails')}
+                  onClick={() => onGenerateCV?.(job)}>{t('drawer.generateTailoredCV')}</button>
+                {!hasJobDetails && <p className="text-xs text-gray-400 mt-3">{t('drawer.needJobDetailsFirst')}</p>}
               </div>
             )}
           </div>
@@ -496,12 +497,12 @@ export default function CandidatureDrawer({
               <>
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-gray-900">Cover letter</div>
+                    <div className="text-sm font-semibold text-gray-900">{t('drawer.coverLetter')}</div>
                     <div className="text-xs text-gray-400">{job.letterSaved.savedAt ? new Date(job.letterSaved.savedAt).toLocaleDateString() : ''}</div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button className={btnP} onClick={() => setShowLetter(true)}>✏️ Edit</button>
-                    <button className={btn} onClick={() => setShowLetter(true)}>↻ Regenerate</button>
+                    <button className={btnP} onClick={() => setShowLetter(true)}>{t('drawer.edit')}</button>
+                    <button className={btn} onClick={() => setShowLetter(true)}>{t('drawer.regenerate')}</button>
                   </div>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white overflow-auto p-6" style={{ height: 700 }}>
@@ -513,8 +514,8 @@ export default function CandidatureDrawer({
               </>
             ) : (
               <div className="text-center py-10">
-                <p className="text-sm text-gray-500 mb-4">No cover letter yet — generate one tailored to this application.</p>
-                <button className={btnP} onClick={() => setShowLetter(true)}>✍️ Generate cover letter</button>
+                <p className="text-sm text-gray-500 mb-4">{t('drawer.noLetter')}</p>
+                <button className={btnP} onClick={() => setShowLetter(true)}>{t('drawer.generateLetter')}</button>
               </div>
             )}
           </div>
@@ -525,8 +526,8 @@ export default function CandidatureDrawer({
           if (!saved?.stars?.length) {
             return (
               <div className="text-center py-10">
-                <p className="text-sm text-gray-500 mb-4">No STAR answers yet — generate a set tailored to this role, then save them here.</p>
-                <button className={btnP} onClick={() => onSTAR?.(job)}>🎯 Generate STAR answers</button>
+                <p className="text-sm text-gray-500 mb-4">{t('drawer.noStar')}</p>
+                <button className={btnP} onClick={() => onSTAR?.(job)}>{t('drawer.generateStar')}</button>
               </div>
             )
           }
@@ -535,10 +536,10 @@ export default function CandidatureDrawer({
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold text-gray-900">STAR answers</div>
+                  <div className="text-sm font-semibold text-gray-900">{t('drawer.starAnswers')}</div>
                   <div className="text-xs text-gray-400">{saved.savedAt ? new Date(saved.savedAt).toLocaleDateString() : ''}</div>
                 </div>
-                <button className={btnP} onClick={() => onSTAR?.(job)}>↻ Regenerate</button>
+                <button className={btnP} onClick={() => onSTAR?.(job)}>{t('drawer.regenerate')}</button>
               </div>
               {/* Saved STAR answers shown inline (mirrors the CV / letter / interview tabs) */}
               <div className="rounded-xl border border-gray-200 bg-white overflow-auto p-4 space-y-3" style={{ maxHeight: 700 }}>
@@ -584,8 +585,8 @@ export default function CandidatureDrawer({
           if (mockSessions.length === 0) {
             return (
               <div className="text-center py-10">
-                <p className="text-sm text-gray-500 mb-4">Practice with an AI mock interview (voice), then review your results here.</p>
-                <button className={btnP} onClick={() => setShowMock(true)}>🎤 Start mock interview</button>
+                <p className="text-sm text-gray-500 mb-4">{t('drawer.mockIntro')}</p>
+                <button className={btnP} onClick={() => setShowMock(true)}>{t('drawer.startMock')}</button>
               </div>
             )
           }
@@ -595,10 +596,10 @@ export default function CandidatureDrawer({
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold text-gray-900">Mock interview</div>
+                  <div className="text-sm font-semibold text-gray-900">{t('drawer.mockInterview')}</div>
                   <div className="text-xs text-gray-400">{active?.date ? new Date(active.date).toLocaleDateString() : ''}</div>
                 </div>
-                <button className={btnP} onClick={() => setShowMock(true)}>🎤 New mock</button>
+                <button className={btnP} onClick={() => setShowMock(true)}>{t('drawer.newMock')}</button>
               </div>
 
               {/* Session picker when there is more than one */}
@@ -615,11 +616,11 @@ export default function CandidatureDrawer({
 
               {/* Selected session's feedback shown inline (mirrors the CV / letter tabs) */}
               <div className="rounded-xl border border-gray-200 bg-white overflow-auto p-5" style={{ maxHeight: 700 }}>
-                <InterviewFeedback session={active} />
+                <InterviewFeedback session={active} t={t} />
                 {Array.isArray(active?.transcript) && active.transcript.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-gray-100">
                     <button className="text-xs font-semibold text-indigo-600 hover:underline" onClick={() => setShowTranscript(v => !v)}>
-                      {showTranscript ? 'Hide transcript' : `Show transcript (${active.transcript.length})`}
+                      {showTranscript ? t('drawer.hideTranscript') : `${t('drawer.showTranscript')} (${active.transcript.length})`}
                     </button>
                     {showTranscript && (
                       <div className="mt-3 space-y-2">
@@ -629,7 +630,7 @@ export default function CandidatureDrawer({
                             <div key={i} className={`flex items-start gap-2 ${isInterviewer ? '' : 'flex-row-reverse'}`}>
                               <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs ${isInterviewer ? 'bg-gray-100 border border-gray-200' : 'bg-indigo-100 border border-indigo-200'}`} aria-hidden>{isInterviewer ? '🧑‍💼' : '🙋'}</span>
                               <div className={`text-xs rounded-lg px-3 py-2 ${isInterviewer ? 'bg-gray-50 text-gray-700' : 'bg-indigo-50 text-gray-800'}`}>
-                                <span className="font-semibold">{isInterviewer ? 'Interviewer' : 'You'}: </span>{m.text}
+                                <span className="font-semibold">{isInterviewer ? t('drawer.interviewer') : t('drawer.you')}: </span>{m.text}
                               </div>
                             </div>
                           )
@@ -648,17 +649,17 @@ export default function CandidatureDrawer({
           const header = (
             <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
               <div className="min-w-0">
-                <div className="text-sm font-semibold text-gray-900">Real interview</div>
-                <div className="text-xs text-gray-400">Record your live Meet/Zoom call and get AI feedback.</div>
+                <div className="text-sm font-semibold text-gray-900">{t('drawer.realInterview')}</div>
+                <div className="text-xs text-gray-400">{t('drawer.realInterviewHint')}</div>
               </div>
-              <button className={btnP} onClick={() => setShowRecorder(true)}>🎙️ Record interview</button>
+              <button className={btnP} onClick={() => setShowRecorder(true)}>{t('drawer.recordInterview')}</button>
             </div>
           )
           if (realSessions.length === 0) {
             return (
               <div>
                 {header}
-                <div className="text-center py-10 text-sm text-gray-500">No recorded interviews yet. Record a real call — or paste its transcript — to get feedback here.</div>
+                <div className="text-center py-10 text-sm text-gray-500">{t('drawer.noRecorded')}</div>
               </div>
             )
           }
@@ -678,11 +679,11 @@ export default function CandidatureDrawer({
                 </div>
               )}
               <div className="rounded-xl border border-gray-200 bg-white overflow-auto p-5" style={{ maxHeight: 700 }}>
-                <InterviewFeedback session={active} />
+                <InterviewFeedback session={active} t={t} />
                 {(active?.transcriptText || (Array.isArray(active?.transcript) && active.transcript.length > 0)) && (
                   <div className="mt-4 pt-4 border-t border-gray-100">
                     <button className="text-xs font-semibold text-indigo-600 hover:underline" onClick={() => setShowTranscript(v => !v)}>
-                      {showTranscript ? 'Hide transcript' : 'Show transcript'}
+                      {showTranscript ? t('drawer.hideTranscript') : t('drawer.showTranscript')}
                     </button>
                     {showTranscript && (
                       <div className="mt-3 text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">

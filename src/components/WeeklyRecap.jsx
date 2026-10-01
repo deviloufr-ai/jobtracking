@@ -34,9 +34,19 @@ export function computeWeeklyRecap(jobs, weekStart) {
       addedCompanies.push(job.company)
     }
 
-    for (const h of job.history || []) {
-      if (!inWindow(h.date)) continue
+    // Walk the timeline in order and only count an entry when it actually CHANGES
+    // the status. Two consecutive `reviewing` emails (an acknowledgement, then a
+    // "still under review" follow-up) are one status change, not two — they used
+    // to list the company twice and inflate "Réponses".
+    const timeline = [...(job.history || [])]
+      .filter(h => h && parseDate(h.date))
+      .sort((a, b) => parseDate(a.date) - parseDate(b.date))
+    let prevStatus = null
+    for (const h of timeline) {
       const s = h.status
+      const changed = s !== prevStatus
+      prevStatus = s
+      if (!changed || !inWindow(h.date)) continue
       if (RESPONSE.has(s)) responses++
       else if (s === 'interview' || s === 'done') interviews++
       else if (OFFERISH.has(s)) offers++

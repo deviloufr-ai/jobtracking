@@ -134,6 +134,28 @@ describe('rejectionBreakdown', () => {
     expect(r.bySource[0]).toEqual({ source: 'linkedin', count: 2 })
     expect(r.bySource.find(s => s.source === 'indeed').count).toBe(2)
   })
+
+  // job.source is almost never set — the tally used to be one "Unknown: N" row.
+  it('falls back to platform detection when no explicit source is set', () => {
+    const rej = (extra) => ({ status: 'rejected', history: [{ status: 'sent', date: '2026-01-01' }, { status: 'rejected', date: '2026-01-05' }], ...extra })
+    const out = rejectionBreakdown([
+      rej({ history: [{ status: 'sent', date: '2026-01-01', from: 'Jobs <jobs-noreply@linkedin.com>' }, { status: 'rejected', date: '2026-01-05' }] }),
+      rej({ url: 'https://www.welcometothejungle.com/fr/companies/acme/jobs/pm' }),
+      rej({ company: 'Acme' }),
+    ]).bySource
+    expect(out.find(s => s.id === 'linkedin')).toEqual({ source: 'LinkedIn', id: 'linkedin', count: 1 })
+    expect(out.find(s => s.id === 'wttj').count).toBe(1)
+    expect(out.find(s => s.id === 'direct').count).toBe(1)
+    expect(out.some(s => s.source === 'unknown')).toBe(false)
+  })
+
+  it('still detects the platform on a company merged by groupByCompany', () => {
+    const merged = groupByCompany([
+      { id: 'a', company: 'Acme', status: 'rejected', date: '2026-01-01', url: 'https://jobs.lever.co/acme/1', history: [{ status: 'rejected', date: '2026-01-05' }] },
+      { id: 'b', company: 'Acme SAS', status: 'sent', date: '2026-02-01', history: [] },
+    ])
+    expect(rejectionBreakdown(merged).bySource[0].id).toBe('lever')
+  })
 })
 
 describe('normalizeCompany', () => {

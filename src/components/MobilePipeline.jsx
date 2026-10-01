@@ -1,8 +1,7 @@
 import { useRef, useState } from 'react'
 import { getStatus, getStatusLabel } from '../hooks/useJobs'
 import CompanyAvatar from './CompanyAvatar'
-
-const isEN = typeof navigator !== 'undefined' && navigator.language.startsWith('en')
+import { isAppEnglish } from '../utils/appLanguage'
 
 // Core active pipeline, in flow order. Terminal statuses (rejected/done/etc.) are
 // left out so the swipe stays focused on the live funnel — matching the kanban's
@@ -96,7 +95,7 @@ export default function MobilePipeline({ jobs, onOpen, onToggleFavorite, t = (k)
         ))}
       </div>
       <p className="text-center text-[11px] text-gray-400 mt-2">
-        {isEN ? 'Swipe to change stage' : 'Glissez pour changer d’étape'}
+        {isAppEnglish() ? 'Swipe to change stage' : 'Glissez pour changer d’étape'}
       </p>
     </div>
   )

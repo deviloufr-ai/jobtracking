@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { APP_VERSION, VERSION_MANIFEST_URL, ANDROID_APK_DOWNLOAD_URL } from '../constants/appVersion'
 import { compareVersions } from '../constants/extension'
+import { isAppEnglish } from '../utils/appLanguage'
 
-const isEN = typeof navigator !== 'undefined' && navigator.language.startsWith('en')
-const tr = (fr, en) => (isEN ? en : fr)
+// Follows the app language (not the browser's), resolved at render time.
+const tr = (fr, en) => (isAppEnglish() ? en : fr)
 
 // Settings → About: shows the running version and a manual "Check for updates"
 // button. Complements the passive AppUpdateBanner. On Android it links to the

@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
-import { useJobs, getStatus, historyEntryKey, isActiveInterview } from './hooks/useJobs'
+import { useJobs, getStatusLabel, historyEntryKey, isActiveInterview } from './hooks/useJobs'
 import { useExtensionImport } from './hooks/useExtensionImport'
 import { useExtensionDetect } from './hooks/useExtensionDetect'
 import { useExtensionUpdate } from './hooks/useExtensionUpdate'
 import { EXTENSION_XPI_PATH } from './constants/extension'
 import { localDateISO } from './utils/localDate'
+import { isAppEnglish } from './utils/appLanguage'
 import { Capacitor } from '@capacitor/core'
 
 // The Firefox extension is irrelevant inside the native Android app — hide every
@@ -96,6 +97,7 @@ import NotificationBell from './components/NotificationBell'
 import { useNotifications } from './hooks/useNotifications'
 import NotificationPermissionBanner from './components/NotificationPermissionBanner'
 import AppUpdateBanner from './components/AppUpdateBanner'
+import AiKeyBanner from './components/AiKeyBanner'
 import SyncStatusIndicator from './components/SyncStatusIndicator'
 import { APP_VERSION } from './constants/appVersion'
 import { useNotificationPermission } from './hooks/useNotificationPermission'
@@ -882,7 +884,7 @@ export default function App() {
   const handleStatusChange = (id, newStatus) => {
     const job = jobs.find(j => j.id === id)
     updateStatus(id, newStatus)
-    if (job) showToast(`${job.company} → ${getStatus(newStatus).label}`)
+    if (job) showToast(`${job.company} → ${getStatusLabel(newStatus, t)}`)
   }
 
   const handleGenerateCV = (job) => {
@@ -1015,7 +1017,7 @@ export default function App() {
     const n = selectedJobIds.size
     selectedJobIds.forEach(id => updateStatus(id, status))
     clearSelection()
-    showToast(t('bulkBar.toastStatus').replace('{n}', n).replace('{status}', getStatus(status).label))
+    showToast(t('bulkBar.toastStatus').replace('{n}', n).replace('{status}', getStatusLabel(status, t)))
   }
   const bulkArchive = () => {
     const n = selectedJobIds.size
@@ -1187,7 +1189,7 @@ export default function App() {
   // Require a Supabase sign-in before the app. The landing page's CTA triggers
   // Google sign-in (identity); Gmail connection happens later, inside the app.
   if (isSupabaseConfigured() && !session) {
-    const isEnglish = navigator.language.startsWith('en')
+    const isEnglish = isAppEnglish()
     const LandingComponent = isEnglish ? LandingPageEN : LandingPage
     return (
       <ErrorBoundary>
@@ -1199,7 +1201,7 @@ export default function App() {
 
   // Show landing page if no user (only reached when Supabase isn't configured).
   if (showLandingPage) {
-    const isEnglish = navigator.language.startsWith('en')
+    const isEnglish = isAppEnglish()
     const LandingComponent = isEnglish ? LandingPageEN : LandingPage
     return (
       <ErrorBoundary>
@@ -1565,6 +1567,10 @@ export default function App() {
 
       {/* ── Main content ───────────────────────────────────────────────────────── */}
       <main className={`${layoutE ? '' : 'max-w-screen-2xl mx-auto '}px-3 sm:px-6 py-4 sm:py-6 pb-24 md:pb-6`}>
+        {/* "No AI key on this device" notice — hidden on Settings (that's where it sends you). */}
+        {activeTab !== 'settings' && (
+          <AiKeyBanner activeTab={activeTab} t={t} onOpenSettings={() => { setSettingsInitialTab('api'); setActiveTab('settings') }} />
+        )}
         {activeTab === 'settings' ? (
           <Settings jobs={jobs} syncUserId={syncUserId} onMergeDuplicates={mergeDuplicates} onUpdateJob={updateJob} initialTab={settingsInitialTab} onReplayTour={startTour} />
         ) : activeTab === 'analytics' ? (

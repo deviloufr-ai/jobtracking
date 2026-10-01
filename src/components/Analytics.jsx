@@ -105,9 +105,13 @@ export function computeAnalytics(jobs, weeks = 12) {
     return { from, to, median: median(samples), n: samples.length }
   })
 
+  // The second step is labelled "Répondu / Replied", so it must be the SAME count
+  // as the response-rate KPI above it (any employer reply, a direct rejection
+  // included) — it used to be "reached the reviewing stage", which showed 166 next
+  // to a KPI saying 201/251 on the same page.
   const funnel = [
     { key: 'sent', count: total },
-    { key: 'reviewing', count: reachedReviewing },
+    { key: 'reviewing', count: Math.max(responded, reachedReviewing) },
     { key: 'interview', count: reachedInterview },
     { key: 'offer', count: reachedOffer },
   ]
@@ -323,7 +327,7 @@ export default function Analytics({ jobs, t = (k) => k, language = 'en' }) {
                   <div className="flex flex-col gap-1 mt-1.5">
                     {a.rejections.bySource.slice(0, 4).map(s => (
                       <div key={s.source} className="flex items-center justify-between text-xs">
-                        <span className="text-gray-600 truncate capitalize">{s.source}</span>
+                        <span className="text-gray-600 truncate">{s.id === 'direct' ? t('platformView.direct') : s.source}</span>
                         <span className="font-semibold text-gray-700">{s.count}</span>
                       </div>
                     ))}
