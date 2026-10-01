@@ -29,6 +29,15 @@ export default async function handler(req, res) {
         res.status(429).json({ error: 'Too many requests. Please slow down or add your own Claude API key in Settings.' })
         return
       }
+      // Bound INPUT size BEFORE the quota check: a request we are about to refuse
+      // with 413 must not cost a trial credit. (Clamping max_tokens only caps
+      // output — a keyless caller could otherwise drain the owner's budget with
+      // multi-MB prompts. Legit app flows stay well under.)
+      const inputSize = Buffer.byteLength(JSON.stringify({ system: req.body?.system, messages: req.body?.messages }) || '', 'utf8')
+      if (inputSize > 256 * 1024) {
+        res.status(413).json({ error: 'Request too large for the free trial. Add your own Claude API key in Settings for larger requests.' })
+        return
+      }
       const quota = await enforceSharedKeyQuota(req)
       if (!quota.ok) {
         res.status(402).json({ error: 'Free trial used up. Add your own Claude API key in Settings to keep using the AI features.', code: 'TRIAL_EXHAUSTED' })
@@ -39,16 +48,7 @@ export default async function handler(req, res) {
     try {
       const { model, max_tokens, system, messages, tools, tool_choice } = req.body
 
-      // When billing the shared key, also bound INPUT size — clamping max_tokens only
-      // caps output, so a keyless caller could otherwise drain the owner's budget with
-      // multi-MB prompts. Legit app flows (email-parse batches, scoring) stay well under.
-      if (!userKey) {
-        const inputSize = Buffer.byteLength(JSON.stringify({ system, messages }) || '', 'utf8')
-        if (inputSize > 256 * 1024) {
-          res.status(413).json({ error: 'Request too large for the free trial. Add your own Claude API key in Settings for larger requests.' })
-          return
-        }
-      }
+      // (Shared-key input-size bound: enforced above, before the trial debit.)
 
       // When billing the shared key, restrict cost-per-call: force an allowlisted
       // (cheap) model and clamp max_tokens. User-key requests are unrestricted.

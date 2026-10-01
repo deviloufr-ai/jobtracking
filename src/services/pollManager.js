@@ -7,6 +7,9 @@ import { getFlag, FLAGS } from './featureFlags'
 import { reconcileRemoteCVs } from './cvSync'
 
 const POLL_INTERVAL = 300000 // 5 minutes
+// How far behind "now" the incremental watermark is kept (clock skew between
+// devices + writes in flight during a poll).
+const WATERMARK_OVERLAP_MS = 10 * 60 * 1000
 
 // PostgREST caps every select at 1000 rows (Supabase default max-rows) and says
 // nothing about it — a full sync of >1000 jobs, or a history batch over 1000
@@ -277,8 +280,13 @@ class PollManager {
         }
       }
 
-      // Update last sync time
-      const now = new Date().toISOString()
+      // Update the incremental watermark — with an overlap. The filter column
+      // (`jobs.updated_at`) is stamped by the WRITING device's clock, while the
+      // watermark used to be this device's "now": a peer whose clock runs a little
+      // behind, or a write committed while this poll was running, landed before the
+      // watermark and was never fetched until that row changed again. Re-reading
+      // the last few minutes is cheap (the merge is idempotent).
+      const now = new Date(Date.now() - WATERMARK_OVERLAP_MS).toISOString()
       this.lastSyncTime = now
       await indexeddb.setMetadata('last_sync_time', now)
 

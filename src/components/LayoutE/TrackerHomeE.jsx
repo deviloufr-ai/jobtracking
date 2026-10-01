@@ -598,11 +598,19 @@ export default function TrackerHomeE({
                         >
                           {initials(job.company)}
                         </span>
-                        <span className={`min-w-0 ${compact ? 'flex-1' : 'w-[360px] shrink-0'}`}>
+                        {/* Column widths step up with the viewport. A fixed 360px company
+                            column + timeline + note + date overflowed this
+                            overflow-hidden row at 768–1279px, clipping the status pill
+                            and the date off the right edge. */}
+                        <span className={`min-w-0 ${compact ? 'flex-1' : 'w-40 lg:w-64 xl:w-[360px] shrink-0'}`}>
                           <span className="block text-[13.5px] font-semibold tracking-tight text-gray-900 truncate">{job.company}</span>
                           <span className="block text-[12px] text-gray-400 truncate">{job.position}</span>
                         </span>
-                        {!compact && <StageBar history={job.history} t={t} width={timelineColWidth} onResizeStart={startTimelineResize} onResizeReset={resetTimelineWidth} />}
+                        {!compact && (
+                          <span className="hidden xl:contents">
+                            <StageBar history={job.history} t={t} width={timelineColWidth} onResizeStart={startTimelineResize} onResizeReset={resetTimelineWidth} />
+                          </span>
+                        )}
                         <span className="w-32 shrink-0" onClick={(e) => e.stopPropagation()}>
                           <StatusEditor
                             jobId={job.id}
@@ -612,17 +620,18 @@ export default function TrackerHomeE({
                           />
                         </span>
                         {!compact && (
-                          <span className="hidden md:block flex-1 min-w-0 truncate text-[12.5px] text-gray-400">{lastNote}</span>
+                          <span className="hidden lg:block flex-1 min-w-0 truncate text-[12.5px] text-gray-400">{lastNote}</span>
                         )}
                         {!compact && (
-                          <span className="hidden md:block w-16 text-right text-[12px] text-gray-400 tabular-nums shrink-0">
+                          <span className="hidden lg:block w-16 text-right text-[12px] text-gray-400 tabular-nums shrink-0">
                             {shortDate(last?.date || job.date)}
                           </span>
                         )}
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); onToggleFavorite?.(job.id) }}
-                        aria-label="favorite"
+                        aria-label={t('rowActions.star')}
+                        title={t('rowActions.star')}
                         aria-pressed={!!job.favorite}
                         className={`shrink-0 text-base leading-none transition-transform hover:scale-110 ${
                           job.favorite ? 'text-amber-400' : 'text-gray-300 hover:text-amber-300'

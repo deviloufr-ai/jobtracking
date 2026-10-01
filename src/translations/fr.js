@@ -1473,6 +1473,7 @@ export const fr = {
   bulkBar: {
     selected: 'sélectionnée(s)',
     selectedCount: '{n} sélectionnée(s)',
+    select: 'Sélectionner',
     selectAll: 'Tout sélectionner',
     deselectAll: 'Tout désélectionner',
     generateCVs: 'Générer les CV',

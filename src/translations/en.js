@@ -1178,6 +1178,7 @@ export const en = {
   bulkBar: {
     selected: 'selected',
     selectedCount: '{n} selected',
+    select: 'Select',
     selectAll: 'Select all',
     deselectAll: 'Deselect all',
     generateCVs: 'Generate CVs',
