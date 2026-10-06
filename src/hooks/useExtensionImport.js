@@ -1,7 +1,20 @@
 import { useEffect } from 'react'
 
-export function useExtensionImport(addJob, showToast, findDuplicate) {
+// updateJob (optional): when an import matches an already-tracked job that has
+// no job description yet, the incoming JD is patched onto it instead of the
+// import being dropped as a duplicate — otherwise a job first saved without a JD
+// (e.g. WTTJ, which the server-side /api/fetch-jd can't read: HTTP 202 bot wall)
+// could never get one from the extension.
+export function useExtensionImport(addJob, showToast, findDuplicate, updateJob) {
   useEffect(() => {
+    // Returns true when the existing job was missing a JD and got this one.
+    const backfillJd = (existing, jd) => {
+      const text = (jd || '').trim()
+      if (!updateJob || !existing || (existing.jobDescription || '').trim() || text.length < 50) return false
+      updateJob(existing.id, { jobDescription: text })
+      return true
+    }
+
     const params = new URLSearchParams(window.location.search)
 
     // ── Batch import from the extension's listing scan (?addBatch=1&batchKey=…) ──
@@ -86,11 +99,17 @@ export function useExtensionImport(addJob, showToast, findDuplicate) {
       function importBatch(jobs) {
         let added = 0
         let skipped = 0
+        let filled = 0
         for (const j of jobs) {
           const c = (j.company || '').trim()
           const pos = (j.position || j.title || '').trim()
           if (!c && !pos) continue
-          if (findDuplicate && findDuplicate(c, pos)) { skipped++; continue }
+          const existing = findDuplicate && findDuplicate(c, pos)
+          if (existing) {
+            if (backfillJd(existing, j.description || j.snippet)) filled++
+            else skipped++
+            continue
+          }
           addJob({
             company: c,
             position: pos,
@@ -103,9 +122,12 @@ export function useExtensionImport(addJob, showToast, findDuplicate) {
           added++
         }
         if (showToast) {
+          const fill = filled ? ` · ${filled} description${filled > 1 ? 's' : ''} complétée${filled > 1 ? 's' : ''}` : ''
           if (added) {
             const dup = skipped ? ` · ${skipped} doublon${skipped > 1 ? 's' : ''} ignoré${skipped > 1 ? 's' : ''}` : ''
-            showToast(`✅ ${added} offre${added > 1 ? 's' : ''} ajoutée${added > 1 ? 's' : ''} depuis l'extension${dup}`)
+            showToast(`✅ ${added} offre${added > 1 ? 's' : ''} ajoutée${added > 1 ? 's' : ''} depuis l'extension${dup}${fill}`)
+          } else if (filled) {
+            showToast(`✅ ${filled} description${filled > 1 ? 's' : ''} de poste complétée${filled > 1 ? 's' : ''}`)
           } else if (skipped) {
             showToast(`ℹ️ ${skipped} offre${skipped > 1 ? 's' : ''} déjà dans SmartJobTracker`)
           }
@@ -121,7 +143,9 @@ export function useExtensionImport(addJob, showToast, findDuplicate) {
       if (findDuplicate) {
         const existing = findDuplicate(company, position)
         if (existing) {
-          if (showToast) showToast(`ℹ️ ${company} est déjà dans SmartJobTracker`)
+          if (backfillJd(existing, jobDescription)) {
+            if (showToast) showToast(`✅ Description du poste ajoutée à ${company}`)
+          } else if (showToast) showToast(`ℹ️ ${company} est déjà dans SmartJobTracker`)
           window.history.replaceState({}, '', window.location.pathname)
           return
         }
