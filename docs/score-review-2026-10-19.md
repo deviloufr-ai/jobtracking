@@ -65,3 +65,34 @@ Open: the P3 items. (#11–#13 live in the add-on source; they reach users with 
 3. #8 + #9 + #10 in the add-on (popup → background; canonical URL).
 4. #5 + #6 + #7 (carry scores across, backfill JD, priority queue).
 5. #11 + #12 + #13, then P3.
+
+---
+
+## Re-review after the add-on merge (commit `6bbd4af`, 2026-10-19)
+
+The standalone add-on (v1.7.0: popup redesign, CV-file sync, LinkedIn Easy Apply
+auto-pilot, Chrome MV3 manifest) was 3-way merged into `jobtrackr-extension/`. Checked
+against the merged `background.js` / `content.js` / `popup.js` / `sync.js`:
+
+**Intact after the merge** — `COMPUTE_SCORE` single implementation, canonical cache id
+(`scoreCacheId`), `normalizeScoreResult` twin, UI-language output (`uiLang` ← the app's
+`jobtrackr_language`, same key `useLanguage.js` writes), listing-scan chunking/profile block,
+grey error pill (`jtScoreError` / `jtOpenApp`), score carried on `ADD_JOB`, `LOAD_JD`
+(`{ text, score }`) and `ADD_JOB_BATCH` rows. `node --check` passes on all three scripts; the
+MV3 service worker loads the `browser` shim via `importScripts`.
+
+### New findings
+
+| # | Sev | Where | Problem | Fix |
+|---|---|---|---|---|
+| 14 | P2 | `popup.js` add path (`addBtn` click) | The redesigned popup has **no score section**, so `calculateJobScore` never runs and `lastScoreResult` is always `null`: a job added from the popup reaches the app with `score: null` even when the pill already scored (and cached) that very posting seconds earlier. The app then re-scores it (own key) or shows nothing (trial). | Add a `cacheOnly: true` flag to `COMPUTE_SCORE` (return the cached record or `{ miss: true }`, never call Claude) and have the popup add path attach it to the `jdKey` payload. Same call can render a read-only "Score ★ 72 · Bon match" line in the popup at zero cost. |
+| 15 | P3 | `popup.js` lines ~851–990 + 4 call sites | ~140 lines of dead score UI (`renderScore`, `calculateJobScore`, `updateScoreSection`, `score-*` element lookups) kept only as a guarded no-op. | Delete; keep only the cache read from #14. |
+| 16 | P2 | `content.js` `jtCvPresent` vs `background.js` `scanScoreCards` | The pill requires `cvText`, but the listing scan happily scores from the **profile alone** (`scanCandidateBlock`). A user who filled the profile but never uploaded a CV gets listing scores and no pill, and `COMPUTE_SCORE` answers `noCv`. | Let `computeMatchScore` fall back to `scanCandidateBlock(profile, null)` when `cvText` is missing (label `cvName: 'Profil'`), and gate the pill on `cvText || !isProfileEmpty(profile)`. |
+| 17 | P2 | App: `ScoreBadge`, `CandidatureDrawer`, `TrackerHomeE` | `scoreDetails.provisional` (listing-scan score, card-only input) is stored but **never shown**: a 25-card triage score wears the same badge as a full-JD score. For a trial user nothing ever replaces it. | Render provisional scores with a dashed border / `~` prefix and a tooltip ("Score provisoire — basé sur l'aperçu de l'annonce"); `ScoreBreakdown` shows the source line. |
+| 18 | P3 | `content.js` pill + 1.7.0 Easy Apply pill | Both are fixed overlays; the score pill sits bottom-right at `z-index 2147483000`, the new ⚡ "Candidature auto" pill lives inside the LinkedIn modal. Overlap when the modal is open is plausible and **not verified** here. | Hide the score pill while the Easy Apply modal is open (`jtRemoveScorePill()` on modal detect, re-run `runScoreFlow` on close). |
+| 19 | P3 | Release | `manifest.json` is still **1.7.0** while every score fix above is post-1.7.0; users keep the old popup-side scoring until a signed build ships. | Bump to 1.7.1, build + sign the `.xpi` (Firefox) and the MV3 zip (Chrome), and bump `src/constants/extension.js` so the in-app update modal fires. |
+
+### Still open from the first pass
+
+P3 items (unrounded score in `TrackerHomeE`, `scoredAt` never shown as age, pill polling
+`location.href` every 1.5 s).
