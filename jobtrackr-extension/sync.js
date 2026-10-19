@@ -10,17 +10,23 @@
     // extension reuse it so AI features run unlimited without re-entering it.
     const apiKey = localStorage.getItem('jobtrackr_claude_api_key') || null
 
+    // The app's UI language (written by useLanguage, 'fr' | 'en'). The add-on
+    // uses it as the output language of the match-score prose (summary /
+    // strengths / gaps / listing reason) — see scoreOutputLanguage() in
+    // background.js. Null when the user never picked one (browser language wins).
+    const uiLang = localStorage.getItem('jobtrackr_language') || null
+
     // Read profile
     const rawProfile = localStorage.getItem('jobtrackr_profile')
     if (!rawProfile) {
       // Still propagate the key even if there's no profile/CV to sync yet.
-      if (apiKey) return { apiKey, synced: true }
+      if (apiKey) return { apiKey, uiLang, synced: true }
       return { error: `No profile found in localStorage. Available keys: ${allKeys.join(', ')}`, synced: false }
     }
 
     const profile = JSON.parse(rawProfile)
     if (!profile) {
-      if (apiKey) return { apiKey, synced: true }
+      if (apiKey) return { apiKey, uiLang, synced: true }
       return { error: 'Profile is empty or null', synced: false }
     }
 
@@ -49,6 +55,7 @@
       cvText: baseCv?.text || null,
       cvName: baseCv?.name || null,
       apiKey,
+      uiLang,
       synced: true
     }
   } catch (e) {

@@ -303,6 +303,7 @@ async function syncFromApp() {
     if (result.profile) toSave.profile = result.profile
     if (result.cvText)  { toSave.cvText = result.cvText; toSave.cvName = result.cvName }
     if (result.apiKey)  toSave.apiKey = result.apiKey
+    if (result.uiLang)  toSave.uiLang = result.uiLang
     if (Object.keys(toSave).length > 0) {
       await browser.storage.local.set(toSave)
     }
@@ -632,6 +633,27 @@ function normalizeScoreResult(raw) {
   }
 }
 
+// Output language of the score prose (summary / strengths / gaps / listing
+// reason). The app's UI language (`jobtrackr_language`, carried over by sync.js
+// as `uiLang`) wins; otherwise the browser language. Without this the model
+// answered in English or in the JD's language regardless of the user's UI, and
+// the listing reason was hardcoded French. Twin of the app's getAppLanguage()
+// use in src/services/scoreJob.js.
+const LANG_NAMES = {
+  fr: 'French', en: 'English', ja: 'Japanese', jp: 'Japanese', de: 'German',
+  es: 'Spanish', it: 'Italian', pt: 'Portuguese', nl: 'Dutch'
+}
+function langName(code) {
+  const base = String(code || '').toLowerCase().split('-')[0]
+  return LANG_NAMES[base] || 'English'
+}
+async function scoreOutputLanguage() {
+  let uiLang = null
+  try { uiLang = (await browser.storage.local.get('uiLang')).uiLang } catch (e) {}
+  const code = uiLang || (typeof navigator !== 'undefined' && navigator.language) || 'en'
+  return { code: String(code).toLowerCase().split('-')[0], name: langName(code) }
+}
+
 // Minimum usable JD length — one threshold for the pill AND the popup (the popup
 // used to score anything > 50 chars with no server fallback while the pill
 // refused < 80, so the same page scored in one and not the other).
@@ -667,13 +689,17 @@ async function computeMatchScore({ company, position, description, url, force })
   }
   if (!company || !position || jobDesc.length < SCORE_MIN_JD) return { insufficient: true, jobDesc }
 
-  const cacheKey = 'score:' + djb2([scoreCacheId(url, company, position, jobDesc), djb2(cvText)].join('|'))
+  // The language is part of the key so a UI-language switch re-scores once
+  // instead of serving a cached summary in the previous language.
+  const lang = await scoreOutputLanguage()
+  const cacheKey = 'score:' + djb2([scoreCacheId(url, company, position, jobDesc), djb2(cvText), lang.code].join('|'))
 
   if (!force) {
     const cached = (await browser.storage.local.get(cacheKey))[cacheKey]
     if (cached && clampScore(cached.score) !== null) return { ...cached, jobDesc }
   }
 
+  // Twin of buildPrompt in the app's src/services/scoreJob.js — keep in sync.
   const prompt = `You are an expert recruiter and CV screener. Analyze how well the candidate's CV matches the job description.
 
 CANDIDATE CV:
@@ -687,6 +713,8 @@ Evaluate the candidate's fit across these dimensions:
 2. Experience Level (years, seniority, relevant domain)
 3. Background Alignment (industry, company size, role similarity)
 4. Achievement Relevance (measurable outcomes matching JD context)
+
+Write "summary", "strengths" and "gaps" in ${lang.name}, whatever the language of the CV or the job description.
 
 Respond with ONLY a JSON object (no markdown, no preamble) with this exact structure:
 {
@@ -727,8 +755,45 @@ function scorePayload(s, source) {
 }
 
 // ─── Listing-page batch scoring ──────────────────────────────────────────────
-// Score a whole page of listing cards against the synced CV in ONE Claude call
-// (card-level fields only — the full JD isn't available on a search page). Also
+const SCAN_CHUNK_MAX = 13      // cards per Claude call (25-card page → 2 calls)
+const SCAN_SNIPPET_MAX = 600   // what jtEnrichLinkedInCards fills (was sliced to 300)
+const SCAN_MAX_TOKENS = 2500   // 13 × (index + score + verdict + 12-word reason) with margin
+const SCAN_CV_EXCERPT = 8000   // CV chars when there is no usable profile summary
+
+function clipText(v, n) {
+  const s = (v == null ? '' : (Array.isArray(v) ? v.join(', ') : String(v))).trim()
+  return s.length > n ? s.slice(0, n) + '…' : s
+}
+
+// Compact candidate block for the listing prompt. The synced profile already
+// holds a hand-written summary (title, experience paragraph with years and
+// last roles, top skills, languages, education); that is denser than a raw CV
+// excerpt and never cuts the skills block. The CV is used when the profile is
+// missing or too thin to judge from (first SCAN_CV_EXCERPT chars — enough for a
+// two-page CV; the old 4000-char cut lost the second page).
+function scanCandidateBlock(profile, cvText) {
+  const p = profile || {}
+  const lines = [
+    p.title && `Title: ${clipText(p.title, 200)}`,
+    p.experience && `Experience (years, last roles): ${clipText(p.experience, 1500)}`,
+    p.skills && (Array.isArray(p.skills) ? p.skills.length : true) && `Top skills: ${clipText(p.skills, 600)}`,
+    p.languages && `Languages: ${clipText(p.languages, 200)}`,
+    p.education && `Education: ${clipText(p.education, 300)}`
+  ].filter(Boolean)
+  const summary = lines.join('\n')
+  // A profile with only a title/skills line is not enough to score seniority or
+  // domain — fall back to (or complement with) the CV itself.
+  const thin = summary.length < 300 || !p.experience
+  if (cvText && (thin || !summary)) {
+    const excerpt = `CANDIDATE CV (excerpt):\n${String(cvText).slice(0, SCAN_CV_EXCERPT)}`
+    return summary ? `CANDIDATE PROFILE:\n${summary}\n\n${excerpt}` : excerpt
+  }
+  return `CANDIDATE PROFILE:\n${summary}`
+}
+
+// Score a whole page of listing cards against the synced profile/CV in one or two
+// Claude calls (card-level fields only — the full JD isn't available on a search
+// page; chunking + candidate block: see SCAN_* constants above). Also
 // flags each card that's already tracked, from the applied-jobs cache. Returns
 // { results: [{ ...card, score, verdict, reason, applied, appliedStatus }] } or
 // { noCv } when there's no CV/profile to match against.
@@ -749,37 +814,52 @@ async function scanScoreCards({ cards }) {
   const list = (Array.isArray(cards) ? cards : []).slice(0, 25)
   if (!list.length) return { results: [] }
 
-  const p = profile || {}
-  const skills = Array.isArray(p.skills) ? p.skills.join(', ') : (p.skills || '')
-  const candidate = cvText
-    ? `CANDIDATE CV:\n${cvText.slice(0, 4000)}`
-    : `CANDIDATE PROFILE:\nRole: ${p.title || ''}\nExperience: ${p.experience || ''}\nSkills: ${skills}\nLanguages: ${p.languages || ''}`
+  const candidate = scanCandidateBlock(profile, cvText)
+  const lang = await scoreOutputLanguage()
 
-  const jobsBlock = list.map((c, i) =>
-    `[${i}] ${c.title || ''} — ${c.company || ''}${c.location ? ' — ' + c.location : ''}${c.snippet ? '\n' + String(c.snippet).slice(0, 300) : ''}`
-  ).join('\n\n')
+  // Cards are scored in chunks of ≤ SCAN_CHUNK_MAX (two calls for a full 25-card
+  // page) so a truncated / malformed JSON in one answer leaves at most half the
+  // page unscored instead of the whole batch. Chunks run in parallel and merge
+  // on the page-level index.
+  const chunks = []
+  if (list.length > SCAN_CHUNK_MAX) {
+    const half = Math.ceil(list.length / 2)
+    chunks.push({ offset: 0, cards: list.slice(0, half) }, { offset: half, cards: list.slice(half) })
+  } else {
+    chunks.push({ offset: 0, cards: list })
+  }
 
-  const prompt = `You are an expert recruiter screening a candidate against a list of job postings taken from a search-results page. For each posting, judge how well it fits the candidate based on role, seniority, skills and domain.
+  const scores = new Map()
+  await Promise.all(chunks.map(async ({ offset, cards: part }) => {
+    const jobsBlock = part.map((c, i) =>
+      `[${i}] ${c.title || ''} — ${c.company || ''}${c.location ? ' — ' + c.location : ''}${c.snippet ? '\n' + String(c.snippet).slice(0, SCAN_SNIPPET_MAX) : ''}`
+    ).join('\n\n')
+
+    const prompt = `You are an expert recruiter screening a candidate against a list of job postings taken from a search-results page. For each posting, judge how well it fits the candidate based on role, seniority, skills and domain.
 
 ${candidate}
 
 JOB POSTINGS:
 ${jobsBlock}
 
-Respond with ONLY a JSON object (no markdown, no preamble), one entry per posting index:
-{"results":[{"i":<index>,"score":<0-100>,"verdict":"<STRONG_MATCH|GOOD_MATCH|PARTIAL_MATCH|WEAK_MATCH>","reason":"<max 12 words, in French>"}]}`
+Respond with ONLY a JSON object (no markdown, no preamble), one entry per posting index (${part.length} entries, indexes 0 to ${part.length - 1}):
+{"results":[{"i":<index>,"score":<0-100>,"verdict":"<STRONG_MATCH|GOOD_MATCH|PARTIAL_MATCH|WEAK_MATCH>","reason":"<max 12 words, in ${lang.name}>"}]}`
 
-  let scores = new Map()
-  try {
-    const data = await callClaudeAPI([{ role: 'user', content: prompt }], 1500, 20000)
-    const text = data.content?.[0]?.text || '{}'
-    const start = text.indexOf('{')
-    const end = text.lastIndexOf('}')
-    const parsed = JSON.parse(start !== -1 ? text.slice(start, end + 1) : '{}')
-    scores = new Map((parsed.results || []).map(r => [r.i, r]))
-  } catch (e) {
-    // Scoring failed — still return the cards (unscored) so the user can add them.
-  }
+    try {
+      const data = await callClaudeAPI([{ role: 'user', content: prompt }], SCAN_MAX_TOKENS, 25000)
+      const text = data.content?.[0]?.text || '{}'
+      const start = text.indexOf('{')
+      const end = text.lastIndexOf('}')
+      const parsed = JSON.parse(start !== -1 ? text.slice(start, end + 1) : '{}')
+      for (const r of (parsed.results || [])) {
+        const i = Number(r && r.i)
+        if (Number.isInteger(i) && i >= 0 && i < part.length) scores.set(offset + i, r)
+      }
+    } catch (e) {
+      // This chunk failed — its cards stay unscored (score: null) so the user can
+      // still review/add them; the other chunk is unaffected.
+    }
+  }))
 
   const applied = await getAppliedList().catch(() => [])
   const results = list.map((c, i) => {

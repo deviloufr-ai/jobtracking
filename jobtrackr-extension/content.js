@@ -1732,10 +1732,42 @@ function jtEnsureScoreHost() {
   document.body.appendChild(jtScoreHost)
 }
 
+// Classify a scoring failure for the grey pill. The background's callClaudeAPI
+// throws "Claude API <status>: …", so the HTTP status is in the message: 402 is
+// the shared-trial quota (the user needs their own key in SmartJobTracker), 429
+// a rate limit, the rest timeouts / network. Any error used to silently remove
+// the pill, so the user never learned why scoring had stopped.
+function jtScoreError(msg) {
+  const m = String(msg || '')
+  if (/\b402\b|TRIAL_EXHAUSTED/i.test(m)) {
+    return { kind: 'trial', label: 'Essai gratuit épuisé', sub: 'Ajoutez votre clé dans SmartJobTracker' }
+  }
+  if (/\b429\b|rate.?limit/i.test(m)) {
+    return { kind: 'rate', label: 'Score indisponible', sub: 'Trop de requêtes — cliquer pour réessayer' }
+  }
+  if (/timeout|\b504\b/i.test(m)) {
+    return { kind: 'timeout', label: 'Score indisponible', sub: 'Délai dépassé — cliquer pour réessayer' }
+  }
+  if (/failed to fetch|networkerror|network|\b50[23]\b/i.test(m)) {
+    return { kind: 'network', label: 'Score indisponible', sub: 'Connexion impossible — cliquer pour réessayer' }
+  }
+  const short = m.replace(/^Claude API \d+:\s*/i, '').trim()
+  return { kind: 'generic', label: 'Score indisponible', sub: short ? (short.length > 60 ? short.slice(0, 57) + '…' : short) : 'Cliquer pour réessayer' }
+}
+
+async function jtOpenApp() {
+  try {
+    const r = await browser.runtime.sendMessage({ type: 'GET_APP_URL' })
+    await browser.runtime.sendMessage({ type: 'OPEN_APP_TAB', url: r?.appUrl || 'https://jobtracking-three.vercel.app' })
+  } catch {}
+}
+
 function jtRenderScorePill(state) {
   jtEnsureScoreHost()
   const loading = !!state.loading
-  const s = state.result || null
+  // Error state ({ kind, label, sub } from jtScoreError): grey pill, no card.
+  const err = (!loading && state.error) ? state.error : null
+  const s = (!err && state.result) || null
   const score = s ? Math.round(s.score) : null
   const color = score != null ? jtScoreColor(score) : '#64748b'
   const label = score != null ? jtScoreLabel(score) : 'Calcul du score…'
@@ -1752,14 +1784,16 @@ function jtRenderScorePill(state) {
     ? [jtApplied.status ? jtStatusLabel(jtApplied.status) : '', jtFmtDate(jtApplied.date)].filter(Boolean).join(' · ')
     : ''
 
-  const pillBadgeBg = appliedActive ? '#10b981' : color
-  const pillBadgeInner = loading ? '<span class="jt-spin"></span>' : (appliedActive ? '✓' : (score != null ? score : '–'))
-  const pillLabel = appliedActive ? appliedHead : label
+  const pillBadgeBg = err ? '#94a3b8' : (appliedActive ? '#10b981' : color)
+  const pillBadgeInner = loading ? '<span class="jt-spin"></span>' : (err ? '!' : (appliedActive ? '✓' : (score != null ? score : '–')))
+  const pillLabel = err ? err.label : (appliedActive ? appliedHead : label)
   const pillSub = loading
     ? 'Analyse en cours'
-    : (appliedActive
-        ? [appliedMeta, (score != null ? 'Score ' + score : '')].filter(Boolean).join(' · ')
-        : (jtScoreOpen ? 'Masquer les détails' : 'Voir les détails'))
+    : (err
+        ? err.sub
+        : (appliedActive
+            ? [appliedMeta, (score != null ? 'Score ' + score : '')].filter(Boolean).join(' · ')
+            : (jtScoreOpen ? 'Masquer les détails' : 'Voir les détails')))
 
   const card = (jtScoreOpen && s) ? `
     <div class="jt-card">
@@ -1822,12 +1856,20 @@ function jtRenderScorePill(state) {
           <span class="jt-pill-lbl">${escHtml(pillLabel)}</span>
           <span class="jt-pill-sub">${escHtml(pillSub)}</span>
         </span>
-        <span class="jt-chev">${jtScoreOpen ? '▾' : '▴'}</span>
+        <span class="jt-chev">${err ? (err.kind === 'trial' ? '↗' : '↺') : (jtScoreOpen ? '▾' : '▴')}</span>
       </button>
     </div>`)
 
   const pill = jtScoreShadow.getElementById('jt-pill')
-  if (pill && !loading) pill.addEventListener('click', () => { jtScoreOpen = !jtScoreOpen; jtRenderScorePill({ result: jtScoreData }) })
+  if (pill && !loading) {
+    if (err) {
+      // Trial exhausted → open SmartJobTracker (where the key is entered, same
+      // destination as the "＋ JobTrackr" action); any other failure → retry.
+      pill.addEventListener('click', () => { if (err.kind === 'trial') jtOpenApp(); else runScoreFlow(true) })
+    } else {
+      pill.addEventListener('click', () => { jtScoreOpen = !jtScoreOpen; jtRenderScorePill({ result: jtScoreData }) })
+    }
+  }
   const closeBtn = jtScoreShadow.getElementById('jt-close')
   if (closeBtn) closeBtn.addEventListener('click', (e) => { e.stopPropagation(); jtScoreOpen = false; jtRenderScorePill({ result: jtScoreData }) })
   const recalc = jtScoreShadow.getElementById('jt-recalc')
@@ -1888,15 +1930,24 @@ async function runScoreFlow(force = false) {
       company: info.company, position: info.position, description: info.description, url, force
     })
     await appliedP
-    if (!res || res.error || res.noCv || res.insufficient || typeof res.score !== 'number') {
+    // No CV / JD too thin: nothing to score, stay silent (as before).
+    if (res && (res.noCv || res.insufficient)) {
       jtScoreData = null
       jtRemoveScorePill()
       return
     }
+    // A real failure (402 trial exhausted, 429, timeout, network, bad answer):
+    // keep a grey pill with the reason instead of vanishing.
+    if (!res || res.error || typeof res.score !== 'number') {
+      jtScoreData = null
+      jtRenderScorePill({ error: jtScoreError(res ? (res.error || 'Réponse IA sans score exploitable') : 'Extension indisponible') })
+      return
+    }
     jtScoreData = { ...res, _job: info, _url: url }
     jtRenderScorePill({ result: res })
-  } catch {
-    jtRemoveScorePill()
+  } catch (e) {
+    jtScoreData = null
+    jtRenderScorePill({ error: jtScoreError(e && e.message) })
   } finally {
     jtScoreBusy = false
   }

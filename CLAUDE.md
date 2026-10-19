@@ -150,6 +150,15 @@ twin of `normalizeScoreResult` — keep them in sync). Rules, after the 2026-10-
   under the `jdKey`, `score` on each batch row) so the app doesn't re-score on import; listing
   scores are flagged `scoreDetails.provisional`. Popup scoring goes through the background's
   `COMPUTE_SCORE` (one prompt, one cache keyed on the canonical job id, one 80-char JD rule).
+- **Score prose follows the UI language**, not the JD's: the app passes `getAppLanguage()`
+  (`appLanguage.js`) into the prompt (`scoreJob.js`); the add-on reads `uiLang` (= the app's
+  `jobtrackr_language`, carried over by `sync.js`), falling back to `navigator.language`, and
+  the language is part of its score-cache key. The listing scan sends ≤13 cards per call (two
+  calls for a 25-card page, merged, so one bad JSON never unscored the whole page), a profile
+  summary + up-to-8000-char CV excerpt instead of a 4000-char CV cut, the full 600-char snippet
+  and 2500 output tokens. A failed pill score (402 trial exhausted / 429 / network) renders a
+  grey pill with the reason (402 → "add your key", click opens the app) instead of vanishing;
+  `noCv` / `insufficient` stay silent.
 
 ### Gmail ingestion
 

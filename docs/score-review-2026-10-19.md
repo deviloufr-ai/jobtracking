@@ -5,8 +5,9 @@ Scope: the match score in the web app (`src/services/scoreJob.js`, `src/hooks/us
 (`background.js` `computeMatchScore` / `scanScoreCards`, `popup.js` `calculateJobScore`,
 `content.js` score pill + listing scan).
 
-**Status (same day):** #1–#5, #6 (JD backfill), #7, #8, #9, #10 implemented. Open: #11, #12,
-#13 and the P3 items.
+**Status (same day):** #1–#5, #6 (JD backfill), #7, #8, #9, #10, #11, #12, #13 implemented.
+Open: the P3 items. (#11–#13 live in the add-on source; they reach users with the next signed
+.xpi build.)
 
 ## How it works today
 

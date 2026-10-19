@@ -896,7 +896,12 @@ async function calculateJobScore(force = false) {
   } catch (e) {
     scoreLoading.style.display = 'none'
     scoreDisplay.style.display = 'block'
-    scoreSummary.textContent = '❌ ' + e.message
+    // 402 = shared-trial quota exhausted (background callClaudeAPI surfaces it
+    // as "Claude API 402: …") — tell the user what to do instead of the raw text.
+    const trialOut = /\b402\b|TRIAL_EXHAUSTED/i.test(e.message || '')
+    scoreSummary.textContent = trialOut
+      ? '❌ Essai gratuit épuisé — ajoutez votre clé dans SmartJobTracker (Paramètres → API), puis synchronisez.'
+      : '❌ ' + e.message
     scoreSummary.style.color = '#dc2626'
     scoreDetails.style.display = 'none'
     // Show recalculate button even on error
