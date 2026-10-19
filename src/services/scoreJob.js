@@ -3,6 +3,7 @@
 // function) to stay under Vercel's Hobby-plan 12-function limit.
 import { aiFetch } from './apiKey'
 import { CLAUDE_MODEL } from '../constants/aiModel'
+import { normalizeScoreResult } from '../utils/scoreMatch'
 
 function buildPrompt({ cvText, jobDescription, company, position }) {
   return `You are an expert recruiter and CV screener. Analyze how well the candidate's CV matches the job description.
@@ -45,7 +46,8 @@ function extractJSON(rawText) {
  * @throws on network/API/parse failure
  */
 export async function scoreJobMatch({ cvText, jobDescription, company, position }) {
-  if (!cvText || !jobDescription) throw new Error('cvText and jobDescription required')
+  if (!cvText) throw new Error('No CV to score against — upload a CV first.')
+  if (!jobDescription || !jobDescription.trim()) throw new Error('No job description on this job — add one first.')
 
   // aiFetch attaches the user's key, and on a 402 signals trial-exhausted + throws
   // TrialExhaustedError so the "add your Claude key" prompt fires (plain fetch used
@@ -60,14 +62,10 @@ export async function scoreJobMatch({ cvText, jobDescription, company, position 
   if (!res.ok) throw new Error(data?.error?.message || data?.error || `Claude API ${res.status}`)
 
   const rawText = data.content?.[0]?.text || '{}'
-  const result = extractJSON(rawText)
+  // normalizeScoreResult throws on a missing/non-numeric score (so a malformed
+  // answer is a failed call, never a stored "0"), clamps to 0-100 and derives the
+  // verdict from the score so badge colour and verdict text always agree.
+  const result = normalizeScoreResult(extractJSON(rawText))
 
-  return {
-    score: result.score || 0,
-    summary: result.summary || '',
-    strengths: result.strengths || [],
-    gaps: result.gaps || [],
-    verdict: result.verdict || 'PARTIAL_MATCH',
-    scoredAt: new Date().toISOString(),
-  }
+  return { ...result, scoredAt: new Date().toISOString() }
 }

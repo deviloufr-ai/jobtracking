@@ -1623,7 +1623,7 @@ window.addEventListener('jobtrackr-jd-request', async (e) => {
   try {
     const result = await browser.runtime.sendMessage({ type: 'LOAD_JD', key: jdKey })
     // Serialize as JSON string to avoid cross-origin security errors
-    window.dispatchEvent(new CustomEvent('jobtrackr-jd-response', { detail: JSON.stringify({ jdKey, text: result?.text || '' }) }))
+    window.dispatchEvent(new CustomEvent('jobtrackr-jd-response', { detail: JSON.stringify({ jdKey, text: result?.text || '', score: result?.score || null }) }))
   } catch (err) {
     window.dispatchEvent(new CustomEvent('jobtrackr-jd-response', { detail: JSON.stringify({ jdKey, text: '', error: err.message }) }))
   }
@@ -1847,7 +1847,15 @@ function jtRenderScorePill(state) {
     try {
       const job = jtScoreData?._job || extractJobInfo()
       const url = job.url || window.location.href
-      await browser.runtime.sendMessage({ type: 'ADD_JOB', job: { company: job.company, position: job.position, description: job.description, url } })
+      // Hand the score we already computed to the app (it keeps it instead of
+      // re-scoring), together with the JD the score was computed on when the
+      // background fetched a fuller one than the page exposed.
+      const s = jtScoreData
+      const description = (s && s.jobDesc && s.jobDesc.length > (job.description || '').length) ? s.jobDesc : job.description
+      const score = (s && typeof s.score === 'number')
+        ? { score: s.score, summary: s.summary, strengths: s.strengths, gaps: s.gaps, cvName: s.cvName }
+        : null
+      await browser.runtime.sendMessage({ type: 'ADD_JOB', job: { company: job.company, position: job.position, description, url, score } })
       add.textContent = '✓ Ajouté'
       // Reflect it right away so the badge appears without waiting for a re-check.
       jtApplied = { applied: true, status: 'todo', date: new Date().toISOString(), company: job.company, position: job.position }
@@ -2378,7 +2386,9 @@ function jtRenderScanPanel(state) {
         let description = r.snippet || ''
         const id = /linkedin\.com/.test(r.url || '') ? jtLinkedInJobId(r.url) : ''
         if (id) { const g = await fetchLinkedInGuest(id); if (g && g.description) description = g.description }
-        return { company: r.company, position: r.title, url: r.url, snippet: description }
+        // The listing score travels with the job so the app keeps it (provisional).
+        const score = typeof r.score === 'number' ? { score: r.score, reason: r.reason } : null
+        return { company: r.company, position: r.title, url: r.url, snippet: description, score }
       }))
       const res = await browser.runtime.sendMessage({ type: 'ADD_JOB_BATCH', jobs })
       if (res && res.ok) {

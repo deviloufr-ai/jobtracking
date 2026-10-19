@@ -128,6 +128,29 @@ plugin changes).
   server key with an empty object, and the reader treats `{}` as absent (`hasMindMap`,
   `interviewExamples` reset).
 
+### CV ↔ job match score
+
+`src/utils/scoreMatch.js` is the one source of truth (the add-on's `background.js` carries a
+twin of `normalizeScoreResult` — keep them in sync). Rules, after the 2026-10-19 review
+(`docs/score-review-2026-10-19.md`):
+
+- **Auto-scoring (`useAutoScore`) runs only with the user's OWN key.** The shared trial is
+  15 calls / 30 days; background scoring used to eat it silently on load. Trial users keep the
+  manual "Score" button. Queue is `todo` → `sent` → others, newest first, 25 calls/session;
+  `interview` / `done` / `offer` and closed statuses are never scored.
+- **The match score is always computed against the newest BASE CV**, never the tailored
+  `cvSaved` (which was generated from the same JD — the score measured the tailoring, not
+  the fit). The tailored CV's own number is `cvSaved.atsScore`.
+- **Verdict is derived from the score** (≥80 strong / ≥60 good / ≥40 partial), the model's
+  verdict is ignored; a response without a numeric score throws (never stored as `0`).
+- `scoreSignature` = `base:<cvId>|<jdId>` (manual and auto paths build it the same way via
+  `buildScoreSignature`); add-on scores arrive as `ext|<jdId>` and are kept until the JD changes.
+  A JD fetched by the auto-scorer from `url` is written back to `jobDescription`.
+- The add-on sends its pill / popup / listing-scan score with the import (`{ text, score }`
+  under the `jdKey`, `score` on each batch row) so the app doesn't re-score on import; listing
+  scores are flagged `scoreDetails.provisional`. Popup scoring goes through the background's
+  `COMPUTE_SCORE` (one prompt, one cache keyed on the canonical job id, one 80-char JD rule).
+
 ### Gmail ingestion
 
 ```

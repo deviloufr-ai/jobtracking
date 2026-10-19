@@ -142,6 +142,7 @@ export const en = {
     recalculate: 'Recalculate with CV',
     calculating: 'Calculating...',
     uploadCVFirst: 'Upload a CV to score this job.',
+    noJD: 'Add a job description first.',
     noCVSelected: 'No CV selected',
     incompleteJob: 'Job details incomplete',
   },

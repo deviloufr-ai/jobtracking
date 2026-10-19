@@ -6,7 +6,7 @@ import ScoreJob from './ScoreJob'
 
 const EMPTY = { company: '', position: '', url: '', companyAddress: '', status: 'sent', date: new Date().toISOString().split('T')[0], notes: '', jobDescription: '' }
 
-export default function JobModal({ job, onSave, onClose, findDuplicate, t = (key) => key }) {
+export default function JobModal({ job, onSave, onClose, findDuplicate, onUpdateJob, t = (key) => key }) {
   // Prefer the durable commute-store address (survives Supabase polls) over the
   // possibly-stale one on the job object.
   const [form, setForm] = useState(job
@@ -208,6 +208,10 @@ export default function JobModal({ job, onSave, onClose, findDuplicate, t = (key
               onUpdateScore={(scoreData) => {
                 set('score', scoreData.score)
                 set('scoreDetails', scoreData.scoreDetails)
+                set('scoreSignature', scoreData.scoreSignature)
+                // Persist right away on an existing job: the Claude call is paid
+                // for, so closing the modal without "Save" must not discard it.
+                if (job?.id && onUpdateJob) onUpdateJob(job.id, scoreData)
               }}
               t={t}
             />

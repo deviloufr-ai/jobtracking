@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { scorePatchFromExtension } from '../utils/scoreMatch'
 
 // updateJob (optional): when an import matches an already-tracked job that has
 // no job description yet, the incoming JD is patched onto it instead of the
@@ -49,7 +50,9 @@ export function useExtensionImport(addJob, showToast, findDuplicate, updateJob) 
         if (data.jdKey === jdKey) {
           responseReceived = true
           window.removeEventListener('jobtrackr-jd-response', handleJdResponse)
-          createJob(data.text || '')
+          // `score` rides along when the pill/popup already scored this posting
+          // (older add-on builds send only the text).
+          createJob(data.text || '', data.score || null)
         }
       }
 
@@ -110,7 +113,7 @@ export function useExtensionImport(addJob, showToast, findDuplicate, updateJob) 
             else skipped++
             continue
           }
-          addJob({
+          const job = {
             company: c,
             position: pos,
             url: j.url || '',
@@ -118,7 +121,11 @@ export function useExtensionImport(addJob, showToast, findDuplicate, updateJob) 
             date: j.date || new Date().toISOString(),
             notes: '',
             jobDescription: j.description || j.snippet || '',
-          })
+          }
+          // Keep the listing-scan score the add-on already paid for (flagged
+          // provisional: it only saw the card). useAutoScore leaves it alone
+          // until a fuller JD changes the signature.
+          addJob({ ...job, ...(scorePatchFromExtension(job, j.score) || {}) })
           added++
         }
         if (showToast) {
@@ -136,7 +143,7 @@ export function useExtensionImport(addJob, showToast, findDuplicate, updateJob) 
       }
     }
 
-    function createJob(jobDescription) {
+    function createJob(jobDescription, extScore = null) {
       // Skip if this posting is already tracked — the extension import path
       // bypasses the Add-modal's duplicate check, so without this the same
       // posting imported twice would create a doublon.
@@ -165,7 +172,8 @@ export function useExtensionImport(addJob, showToast, findDuplicate, updateJob) 
         jobDescription: jobDescription, // store full JD for CV generator
       }
 
-      addJob(job)
+      // Carry the score the add-on's pill/popup already computed on this JD.
+      addJob({ ...job, ...(scorePatchFromExtension(job, extScore) || {}) })
       if (showToast) showToast(`✅ ${company} importé depuis l'extension !`)
       window.history.replaceState({}, '', window.location.pathname)
     }

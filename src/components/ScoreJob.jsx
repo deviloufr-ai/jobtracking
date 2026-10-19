@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useCVs } from '../hooks/useCVs'
 import { scoreJobMatch } from '../services/scoreJob'
+import { jdSourceId, cvKeyFor, buildScoreSignature } from '../utils/scoreMatch'
 
 // Color band for a 0-100 score — shared by the table badge and the modal.
 export function scoreColorClasses(s) {
@@ -108,22 +109,9 @@ export default function ScoreJob({ job, onUpdateScore, t = (key) => key }) {
   const score = job?.score
   const scoreDetails = job?.scoreDetails
 
-  const getScoreColor = (s) => {
-    if (s >= 80) return 'bg-green-100 text-green-800 border-green-300'
-    if (s >= 60) return 'bg-blue-100 text-blue-800 border-blue-300'
-    if (s >= 40) return 'bg-yellow-100 text-yellow-800 border-yellow-300'
-    return 'bg-red-100 text-red-800 border-red-300'
-  }
-
-  const getVerdictIcon = (verdict) => {
-    switch (verdict) {
-      case 'STRONG_MATCH': return '✓'
-      case 'GOOD_MATCH': return '✓'
-      case 'PARTIAL_MATCH': return '◐'
-      case 'WEAK_MATCH': return '✗'
-      default: return '−'
-    }
-  }
+  const getScoreColor = scoreColorClasses
+  const jobDescription = job?.jobDescription || job?.description || job?.notes || ''
+  const hasJD = jobDescription.trim().length > 0
 
   const handleCalculateScore = async () => {
     if (!selectedCvId && cvs.length > 0) {
@@ -141,6 +129,10 @@ export default function ScoreJob({ job, onUpdateScore, t = (key) => key }) {
       setError(t('scoreJob.incompleteJob') || 'Job details incomplete')
       return
     }
+    if (!hasJD) {
+      setError(t('scoreJob.noJD') || 'Add a job description first.')
+      return
+    }
 
     setLoading(true)
     setError(null)
@@ -148,13 +140,16 @@ export default function ScoreJob({ job, onUpdateScore, t = (key) => key }) {
     try {
       const data = await scoreJobMatch({
         cvText: cv.text,
-        jobDescription: job.jobDescription || job.description || job.notes || '',
+        jobDescription,
         company: job.company,
         position: job.position
       })
 
       onUpdateScore({
         score: data.score,
+        // Same signature the auto-scorer builds, so it recognises this result
+        // as current instead of overwriting it with a base-CV score on next load.
+        scoreSignature: buildScoreSignature(cvKeyFor(cv), jdSourceId(job)),
         scoreDetails: {
           summary: data.summary,
           strengths: data.strengths,
@@ -284,7 +279,7 @@ export default function ScoreJob({ job, onUpdateScore, t = (key) => key }) {
 
           <button
             onClick={handleCalculateScore}
-            disabled={loading || cvs.length === 0}
+            disabled={loading || cvs.length === 0 || !hasJD}
             className="w-full px-3 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? t('scoreJob.calculating') || 'Calculating...' : t('scoreJob.scoreJob') || 'Score This Job'}
@@ -293,6 +288,11 @@ export default function ScoreJob({ job, onUpdateScore, t = (key) => key }) {
           {cvs.length === 0 && (
             <p className="text-xs text-gray-500 italic">
               {t('scoreJob.uploadCVFirst') || 'Upload a CV to score this job.'}
+            </p>
+          )}
+          {cvs.length > 0 && !hasJD && (
+            <p className="text-xs text-gray-500 italic">
+              {t('scoreJob.noJD') || 'Add a job description first.'}
             </p>
           )}
         </div>

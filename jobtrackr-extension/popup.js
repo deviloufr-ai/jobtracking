@@ -68,14 +68,6 @@ async function injectContentScript(tabId) {
   }
 }
 
-// Small stable hash for cache keys (djb2). Content-based so any change to the
-// URL, CV or job description naturally misses the cache.
-function djb2(str) {
-  let h = 5381
-  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0
-  return (h >>> 0).toString(36)
-}
-
 document.getElementById('toggle-settings').addEventListener('click', () => {
   settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none'
 })
@@ -519,8 +511,12 @@ async function init() {
 addBtn.addEventListener('click', async () => {
   const jdKey = `jd-${Date.now()}`
 
-  // Store full JD in extension storage (no char limit)
-  await browser.storage.local.set({ [jdKey]: jobDescription })
+  // Store full JD in extension storage (no char limit) plus the score already
+  // shown in this popup, so the app keeps it instead of re-scoring on import.
+  const scoreForApp = (lastScoreResult && typeof lastScoreResult.score === 'number')
+    ? { score: lastScoreResult.score, summary: lastScoreResult.summary, strengths: lastScoreResult.strengths, gaps: lastScoreResult.gaps, cvName: lastScoreResult.cvName || '', source: 'page' }
+    : null
+  await browser.storage.local.set({ [jdKey]: { text: jobDescription, score: scoreForApp } })
 
   const jobData = {
     company: companyEl.value.trim(),
@@ -839,16 +835,13 @@ function renderScore(result) {
   document.getElementById('score-btn').style.display = 'inline-flex'
 }
 
-// Drop cached scores older than 30 days so storage doesn't grow unbounded.
-async function pruneScoreCache() {
-  try {
-    const all = await browser.storage.local.get(null)
-    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000
-    const stale = Object.keys(all).filter(k => k.startsWith('score:') && (all[k]?._ts || 0) < cutoff)
-    if (stale.length) await browser.storage.local.remove(stale)
-  } catch {}
-}
+// The last score rendered in this popup — handed to the app on "Ajouter".
+let lastScoreResult = null
 
+// Scoring lives in the background (COMPUTE_SCORE): one prompt, one parser, one
+// cache (shared with the on-page pill), one JD-length rule and the server-side
+// JD fallback. The popup used to carry its own copy of all of that, which had
+// drifted (no fallback, different threshold, raw-URL cache key).
 async function calculateJobScore(force = false) {
   const scoreBtn = document.getElementById('score-btn')
   const scoreLoading = document.getElementById('score-loading')
@@ -856,114 +849,49 @@ async function calculateJobScore(force = false) {
   const scoreSummary = document.getElementById('score-summary')
   const scoreDetails = document.getElementById('score-details')
 
+  const showNote = (msg) => {
+    scoreLoading.style.display = 'none'
+    scoreDisplay.style.display = 'block'
+    scoreSummary.textContent = msg
+    scoreSummary.style.color = '#64748b'
+    scoreDetails.style.display = 'none'
+    document.getElementById('score-badge').textContent = '–'
+    scoreBtn.disabled = false
+  }
+
   scoreBtn.disabled = true
   scoreLoading.style.display = 'block'
   scoreDisplay.style.display = 'none'
+  lastScoreResult = null
 
   try {
-    // Get CV data from storage
-    const data = await browser.storage.local.get(['cvText', 'cvName'])
-    if (!data.cvText) {
-      // If no CV, just hide the loading and show message
-      scoreLoading.style.display = 'none'
-      scoreDisplay.style.display = 'block'
-      scoreSummary.textContent = '📄 Synchronisez votre CV depuis JobTrackr pour calculer le score'
-      scoreSummary.style.color = '#64748b'
-      scoreDetails.style.display = 'none'
-      scoreBtn.disabled = false
-      return
-    }
-
-    // Prepare job data
     const company = companyEl.value.trim()
     const position = positionEl.value.trim()
-    const jobDesc = jobDescription || ''
+    if (!company || !position) throw new Error('Complétez le nom de l\'entreprise et du poste')
 
-    if (!company || !position) {
-      throw new Error('Complétez le nom de l\'entreprise et du poste')
-    }
-
-    if (!jobDesc) {
-      throw new Error('Aucune description du poste détectée')
-    }
-
-    // Cache per candidature so re-opening the popup on the same job doesn't
-    // re-hit Claude. Key on the job URL (the stable identity of a candidature)
-    // plus the CV. The URL is what stays constant — the JD text does NOT: the
-    // content script, the server fetch and the AI scan can each yield slightly
-    // different description text for the same page, so hashing the JD would miss
-    // the cache on every re-open. Including the CV means syncing a new CV
-    // re-scores. When there's no URL (manual entry) fall back to
-    // company/position/JD content. "Recalculer" forces a fresh call (force=true).
-    const url = mainEl.dataset.url || ''
-    const cacheKey = 'score:' + djb2([
-      url || `${company}|${position}|${djb2(jobDesc)}`,
-      djb2(data.cvText)
-    ].join('|'))
-
-    if (!force) {
-      const cached = (await browser.storage.local.get(cacheKey))[cacheKey]
-      if (cached) {
-        renderScore(cached)
-        scoreBtn.disabled = false
-        return
-      }
-    }
-
-    // Build scoring prompt (same as jobtracking app)
-    const prompt = `You are an expert recruiter and CV screener. Analyze how well the candidate's CV matches the job description.
-
-CANDIDATE CV:
-${data.cvText}
-
-JOB DESCRIPTION (${company} - ${position}):
-${jobDesc}
-
-Evaluate the candidate's fit across these dimensions:
-1. Required Skills Match (must-have technical/soft skills from JD)
-2. Experience Level (years, seniority, relevant domain)
-3. Background Alignment (industry, company size, role similarity)
-4. Achievement Relevance (measurable outcomes matching JD context)
-
-Respond with ONLY a JSON object (no markdown, no preamble) with this exact structure:
-{
-  "score": <number 0-100>,
-  "summary": "<2-3 sentence assessment>",
-  "strengths": ["<key strength>", "<key strength>"],
-  "gaps": ["<missing skill/experience>", "<gap>"],
-  "verdict": "<STRONG_MATCH|GOOD_MATCH|PARTIAL_MATCH|WEAK_MATCH>"
-}`
-
-    // Call Claude API via JobTrackr
-    const response = await fetch(`${appUrl}/api/claude`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: claudeBody({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
+    const res = await browser.runtime.sendMessage({
+      type: 'COMPUTE_SCORE',
+      company, position,
+      description: jobDescription || '',
+      url: mainEl.dataset.url || '',
+      force
     })
 
-    if (!response.ok) {
-      const errData = await response.json()
-      throw new Error(errData?.error?.message || errData?.error || `Erreur API: ${response.status}`)
+    if (!res) throw new Error('Pas de réponse de l\'extension')
+    if (res.error) throw new Error(res.error)
+    if (res.noCv) { showNote('📄 Synchronisez votre CV depuis JobTrackr pour calculer le score'); return }
+    if (res.insufficient) { showNote('Description du poste trop courte pour un score fiable'); return }
+
+    // The background may have fetched a fuller JD than the page exposed — keep
+    // it so "Ajouter" stores the text the score was computed on.
+    if (res.jobDesc && res.jobDesc.length > (jobDescription || '').length) {
+      jobDescription = res.jobDesc
+      jdStatusEl.textContent = `✓ ${jobDescription.length} caractères`
+      jdStatusEl.className = 'jd-status found'
     }
 
-    const apiResult = await response.json()
-    const text = apiResult.content?.[0]?.text || '{}'
-
-    // Parse JSON from response
-    const start = text.indexOf('{')
-    const end = text.lastIndexOf('}')
-    const result = JSON.parse(start !== -1 ? text.slice(start, end + 1) : '{}')
-
-    renderScore(result)
-
-    // Cache so subsequent popup opens on the same page skip the Claude call.
-    browser.storage.local.set({ [cacheKey]: { ...result, _ts: Date.now() } })
-    pruneScoreCache()
-
+    lastScoreResult = res
+    renderScore(res)
     scoreBtn.disabled = false
   } catch (e) {
     scoreLoading.style.display = 'none'
@@ -977,10 +905,12 @@ Respond with ONLY a JSON object (no markdown, no preamble) with this exact struc
   }
 }
 
-// Show score section and auto-calculate when job has description
+// Show score section and auto-calculate when job has a description. The
+// background applies the single JD-length rule (and the server fallback), so
+// anything non-empty is handed over; a too-short JD renders a note, not a score.
 function updateScoreSection() {
   const scoreSection = document.getElementById('score-section')
-  if (jobDescription && jobDescription.length > 50) {
+  if (jobDescription && jobDescription.trim().length > 0) {
     scoreSection.style.display = 'block'
     // Auto-calculate score if CV is available
     calculateJobScore()

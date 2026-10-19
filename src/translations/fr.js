@@ -142,6 +142,7 @@ export const fr = {
     recalculate: 'Recalculer avec un CV',
     calculating: 'Calcul en cours...',
     uploadCVFirst: 'Importez un CV pour évaluer cette offre.',
+    noJD: 'Ajoutez d\'abord une description de poste.',
     noCVSelected: 'Aucun CV sélectionné',
     incompleteJob: 'Informations incomplètes',
   },

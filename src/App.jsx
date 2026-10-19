@@ -1902,7 +1902,7 @@ export default function App() {
         </div>
       </nav>
 
-      {modal && <JobModal job={modal === 'add' ? null : modal} onSave={handleSave} onClose={() => setModal(null)} findDuplicate={findDuplicateInList} t={t} />}
+      {modal && <JobModal job={modal === 'add' ? null : modal} onSave={handleSave} onClose={() => setModal(null)} findDuplicate={findDuplicateInList} onUpdateJob={updateJob} t={t} />}
       {toDelete && <ConfirmDelete job={toDelete} onConfirm={handleDelete} onCancel={() => setToDelete(null)} t={t} />}
       {showGmail && <GmailImport onImport={handleBulkImport} onUpdate={updateJobWithNotif} onClose={closeGmail} onUserChange={(u) => { setGmailUser(u); setGmailConnected(!!u) }} existingJobs={jobs} t={t} />}
       {showImageImport && <ImageImport onImport={handleBulkImport} onClose={() => setShowImageImport(false)} existingJobs={jobs} />}

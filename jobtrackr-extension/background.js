@@ -133,8 +133,12 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg.type === 'LOAD_JD') {
     browser.storage.local.get(msg.key).then(data => {
-      const text = data[msg.key] || ''
-      sendResponse({ text })
+      // Stored as a plain string (older builds / SAVE_JD) or as { text, score }
+      // when the pill/popup already scored the posting — the app keeps that
+      // score instead of paying for a second one.
+      const v = data[msg.key]
+      if (v && typeof v === 'object') sendResponse({ text: v.text || '', score: v.score || null })
+      else sendResponse({ text: v || '', score: null })
     })
     return true
   }
@@ -597,29 +601,77 @@ async function pruneScoreCache() {
   } catch (e) {}
 }
 
+// Twin of src/utils/scoreMatch.js in the app — keep in sync. The verdict is
+// DERIVED from the score (same bands as the pill colours / app badges) instead of
+// being a second, independent model output that disagreed with the number.
+function clampScore(value) {
+  const n = typeof value === 'string' ? parseFloat(value) : value
+  if (typeof n !== 'number' || !Number.isFinite(n)) return null
+  return Math.min(100, Math.max(0, Math.round(n)))
+}
+function verdictForScore(score) {
+  if (score >= 80) return 'STRONG_MATCH'
+  if (score >= 60) return 'GOOD_MATCH'
+  if (score >= 40) return 'PARTIAL_MATCH'
+  return 'WEAK_MATCH'
+}
+function strList(v) {
+  return (Array.isArray(v) ? v : []).map(x => (x == null ? '' : String(x)).trim()).filter(Boolean)
+}
+// Throws when there is no numeric score so a malformed answer is a failed call,
+// never a cached "0 / PARTIAL_MATCH".
+function normalizeScoreResult(raw) {
+  const score = clampScore(raw && raw.score)
+  if (score === null) throw new Error('Réponse IA sans score exploitable')
+  return {
+    score,
+    summary: typeof raw.summary === 'string' ? raw.summary.trim() : '',
+    strengths: strList(raw.strengths),
+    gaps: strList(raw.gaps),
+    verdict: verdictForScore(score)
+  }
+}
+
+// Minimum usable JD length — one threshold for the pill AND the popup (the popup
+// used to score anything > 50 chars with no server fallback while the pill
+// refused < 80, so the same page scored in one and not the other).
+const SCORE_MIN_JD = 80
+const SCORE_FALLBACK_BELOW = 120
+
+// Canonical identity of a posting for the score cache: the board's job id when
+// the URL carries one (LinkedIn /jobs/view/<id>, Indeed ?jk=, Glassdoor), else
+// host+path without query/hash, else company|position|JD hash. Raw hrefs with
+// tracking params (?from=serp&vjs=3, utm_*, &trk=) used to miss the cache on every
+// variant and re-debit the trial for the same posting.
+function scoreCacheId(url, company, position, jobDesc) {
+  const bid = jobBoardId(url)
+  if (bid) return 'b:' + bid
+  if (url && !isQueryKeyedBoard(url)) {
+    const n = normalizeJobUrl(url)
+    if (n) return 'u:' + n
+  }
+  return 'c:' + `${normStr(company)}|${normStr(position)}|${djb2(jobDesc)}`
+}
+
 // Score how well the synced CV matches a job. Returns the parsed result (cached
-// per URL+CV), or a status object: { noCv } / { insufficient } when it can't run.
+// per posting+CV), or a status object: { noCv } / { insufficient } when it can't run.
 async function computeMatchScore({ company, position, description, url, force }) {
-  const { cvText } = await browser.storage.local.get('cvText')
+  const { cvText, cvName } = await browser.storage.local.get(['cvText', 'cvName'])
   if (!cvText) return { noCv: true }
 
   let jobDesc = (description || '').trim()
   // Thin DOM description → try the server fetch the web app uses.
-  if (jobDesc.length < 120 && url) {
+  if (jobDesc.length < SCORE_FALLBACK_BELOW && url) {
     const server = await fetchJdFromServer(url)
     if (server.length > jobDesc.length) jobDesc = server
   }
-  if (!company || !position || jobDesc.length < 80) return { insufficient: true }
+  if (!company || !position || jobDesc.length < SCORE_MIN_JD) return { insufficient: true, jobDesc }
 
-  // Cache key identical to popup.js so both sides share one cache entry.
-  const cacheKey = 'score:' + djb2([
-    url || `${company}|${position}|${djb2(jobDesc)}`,
-    djb2(cvText)
-  ].join('|'))
+  const cacheKey = 'score:' + djb2([scoreCacheId(url, company, position, jobDesc), djb2(cvText)].join('|'))
 
   if (!force) {
     const cached = (await browser.storage.local.get(cacheKey))[cacheKey]
-    if (cached) return cached
+    if (cached && clampScore(cached.score) !== null) return { ...cached, jobDesc }
   }
 
   const prompt = `You are an expert recruiter and CV screener. Analyze how well the candidate's CV matches the job description.
@@ -649,12 +701,29 @@ Respond with ONLY a JSON object (no markdown, no preamble) with this exact struc
   const text = data.content?.[0]?.text || '{}'
   const start = text.indexOf('{')
   const end = text.lastIndexOf('}')
-  const result = JSON.parse(start !== -1 ? text.slice(start, end + 1) : '{}')
+  const result = normalizeScoreResult(JSON.parse(start !== -1 ? text.slice(start, end + 1) : '{}'))
 
-  const record = { ...result, _ts: Date.now() }
+  const record = { ...result, cvName: cvName || '', _ts: Date.now() }
   browser.storage.local.set({ [cacheKey]: record })
   pruneScoreCache()
-  return record
+  // jobDesc is handed back so the popup can show/store the JD the score used
+  // (it may be the server-fetched one, longer than what the page exposed).
+  return { ...record, jobDesc }
+}
+
+// Shape a cached/computed score for the app import payload (see
+// scorePatchFromExtension in the app's src/utils/scoreMatch.js).
+function scorePayload(s, source) {
+  const score = clampScore(s && s.score)
+  if (score === null) return null
+  return {
+    score,
+    summary: (s.summary || s.reason || '').toString(),
+    strengths: strList(s.strengths),
+    gaps: strList(s.gaps),
+    cvName: s.cvName || '',
+    source
+  }
 }
 
 // ─── Listing-page batch scoring ──────────────────────────────────────────────
@@ -716,11 +785,12 @@ Respond with ONLY a JSON object (no markdown, no preamble), one entry per postin
   const results = list.map((c, i) => {
     const r = scores.get(i) || {}
     const m = matchApplied(applied, c)
+    const score = clampScore(r.score)
     return {
       ...c,
-      score: typeof r.score === 'number' ? Math.round(r.score) : null,
-      verdict: r.verdict || '',
-      reason: r.reason || '',
+      score,
+      verdict: score === null ? '' : verdictForScore(score),
+      reason: typeof r.reason === 'string' ? r.reason : '',
       applied: !!m,
       appliedStatus: m ? (m.status || '') : ''
     }
@@ -734,7 +804,9 @@ async function addJobToTracker(job = {}) {
   const { appUrl } = await browser.storage.local.get('appUrl')
   const base = appUrl || DEFAULT_APP_URL
   const jdKey = `jd-${Date.now()}`
-  await browser.storage.local.set({ [jdKey]: job.description || '' })
+  // { text, score }: the app reads the score back (LOAD_JD) and keeps it instead
+  // of re-scoring the posting on import.
+  await browser.storage.local.set({ [jdKey]: { text: job.description || '', score: scorePayload(job.score, 'page') } })
   const todayStr = new Date().toISOString().split('T')[0]
   const date = job.date || todayStr
   const dateParam = date === todayStr ? new Date().toISOString() : date
@@ -779,7 +851,10 @@ async function addJobBatch(jobs = []) {
       url: j.url || '',
       status: 'todo',
       date: new Date().toISOString(),
-      description: j.snippet || j.description || ''
+      description: j.snippet || j.description || '',
+      // Listing-scan score (card-level, provisional) — kept by the app so the 25
+      // imports don't fan out into 25 fresh scoring calls.
+      score: scorePayload(j.score, 'listing')
     }))
     .filter(j => j.position || j.company)
     .slice(0, 25)
