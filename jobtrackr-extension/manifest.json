@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "name": "SmartJobTracker",
-  "version": "1.6.1",
-  "description": "Ajoute une offre d'emploi \u00e0 SmartJobTracker en 1 clic + Autofill IA des formulaires de candidature",
+  "version": "1.7.0",
+  "description": "Ajoute une offre d'emploi à SmartJobTracker en 1 clic + Autofill IA des formulaires de candidature",
   "icons": {
     "48": "icon48.png",
     "96": "icon96.png"
@@ -15,9 +15,7 @@
     "<all_urls>"
   ],
   "background": {
-    "scripts": [
-      "background.js"
-    ],
+    "scripts": ["background.js"],
     "persistent": true
   },
   "browser_action": {
@@ -28,18 +26,12 @@
     },
     "default_title": "SmartJobTracker"
   },
-  "content_scripts": [
-    {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "content.js"
-      ],
-      "run_at": "document_idle",
-      "all_frames": true
-    }
-  ],
+  "content_scripts": [{
+    "matches": ["<all_urls>"],
+    "js": ["content.js"],
+    "run_at": "document_idle",
+    "all_frames": true
+  }],
   "homepage_url": "https://www.smartjobtracker.com",
   "developer": {
     "name": "Alexandre Leblanc",
@@ -48,12 +40,13 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "jobtrackr@deviloufr.dev",
+      "strict_min_version": "120.0",
       "data_collection_permissions": {
-        "required": [
-          "websiteContent",
-          "personallyIdentifyingInfo"
-        ]
+        "required": ["websiteContent", "personallyIdentifyingInfo"]
       }
+    },
+    "gecko_android": {
+      "strict_min_version": "120.0"
     }
   }
 }

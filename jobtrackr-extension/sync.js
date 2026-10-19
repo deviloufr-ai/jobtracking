@@ -50,10 +50,45 @@
       }
     }
 
+    // CV *file* (binary) for real form uploads (LinkedIn Easy Apply etc.). The app
+    // stores the generated PDF in IndexedDB; to make it reachable from this
+    // synchronous injected script it must mirror a data URL into localStorage —
+    // either as a field on `jobtrackr_base_cv` (fileDataUrl / dataUrl / pdfDataUrl,
+    // or base64+mime) or under a dedicated key. We probe all of these; when none is
+    // present, cvFile stays null and the extension leaves the CV step to the user.
+    let cvFile = null
+    const asDataUrl = (v, mime) => {
+      if (!v || typeof v !== 'string') return null
+      if (v.startsWith('data:')) return v
+      // Bare base64 → wrap with a mime (default PDF).
+      if (/^[A-Za-z0-9+/=\s]+$/.test(v) && v.length > 100) return `data:${mime || 'application/pdf'};base64,${v.replace(/\s+/g, '')}`
+      return null
+    }
+    const fromObj = (o) => {
+      if (!o || typeof o !== 'object') return null
+      const url = asDataUrl(o.fileDataUrl || o.dataUrl || o.pdfDataUrl || o.fileBase64 || o.base64 || o.file, o.mime || o.type)
+      if (!url) return null
+      return { name: o.fileName || o.name || 'CV.pdf', type: o.mime || o.type || 'application/pdf', dataUrl: url }
+    }
+    cvFile = fromObj(baseCv)
+    if (!cvFile) {
+      for (const key of ['jobtrackr_base_cv_file', 'jobtrackr_base_cv_pdf', 'jobtrackr_cv_file']) {
+        const raw = localStorage.getItem(key)
+        if (!raw) continue
+        let parsed = null
+        try { parsed = JSON.parse(raw) } catch { parsed = raw }
+        cvFile = (typeof parsed === 'string')
+          ? (asDataUrl(parsed) ? { name: 'CV.pdf', type: 'application/pdf', dataUrl: asDataUrl(parsed) } : null)
+          : fromObj(parsed)
+        if (cvFile) break
+      }
+    }
+
     return {
       profile,
       cvText: baseCv?.text || null,
       cvName: baseCv?.name || null,
+      cvFile,
       apiKey,
       uiLang,
       synced: true

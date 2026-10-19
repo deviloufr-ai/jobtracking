@@ -7,7 +7,13 @@ if (typeof importScripts === 'function') {
   try { importScripts('browser-polyfill.js') } catch (e) {}
 }
 
-const DEFAULT_APP_URL = 'https://jobtracking-three.vercel.app'
+const DEFAULT_APP_URL = 'https://www.smartjobtracker.com'
+
+// One-time cleanup: drop any legacy app-URL override saved by older versions so
+// the current default (smartjobtracker.com) applies everywhere.
+browser.storage.local.get('appUrl').then(({ appUrl }) => {
+  if (appUrl && appUrl.includes('jobtracking-three')) browser.storage.local.remove('appUrl')
+}).catch(() => {})
 const CLAUDE_MODEL = 'claude-haiku-4-5-20251001'
 
 // MV2 calls it browserAction, MV3 calls it action.
@@ -21,28 +27,34 @@ action.setTitle({ title: 'JobTrackr' })
 // Created in onInstalled: a Chrome MV3 service worker re-runs top-level code on
 // every wake, and contextMenus.create throws on a duplicate id. onInstalled
 // fires once per install/update in both engines.
-function createContextMenu() {
-  try {
-    browser.contextMenus.create({
-      id: 'jobtrackr-autofill',
-      title: '✦ Autofill - Générer et injecter',
-      contexts: ['page', 'link', 'editable']
-    })
-  } catch (e) {
-    // Duplicate id (menu already exists) — ignore.
+//
+// Firefox for Android has no contextMenus API (browser.contextMenus is
+// undefined), so guard every use. Losing it costs nothing functionally on
+// mobile: the popup's Autofill button runs the same AUTO_GENERATE_ALL flow.
+if (browser.contextMenus) {
+  const createContextMenu = () => {
+    try {
+      browser.contextMenus.create({
+        id: 'jobtrackr-autofill',
+        title: '✦ Autofill - Générer et injecter',
+        contexts: ['page', 'link', 'editable']
+      })
+    } catch (e) {
+      // Duplicate id (menu already exists) — ignore.
+    }
   }
-}
-// onInstalled covers first install/update (and Chrome persists the menu after);
-// onStartup recreates it on browser restart, which Firefox MV2 needs because its
-// session-scoped menus are cleared each start.
-browser.runtime.onInstalled.addListener(createContextMenu)
-browser.runtime.onStartup.addListener(createContextMenu)
+  // onInstalled covers first install/update (and Chrome persists the menu
+  // after); onStartup recreates it on browser restart, which Firefox MV2 needs
+  // because its session-scoped menus are cleared each start.
+  browser.runtime.onInstalled.addListener(createContextMenu)
+  browser.runtime.onStartup.addListener(createContextMenu)
 
-browser.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === 'jobtrackr-autofill') {
-    browser.tabs.sendMessage(tab.id, { type: 'AUTO_GENERATE_ALL' }).catch(() => {})
-  }
-})
+  browser.contextMenus.onClicked.addListener((info, tab) => {
+    if (info.menuItemId === 'jobtrackr-autofill') {
+      browser.tabs.sendMessage(tab.id, { type: 'AUTO_GENERATE_ALL' }).catch(() => {})
+    }
+  })
+}
 
 const DEFAULT_PROFILE = {
   name: '',
@@ -89,7 +101,7 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg.type === 'GET_APP_URL') {
     browser.storage.local.get('appUrl').then(data => {
-      sendResponse({ appUrl: data.appUrl || 'https://jobtracking-three.vercel.app' })
+      sendResponse({ appUrl: data.appUrl || DEFAULT_APP_URL })
     })
     return true
   }
@@ -207,6 +219,7 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     })
     return true
   }
+
 })
 
 // ─── Cleanup stale JD entries ────────────────────────────────────────────────
@@ -232,7 +245,7 @@ async function cleanupOldJDs() {
 // brings its window to the front; falls back to creating a tab if none is open.
 async function openOrFocusAppTab(url) {
   const { appUrl } = await browser.storage.local.get('appUrl')
-  const base = appUrl || 'https://jobtracking-three.vercel.app'
+  const base = appUrl || DEFAULT_APP_URL
   const tabs = await browser.tabs.query({})
   const existing = tabs.find(t => t.url && t.url.startsWith(base))
   if (existing) {
@@ -259,7 +272,7 @@ async function injectFile(tabId, file) {
 // ─── Sync from JobTrackr app ─────────────────────────────────────────────────
 async function syncFromApp() {
   const { appUrl } = await browser.storage.local.get('appUrl')
-  const targetUrl = appUrl || 'https://jobtracking-three.vercel.app'
+  const targetUrl = appUrl || DEFAULT_APP_URL
 
   // Find an open tab on the JobTrackr app
   const tabs = await browser.tabs.query({})
@@ -302,12 +315,16 @@ async function syncFromApp() {
     const toSave = {}
     if (result.profile) toSave.profile = result.profile
     if (result.cvText)  { toSave.cvText = result.cvText; toSave.cvName = result.cvName }
+    // Binary CV (data URL) for real form uploads — only present when the web app
+    // mirrors it (see sync.js). Clear a stale one when the app no longer exposes it.
+    if (result.cvFile && result.cvFile.dataUrl) toSave.cvFile = result.cvFile
+    else await browser.storage.local.remove('cvFile').catch(() => {})
     if (result.apiKey)  toSave.apiKey = result.apiKey
     if (result.uiLang)  toSave.uiLang = result.uiLang
     if (Object.keys(toSave).length > 0) {
       await browser.storage.local.set(toSave)
     }
-    return { success: true, hasProfile: !!result.profile, hasCv: !!result.cvText, cvName: result.cvName, hasApiKey: !!result.apiKey }
+    return { success: true, hasProfile: !!result.profile, hasCv: !!result.cvText, cvName: result.cvName, hasCvFile: !!(result.cvFile && result.cvFile.dataUrl), hasApiKey: !!result.apiKey }
   }
 
   return { success: false, error: result.error || 'Aucune donnée trouvée dans JobTrackr' }
@@ -1149,5 +1166,6 @@ async function checkApplied({ url, company, position }) {
   if (!match) return { applied: false }
   return { applied: true, status: match.status || '', date: match.date || '', company: match.company || '', position: match.position || '' }
 }
+
 
 

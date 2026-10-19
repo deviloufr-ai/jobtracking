@@ -27,7 +27,7 @@ prose ("v0.7", "v1.0") are documentation artifacts. Do not trust them.
 | AI | Claude Haiku 4.5 (default) via the `/api/claude` proxy, OR a user-chosen Google Gemini / OpenAI-compatible provider (Groq, OpenRouter…). Claude model pinned by `VITE_CLAUDE_MODEL`; provider abstraction in `api/_lib/aiProvider.js` |
 | Local ML | `@xenova/transformers` — in-browser inference |
 | Mobile | Capacitor 8 → Android, `com.smartjobtracker.app` |
-| Extension | Firefox MV3 in `jobtrackr-extension/` (folder name is legacy, left deliberately) |
+| Extension | Firefox MV2 (`manifest.json`) + Chrome MV3 (`manifest.chrome.json`) in `jobtrackr-extension/` (folder name is legacy, left deliberately). **This in-repo folder is the only source** — the old standalone `Downloads/jobtrackr-extension` copy was merged in on 2026-10-19 and must not be edited. Built zips/.xpi stay out of git (`dist` is ignored) |
 | Analytics | Vercel Analytics (cookieless, `Root.jsx`) + Mixpanel product funnel (`services/analytics.js`) — Mixpanel is **opt-in**: nothing inits/sends until `jobtrackr_analytics_consent === 'granted'` (banner after sign-in, toggle in Settings → Data) |
 | Tests | Vitest + jsdom — 30 test files |
 

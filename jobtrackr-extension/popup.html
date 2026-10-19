@@ -2,12 +2,19 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>JobTrackr</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-      width: 380px;
+      /* Desktop: fixed popup panel. Wider than the default 380px so the action
+         buttons sit in one row and the form fields pair up two-per-row, which
+         keeps the whole popup under the browser's ~600px popup-height cap and
+         avoids an outer scrollbar. Firefox for Android renders the popup as a
+         full page, so cap the width but let it shrink to the viewport. */
+      width: 460px;
+      max-width: 100%;
       background: #f8fafc;
       color: #1e293b;
       scroll-behavior: smooth;
@@ -24,40 +31,40 @@
     .header {
       background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
       color: white;
-      padding: 20px 16px;
+      padding: 10px 16px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 11px;
       box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
       position: sticky;
       top: 0;
       z-index: 100;
     }
     .logo {
-      width: 40px;
-      height: 40px;
+      width: 34px;
+      height: 34px;
       background: rgba(255,255,255,0.2);
       border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 700;
-      font-size: 16px;
+      font-size: 15px;
       backdrop-filter: blur(10px);
     }
-    .header-text h1 { font-size: 16px; font-weight: 700; }
-    .header-text p { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+    .header-text h1 { font-size: 15px; font-weight: 700; }
+    .header-text p { font-size: 11px; opacity: 0.8; margin-top: 1px; }
 
     /* Content */
-    .content { padding: 16px; }
+    .content { padding: 10px 12px 8px; }
 
     /* Top bar with source and toggle */
     .top-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 16px;
-      padding: 12px 12px;
+      margin-bottom: 6px;
+      padding: 7px 10px;
       background: white;
       border-radius: 10px;
       border: 1px solid #e2e8f0;
@@ -91,20 +98,20 @@
     .form-section {
       background: white;
       border-radius: 12px;
-      padding: 14px;
-      margin-bottom: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
       border: 1px solid #e2e8f0;
     }
 
-    .field { margin-bottom: 10px; }
+    .field { margin-bottom: 8px; }
     .field:last-child { margin-bottom: 0; }
 
     .field label {
       display: block;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       color: #64748b;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
       text-transform: capitalize;
     }
 
@@ -113,7 +120,7 @@
       width: 100%;
       border: 1px solid #e2e8f0;
       border-radius: 8px;
-      padding: 8px 10px;
+      padding: 6px 9px;
       font-size: 12px;
       color: #1e293b;
       background: #f8fafc;
@@ -133,20 +140,22 @@
       color: #cbd5e1;
     }
 
-    /* Grid for Status/Date */
+    /* Two-column grid rows (Company/Position, Status/Date) */
     .row {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
+      margin-bottom: 6px;
     }
+    .row .field { margin-bottom: 0; }
 
     /* Description Section */
     .jd-section {
       background: white;
       border-radius: 12px;
-      padding: 14px;
+      padding: 12px;
       border: 1px solid #e2e8f0;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
     .jd-header {
@@ -157,10 +166,11 @@
     }
 
     .jd-label {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       color: #64748b;
-      text-transform: capitalize;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
     }
 
     .jd-status {
@@ -180,30 +190,37 @@
       color: #92400e;
     }
 
+    /* Wrapped job-data panel — divider under the title, like a settings panel,
+       but form inputs keep their normal size (no .settings-panel overrides). */
+    #data-panel {
+      padding-top: 10px;
+      border-top: 1px solid #e2e8f0;
+      margin-top: 10px;
+    }
+
+    .jd-block-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
     #jd-preview {
       background: #f8fafc;
-      border: 1px solid #e2e8f0;
+      border: 1px solid #eef2f7;
       border-radius: 8px;
-      padding: 10px;
-      font-size: 12px;
-      color: #475569;
-      min-height: 150px;
-      max-height: 300px;
+      padding: 9px 10px;
+      margin-top: 5px;
+      font-size: 11.5px;
+      color: #64748b;
+      line-height: 1.45;
+      max-height: 36px;
       overflow-y: auto;
-      line-height: 1.5;
-      font-family: 'Monaco', 'Courier New', monospace;
-      resize: vertical;
       width: 100%;
     }
 
     /* Action Buttons */
-    .action-buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
     .btn {
       padding: 10px 14px;
       border: none;
@@ -216,6 +233,48 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
+    }
+
+    /* Secondary actions in one compact row (the context button is inserted at
+       runtime, making four). The wider popup keeps them all on a single line. */
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .btn-mini {
+      flex-direction: column;
+      gap: 3px;
+      padding: 8px 6px;
+      min-height: 46px;
+      font-size: 11.5px;
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    .btn-mini .ico { font-size: 15px; }
+
+    .btn-slate {
+      background: #fff;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+    }
+
+    .btn-slate:hover:not(:disabled) {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      color: #1e293b;
+      transform: translateY(-2px);
+    }
+
+    /* Primary action sits at the top of the action stack, full width */
+    #add-btn {
+      width: 100%;
+      padding: 10px 16px;
+      font-size: 13px;
+      margin-bottom: 6px;
     }
 
     .btn-primary {
@@ -233,6 +292,21 @@
       opacity: 0.5;
       cursor: not-allowed;
     }
+
+    /* LinkedIn Easy Apply auto-pilot — only shown on linkedin.com (revealed by JS). */
+    .btn-linkedin {
+      background: linear-gradient(135deg, #0a66c2 0%, #004182 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(10, 102, 194, 0.32);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .btn-linkedin:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(10, 102, 194, 0.42);
+    }
+    .btn-linkedin:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-linkedin .ico { font-size: 15px; }
 
     .btn-secondary {
       background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
@@ -260,9 +334,9 @@
     .settings-section {
       background: white;
       border-radius: 12px;
-      padding: 14px;
+      padding: 10px 12px;
       border: 1px solid #e2e8f0;
-      margin-top: 12px;
+      margin-top: 6px;
     }
 
     .settings-title {
@@ -370,15 +444,15 @@
       background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
       border: 1px solid #86efac;
       border-radius: 12px;
-      padding: 12px;
-      margin-top: 12px;
+      padding: 8px 12px;
+      margin-top: 6px;
     }
 
     .sync-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 8px;
+      margin-bottom: 7px;
     }
 
     .sync-title {
@@ -396,7 +470,7 @@
 
     .sync-btn {
       width: 100%;
-      padding: 8px;
+      padding: 7px;
       background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
       color: white;
       border: none;
@@ -469,105 +543,186 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 16px;
     }
 
+    /* Overlay is purely visual: pointer-events:none lets a backdrop click
+       fall through to .modal so e.target===modal (close-on-outside) works. */
     .modal-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      pointer-events: none;
+      animation: modalFade 0.18s ease-out;
     }
 
     .modal-content {
       position: relative;
       background: white;
-      border-radius: 12px;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
-      width: 90%;
-      max-width: 400px;
-      max-height: 80vh;
-      overflow-y: auto;
+      border-radius: 16px;
+      box-shadow: 0 12px 40px -8px rgba(15, 23, 42, 0.45),
+                  0 2px 8px rgba(15, 23, 42, 0.08);
+      width: 100%;
+      max-width: 360px;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
       z-index: 10001;
+      animation: modalPop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .modal-header {
       padding: 16px;
-      border-bottom: 1px solid #e2e8f0;
+      border-bottom: 1px solid #eef2f7;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: 11px;
+    }
+
+    .modal-icon {
+      flex-shrink: 0;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
     }
 
     .modal-header h2 {
+      flex: 1;
       font-size: 14px;
       font-weight: 700;
-      color: #1e293b;
+      color: #0f172a;
+      line-height: 1.3;
       margin: 0;
     }
 
     .modal-close {
+      flex-shrink: 0;
       background: none;
       border: none;
-      font-size: 24px;
-      color: #64748b;
+      font-size: 22px;
+      line-height: 1;
+      color: #94a3b8;
       cursor: pointer;
       padding: 0;
-      width: 24px;
-      height: 24px;
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
+      transition: background 0.15s, color 0.15s;
     }
 
     .modal-close:hover {
-      color: #1e293b;
+      background: #f1f5f9;
+      color: #475569;
     }
 
     .modal-body {
       padding: 16px;
+      overflow-y: auto;
     }
 
     .modal-body label {
       display: block;
       font-size: 12px;
       font-weight: 600;
-      color: #64748b;
+      color: #334155;
       margin-bottom: 8px;
     }
 
     .context-textarea {
       width: 100%;
       border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 10px;
+      border-radius: 10px;
+      padding: 11px;
       font-size: 12px;
       color: #1e293b;
       background: #f8fafc;
       font-family: inherit;
       resize: vertical;
-      min-height: 100px;
+      min-height: 110px;
+      line-height: 1.5;
       outline: none;
-      transition: all 0.2s;
+      transition: all 0.18s;
     }
 
     .context-textarea:focus {
       border-color: #6366f1;
       background: white;
-      box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
     }
 
+    /* Helper row under a modal textarea: hint on the left, live counter on the right */
+    .modal-helper {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .modal-helper small,
     .modal-body small {
       display: block;
       font-size: 10px;
       color: #94a3b8;
-      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    .modal-helper small { flex: 1; margin-top: 0; }
+
+    .char-count {
+      flex-shrink: 0;
+      font-size: 10px;
+      color: #cbd5e1;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      padding-top: 1px;
     }
 
     .modal-footer {
       padding: 12px 16px;
-      border-top: 1px solid #e2e8f0;
+      border-top: 1px solid #eef2f7;
+      background: #fafbfc;
       display: flex;
       gap: 8px;
       justify-content: flex-end;
+    }
+
+    /* Neutral cancel/dismiss button — distinct from the green success .btn-secondary */
+    .btn-ghost {
+      background: white;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+    }
+
+    .btn-ghost:hover:not(:disabled) {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      color: #1e293b;
+    }
+
+    @keyframes modalFade {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes modalPop {
+      from { opacity: 0; transform: translateY(12px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .modal-overlay, .modal-content { animation: none; }
     }
   </style>
 </head>
@@ -598,129 +753,120 @@
       </div>
     </div>
 
-    <!-- Form Section -->
-    <div class="form-section">
-      <div class="field">
-        <label>Entreprise *</label>
-        <input type="text" id="company" placeholder="Nom de l'entreprise" />
-      </div>
-      <div class="field">
-        <label>Poste *</label>
-        <input type="text" id="position" placeholder="Titre du poste" />
-      </div>
-      <div class="row">
-        <div class="field">
-          <label>Statut</label>
-          <select id="status">
-            <option value="todo">📌 À postuler</option>
-            <option value="sent">📤 Envoyée</option>
-            <option value="interview">📞 Entretien</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Date</label>
-          <input type="date" id="date" />
-        </div>
-      </div>
+    <!-- Action buttons, kept at the top of the popup. The context button is
+         inserted after #screenshot-btn by setupContextModal(). -->
+    <div class="action-grid">
+      <button class="btn btn-mini btn-ai" id="screenshot-btn">
+        <span class="ico" id="screenshot-icon">🔍</span>
+        <span id="screenshot-text">Analyser l'IA</span>
+      </button>
+      <button class="btn btn-mini btn-secondary" id="autofill-btn">
+        <span class="ico">✦</span>
+        <span id="autofill-text">Autofill</span>
+      </button>
+      <button class="btn btn-mini btn-slate" id="scan-listing-btn">
+        <span class="ico">🔎</span>
+        <span id="scan-listing-text">Scanner</span>
+      </button>
     </div>
 
-    <!-- Description Section -->
-    <div class="jd-section">
-      <div class="jd-header">
-        <span class="jd-label">Description du poste</span>
-        <span id="jd-status" class="jd-status not-found">Non détectée</span>
-      </div>
-      <textarea id="jd-preview" placeholder="Aucune description détectée" style="display:none;"></textarea>
-    </div>
+    <!-- LinkedIn Easy Apply auto-pilot — hidden until popup.js confirms we're on
+         linkedin.com. Fills every step + CV + auto-advances, stops before submit. -->
+    <button class="btn btn-linkedin" id="linkedin-apply-btn" style="display:none;">
+      <span class="ico">⚡</span>
+      <span id="linkedin-apply-text">Candidature LinkedIn auto</span>
+    </button>
 
-    <!-- Score Section -->
-    <div class="jd-section" id="score-section" style="display:none;">
-      <div class="jd-header">
-        <span class="jd-label">📊 Score Match</span>
-        <button class="btn btn-ai" id="score-btn" style="padding: 4px 8px; font-size: 11px; margin: 0; display:none;">
-          Recalculer
-        </button>
+    <!-- Primary action (add the current job to JobTrackr) -->
+    <button class="btn btn-primary" id="add-btn" disabled>
+      <span>➕</span>
+      <span>Ajouter à JobTrackr</span>
+    </button>
+
+    <!-- Fetched job data — form fields + description, all wrapped in one expander -->
+    <div class="settings-section">
+      <div class="settings-title" id="data-toggle">
+        <span>📋 Données de l'offre</span>
+        <span class="settings-icon" id="data-chevron">▲</span>
       </div>
-      <div id="score-display" style="display:none;">
-        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 12px;">
-          <div id="score-badge" style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 50%; font-weight: bold; font-size: 24px; border: 2px solid #e2e8f0;"></div>
-          <div>
-            <p id="score-summary" style="font-size: 12px; color: #475569; margin: 0 0 6px 0;"></p>
-            <p id="score-verdict" style="font-size: 11px; color: #64748b; margin: 0;"></p>
+      <div id="data-panel">
+        <div class="row">
+          <div class="field">
+            <label>Entreprise *</label>
+            <input type="text" id="company" placeholder="Nom de l'entreprise" />
+          </div>
+          <div class="field">
+            <label>Poste *</label>
+            <input type="text" id="position" placeholder="Titre du poste" />
           </div>
         </div>
-        <div id="score-details" style="display:none; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-top: 8px;">
-          <div id="score-strengths" style="margin-bottom: 8px; display:none;">
-            <p style="font-size: 11px; font-weight: 600; color: #15803d; margin: 0 0 6px 0;">✓ Points forts</p>
-            <ul id="strengths-list" style="list-style: none; padding: 0; margin: 0;"></ul>
+        <div class="row">
+          <div class="field">
+            <label>Statut</label>
+            <select id="status">
+              <option value="todo">📌 À postuler</option>
+              <option value="sent">📤 Envoyée</option>
+              <option value="interview">📞 Entretien</option>
+            </select>
           </div>
-          <div id="score-gaps" style="display:none;">
-            <p style="font-size: 11px; font-weight: 600; color: #b45309; margin: 0 0 6px 0;">⚠ Lacunes</p>
-            <ul id="gaps-list" style="list-style: none; padding: 0; margin: 0;"></ul>
+          <div class="field">
+            <label>Date</label>
+            <input type="date" id="date" />
           </div>
         </div>
+        <div class="field" style="margin-bottom:0;">
+          <div class="jd-block-head">
+            <label style="margin-bottom:0;">Description du poste</label>
+            <span id="jd-status" class="jd-status not-found">Non détectée</span>
+          </div>
+          <div id="jd-preview" style="display:none;"></div>
+        </div>
       </div>
-      <div id="score-loading" style="display:none; text-align: center; padding: 12px;">
-        <div style="width: 20px; height: 20px; border: 2px solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 8px;"></div>
-        <p style="font-size: 11px; color: #64748b; margin: 0;">Calcul du score…</p>
-      </div>
-    </div>
-
-    <!-- Action Buttons -->
-    <div class="action-buttons">
-      <button class="btn btn-primary" id="add-btn" disabled>
-        <span>➕</span>
-        <span>Ajouter à JobTrackr</span>
-      </button>
-      <button class="btn btn-ai" id="screenshot-btn">
-        <span id="screenshot-icon">🔍</span>
-        <span id="screenshot-text">Analyser avec l'IA</span>
-      </button>
-      <button class="btn btn-secondary" id="autofill-btn">
-        <span>✦</span>
-        <span id="autofill-text">Autofill formulaire</span>
-      </button>
-      <button class="btn btn-ai" id="scan-listing-btn">
-        <span>🔎</span>
-        <span id="scan-listing-text">Scanner les offres de la page</span>
-      </button>
     </div>
 
     <!-- Context Modal -->
-    <div id="context-modal" class="modal" style="display:none;">
+    <div id="context-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="context-modal-title">
       <div class="modal-overlay"></div>
       <div class="modal-content">
         <div class="modal-header">
-          <h2>Ajouter du contexte</h2>
-          <button class="modal-close" id="modal-close">&times;</button>
+          <div class="modal-icon" aria-hidden="true">📝</div>
+          <h2 id="context-modal-title">Ajouter du contexte</h2>
+          <button class="modal-close" id="modal-close" aria-label="Fermer">&times;</button>
         </div>
         <div class="modal-body">
-          <label>Notes personnelles (optionnel)</label>
+          <label for="context-input">Notes personnelles <span style="color:#94a3b8;font-weight:500;">(optionnel)</span></label>
           <textarea id="context-input" placeholder="Ajoutez des notes, votre intérêt pour ce poste, points importants..." class="context-textarea"></textarea>
-          <small>Ces notes aideront à la génération de contenu pour votre application</small>
+          <div class="modal-helper">
+            <small>Ces notes aideront à la génération de contenu pour votre candidature.</small>
+            <span class="char-count" id="context-charcount">0</span>
+          </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-secondary" id="modal-cancel">Annuler</button>
-          <button class="btn btn-primary" id="modal-confirm">Ajouter</button>
+          <button class="btn btn-ghost" id="modal-cancel">Annuler</button>
+          <button class="btn btn-primary" id="modal-confirm">Enregistrer</button>
         </div>
       </div>
     </div>
 
     <!-- Text Review Modal -->
-    <div id="review-modal" class="modal" style="display:none;">
+    <div id="review-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="review-modal-title">
       <div class="modal-overlay"></div>
-      <div class="modal-content" style="max-height: 90vh;">
+      <div class="modal-content" style="max-height: 92vh;">
         <div class="modal-header">
-          <h2>📋 Texte extrait de la page</h2>
-          <button class="modal-close" id="review-modal-close">&times;</button>
+          <div class="modal-icon" aria-hidden="true">📋</div>
+          <h2 id="review-modal-title">Texte extrait de la page</h2>
+          <button class="modal-close" id="review-modal-close" aria-label="Fermer">&times;</button>
         </div>
         <div class="modal-body" style="display: flex; flex-direction: column;">
-          <label>Contenu détecté — Modifiez ou supprimez ce qui n'est pas pertinent</label>
-          <textarea id="review-textarea" class="context-textarea" style="flex: 1; min-height: 300px; resize: vertical;"></textarea>
-          <small style="margin-top: 8px; color: #94a3b8;">💡 Supprimez les sections de navigation, publicités ou contenu non pertinent. Ce texte sera utilisé pour analyser le poste.</small>
+          <label for="review-textarea">Contenu détecté — modifiez ou supprimez ce qui n'est pas pertinent</label>
+          <textarea id="review-textarea" class="context-textarea" style="flex: 1; min-height: 280px; resize: vertical;"></textarea>
+          <div class="modal-helper">
+            <small>💡 Supprimez la navigation, les publicités ou le contenu non pertinent avant l'analyse.</small>
+            <span class="char-count" id="review-charcount">0</span>
+          </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-secondary" id="review-cancel">Ignorer</button>
+          <button class="btn btn-ghost" id="review-cancel">Ignorer</button>
           <button class="btn btn-primary" id="review-confirm">✓ Utiliser ce texte</button>
         </div>
       </div>
@@ -733,11 +879,7 @@
         <span class="settings-icon">▼</span>
       </div>
       <div id="settings-panel" class="settings-panel" style="display:none">
-        <label>URL de votre JobTrackr</label>
-        <input type="text" id="app-url" placeholder="https://jobtracking-three.vercel.app" />
-        <button class="save-btn" id="save-settings">Sauvegarder</button>
-
-        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0;">
+        <div>
           <div class="toggle-item">
             <div class="toggle-item-text">
               <span class="toggle-item-label">✦ Boutons autofill</span>
@@ -753,32 +895,25 @@
             <input type="checkbox" id="toggle-rightclick" />
           </div>
         </div>
-      </div>
-    </div>
 
+        <!-- API key (optional — unlimited use beyond the free trial) -->
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0;">
+          <label>🔑 Clé API Claude <span style="color:#94a3b8;font-weight:500;">(optionnel)</span> <span style="color: #16a34a; font-weight: 600; display: none;" id="apikey-saved">✓ Sauvegardée</span></label>
+          <div style="font-size: 10px; color: #94a3b8; margin: 0 0 8px;">Laisse vide pour l'essai gratuit. Ajoute ta clé Anthropic pour un usage illimité — stockée localement.</div>
+          <input type="password" id="apikey-input" placeholder="sk-ant-api03-…" autocomplete="off" />
+          <button class="save-btn" id="save-apikey">Sauvegarder la clé</button>
+        </div>
 
-    <!-- API Key Section (optional — unlimited use beyond the free trial) -->
-    <div class="settings-section">
-      <div class="settings-title" id="toggle-apikey">
-        <span>🔑 Clé API Claude (optionnel)</span>
-        <span class="settings-icon">▼</span>
+        <!-- Sync from smartjobtracker (moved into Paramètres) -->
+        <div class="sync-section" style="margin-top: 12px;">
+          <div class="sync-header">
+            <span class="sync-title">📥 Données smartjobtracker</span>
+            <span id="sync-status" style="font-size:10px; color:#166534;"></span>
+          </div>
+          <div id="sync-info" class="sync-info" style="display:none;"></div>
+          <button id="sync-btn" class="sync-btn">🔄 Sync CV + Profil</button>
+        </div>
       </div>
-      <div id="apikey-panel" class="settings-panel" style="display:none">
-        <div style="font-size: 10px; color: #94a3b8; margin-bottom: 8px;">Laisse vide pour utiliser l'essai gratuit JobTrackr. Ajoute ta clé Anthropic seulement si l'essai est épuisé — usage illimité, stockée localement dans Firefox.</div>
-        <label>Clé Anthropic <span style="color: #16a34a; font-weight: 600; display: none;" id="apikey-saved">✓ Sauvegardée</span></label>
-        <input type="password" id="apikey-input" placeholder="sk-ant-api03-…" autocomplete="off" />
-        <button class="save-btn" id="save-apikey">Sauvegarder la clé</button>
-      </div>
-    </div>
-
-    <!-- Sync from JobTrackr -->
-    <div class="sync-section">
-      <div class="sync-header">
-        <span class="sync-title">📥 Données JobTrackr</span>
-        <span id="sync-status" style="font-size:10px; color:#166534;"></span>
-      </div>
-      <div id="sync-info" class="sync-info" style="display:none;"></div>
-      <button id="sync-btn" class="sync-btn">🔄 Sync CV + Profil</button>
     </div>
   </div>
 

@@ -1,4 +1,4 @@
-const DEFAULT_APP_URL = 'https://jobtracking-three.vercel.app'
+const DEFAULT_APP_URL = 'https://www.smartjobtracker.com'
 let appUrl = DEFAULT_APP_URL
 let userApiKey = ''  // Optional — only set if user added their own key (unlimited use)
 let jobDescription = ''
@@ -25,7 +25,6 @@ const screenshotBtn = document.getElementById('screenshot-btn')
 const screenshotIcon = document.getElementById('screenshot-icon')
 const screenshotText = document.getElementById('screenshot-text')
 const settingsPanel = document.getElementById('settings-panel')
-const appUrlInput = document.getElementById('app-url')
 const toastEl = document.getElementById('toast')
 
 dateEl.value = new Date().toISOString().split('T')[0]
@@ -35,8 +34,9 @@ browser.storage.local.get([
   'appUrl', 'autofillEnabled', 'autofillButtonsEnabled', 'rightclickEnabled',
   'userContext', 'apiKey'
 ]).then(data => {
-  if (data.appUrl) { appUrl = data.appUrl; appUrlInput.value = appUrl }
-  else appUrlInput.value = DEFAULT_APP_URL
+  // The app URL is fixed now (no config field). Drop any legacy stored override
+  // so the current default applies for everyone.
+  if (data.appUrl) browser.storage.local.remove('appUrl')
 
   if (data.apiKey) userApiKey = data.apiKey
 
@@ -69,26 +69,15 @@ async function injectContentScript(tabId) {
 }
 
 document.getElementById('toggle-settings').addEventListener('click', () => {
-  settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none'
-})
-document.getElementById('save-settings').addEventListener('click', () => {
-  const url = appUrlInput.value.trim().replace(/\/$/, '')
-  if (!url) {
-    showToast('❌ URL ne peut pas être vide')
-    return
+  const opening = settingsPanel.style.display === 'none'
+  settingsPanel.style.display = opening ? 'block' : 'none'
+  // The API key now lives inside this panel — reflect a saved key when it opens.
+  if (opening && userApiKey) {
+    const inp = document.getElementById('apikey-input')
+    const saved = document.getElementById('apikey-saved')
+    if (inp) inp.value = userApiKey
+    if (saved) saved.style.display = 'inline'
   }
-
-  try {
-    new URL(url)
-  } catch {
-    showToast('❌ URL invalide')
-    return
-  }
-
-  appUrl = url
-  browser.storage.local.set({ appUrl: url })
-  showToast('Sauvegardé ✓')
-  settingsPanel.style.display = 'none'
 })
 
 function checkReady() {
@@ -97,8 +86,30 @@ function checkReady() {
 companyEl.addEventListener('input', checkReady)
 positionEl.addEventListener('input', checkReady)
 
-// Update score section visibility
-document.getElementById('score-btn').addEventListener('click', () => calculateJobScore(true))
+// Score section was removed from the popup — its listener/render code is now
+// dead (updateScoreSection() below is a guarded no-op). The on-page score pill
+// (content.js) is unaffected.
+
+// The fetched job data (form fields + description) is wrapped in one collapsible
+// section, expanded by default. Clicking the header collapses/expands it.
+const dataToggle = document.getElementById('data-toggle')
+const dataPanel = document.getElementById('data-panel')
+const dataChevron = document.getElementById('data-chevron')
+dataToggle?.addEventListener('click', () => {
+  const open = dataPanel.style.display !== 'none'
+  dataPanel.style.display = open ? 'none' : 'block'
+  if (dataChevron) dataChevron.textContent = open ? '▼' : '▲'
+})
+
+// Mark the description as detected: update the pill + preview text, shown inline
+// within the data panel. Shared by all detection paths.
+function markJdFound(statusText, previewText) {
+  jdStatusEl.textContent = statusText
+  jdStatusEl.className = 'jd-status found'
+  jdPreviewEl.textContent = previewText
+  jdPreviewEl.style.display = 'block'
+  updateScoreSection()
+}
 
 // Screenshot + Claude Vision analysis
 screenshotBtn.addEventListener('click', async () => {
@@ -172,11 +183,7 @@ ${pageText.slice(0, 5000)}`
     if (parsed.position) positionEl.value = parsed.position
     if (parsed.description) {
       jobDescription = parsed.description + (parsed.location ? ` | Lieu: ${parsed.location}` : '') + (parsed.salary ? ` | Salaire: ${parsed.salary}` : '')
-      jdStatusEl.textContent = `✓ Extraite par IA`
-      jdStatusEl.className = 'jd-status found'
-      jdPreviewEl.style.display = 'block'
-      jdPreviewEl.textContent = jobDescription
-      updateScoreSection()
+      markJdFound('✓ Extraite par IA', jobDescription)
     }
 
     screenshotIcon.textContent = '✅'
@@ -187,7 +194,7 @@ ${pageText.slice(0, 5000)}`
     screenshotText.textContent = 'Erreur : ' + e.message.slice(0, 40)
     setTimeout(() => {
       screenshotIcon.textContent = '📸'
-      screenshotText.textContent = 'Analyser toute la page avec l\'IA'
+      screenshotText.textContent = 'Analyser l\'IA'
       screenshotBtn.disabled = false
     }, 2000)
     return
@@ -223,8 +230,23 @@ function parseFromTab(tab) {
       return { company: parts[1]?.trim() || '', position: parts[0]?.trim() || '', url, source: 'Indeed', description: '' }
     }
     if (hostname.includes('welcometothejungle.com')) {
-      const parts = title.split(' - ')
-      return { company: parts[1]?.trim() || '', position: parts[0]?.trim() || '', url, source: 'WTTJ', description: '' }
+      // WTTJ <title> is "{Position} - {Company} - {ContractType} à {City}", and
+      // the position itself usually contains " - " (e.g. "Staff Mobile Engineer -
+      // React Native (x/f/m)"), so a fixed parts[1] grabbed part of the position
+      // as the company. Anchor on the trailing "{contract} à {city}" chunk.
+      const cleaned = title.replace(/\s*[|\-–—]\s*Welcome to the Jungle\s*$/i, '').trim()
+      const parts = cleaned.split(' - ').map(s => s.trim()).filter(Boolean)
+      let position = '', company = ''
+      if (parts.length <= 1) {
+        position = parts[0] || ''
+      } else {
+        const CONTRACT_TAIL = /^(CDI|CDD|Stage|Alternance|Apprentissage|Freelance|Ind[ée]pendant|Int[ée]rim|VIE|VIA|Temps\s+partiel|Temps\s+plein|Contrat|Permanent|Fixed[-\s]?term|Internship|Apprenticeship|Work[-\s]?study|Full[-\s]?time|Part[-\s]?time|Temporary)\b/i
+        let idx = parts.length - 1
+        if (parts.length >= 3 && CONTRACT_TAIL.test(parts[parts.length - 1])) idx = parts.length - 2
+        position = parts.slice(0, idx).join(' - ')
+        company = parts[idx] || ''
+      }
+      return { company, position, url, source: 'WTTJ', description: '' }
     }
     // ATS boards (Greenhouse, Lever, Ashby, …): company is the first URL segment.
     const ATS_HOSTS = ['greenhouse.io', 'lever.co', 'ashbyhq.com', 'workable.com', 'recruitee.com', 'teamtailor.com', 'smartrecruiters.com', 'bamboohr.com', 'jobvite.com', 'icims.com', 'workday', 'breezy.hr', 'pinpointhq.com']
@@ -273,11 +295,7 @@ function showMain(jobInfo) {
   }
 
   if (jobDescription.length > 50) {
-    jdStatusEl.textContent = `✓ ${jobDescription.length} caractères`
-    jdStatusEl.className = 'jd-status found'
-    jdPreviewEl.style.display = 'block'
-    jdPreviewEl.textContent = jobDescription.slice(0, 200) + (jobDescription.length > 200 ? '…' : '')
-    updateScoreSection()
+    markJdFound(`✓ ${jobDescription.length} caractères`, jobDescription.slice(0, 200) + (jobDescription.length > 200 ? '…' : ''))
   }
   checkReady()
   if (!companyEl.value) companyEl.focus()
@@ -301,21 +319,28 @@ function showTextReviewModal(text) {
     const closeBtn = document.getElementById('review-modal-close')
     const cancelBtn = document.getElementById('review-cancel')
     const confirmBtn = document.getElementById('review-confirm')
+    const charCount = document.getElementById('review-charcount')
+
+    const updateCount = () => { if (charCount) charCount.textContent = `${textarea.value.length} caractères` }
 
     // Populate textarea
     textarea.value = text
-    textarea.focus()
-    textarea.select()
+    updateCount()
 
-    // Show modal
+    // Show modal, then place the caret at the start (avoids scrolling long text to the end)
     modal.style.display = 'flex'
+    textarea.focus()
+    textarea.setSelectionRange(0, 0)
+    textarea.scrollTop = 0
 
     function closeModal() {
       modal.style.display = 'none'
-      closeBtn.removeEventListener('click', closeModal)
+      closeBtn.removeEventListener('click', handleCancel)
       cancelBtn.removeEventListener('click', handleCancel)
       confirmBtn.removeEventListener('click', handleConfirm)
+      textarea.removeEventListener('input', updateCount)
       document.removeEventListener('click', handleOverlayClick)
+      document.removeEventListener('keydown', handleKeydown)
     }
 
     function handleCancel() {
@@ -336,10 +361,17 @@ function showTextReviewModal(text) {
       }
     }
 
+    function handleKeydown(e) {
+      if (e.key === 'Escape') { e.preventDefault(); handleCancel() }
+      else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); handleConfirm() }
+    }
+
+    textarea.addEventListener('input', updateCount)
     closeBtn.addEventListener('click', handleCancel)
     cancelBtn.addEventListener('click', handleCancel)
     confirmBtn.addEventListener('click', handleConfirm)
     document.addEventListener('click', handleOverlayClick)
+    document.addEventListener('keydown', handleKeydown)
   })
 }
 
@@ -485,11 +517,7 @@ async function init() {
       const serverJd = await fetchJdFromServer(url)
       if (serverJd.length > 50) {
         jobDescription = serverJd
-        jdStatusEl.textContent = `✓ ${jobDescription.length} caractères`
-        jdStatusEl.className = 'jd-status found'
-        jdPreviewEl.style.display = 'block'
-        jdPreviewEl.textContent = jobDescription.slice(0, 200) + (jobDescription.length > 200 ? '…' : '')
-        updateScoreSection()
+        markJdFound(`✓ ${jobDescription.length} caractères`, jobDescription.slice(0, 200) + (jobDescription.length > 200 ? '…' : ''))
       } else {
         jdStatusEl.textContent = 'Non détectée'
         jdStatusEl.className = 'jd-status not-found'
@@ -501,7 +529,7 @@ async function init() {
       const icon = document.getElementById('screenshot-icon')
       const text = document.getElementById('screenshot-text')
       if (icon) icon.textContent = '✦'
-      if (text) text.textContent = 'Détection incomplète — Analyser avec l\'IA'
+      if (text) text.textContent = 'Analyser l\'IA'
     }
   } catch (e) {
     showMain({ company: '', position: '', url: '', source: 'Page web', description: '' })
@@ -644,7 +672,7 @@ document.getElementById('autofill-btn').addEventListener('click', async () => {
     const res = await browser.tabs.sendMessage(tab.id, { type: 'TRIGGER_AUTOFILL' })
     if (res?.fieldsCount === 0) {
       txt.textContent = '⚠️ Aucun champ détecté'
-      setTimeout(() => { txt.textContent = 'Autofill le formulaire de candidature'; btn.disabled = false }, 2500)
+      setTimeout(() => { txt.textContent = 'Autofill'; btn.disabled = false }, 2500)
     } else {
       txt.textContent = `⏳ Génération (${res?.fieldsCount || '?'} champs)…`
       // Send signal to auto-generate all fields
@@ -654,7 +682,7 @@ document.getElementById('autofill-btn').addEventListener('click', async () => {
     }
   } catch (e) {
     txt.textContent = 'Erreur : ' + e.message.slice(0, 40)
-    setTimeout(() => { txt.textContent = 'Autofill le formulaire de candidature'; btn.disabled = false }, 2500)
+    setTimeout(() => { txt.textContent = 'Autofill'; btn.disabled = false }, 2500)
   }
 })
 
@@ -674,35 +702,65 @@ document.getElementById('scan-listing-btn').addEventListener('click', async () =
     const res = await browser.tabs.sendMessage(tab.id, { type: 'TRIGGER_SCAN' })
     if (!res || res.count === 0) {
       txt.textContent = '⚠️ Aucune offre détectée ici'
-      setTimeout(() => { txt.textContent = 'Scanner les offres de la page'; btn.disabled = false }, 2800)
+      setTimeout(() => { txt.textContent = 'Scanner'; btn.disabled = false }, 2800)
     } else {
       txt.textContent = `✓ ${res.count} offre(s) — voir le panneau`
       setTimeout(() => window.close(), 900)
     }
   } catch (e) {
-    txt.textContent = 'Ouvre une page de résultats d\'abord'
-    setTimeout(() => { txt.textContent = 'Scanner les offres de la page'; btn.disabled = false }, 2800)
+    txt.textContent = 'Ouvre une liste d\'offres'
+    setTimeout(() => { txt.textContent = 'Scanner'; btn.disabled = false }, 2800)
   }
 })
 
-// ── API Key panel (optional — for unlimited use beyond the free trial) ─────────
-document.getElementById('toggle-apikey').addEventListener('click', async () => {
-  const panel = document.getElementById('apikey-panel')
-  const isOpen = panel.style.display !== 'none'
-  panel.style.display = isOpen ? 'none' : 'block'
-  if (!isOpen && userApiKey) {
-    document.getElementById('apikey-input').value = userApiKey
-    document.getElementById('apikey-saved').style.display = 'inline'
-  }
-})
+// ── LinkedIn Easy Apply auto-pilot ─────────────────────────────────────────────
+// Only shown on linkedin.com. Tells the content script to walk the Easy Apply
+// modal: fill every step (identity + AI), upload the synced CV, and auto-click
+// Suivant/Vérifier. It stops before "Envoyer la candidature" (irreversible) unless
+// the user opted into auto-submit in storage — so here we always let it review.
+;(async () => {
+  const btn = document.getElementById('linkedin-apply-btn')
+  if (!btn) return
+  try {
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true })
+    const host = tabs[0]?.url ? new URL(tabs[0].url).hostname : ''
+    if (/(^|\.)linkedin\.com$/.test(host)) btn.style.display = 'flex'
+  } catch {}
 
+  btn.addEventListener('click', async () => {
+    const txt = document.getElementById('linkedin-apply-text')
+    btn.disabled = true
+    txt.textContent = '⏳ Candidature en cours…'
+    try {
+      const tabs = await browser.tabs.query({ active: true, currentWindow: true })
+      const tab = tabs[0]
+      if (!tab?.id) throw new Error('Pas de tab active')
+      const res = await browser.tabs.sendMessage(tab.id, { type: 'TRIGGER_LINKEDIN_APPLY' })
+      if (res?.started) {
+        txt.textContent = '✓ Lancé — suivez la fenêtre'
+        setTimeout(() => window.close(), 1200)
+      } else {
+        txt.textContent = res?.onLinkedIn === false
+          ? '⚠️ Ouvrez une offre LinkedIn'
+          : '⚠️ Ouvrez « Candidature simplifiée »'
+        setTimeout(() => { txt.textContent = 'Candidature LinkedIn auto'; btn.disabled = false }, 3000)
+      }
+    } catch (e) {
+      txt.textContent = 'Erreur : ' + (e.message || '').slice(0, 32)
+      setTimeout(() => { txt.textContent = 'Candidature LinkedIn auto'; btn.disabled = false }, 3000)
+    }
+  })
+})()
+
+// ── API Key (optional — for unlimited use beyond the free trial) ───────────────
+// The key input lives inside the Paramètres panel; it's populated when that panel
+// opens (see the toggle-settings handler above).
 document.getElementById('save-apikey').addEventListener('click', async () => {
   const key = document.getElementById('apikey-input').value.trim()
   await browser.storage.local.set({ apiKey: key })
   userApiKey = key
   document.getElementById('apikey-saved').style.display = key ? 'inline' : 'none'
   showToast(key ? '🔑 Clé API sauvegardée ✓' : '🔑 Clé supprimée — essai gratuit')
-  setTimeout(() => { document.getElementById('apikey-panel').style.display = 'none' }, 1200)
 })
 
 // ── Autofill toggle persistence ────────────────────────────────────────────────
@@ -751,6 +809,12 @@ toggleAutofillButtons.addEventListener('change', async () => {
 // ── Right-click context menu toggle ────────────────────────────────────────────
 const toggleRightclick = document.getElementById('toggle-rightclick')
 
+// Firefox for Android has no context menus — hide the toggle so it doesn't
+// present a control that does nothing on mobile.
+if (!browser.contextMenus) {
+  toggleRightclick.closest('.toggle-item')?.style.setProperty('display', 'none')
+}
+
 // Load saved state - moved to consolidated init above
 
 // Save state and update context menu
@@ -758,11 +822,9 @@ toggleRightclick.addEventListener('change', async () => {
   const isEnabled = toggleRightclick.checked
   await browser.storage.local.set({ rightclickEnabled: isEnabled })
 
-  // Enable/disable context menu
-  if (isEnabled) {
-    browser.contextMenus.update('jobtrackr-autofill', { visible: true })
-  } else {
-    browser.contextMenus.update('jobtrackr-autofill', { visible: false })
+  // Enable/disable context menu (absent on Firefox for Android).
+  if (browser.contextMenus) {
+    browser.contextMenus.update('jobtrackr-autofill', { visible: isEnabled })
   }
 })
 
@@ -913,8 +975,11 @@ async function calculateJobScore(force = false) {
 // Show score section and auto-calculate when job has a description. The
 // background applies the single JD-length rule (and the server fallback), so
 // anything non-empty is handed over; a too-short JD renders a note, not a score.
+// The redesigned popup has no #score-section (scoring lives in the on-page pill),
+// so this is a no-op there and its callers don't need to change.
 function updateScoreSection() {
   const scoreSection = document.getElementById('score-section')
+  if (!scoreSection) return
   if (jobDescription && jobDescription.trim().length > 0) {
     scoreSection.style.display = 'block'
     // Auto-calculate score if CV is available
@@ -935,9 +1000,9 @@ function setupContextModal() {
 
   // Add button to open context modal (insert after screenshot button)
   const contextBtn = document.createElement('button')
-  contextBtn.className = 'btn btn-ai'
+  contextBtn.className = 'btn btn-mini btn-ai'
   contextBtn.id = 'context-btn'
-  setHTML(contextBtn, '<span>📝</span><span>Ajouter du contexte</span>')
+  setHTML(contextBtn, '<span class="ico">📝</span><span>Contexte</span>')
 
   // Insert context button after screenshot button
   if (screenshotBtn?.parentNode) {
@@ -945,24 +1010,34 @@ function setupContextModal() {
   }
 
   // Context already loaded in consolidated init at popup start
+  const charCount = document.getElementById('context-charcount')
+  const updateCount = () => { if (charCount) charCount.textContent = `${contextInput.value.length} caractères` }
+  contextInput.addEventListener('input', updateCount)
+
+  const isOpen = () => contextModal.style.display === 'flex'
+  const openModal = () => {
+    updateCount()
+    contextModal.style.display = 'flex'
+    contextInput.focus()
+  }
+  const closeModal = () => { contextModal.style.display = 'none' }
 
   // Open modal
-  contextBtn.addEventListener('click', () => {
-    contextModal.style.display = 'flex'
-  })
+  contextBtn.addEventListener('click', openModal)
 
   // Close modal
-  modalClose.addEventListener('click', () => {
-    contextModal.style.display = 'none'
-  })
+  modalClose.addEventListener('click', closeModal)
+  modalCancel.addEventListener('click', closeModal)
 
-  modalCancel.addEventListener('click', () => {
-    contextModal.style.display = 'none'
-  })
-
-  // Close on overlay click
+  // Close on backdrop click (overlay is pointer-events:none, so the click
+  // lands on the .modal flex container itself)
   contextModal.addEventListener('click', (e) => {
-    if (e.target === contextModal) contextModal.style.display = 'none'
+    if (e.target === contextModal) closeModal()
+  })
+
+  // Close on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isOpen()) { e.preventDefault(); closeModal() }
   })
 
   // Save context
@@ -970,6 +1045,6 @@ function setupContextModal() {
     const context = contextInput.value.trim()
     await browser.storage.local.set({ userContext: context })
     showToast('✓ Contexte sauvegardé')
-    contextModal.style.display = 'none'
+    closeModal()
   })
 }

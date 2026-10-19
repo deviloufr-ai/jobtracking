@@ -319,6 +319,25 @@ function companyFromUrlPath(pathname) {
     .trim()
 }
 
+// WTTJ <title> is "{Position} - {Company} - {ContractType} à {City}". The
+// position itself frequently contains " - " (e.g. "Staff Mobile Engineer -
+// React Native (x/f/m)"), so the old fixed parts[1] grabbed a slice of the
+// position as the company. Anchor on the trailing "{contract} à {city}" chunk
+// instead: the company is the segment just before it (or the last segment when
+// no contract tail is present). Used only as a fallback — JobPosting JSON-LD,
+// when the page exposes it, remains the primary source of the company.
+const WTTJ_CONTRACT_TAIL = /^(CDI|CDD|Stage|Alternance|Apprentissage|Freelance|Ind[ée]pendant|Int[ée]rim|VIE|VIA|Temps\s+partiel|Temps\s+plein|Contrat|Permanent|Fixed[-\s]?term|Internship|Apprenticeship|Work[-\s]?study|Full[-\s]?time|Part[-\s]?time|Temporary)\b/i
+function parseWttjTitle(rawTitle) {
+  const cleaned = (rawTitle || '')
+    .replace(/\s*[|\-–—]\s*Welcome to the Jungle\s*$/i, '')
+    .trim()
+  const parts = cleaned.split(' - ').map(s => s.trim()).filter(Boolean)
+  if (parts.length <= 1) return { position: parts[0] || '', company: '' }
+  let idx = parts.length - 1 // index of the company segment
+  if (parts.length >= 3 && WTTJ_CONTRACT_TAIL.test(parts[parts.length - 1])) idx = parts.length - 2
+  return { position: parts.slice(0, idx).join(' - '), company: parts[idx] || '' }
+}
+
 function extractJobInfo() {
   const url = window.location.href
   const hostname = window.location.hostname.replace('www.', '')
@@ -361,9 +380,9 @@ function extractJobInfo() {
     position = parts[0]?.trim() || ''
     company = parts[1]?.trim() || ''
   } else if (hostname.includes('welcometothejungle.com')) {
-    const parts = title.split(' - ')
-    position = parts[0]?.trim() || ''
-    company = parts[1]?.trim() || ''
+    const wttj = parseWttjTitle(title)
+    position = wttj.position
+    company = wttj.company
   } else {
     const pipeIdx = title.lastIndexOf(' | ')
     const dashIdx = title.lastIndexOf(' - ')
@@ -557,9 +576,15 @@ async function getIdentityValues() {
 // match so "Email address *" / "Adresse e-mail professionnelle" still resolve.
 function identityKeyFor(label) {
   const l = (label || '').toLowerCase()
-  if (/^(full.?name|nom.*(complet|prénom)|prénom.*nom|your name|name)$/i.test(l)) return 'name'
-  if (/^(prénom|first.?name|given.?name|forename)$/i.test(l)) return 'firstname'
-  if (/^(nom(\s+de\s+famille)?|last.?name|surname|family.?name)$/i.test(l)) return 'lastname'
+  // First/last name must be tested BEFORE the full-name branch, otherwise the
+  // leading-"name" match below would swallow "First name" / "Last name".
+  if (/^(prénom|first.?name|given.?name|forename)\b/i.test(l)) return 'firstname'
+  if (/^(last.?name|surname|family.?name|nom\s+de\s+famille)\b/i.test(l)) return 'lastname'
+  // Full-name field. Anchored at the start and word-bounded so it catches Ashby's
+  // default "Name (first name + last name)" and "Full name" / "Your name", while
+  // "Company name", "Username", etc. (which don't start with name) fall through.
+  if (/^(full.?name|your name|name)\b/i.test(l) || /^(nom.*(complet|prénom)|prénom.*nom)/i.test(l)) return 'name'
+  if (/^nom$/i.test(l)) return 'lastname'
   if (/(e-?mail|courriel|adresse.*(mail|courriel))/i.test(l)) return 'email'
   if (/linkedin/i.test(l)) return 'linkedin'
   if (/(phone|téléphone|\btel\b|mobile|numéro.*téléphone)/i.test(l)) return 'phone'
@@ -569,6 +594,38 @@ function identityKeyFor(label) {
 // Collect fillable controls across the main document, same-origin iframes, and
 // (when `deep`) open shadow roots. Cross-origin iframes run their own instance
 // of this content script (manifest all_frames), so we skip them here.
+// When an application modal/dialog is open, confine field detection to it. Filling
+// controls on the page *behind* the modal (the search box, filters, the "job alert"
+// toggle, …) is wrong, and on LinkedIn a stray write/click there re-fires the host
+// page's own handlers and reloads the whole page (losing the half-filled Easy Apply
+// form). Returns the largest open, visible dialog, or null when there's no real modal.
+//
+// LinkedIn's current Easy Apply modal is a native <dialog data-testid="dialog"> with
+// hashed class names and no role/aria-modal/.artdeco-modal — so match the native
+// <dialog>, LinkedIn's data-testids, AND the legacy markup (older LinkedIn + other
+// ATS modals). Missing the native <dialog> is what made this a no-op before: autofill
+// then scanned the whole page and clicked page-level controls → reload.
+function jtActiveModalRoot() {
+  let best = null, bestArea = 0
+  let dialogs = []
+  try {
+    dialogs = document.querySelectorAll(
+      'dialog[open], [data-testid="dialog"], [data-testid="dialog-content"], ' +
+      '[role="dialog"], [aria-modal="true"], .artdeco-modal, .jobs-easy-apply-modal'
+    )
+  } catch { return null }
+  for (const d of dialogs) {
+    if (d.closest?.('[id^="jt-"]')) continue  // never scope to our own UI
+    const r = d.getBoundingClientRect()
+    if (r.width < 240 || r.height < 160) continue  // skip toasts / tiny popovers
+    const st = getComputedStyle(d)
+    if (st.display === 'none' || st.visibility === 'hidden') continue
+    const area = r.width * r.height
+    if (area > bestArea) { bestArea = area; best = d }
+  }
+  return best
+}
+
 function collectCandidates(deep) {
   const SEL = 'textarea, select, input, [contenteditable="true"], [contenteditable=""]'
   const out = []
@@ -587,9 +644,10 @@ function collectCandidates(deep) {
     }
   }
 
-  pushFrom(document)
+  const scanRoot = jtActiveModalRoot() || document
+  pushFrom(scanRoot)
   try {
-    for (const iframe of document.querySelectorAll('iframe')) {
+    for (const iframe of scanRoot.querySelectorAll('iframe')) {
       try {
         const doc = iframe.contentDocument || iframe.contentWindow?.document
         if (doc) pushFrom(doc)
@@ -620,6 +678,12 @@ function detectFormFields(opts = {}) {
   for (const el of candidates) {
     // Skip the extension's own UI
     if (el.closest?.('[id^="jt-"]')) continue
+
+    // Anti-bot widgets expose a hidden textarea/input (reCAPTCHA, hCaptcha,
+    // Turnstile). Textareas skip the size/visibility filter below, so exclude
+    // these by name/id — filling them is pointless and pollutes the AI batch.
+    const nm = (el.name || '') + ' ' + (el.id || '')
+    if (/recaptcha|h-captcha|hcaptcha|cf-turnstile|g-recaptcha/i.test(nm)) continue
 
     const tag = el.tagName.toLowerCase()
     const isTextarea = tag === 'textarea'
@@ -697,11 +761,23 @@ function detectFormFields(opts = {}) {
   // Emit one field per radio group
   for (const g of radioGroups.values()) {
     if (!g.els.length) continue
+    // Skip groups that already have a selection. Re-clicking an already-chosen
+    // option is both wrong (it overrides the user's/site's choice) and, on
+    // LinkedIn's Easy Apply resume picker, the synthetic click re-fires the host's
+    // apply flow and reloads the whole page. A truly unanswered required question
+    // has no checked member and is still filled.
+    if (g.els.some(r => r.checked)) continue
     const first = g.els[0]
     const label = resolveGroupLabel(g.els) || 'Choix'
     const options = g.els
       .map(r => ({ text: (resolveLabel(r) || r.value || '').trim(), value: r.value, el: r }))
       .filter(o => o.text)
+    // Never auto-pick a CV/resume/cover-letter attachment — the user chooses which
+    // document to send, and clicking a resume tile in LinkedIn's Easy Apply kicks
+    // off its apply/re-render flow (page reload). Detected via the group label or
+    // the option texts (which are the file names).
+    const groupText = (label + ' ' + options.map(o => o.text).join(' ')).toLowerCase()
+    if (/\b(cv|resume|résumé|resumé|curriculum|lettre de motivation|cover ?letter)\b|\.pdf|\.docx?/.test(groupText)) continue
     fields.push({ el: first, els: g.els, label, control: 'radio', type: 'radio', options, identityKey: null })
   }
 
@@ -870,6 +946,18 @@ function selectComboboxOption(el, value) {
 }
 
 // ── 2.2 Injection des réponses dans les champs ────────────────────────────────
+// LinkedIn's Easy Apply modal is a controlled-React form inside an artdeco modal
+// that dismisses itself on focus/DOM churn. Two habits below are safe elsewhere
+// but close that modal once the last field is filled, so they're tamed on
+// LinkedIn only (native inputs there accept a plain value write):
+//   1. a *bubbling* synthetic blur — native blur never bubbles; a bubbling one
+//      reaches the modal's focus/dismiss handlers. Dispatched non-bubbling now
+//      (React's onBlur still fires: it listens in the capture phase at the root).
+//   2. the execCommand re-type after the native setter already wrote the value —
+//      a redundant second round of input events that forces an extra re-render.
+//      Kept for other sites (Ashby ignores programmatic writes and needs it).
+const JT_ON_LINKEDIN = /(^|\.)linkedin\.com$/.test(location.hostname)
+
 function injectAnswer(el, text) {
   el.focus()
 
@@ -884,7 +972,7 @@ function injectAnswer(el, text) {
     if (!(el.textContent || '').trim()) el.textContent = text
     el.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, inputType: 'insertText', data: text }))
     el.dispatchEvent(new Event('change', { bubbles: true }))
-    el.dispatchEvent(new Event('blur', { bubbles: true }))
+    el.dispatchEvent(new FocusEvent('blur'))
     return
   }
 
@@ -906,14 +994,18 @@ function injectAnswer(el, text) {
   el.dispatchEvent(new Event('input', { bubbles: true }))
   el.dispatchEvent(new Event('change', { bubbles: true }))
 
-  // Fallback: select all + execCommand (works on contenteditable too)
-  try {
-    el.select?.()
-    document.execCommand('selectAll', false, null)
-    document.execCommand('insertText', false, text)
-  } catch {}
+  // Fallback: select all + execCommand (works on contenteditable too). Skipped on
+  // LinkedIn — the native setter already stuck, and the extra input round dismisses
+  // the Easy Apply modal.
+  if (!JT_ON_LINKEDIN) {
+    try {
+      el.select?.()
+      document.execCommand('selectAll', false, null)
+      document.execCommand('insertText', false, text)
+    } catch {}
+  }
 
-  el.dispatchEvent(new Event('blur', { bubbles: true }))
+  el.dispatchEvent(new FocusEvent('blur'))
 }
 
 // ── 2.2b Type-aware apply + read-back verification ────────────────────────────
@@ -1034,9 +1126,38 @@ function injectStyles() {
     .jt-field-btn:hover { background: #3730a3; transform: scale(1.1); }
     .jt-field-btn.jt-done { background: #16a34a; color: #fff; }
 
+    /* LinkedIn Easy Apply "candidature auto" pill — fixed at the viewport bottom
+       center so it clears the modal's close (X) and footer buttons. */
+    .jt-apply-btn {
+      position: fixed;
+      bottom: 26px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2147483647;
+      pointer-events: all;
+      display: none;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 11px 22px;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.45);
+      user-select: none;
+    }
+    .jt-apply-btn:hover:not(:disabled) { filter: brightness(1.08); transform: translateX(-50%) scale(1.03); }
+    .jt-apply-btn:disabled { opacity: 0.75; cursor: default; }
+
     .jt-popover {
       position: fixed;
       z-index: 2147483647;
+      /* neutralize Popover API UA styles (inset:0; margin:auto; width:fit-content)
+         so our inline left/top positioning still applies when shown in the top layer */
+      inset: auto;
+      margin: 0;
       background: #fff;
       border: 1px solid #e5e7eb;
       border-radius: 12px;
@@ -1048,6 +1169,9 @@ function injectStyles() {
       max-height: 90vh;
       overflow-y: auto;
     }
+    /* When our overlay/popover ride the top layer over a native <dialog>, don't
+       paint or capture on their ::backdrop (only showModal() dialogs get a real one). */
+    #jt-overlay::backdrop, .jt-popover::backdrop { background: transparent !important; pointer-events: none !important; }
     .jt-pop-header {
       background: #18181b; color: #fff;
       padding: 10px 14px;
@@ -1152,6 +1276,9 @@ async function openFieldPopover(field, btn) {
 
   const popover = document.createElement('div')
   popover.className = 'jt-popover'
+  // Ride the top layer too, so the generation UI opens ABOVE a native <dialog>
+  // modal (and above our own overlay, since it's shown last). See getOverlay().
+  try { if (typeof popover.showPopover === 'function') popover.setAttribute('popover', 'manual') } catch {}
   activePopover = popover
 
   const identVal = field.identityKey ? identityValues[field.identityKey] : null
@@ -1232,10 +1359,15 @@ async function openFieldPopover(field, btn) {
   }
 
   document.body.appendChild(popover)
+  // Show in the top layer BEFORE positioning — a not-yet-shown popover is
+  // display:none, so its measured size would be 0 and positionNearField couldn't
+  // clamp it into the viewport.
+  try { popover.showPopover?.() } catch {}
   positionNearField(btn, popover)
 
   // Cleanup function to ensure proper removal
   function closePopover() {
+    try { popover.hidePopover?.() } catch {}
     if (document.contains(popover)) {
       popover.remove()
     }
@@ -1340,14 +1472,42 @@ async function openFieldPopover(field, btn) {
 }
 
 let jtOverlay = null
+let jtLastAssertedDialog = null
 
 function getOverlay() {
-  if (jtOverlay && document.contains(jtOverlay)) return jtOverlay
+  if (jtOverlay && document.contains(jtOverlay)) { jtEnsureOverlayTop(); return jtOverlay }
   jtOverlay = document.createElement('div')
   jtOverlay.id = 'jt-overlay'
-  jtOverlay.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2147483647;overflow:hidden;'
+  // width/height/margin/max-* are reset explicitly so the Popover UA styles (which
+  // size a popover to fit-content and center it) can't shrink our full-viewport layer.
+  jtOverlay.style.cssText = 'position:fixed;inset:0;width:auto;height:auto;margin:0;max-width:none;max-height:none;pointer-events:none;z-index:2147483647;overflow:hidden;border:0;background:transparent;padding:0;'
+  // Render in the browser top layer so the ✦ buttons paint ABOVE native <dialog>
+  // modals — LinkedIn's Easy Apply opens with showModal(), which sits above ANY
+  // z-index, so a plain fixed div is otherwise buried behind it. popover="manual"
+  // doesn't make the dialog inert and doesn't self-close on outside clicks. Browsers
+  // without the Popover API keep the attribute unset and fall back to the plain layer.
+  try { if (typeof jtOverlay.showPopover === 'function') jtOverlay.setAttribute('popover', 'manual') } catch {}
   document.body.appendChild(jtOverlay)
+  jtEnsureOverlayTop()
   return jtOverlay
+}
+
+// Lift the overlay to the top of the top layer whenever a modal dialog is (newly)
+// open. Top-layer stacking is insertion order, so a dialog opened AFTER our overlay
+// would cover the buttons; re-show() re-inserts us on top. Tracked by dialog identity
+// so re-showing happens once per modal, not every scan (which would flicker).
+function jtEnsureOverlayTop() {
+  if (!jtOverlay || typeof jtOverlay.showPopover !== 'function') return
+  const dlg = jtActiveModalRoot()
+  try {
+    if (!jtOverlay.matches(':popover-open')) {
+      jtOverlay.showPopover()
+    } else if (dlg && dlg !== jtLastAssertedDialog) {
+      jtOverlay.hidePopover()
+      jtOverlay.showPopover()
+    }
+    jtLastAssertedDialog = dlg
+  } catch {}
 }
 
 function placeFieldButton(field) {
@@ -1406,35 +1566,50 @@ async function isAutofillEnabled() {
 async function scanAndPlaceButtons() {
   const enabled = await isAutofillEnabled()
   if (!enabled) return
+  // Only auto-place the ✦ buttons on job pages — same heuristic the score pill
+  // uses (JT_SCORE_HOSTS allowlist incl. ATS hosts, or a JobPosting on the page).
+  // This keeps autofill from popping up on unrelated sites (login/contact/signup
+  // forms). The popup's "Remplir automatiquement" (AUTO_GENERATE_ALL) is an
+  // explicit user action and stays available everywhere.
+  if (!jtLooksLikeJobPage()) return
   const fields = detectFormFields()
   // ✦ button only on free-text fields — choice controls (select/radio/checkbox/
   // combobox) fill by selection, and file inputs stay with the user.
   fields.filter(f => f.control === 'text').forEach(f => placeFieldButton(f))
+  // A field with a button may already exist (placeFieldButton returns early), so
+  // lift the overlay here too — this is where we notice a modal opened over us.
+  jtEnsureOverlayTop()
 }
 
-async function autoGenerateAllFields() {
-  const allFields = detectFormFields({ deep: true })
-  if (allFields.length === 0) {
-    showNotification('❌ Aucun champ détecté', 'error')
-    return
-  }
-
+// Fill a detected set of fields: identity locally, everything else in ONE batched
+// AI call (whole-form context keeps answers consistent; the CV text is attached to
+// the prompt server-side in background.js). File inputs are routed to `onFileInput`
+// when given (LinkedIn CV upload); otherwise flagged for the user. Returns
+// { filled, flagged } so callers can decide whether a step made progress.
+async function jtFillFields(allFields, opts = {}) {
+  const onFileInput = opts.onFileInput || null
   const identityValues = await getIdentityValues()
   let filled = 0
-  let flagged = 0  // needs a human: file upload, or a value we couldn't apply
+  let flagged = 0  // needs a human: unhandled file upload, or a value we couldn't apply
 
   // Pass 1 — identity fields (name/email/phone/…) filled locally, no AI.
-  //          File inputs are flagged: the CV upload stays with the user.
   const aiFields = []
   for (const f of allFields) {
-    if (f.control === 'file') { highlightField(f.el, 'error'); flagged++; continue }
+    if (f.control === 'file') {
+      // 'done' → counted as filled, 'skip' → neither (already satisfied), else flag.
+      let r = 'flag'
+      if (onFileInput) { try { r = await onFileInput(f) } catch { r = 'flag' } }
+      if (r === 'done') { filled++ }
+      else if (r === 'skip') { /* already handled/satisfied — no count */ }
+      else { highlightField(f.el, 'error'); flagged++ }
+      continue
+    }
     const idVal = f.identityKey ? identityValues[f.identityKey] : null
     if (idVal && applyFieldValue(f, idVal)) { highlightField(f.el, 'success'); filled++; continue }
     aiFields.push(f)
   }
 
-  // Pass 2 — everything else in ONE batched AI call. Whole-form context keeps
-  // answers consistent, and the CV is attached server-side in background.js.
+  // Pass 2 — everything else in ONE batched AI call.
   if (aiFields.length) {
     showNotification(`⏳ Génération (${aiFields.length} champ${aiFields.length > 1 ? 's' : ''})…`, 'info')
 
@@ -1478,9 +1653,304 @@ async function autoGenerateAllFields() {
     }
   }
 
+  return { filled, flagged }
+}
+
+async function autoGenerateAllFields() {
+  const allFields = detectFormFields({ deep: true })
+  if (allFields.length === 0) {
+    showNotification('❌ Aucun champ détecté', 'error')
+    return
+  }
+  // No onFileInput here — the CV upload stays with the user outside the LinkedIn flow.
+  const { filled, flagged } = await jtFillFields(allFields)
   let msg = `✓ ${filled} champ${filled > 1 ? 's' : ''} rempli${filled > 1 ? 's' : ''}`
   if (flagged) msg += ` · ${flagged} à vérifier`
   showNotification(msg, filled ? 'success' : 'error')
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 2.5 : LinkedIn Easy Apply — "candidature simplifiée" auto-pilot
+// One click walks the multi-step Easy Apply modal end to end: on each step it
+// uploads the synced CV (once), fills every field (identity locally + one AI
+// batch), then clicks the footer's primary button — Suivant → Vérifier — until
+// the final "Envoyer la candidature". That last step is IRREVERSIBLE, so by
+// default we stop there, highlight the button and let the user review + submit.
+// Full auto-submit is opt-in via storage.local.linkedinAutoSubmit === true.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Retrieve the CV as a real File from the synced data URL (background.js stores
+// `cvFile = { name, type, dataUrl }` when the web app exposes the binary). Returns
+// null when only CV text is synced — we then leave the resume step to the user
+// rather than uploading a poor stand-in.
+async function jtGetCvFile() {
+  try {
+    const { cvFile } = await browser.storage.local.get('cvFile')
+    if (!cvFile || !cvFile.dataUrl) return null
+    const blob = await (await fetch(cvFile.dataUrl)).blob()
+    const name = cvFile.name || 'CV.pdf'
+    const type = cvFile.type || blob.type || 'application/pdf'
+    return new File([blob], name, { type })
+  } catch { return null }
+}
+
+// Programmatically attach a File to a (usually hidden) <input type="file"> using a
+// DataTransfer — LinkedIn's resume input listens for `change`. We never .click()
+// the picker (a synthetic click on LinkedIn re-fires the host apply flow / reload).
+function jtSetFileInput(input, file) {
+  try {
+    const dt = new DataTransfer()
+    dt.items.add(file)
+    input.files = dt.files
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+    return input.files && input.files.length > 0
+  } catch { return false }
+}
+
+// True when the modal already shows a chosen resume (LinkedIn's redesigned card or
+// the legacy list). Lets us skip re-uploading on later steps / when one is selected.
+function jtResumeAlreadyChosen(root) {
+  const cards = root.querySelectorAll(
+    '.jobs-document-upload-redesign-card__container, .jobs-document-upload__title-text, ' +
+    '.jobs-resume-picker__resume, [class*="document-upload"][class*="selected"]'
+  )
+  return cards.length > 0
+}
+
+// One-shot CV upload for the current step. `state.cvDone` guards against re-uploading
+// across steps. Returns 'done' (uploaded), 'skip' (nothing to do / already set), or
+// 'flag' (a resume is required but we have no file to give).
+async function jtUploadCvStep(field, state) {
+  const root = jtActiveModalRoot() || document
+  const input = field?.el && field.el.type === 'file'
+    ? field.el
+    : root.querySelector('input[type="file"]')
+  if (!input) return 'skip'
+  if (state.cvDone || (input.files && input.files.length > 0)) return 'skip'
+
+  const file = state.cvFile
+  if (!file) {
+    if (!state.cvWarned) {
+      state.cvWarned = true
+      showNotification('⚠️ Aucun CV synchronisé — étape CV à compléter à la main', 'info')
+    }
+    // If LinkedIn already has a resume selected, that's fine — treat as satisfied.
+    return jtResumeAlreadyChosen(root) ? 'skip' : 'flag'
+  }
+  const ok = jtSetFileInput(input, file)
+  if (ok) {
+    state.cvDone = true
+    highlightField(input, 'success')
+    showNotification(`📎 CV ajouté : ${file.name}`, 'success')
+    // Give LinkedIn a moment to parse/attach the upload before we advance.
+    await new Promise(r => setTimeout(r, 900))
+    return 'done'
+  }
+  return 'flag'
+}
+
+// The Easy Apply footer's actionable button, classified so the loop knows whether
+// to advance or stop. Matches FR + EN aria-labels/text, then falls back to the last
+// primary button in the modal footer.
+function jtEasyApplyButton(root) {
+  const scope = root || document
+  const buttons = [...scope.querySelectorAll('button')].filter(b => {
+    if (b.disabled || b.closest('[id^="jt-"]')) return false
+    const r = b.getBoundingClientRect()
+    return r.width > 0 && r.height > 0
+  })
+  const textOf = b => ((b.getAttribute('aria-label') || '') + ' ' + (b.textContent || '')).toLowerCase()
+  const find = re => buttons.find(b => re.test(textOf(b)))
+
+  const submit = find(/envoyer la candidature|submit application|soumettre la candidature/)
+  if (submit) return { el: submit, kind: 'submit' }
+  const review = find(/vérifier|passer en revue|review your application|review application|^\s*review\b/)
+  if (review) return { el: review, kind: 'review' }
+  const next = find(/étape suivante|continuer vers|suivant|continue to next|^\s*next\b|continue/)
+  if (next) return { el: next, kind: 'next' }
+
+  // Fallback: the last enabled primary button inside a footer.
+  const primaries = buttons.filter(b =>
+    b.classList.contains('artdeco-button--primary') && b.closest('footer, .artdeco-modal__actionbar'))
+  if (primaries.length) return { el: primaries[primaries.length - 1], kind: 'unknown' }
+  return null
+}
+
+// A fingerprint of the current step, built from VALUE-INDEPENDENT signals so that
+// merely filling the fields never changes it — only actually moving to another
+// step (or a re-render of the same step after a validation error) does. Combines
+// the step heading, LinkedIn's progress-bar value, the footer button kind, and the
+// set of control identities (name/id/aria-label/type — never their values).
+function jtStepSignature(root) {
+  const scope = root || document
+  let ctrls = ''
+  try {
+    ctrls = [...scope.querySelectorAll('input, select, textarea, [contenteditable="true"]')]
+      .map(el => (el.getAttribute('name') || el.id || el.getAttribute('aria-label') || el.type || '').slice(0, 40))
+      .filter(Boolean).sort().join('|')
+  } catch {}
+  const btn = jtEasyApplyButton(scope)
+  const pct = scope.querySelector('progress, [role="progressbar"]')
+  const prog = pct ? (pct.getAttribute('value') || pct.getAttribute('aria-valuenow') || '') : ''
+  const head = (scope.querySelector('h1, h2, h3')?.textContent || '').trim().slice(0, 60)
+  return head + '§' + prog + '§' + (btn ? btn.kind : 'none') + '§' + ctrls
+}
+
+// Wait until the modal re-renders into a different step (signature changes) and any
+// loading spinner clears, or we time out. Keeps the loop from racing LinkedIn.
+async function jtWaitForStepChange(prevSig, timeout = 6000) {
+  const start = Date.now()
+  while (Date.now() - start < timeout) {
+    await new Promise(r => setTimeout(r, 220))
+    const root = jtActiveModalRoot()
+    if (!root) return  // modal closed (e.g. after submit)
+    const busy = root.querySelector('.artdeco-loader, [aria-busy="true"]')
+    if (busy) continue
+    if (jtStepSignature(root) !== prevSig) return
+  }
+}
+
+let jtEasyApplyRunning = false
+
+async function runLinkedInEasyApply(opts = {}) {
+  if (!JT_ON_LINKEDIN) { showNotification('Ouvrez une candidature Easy Apply sur LinkedIn', 'error'); return }
+  if (jtEasyApplyRunning) { showNotification('⏳ Candidature en cours…', 'info'); return }
+  let root = jtActiveModalRoot()
+  if (!root) { showNotification('Cliquez « Candidature simplifiée » d\'abord', 'error'); return }
+
+  jtEasyApplyRunning = true
+  jtSetApplyButtonBusy(true)
+  try {
+    let autoSubmit = !!opts.autoSubmit
+    if (!('autoSubmit' in opts)) {
+      try { autoSubmit = (await browser.storage.local.get('linkedinAutoSubmit')).linkedinAutoSubmit === true } catch {}
+    }
+    // Shared per-run state (CV file loaded once, upload guarded across steps).
+    const state = { cvFile: await jtGetCvFile(), cvDone: false, cvWarned: false }
+    const onFileInput = (field) => jtUploadCvStep(field, state)
+
+    const MAX_STEPS = 15
+    let stuckCount = 0
+    for (let step = 0; step < MAX_STEPS; step++) {
+      root = jtActiveModalRoot()
+      if (!root) { showNotification('Fenêtre de candidature fermée', 'info'); break }
+
+      const sigBefore = jtStepSignature(root)
+
+      // Fill this step (CV upload handled inline via onFileInput). If LinkedIn hides
+      // the resume input on a non-file step, jtUploadCvStep isn't reached — fine.
+      const fields = detectFormFields({ deep: true })
+      await jtFillFields(fields, { onFileInput })
+      // LinkedIn's resume <input type=file> is usually hidden (display:none / 0-size),
+      // so detectFormFields filters it out and onFileInput never fires. Handle it
+      // explicitly here: jtUploadCvStep no-ops ('skip') when the step has no file
+      // input, uploads once when we have a CV, or warns once when we don't.
+      if (!state.cvDone) await jtUploadCvStep(null, state)
+
+      root = jtActiveModalRoot()
+      if (!root) break
+      const btn = jtEasyApplyButton(root)
+      if (!btn) { showNotification('Bouton d\'action introuvable — vérifiez la fenêtre', 'error'); break }
+
+      if (btn.kind === 'submit') {
+        if (autoSubmit) {
+          btn.el.click()
+          showNotification('✓ Candidature envoyée', 'success')
+        } else {
+          // Persistent highlight (not highlightField — that clears after 2s) so the
+          // user can find the submit button after reviewing.
+          try { btn.el.scrollIntoView({ block: 'center' }) } catch {}
+          btn.el.style.outline = '3px solid #22c55e'
+          btn.el.style.outlineOffset = '2px'
+          showNotification('✅ Tout est rempli — vérifiez puis cliquez « Envoyer la candidature »', 'success')
+        }
+        break
+      }
+
+      // Suivant / Vérifier → advance.
+      btn.el.click()
+      await jtWaitForStepChange(sigBefore)
+
+      const rootAfter = jtActiveModalRoot()
+      if (!rootAfter) { showNotification('Fenêtre de candidature fermée', 'info'); break }
+      if (jtStepSignature(rootAfter) === sigBefore) {
+        // No progress — usually a required field we left empty or a validation error.
+        stuckCount++
+        if (stuckCount >= 2) {
+          showNotification('⚠️ Bloqué sur une étape — complétez les champs requis puis relancez', 'error')
+          break
+        }
+      } else {
+        stuckCount = 0
+      }
+    }
+  } catch (e) {
+    showNotification('❌ ' + (e.message || 'Erreur').slice(0, 60), 'error')
+  } finally {
+    jtEasyApplyRunning = false
+    jtSetApplyButtonBusy(false)
+  }
+}
+
+// ── On-page trigger: a floating "⚡ Candidature auto" pill shown while an Easy
+// Apply modal is open (top frame, LinkedIn only). Lives in the top-layer overlay so
+// it paints above the native <dialog>. Fixed at the viewport bottom-center so it
+// never covers the modal's close (X) or footer buttons.
+let jtApplyBtn = null
+let jtApplyTimer = null
+
+function jtSetApplyButtonBusy(busy) {
+  if (!jtApplyBtn) return
+  jtApplyBtn.disabled = busy
+  jtApplyBtn.textContent = busy ? '⏳ Candidature en cours…' : '⚡ Candidature auto'
+}
+
+function jtLooksLikeEasyApplyModal(modal) {
+  if (!modal) return false
+  if (/jobs-easy-apply|easy-apply/i.test(modal.className || '')) return true
+  if (modal.querySelector('.jobs-easy-apply-content, [data-test-modal-id*="easy-apply"], [class*="jobs-easy-apply"]')) return true
+  // Last resort: a jobs dialog whose footer exposes a Suivant/Vérifier/Envoyer button.
+  const b = jtEasyApplyButton(modal)
+  return !!b && b.kind !== 'unknown'
+}
+
+function jtEnsureEasyApplyButton() {
+  if (!JT_ON_LINKEDIN || window.top !== window) return
+  const modal = jtActiveModalRoot()
+  const show = jtLooksLikeEasyApplyModal(modal)
+
+  if (!show) { if (jtApplyBtn) jtApplyBtn.style.display = 'none'; return }
+
+  if (jtApplyBtn && document.contains(jtApplyBtn)) {
+    if (!jtEasyApplyRunning) jtApplyBtn.style.display = 'block'
+    jtEnsureOverlayTop()
+    return
+  }
+
+  injectStyles()
+  const btn = document.createElement('button')
+  btn.className = 'jt-apply-btn'
+  btn.textContent = '⚡ Candidature auto'
+  btn.title = 'JobTrackr — remplir tous les champs + CV + étapes suivantes automatiquement'
+  getOverlay().appendChild(btn)
+  jtApplyBtn = btn
+  btn.addEventListener('click', e => {
+    e.stopPropagation()
+    e.preventDefault()
+    runLinkedInEasyApply().catch(err => console.error('EasyApply error:', err))
+  })
+  jtEnsureOverlayTop()
+}
+
+function jtInitEasyApplyButton() {
+  if (!JT_ON_LINKEDIN || window.top !== window) return
+  jtEnsureEasyApplyButton()
+  const mo = new MutationObserver(() => {
+    clearTimeout(jtApplyTimer)
+    jtApplyTimer = setTimeout(jtEnsureEasyApplyButton, 300)
+  })
+  try { mo.observe(document.body, { childList: true, subtree: true }) } catch {}
 }
 
 function showNotification(msg, type = 'info') {
@@ -1508,6 +1978,8 @@ let autofillObserver = null
 
 async function initAutofill() {
   injectStyles()
+  // The LinkedIn Easy Apply pill is independent of the ✦ autofill-buttons toggle.
+  jtInitEasyApplyButton()
   const enabled = await isAutofillEnabled()
   if (enabled) {
     await scanAndPlaceButtons()
@@ -1551,13 +2023,49 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // Déclencher l'autofill depuis le popup
   if (msg.type === 'TRIGGER_AUTOFILL') {
     cachedJD = null
-    scanAndPlaceButtons()  // async, but fire-and-forget is ok here
-    sendResponse({ fieldsCount: fieldState.size })
+    // Report the REAL fillable-field count, not fieldState.size — that counter is
+    // only populated by placeFieldButton (skipped when the ✦ buttons are off, and
+    // async), so it wrongly reported 0.
+    //
+    // Frame race: with all_frames:true this listener also runs in the reCAPTCHA
+    // and about:blank iframes Ashby injects. Those detect 0 fields and, sending
+    // to the whole tab, one of them could win the response race and answer 0 —
+    // the popup then said "Aucun champ détecté" even though the main frame has a
+    // form. So a frame with fields answers immediately; a frame with none stays
+    // silent (return false), and only the top frame answers 0 — on a short delay
+    // so a form-bearing sub-frame (e.g. an embedded Greenhouse iframe) still wins.
+    let count = 0
+    try { count = detectFormFields({ deep: true }).length } catch {}
+    if (count > 0) {
+      scanAndPlaceButtons()  // place ✦ buttons if enabled (async, fire-and-forget)
+      sendResponse({ fieldsCount: count })
+      return true
+    }
+    if (window.top === window) {
+      setTimeout(() => { try { sendResponse({ fieldsCount: 0 }) } catch {} }, 300)
+      return true
+    }
+    return false
+  }
+  // LinkedIn Easy Apply auto-pilot: fill every step + CV + auto-advance the
+  // Suivant/Vérifier buttons (stops before Envoyer unless auto-submit is on).
+  // Top frame only — the Easy Apply modal always lives there.
+  if (msg.type === 'TRIGGER_LINKEDIN_APPLY') {
+    if (window.top !== window) return false
+    const modalOpen = !!jtActiveModalRoot() && jtLooksLikeEasyApplyModal(jtActiveModalRoot())
+    sendResponse({ started: modalOpen, onLinkedIn: JT_ON_LINKEDIN })
+    if (modalOpen) runLinkedInEasyApply(msg.autoSubmit != null ? { autoSubmit: msg.autoSubmit } : {})
     return true
   }
   // Auto-generate and inject all fields
   if (msg.type === 'AUTO_GENERATE_ALL') {
     cachedJD = null
+    // Only the frame that actually holds the form runs the fill. Empty sub-frames
+    // (reCAPTCHA, ads) would otherwise flash "❌ Aucun champ détecté" and fire a
+    // redundant AI call.
+    let has = 0
+    try { has = detectFormFields({ deep: true }).length } catch {}
+    if (has === 0) return false
     autoGenerateAllFields()  // async, but fire-and-forget is ok here
     sendResponse({ success: true })
     return true
@@ -1881,7 +2389,7 @@ function jtRenderScorePill(state) {
     if (jtApplied) {
       try {
         const r = await browser.runtime.sendMessage({ type: 'GET_APP_URL' })
-        await browser.runtime.sendMessage({ type: 'OPEN_APP_TAB', url: r?.appUrl || 'https://jobtracking-three.vercel.app' })
+        await browser.runtime.sendMessage({ type: 'OPEN_APP_TAB', url: r?.appUrl || 'https://www.smartjobtracker.com' })
       } catch {}
       return
     }
@@ -1989,6 +2497,18 @@ function jtCardText(root, selectors) {
 }
 function jtAbsUrl(href) { try { return new URL(href, location.href).href } catch { return href || '' } }
 
+// WTTJ offer links are always /{lang}/companies/{companySlug}/jobs/{jobSlug}, so
+// the employer slug is right in the URL — the reliable anchor for a page whose
+// card DOM uses hashed styled-component classes with no stable selectors.
+function wttjJobLink(href) {
+  const m = /\/companies\/([^/?#]+)\/jobs\/([^/?#]+)/.exec(href || '')
+  if (!m) return null
+  return { slug: m[1], jobSlug: m[2], url: jtAbsUrl((href || '').split('#')[0]) }
+}
+function wttjDeslug(slug) {
+  return (slug || '').replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim()
+}
+
 // Enumerate the job cards on a listing/search page. Returns up to 25
 // { url, title, company, location, snippet } — card-level fields only (the full
 // JD lives behind a click on these SPAs; the batch score is a triage/ranking).
@@ -2029,28 +2549,65 @@ function enumerateJobCards() {
       })
     })
   } else if (host.includes('linkedin.com')) {
-    // LinkedIn ships several card DOMs (authenticated app, /jobs home redesign,
-    // logged-out guest search) that change often — so we DON'T trust the card for
-    // the title/company (a whole-card link would glue the entire card into the
-    // title). We only need a stable job id here; the real title/company/location/JD
-    // are filled reliably from the guest API by id in jtEnrichLinkedInCards().
-    document.querySelectorAll('[data-occludable-job-id], .job-card-container, div[data-job-id], .job-card-job-posting-card-wrapper, .base-card, .base-search-card, ul.jobs-search__results-list > li').forEach(card => {
-      const a = card.querySelector('a.base-card__full-link, a.job-card-container__link, a.job-card-list__title, a[href*="/jobs/view/"], a[href*="currentJobId="]')
-      const idAttr = card.getAttribute('data-occludable-job-id') || card.getAttribute('data-job-id')
-        || card.querySelector('[data-job-id]')?.getAttribute('data-job-id')
-        || card.closest('[data-occludable-job-id]')?.getAttribute('data-occludable-job-id') || ''
-      const jid = /^\d+$/.test(idAttr) ? idAttr : jtLinkedInJobId(a?.getAttribute('href') || '')
-      if (!jid && !(a && a.getAttribute('href'))) return
-      const url = jid ? `https://www.linkedin.com/jobs/view/${jid}/` : jtAbsUrl(a.getAttribute('href')).split('?')[0]
-      // Specific title selectors ONLY (never a whole-card link). The guest API
-      // overrides these; the placeholder just keeps the card until it does.
-      let title = jtCardText(card, ['.base-search-card__title', '.job-card-list__title', '.artdeco-entity-lockup__title strong', '.artdeco-entity-lockup__title', '[class*="job-card-list__title"]'])
-      if (!title && jid) title = 'Offre LinkedIn'
+    // LinkedIn ships several card DOMs (authenticated app, /jobs home + collections
+    // redesign, the /jobs/search-results "How you fit" redesign, logged-out guest
+    // search) that change often and don't share a stable card class — so we DON'T
+    // key off container classes. The one invariant is the numeric job id, which
+    // surfaces as one of:
+    //   • a data-occludable-job-id / data-job-id / data-job-posting-id on the card,
+    //   • a data-entity-urn like "urn:li:fsd_jobPosting:1234567890",
+    //   • a componentkey="job-card-component-ref-<id>" (the current, fully-obfuscated
+    //     /jobs/search-results "How you fit" React layout: hashed classes, no
+    //     data-*-id, and the cards are role="button" divs with NO <a> — so every
+    //     /jobs/view/ + currentJobId= link on the page resolves to the ONE open job.
+    //     componentkey is the only per-card id left, which is why the older selectors
+    //     found just that open job and reported "1 offre analysée"),
+    //   • a /jobs/view/<id> or two-pane ?currentJobId=<id> link inside it.
+    // We collect every id on the page, dedupe, and let jtEnrichLinkedInCards() fill
+    // the real title/company/JD by id (public guest API, independent of this DOM).
+    const byId = new Map() // jid -> nearest card element (for placeholder text only)
+    const consider = (el, jid) => {
+      if (!/^\d{5,}$/.test(jid || '') || byId.has(jid)) return
+      byId.set(jid, el?.closest('li, .job-card-container, [class*="job-card"], [data-entity-urn], [componentkey*="job-card"]') || el)
+    }
+    const urnJobId = (v) => (/jobPosting:(\d{5,})/.exec(v || '') || [])[1] || ''
+    document.querySelectorAll('[data-occludable-job-id], [data-job-id], [data-job-posting-id]').forEach(el =>
+      consider(el, el.getAttribute('data-occludable-job-id') || el.getAttribute('data-job-id') || el.getAttribute('data-job-posting-id') || ''))
+    document.querySelectorAll('[data-entity-urn*="jobPosting"]').forEach(el =>
+      consider(el, urnJobId(el.getAttribute('data-entity-urn'))))
+    // componentkey="job-card-component-ref-<id>" — the trailing digits are the id.
+    document.querySelectorAll('[componentkey*="job-card"]').forEach(el =>
+      consider(el, (/(\d{5,})/.exec(el.getAttribute('componentkey') || '') || [])[1] || ''))
+    document.querySelectorAll('a[href*="/jobs/view/"], a[href*="currentJobId="]').forEach(a =>
+      consider(a, jtLinkedInJobId(a.getAttribute('href') || '')))
+    byId.forEach((card, jid) => {
+      // Specific title selectors ONLY (never a whole-card link, which would glue the
+      // entire card into the title). The guest API overrides this; the placeholder
+      // just keeps the card visible until enrichment lands.
+      let title = jtCardText(card, ['.base-search-card__title', '.job-card-list__title', '.artdeco-entity-lockup__title strong', '.artdeco-entity-lockup__title', '[class*="job-card-list__title"]', '[class*="job-card"] [class*="title"]'])
+      // Obfuscated layout has no title class/link: recover it from the dismiss
+      // control's aria-label ("Ignorer l'offre d'emploi <titre>" / "Dismiss <title>")
+      // found on the card or a near ancestor. Best-effort; enrichment still wins.
+      if (!title) {
+        // Climb a few levels, but only accept a scope holding EXACTLY ONE dismiss
+        // control — the moment we reach an ancestor spanning several cards (>1), bail
+        // to the placeholder rather than mislabel this card with a neighbour's title.
+        let n = card, dEl = null
+        for (let i = 0; i < 4 && n; i++, n = n.parentElement) {
+          const ds = n.querySelectorAll('[aria-label*="ignorer" i], [aria-label*="dismiss" i]')
+          if (ds.length === 1) { dEl = ds[0]; break }
+          if (ds.length > 1) break
+        }
+        title = (dEl?.getAttribute('aria-label') || '')
+          .replace(/^\s*ignorer\s+l['’]offre\s+d['’]emploi\s+/i, '')
+          .replace(/^\s*dismiss\s+/i, '').replace(/\s+job\s*$/i, '').trim()
+      }
+      if (!title) title = 'Offre LinkedIn'
       push({
-        url,
+        url: `https://www.linkedin.com/jobs/view/${jid}/`,
         title,
-        company: jtCardText(card, ['.base-search-card__subtitle', '.artdeco-entity-lockup__subtitle', '.job-card-container__primary-description']),
-        location: jtCardText(card, ['.job-search-card__location', '.job-card-container__metadata-item']),
+        company: jtCardText(card, ['.base-search-card__subtitle', '.artdeco-entity-lockup__subtitle', '.job-card-container__primary-description', '[class*="job-card"] [class*="subtitle"]']),
+        location: jtCardText(card, ['.job-search-card__location', '.job-card-container__metadata-item', '[class*="job-card"] [class*="metadata"]']),
         snippet: ''
       })
     })
@@ -2068,28 +2625,174 @@ function enumerateJobCards() {
         snippet: jtCardText(card, ['[data-cy="offerDescription"]', '[class*="description"]'])
       })
     })
+  } else if (host.includes('welcometothejungle')) {
+    // WTTJ (jobs-matches feed + search): the cards use hashed styled-component
+    // classes with no stable card/company selector, so the old generic fallback
+    // couldn't find the employer and imported every offer with an empty company
+    // (the reported bug). Every offer IS a link to
+    //   /{lang}/companies/{companySlug}/jobs/{jobSlug}
+    // so we key off that. The company is read from the sibling company link when
+    // the DOM exposes one, else deslugged from the URL slug — so an offer is NEVER
+    // imported without its employer. We DON'T fetch every job page at scan time
+    // (WTTJ throttles bursts with HTTP 202 + empty body): the card's title +
+    // company + short snippet are enough for the triage/ranking. The full JD is
+    // fetched only for the offers the user actually adds, one at a time
+    // (fetchWttjJd, in the panel's add handler).
+    const seenUrl = new Set()
+    document.querySelectorAll('a[href*="/jobs/"]').forEach(a => {
+      const info = wttjJobLink(a.getAttribute('href'))
+      if (!info || seenUrl.has(info.url)) return
+      seenUrl.add(info.url)
+      // Card = smallest ancestor still holding this single offer link (stop the
+      // moment it grows to span a neighbour card).
+      let card = a, n = a.parentElement
+      for (let i = 0; i < 6 && n; i++, n = n.parentElement) {
+        if (n.querySelectorAll('a[href*="/companies/"][href*="/jobs/"]').length > 1) break
+        card = n
+      }
+      const compEl = card.querySelector(`a[href*="/companies/${info.slug}"]:not([href*="/jobs"])`)
+        || [...card.querySelectorAll('a[href*="/companies/"]')].find(x => !/\/jobs\//.test(x.getAttribute('href') || ''))
+      const company = (compEl?.textContent || '').replace(/\s+/g, ' ').trim() || wttjDeslug(info.slug)
+      // Title from a heading (never the whole-card link's textContent, which would
+      // glue the company + tags into the title).
+      let title = jtCardText(a, ['h1', 'h2', 'h3', 'h4', '[class*="title" i]'])
+        || jtCardText(card, ['h1', 'h2', 'h3', 'h4'])
+        || (a.getAttribute('aria-label') || a.getAttribute('title') || '').trim()
+        || (a.textContent || '').split('\n').map(s => s.trim()).filter(Boolean)[0] || ''
+      title = title.replace(/\s+/g, ' ').trim()
+      if (company && title.endsWith(company)) title = title.slice(0, -company.length).replace(/[\s·|–—-]+$/, '').trim()
+      // Short description / tagline shown on the card. Best-effort — gives the
+      // imported job a description and the score a little extra signal. Kept to
+      // description-intent elements and gated on length so card chrome (relative
+      // dates like "il y a 2 mois", tag chips) never lands in the snippet.
+      let snippet = jtCardText(card, ['[data-testid*="description" i]', '[class*="description" i]', '[class*="pitch" i]', '[class*="teaser" i]'])
+      if (snippet.length < 40 || (company && snippet.startsWith(company))) snippet = ''
+      push({
+        url: info.url,
+        title,
+        company,
+        location: jtCardText(card, ['[data-testid*="location" i]', '[class*="location" i]', '[class*="localisation" i]']),
+        snippet
+      })
+    })
+  } else if (host.includes('apec.fr')) {
+    // APEC wraps each whole card in one <a href=".../detail-offre/<id>">. The old
+    // generic fallback climbed past it to the results-list wrapper and copied the
+    // FIRST card's title/company onto every row — so scope extraction to the anchor
+    // itself. Employer is .card-offer__company; salary/contract/location live in the
+    // .details-offer chips ("50 - 60 k€ brut annuel", "CDI Chaumont - 52 <date>").
+    document.querySelectorAll('a[href*="/detail-offre/"]').forEach(a => {
+      const details = [...a.querySelectorAll('.details-offer, [class*="salaire" i]')]
+        .map(e => e.textContent.replace(/\s+/g, ' ').trim()).filter(Boolean).join(' · ')
+      const desc = jtCardText(a, ['.card-offer__description', '[class*="description" i]'])
+      let location = jtCardText(a, ['.card-offer__location', '[class*="location" i]', '[class*="lieu" i]'])
+      // Recover the city from the contract chip ("CDI Chaumont - 52 14/08/2026").
+      const lm = /\b(?:CDI|CDD|Stage|Alternance|Apprentissage|Freelance|Ind[ée]pendant|Int[ée]rim)\b\s+(.+?)\s+\d{2}\/\d{2}\/\d{4}/.exec(details)
+      if (!location && lm) location = lm[1].trim()
+      push({
+        url: jtAbsUrl((a.getAttribute('href') || '').split('#')[0]),
+        title: jtCardText(a, ['h2.card-title', '[class*="card-title" i]', 'h2', 'h3']),
+        company: jtCardText(a, ['.card-offer__company', '[class*="company" i]', '[class*="entreprise" i]']),
+        location,
+        snippet: [details, desc].filter(Boolean).join(' — ')
+      })
+    })
+  } else if (host.includes('francetravail.fr') || host.includes('pole-emploi.fr')) {
+    // France Travail (ex-Pôle emploi): each offer is <li class="result"> with an
+    // <a href="/offres/recherche/detail/<id>">. Title is .media-heading-title; the
+    // employer sits in .subtext as "COMPANY - <dept> - CITY" (the generic fallback's
+    // company selectors miss "subtext", so the employer came back empty).
+    const seenU = new Set()
+    document.querySelectorAll('a[href*="/offres/recherche/detail/"]').forEach(a => {
+      const url = jtAbsUrl((a.getAttribute('href') || '').split('#')[0])
+      if (seenU.has(url)) return
+      seenU.add(url)
+      const card = a.closest('li, article, div[class*="result" i]') || a
+      const sub = jtCardText(card, ['.subtext', '[class*="subtext" i]', '[class*="company" i]', '[class*="entreprise" i]'])
+      let company = sub
+      let location = jtCardText(card, ['.media-location', '[class*="location" i]', '[class*="lieu" i]'])
+      const m = /\s[-–]\s(\d{2,3}[A-Z]?)\s[-–]\s(.+?)\s*$/.exec(sub) // strip trailing " - 75 - PARIS"
+      if (m) { company = sub.slice(0, m.index).trim(); if (!location) location = `${m[1]} - ${m[2]}`.trim() }
+      push({
+        url,
+        title: jtCardText(card, ['.media-heading-title', '[class*="heading-title" i]', 'h2', 'h3']),
+        company,
+        location,
+        snippet: jtCardText(card, ['.description', '[class*="description" i]'])
+      })
+    })
+  } else if (host.includes('cadremploi.fr')) {
+    // cadremploi: real offers are /emploi/detail_offre?offreId=<id> inside a
+    // div.job-posting-card (title .text-h6, employer .company-name). The generic
+    // fallback's loose "emploi" regex also scraped nav/CTA links (Créer CV, Créer
+    // compte…), so target detail links only and dedupe (the title, logo and company
+    // links inside a card all point at the same offer).
+    const seenU = new Set()
+    document.querySelectorAll('a[href*="/detail_offre"]').forEach(a => {
+      const url = jtAbsUrl((a.getAttribute('href') || '').split('#')[0])
+      if (seenU.has(url)) return
+      seenU.add(url)
+      // Scope to the card DIV — NOT [class*="job-posting-card"], which also matches
+      // the card's own <a class="job-posting-card__link"> overlay (an empty anchor),
+      // leaving every field blank. `div[...]` can't match that <a>.
+      const card = a.closest('div[class*="job-posting-card" i]') || a.closest('article, li') || a
+      // Location / contract / salary are chips in a flex-wrap row (no stable class);
+      // join them with spaces so the contract & salary facets can read them, and use
+      // the first chip as the location.
+      const metaRow = card.querySelector('[class*="flex-wrap" i]')
+      const meta = metaRow ? [...metaRow.children].map(e => e.textContent.replace(/\s+/g, ' ').trim()).filter(Boolean).join(' · ') : ''
+      let location = jtCardText(card, ['[class*="location" i]', '[class*="lieu" i]', '[class*="ville" i]'])
+      if (!location && metaRow && metaRow.children[0]) location = metaRow.children[0].textContent.replace(/\s+/g, ' ').trim()
+      const desc = jtCardText(card, ['[class*="snippet" i]', '[class*="description" i]'])
+      push({
+        url,
+        title: jtCardText(card, ['[class*="text-h6" i]', '[class*="job-title" i]', 'h1', 'h2', 'h3', 'h4']),
+        company: jtCardText(card, ['[class*="company-name" i]', '[class*="company" i]', '[class*="recruiter" i]', '[class*="entreprise" i]']),
+        location,
+        snippet: [meta, desc].filter(Boolean).join(' — ')
+      })
+    })
   }
 
   // Generic fallback when no known layout matched: anchors that look like job
   // detail links, deduped by URL, with card text pulled from their container.
-  if (out.length === 0) {
-    const anchors = [...document.querySelectorAll('a[href]')].filter(a =>
-      /\/(jobs?|offres?|emplois?|vacanc|position|posting)s?\b|\/viewjob|\/jobs\/view\//i.test(a.getAttribute('href') || ''))
+  // Skip it on LinkedIn: there the id-centric branch above is authoritative, and
+  // the loose href regex would otherwise scrape the global-nav "Jobs" link
+  // (aria-label "Offres d'emploi, 0 nouvelle notification") as a bogus card.
+  if (out.length === 0 && !host.includes('linkedin.com')) {
+    const JOB_HREF = /\/(jobs?|offres?|emplois?|vacanc|position|posting)s?\b|\/viewjob|\/jobs\/view\//i
+    const anchors = [...document.querySelectorAll('a[href]')].filter(a => JOB_HREF.test(a.getAttribute('href') || ''))
+    const jobAnchors = new Set(anchors)
     anchors.forEach(a => {
-      const card = a.closest('li, article, div[class*="card"], div[class*="result"], div[class*="offer"]') || a
+      // Card scope = the SMALLEST ancestor whose job links all point at THIS offer.
+      // We climb while every job anchor inside the scope shares this offer's URL
+      // path and stop the moment a different offer (a neighbour card) appears — so
+      // the scope never widens to the whole results list, which would copy the
+      // first card's title/company onto every row (the APEC-class bug). When the
+      // whole card is one big <a> this leaves the scope at the anchor itself.
+      let card = a
+      let n = a.parentElement
+      for (let i = 0; i < 5 && n; i++, n = n.parentElement) {
+        // Distinct offer paths inside this scope. Still 1 → all links point at THIS
+        // offer, keep climbing. >1 → a neighbour card has entered, stop here.
+        const distinct = new Set([...n.querySelectorAll('a[href]')]
+          .filter(x => jobAnchors.has(x)).map(x => (x.getAttribute('href') || '').split(/[?#]/)[0]))
+        if (distinct.size > 1) break
+        card = n
+      }
       // Never use the anchor's full textContent as the title — on card layouts the
       // whole card (company + location + snippet) is one <a>, which would glue
       // everything into the title (the reported bug). Prefer a heading / job-title
       // class, then the anchor's aria-label, then only its FIRST text line.
-      let title = jtCardText(card, ['h1', 'h2', 'h3', 'h4', '[class*="job-title"]', '[class*="jobTitle"]', '[class*="job_title"]'])
+      let title = jtCardText(card, ['h1', 'h2', 'h3', 'h4', '[class*="job-title" i]', '[class*="jobtitle" i]', '[class*="job_title" i]'])
       if (!title) title = (a.getAttribute('aria-label') || a.getAttribute('title') || '').replace(/\s+/g, ' ').trim()
       if (!title) title = (a.textContent || '').split('\n').map(s => s.trim()).filter(Boolean)[0] || ''
       push({
         url: jtAbsUrl(a.getAttribute('href')),
         title,
-        company: jtCardText(card, ['[class*="company"]', '[class*="employer"]', '[class*="entreprise"]', '[class*="subtitle"]']),
-        location: jtCardText(card, ['[class*="location"]', '[class*="localisation"]', '[class*="lieu"]', '[class*="region"]']),
-        snippet: jtCardText(card, ['[class*="description"]'])
+        company: jtCardText(card, ['[class*="company" i]', '[class*="employer" i]', '[class*="entreprise" i]', '[class*="recruit" i]', '[class*="subtitle" i]', '[class*="subtext" i]', '[class*="organi" i]']),
+        location: jtCardText(card, ['[class*="location" i]', '[class*="localisation" i]', '[class*="lieu" i]', '[class*="region" i]']),
+        snippet: jtCardText(card, ['[class*="description" i]', '[class*="snippet" i]', '[class*="teaser" i]'])
       })
     })
   }
@@ -2119,6 +2822,34 @@ async function jtEnrichLinkedInCards(cards) {
   }
   await Promise.all(Array.from({ length: Math.min(6, targets.length) }, worker))
   return cards
+}
+
+// ── WTTJ: full JD of a listed offer, from its job page's JobPosting JSON-LD ───
+// WTTJ answers parallel bursts of job-page requests with HTTP 202 + an empty body
+// (throttle), but strictly sequential requests come back 200. So callers MUST
+// await these one at a time; on a 202/empty page we back off once and retry.
+const jtSleep = (ms) => new Promise(r => setTimeout(r, ms))
+async function fetchWttjJd(url) {
+  let path
+  try { const u = new URL(url, location.href); if (u.origin !== location.origin) return ''; path = u.pathname } catch { return '' }
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(path, { credentials: 'include' })
+      const html = res.status === 200 ? await res.text() : ''
+      if (html) {
+        const doc = new DOMParser().parseFromString(html, 'text/html')
+        const ld = [...doc.querySelectorAll('script[type="application/ld+json"]')]
+          .map(s => { try { return JSON.parse(s.textContent) } catch { return null } })
+          .filter(Boolean)
+          .flatMap(d => Array.isArray(d) ? d : (Array.isArray(d['@graph']) ? d['@graph'] : [d]))
+          .find(d => d && d['@type'] === 'JobPosting')
+        const jd = ld ? cleanJobDescription(htmlToText(ld.description)) : ''
+        if (jd) return jd.slice(0, 12000)
+      }
+    } catch {}
+    await jtSleep(2000)
+  }
+  return ''
 }
 
 // ── Review panel (Shadow DOM) ────────────────────────────────────────────────
@@ -2441,6 +3172,15 @@ function jtRenderScanPanel(state) {
         const score = typeof r.score === 'number' ? { score: r.score, reason: r.reason } : null
         return { company: r.company, position: r.title, url: r.url, snippet: description, score }
       }))
+      // WTTJ: the card only carries a short tagline — fetch each offer's page for
+      // the full JD. Sequential on purpose (parallel requests get throttled).
+      const wttj = jobs.filter(j => /welcometothejungle\.com\/[^?#]*\/companies\/[^/]+\/jobs\//.test(j.url || ''))
+      for (let k = 0; k < wttj.length; k++) {
+        addBtn.textContent = `⏳ Description ${k + 1}/${wttj.length}…`
+        const jd = await fetchWttjJd(wttj[k].url)
+        if (jd.length > (wttj[k].snippet || '').length) wttj[k].snippet = jd
+        if (k < wttj.length - 1) await jtSleep(400)
+      }
       const res = await browser.runtime.sendMessage({ type: 'ADD_JOB_BATCH', jobs })
       if (res && res.ok) {
         addBtn.textContent = `✓ ${res.count} ajoutée(s)`
