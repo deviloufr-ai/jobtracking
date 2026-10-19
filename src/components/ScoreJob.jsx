@@ -2,34 +2,7 @@ import { useState } from 'react'
 import { useCVs } from '../hooks/useCVs'
 import { scoreJobMatch } from '../services/scoreJob'
 import { jdSourceId, cvKeyFor, buildScoreSignature } from '../utils/scoreMatch'
-
-// Color band for a 0-100 score — shared by the table badge and the modal.
-export function scoreColorClasses(s) {
-  if (s >= 80) return 'bg-green-100 text-green-700 border-green-300'
-  if (s >= 60) return 'bg-blue-100 text-blue-700 border-blue-300'
-  if (s >= 40) return 'bg-amber-100 text-amber-700 border-amber-300'
-  return 'bg-red-100 text-red-700 border-red-300'
-}
-
-export function getVerdictIcon(verdict) {
-  switch (verdict) {
-    case 'STRONG_MATCH': return '✓'
-    case 'GOOD_MATCH': return '✓'
-    case 'PARTIAL_MATCH': return '◐'
-    case 'WEAK_MATCH': return '✗'
-    default: return '−'
-  }
-}
-
-export function getVerdictColor(verdict) {
-  switch (verdict) {
-    case 'STRONG_MATCH': return 'text-green-700 bg-green-50'
-    case 'GOOD_MATCH': return 'text-blue-700 bg-blue-50'
-    case 'PARTIAL_MATCH': return 'text-amber-700 bg-amber-50'
-    case 'WEAK_MATCH': return 'text-red-700 bg-red-50'
-    default: return 'text-gray-700 bg-gray-50'
-  }
-}
+import { scoreColorClasses, provisionalScoreClasses, scoreTitle, formatScore, getVerdictIcon, getVerdictColor } from '../utils/scoreDisplay'
 
 // Full score breakdown — verdict, summary, strengths and gaps.
 // Reused by the candidature panel; no fixed size so it flows in its container.
@@ -77,6 +50,11 @@ export function ScoreBreakdown({ job, t = (key) => key }) {
         </div>
       )}
 
+      {details.provisional && (
+        <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 border-dashed rounded px-2 py-1">
+          {t('scoreJob.provisional') || 'Provisional score — based on the listing preview, not the full posting'}
+        </p>
+      )}
       {details.cvName && (
         <p className="text-[10px] text-gray-500 break-words">
           {t('scoreJob.scoredWith') || 'Scored with'}: <span className="font-medium">{details.cvName}</span>
@@ -92,9 +70,10 @@ export function ScoreBadge({ job, t = (key) => key }) {
   if (score === null || score === undefined) return null
   return (
     <span
-      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border flex-shrink-0 ${scoreColorClasses(score)}`}
+      title={scoreTitle(job, t)}
+      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border flex-shrink-0 ${scoreColorClasses(score)} ${provisionalScoreClasses(job)}`}
     >
-      {Math.round(score)}
+      {formatScore(job)}
     </span>
   )
 }

@@ -11,7 +11,8 @@ import { STATUSES, getStatus, getStatusLabel, historyEntryKey, resolveInterviewS
 import { classifyInterviewRound, isInterviewEntry, INTERVIEW_ROUND_META, roundLabel } from '../../utils/interviewRounds'
 import { localDateISO, localTimeHM } from '../../utils/localDate'
 import { gmailMessageUrl, openGmailNative } from '../../services/gmail'
-import { scoreColorClasses, ScoreBreakdown } from '../ScoreJob'
+import { ScoreBreakdown } from '../ScoreJob'
+import { scoreColorClasses, provisionalScoreClasses, scoreTitle, formatScore } from '../../utils/scoreDisplay'
 import CVViewer from '../CVViewer'
 import CVGenerationSettings from '../CVGenerationSettings'
 import CommuteInfo from '../CommuteInfo'
@@ -220,9 +221,9 @@ export default function CandidatureDrawer({
                 <p className="text-sm text-gray-400 truncate">{job.position}</p>
               </div>
               {typeof job.score === 'number' && (
-                <button onClick={() => job.scoreDetails && setShowScore(v => !v)} title={job.scoreDetails ? t('drawer.scoreDetails') : ''}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border shrink-0 ${scoreColorClasses(job.score)} ${job.scoreDetails ? 'hover:brightness-95' : 'cursor-default'}`}>
-                  {Math.round(job.score)}
+                <button onClick={() => job.scoreDetails && setShowScore(v => !v)} title={scoreTitle(job, t) || (job.scoreDetails ? t('drawer.scoreDetails') : '')}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border shrink-0 ${scoreColorClasses(job.score)} ${provisionalScoreClasses(job)} ${job.scoreDetails ? 'hover:brightness-95' : 'cursor-default'}`}>
+                  {formatScore(job)}
                 </button>
               )}
               <button onClick={() => onEdit?.(job)} aria-label={t('common.edit')} title={t('common.edit')} className={`${iconBtn} shrink-0`}>✎</button>

@@ -86,9 +86,8 @@ function checkReady() {
 companyEl.addEventListener('input', checkReady)
 positionEl.addEventListener('input', checkReady)
 
-// Score section was removed from the popup — its listener/render code is now
-// dead (updateScoreSection() below is a guarded no-op). The on-page score pill
-// (content.js) is unaffected.
+// Scoring UI lives in the on-page pill (content.js); the popup only shows the
+// cached score for this posting — see refreshCachedScore() below.
 
 // The fetched job data (form fields + description) is wrapped in one collapsible
 // section, expanded by default. Clicking the header collapses/expands it.
@@ -108,7 +107,7 @@ function markJdFound(statusText, previewText) {
   jdStatusEl.className = 'jd-status found'
   jdPreviewEl.textContent = previewText
   jdPreviewEl.style.display = 'block'
-  updateScoreSection()
+  refreshCachedScore()
 }
 
 // Screenshot + Claude Vision analysis
@@ -434,7 +433,7 @@ ${pageText.slice(0, 5000)}`
   // Update global jobDescription if we got a description
   if (description) {
     jobDescription = description
-    updateScoreSection()
+    refreshCachedScore()
   }
 
   return {
@@ -539,8 +538,9 @@ async function init() {
 addBtn.addEventListener('click', async () => {
   const jdKey = `jd-${Date.now()}`
 
-  // Store full JD in extension storage (no char limit) plus the score already
-  // shown in this popup, so the app keeps it instead of re-scoring on import.
+  // Store full JD in extension storage (no char limit) plus the cached score
+  // for this posting (pill cache, see refreshCachedScore), so the app keeps it
+  // instead of re-scoring on import.
   const scoreForApp = (lastScoreResult && typeof lastScoreResult.score === 'number')
     ? { score: lastScoreResult.score, summary: lastScoreResult.summary, strengths: lastScoreResult.strengths, gaps: lastScoreResult.gaps, cvName: lastScoreResult.cvName || '', source: 'page' }
     : null
@@ -847,147 +847,50 @@ function setHTML(el, html) {
   el.replaceChildren(...doc.head.childNodes, ...doc.body.childNodes)
 }
 
-// Render a score result object into the UI (shared by cache hits + fresh calls).
-function renderScore(result) {
-  const scoreBadge = document.getElementById('score-badge')
-  const scoreSummary = document.getElementById('score-summary')
-  const scoreVerdict = document.getElementById('score-verdict')
-  const scoreDetails = document.getElementById('score-details')
-  const scoreStrengths = document.getElementById('score-strengths')
-  const scoreGaps = document.getElementById('score-gaps')
+// ── Match score (read-only, cache only) ───────────────────────────────────────
+// The redesigned popup has no scoring UI — scoring lives in the on-page pill
+// (content.js → background COMPUTE_SCORE). But the pill has usually already
+// scored (and cached) the posting the popup is open on, so the popup reads that
+// cache (never a Claude call: cacheOnly) to show a one-line score and to hand
+// it to the app on "Ajouter" instead of sending score: null.
+let lastScoreResult = null
+let scoreLineEl = null
 
-  document.getElementById('score-loading').style.display = 'none'
-  document.getElementById('score-display').style.display = 'block'
-  scoreDetails.style.display = 'block'
-  scoreSummary.style.color = ''
-
-  const score = Math.round(result.score || 0)
-  scoreBadge.textContent = score
-  scoreBadge.style.backgroundColor = score >= 80 ? '#dcfce7' : score >= 60 ? '#dbeafe' : score >= 40 ? '#fef3c7' : '#fee2e2'
-  scoreBadge.style.color = score >= 80 ? '#15803d' : score >= 60 ? '#0c4a6e' : score >= 40 ? '#92400e' : '#7f1d1d'
-  scoreBadge.style.borderColor = score >= 80 ? '#bbf7d0' : score >= 60 ? '#bfdbfe' : score >= 40 ? '#fde68a' : '#fca5a5'
-
-  scoreSummary.textContent = result.summary || ''
-  scoreVerdict.textContent = (result.verdict || 'PARTIAL_MATCH').replace(/_/g, ' ')
-
-  if (result.strengths?.length > 0) {
-    scoreStrengths.style.display = 'block'
-    setHTML(document.getElementById('strengths-list'), result.strengths.map(s => `
-      <li style="font-size: 11px; color: #15803d; margin-bottom: 4px; display: flex; gap: 6px;">
-        <span style="flex-shrink: 0;">•</span>
-        <span>${escHtml(s)}</span>
-      </li>
-    `).join(''))
-  } else {
-    scoreStrengths.style.display = 'none'
+function renderScoreLine(res) {
+  if (!scoreLineEl) {
+    scoreLineEl = document.createElement('div')
+    scoreLineEl.id = 'jd-score'
+    scoreLineEl.style.cssText = 'display:none;margin-top:6px;font-size:12px;font-weight:600;'
+    jdPreviewEl.insertAdjacentElement('afterend', scoreLineEl)
   }
-
-  if (result.gaps?.length > 0) {
-    scoreGaps.style.display = 'block'
-    setHTML(document.getElementById('gaps-list'), result.gaps.map(g => `
-      <li style="font-size: 11px; color: #b45309; margin-bottom: 4px; display: flex; gap: 6px;">
-        <span style="flex-shrink: 0;">•</span>
-        <span>${escHtml(g)}</span>
-      </li>
-    `).join(''))
-  } else {
-    scoreGaps.style.display = 'none'
-  }
-
-  document.getElementById('score-btn').style.display = 'inline-flex'
+  if (!res || typeof res.score !== 'number') { scoreLineEl.style.display = 'none'; return }
+  const s = res.score
+  const color = s >= 80 ? '#15803d' : s >= 60 ? '#1d4ed8' : s >= 40 ? '#b45309' : '#b91c1c'
+  const label = s >= 80 ? 'Excellent match' : s >= 60 ? 'Bon match' : s >= 40 ? 'Match partiel' : 'Match faible'
+  scoreLineEl.style.color = color
+  scoreLineEl.textContent = `★ Score ${s} · ${label}` + (res.cvName ? ` · ${res.cvName}` : '')
+  scoreLineEl.style.display = 'block'
 }
 
-// The last score rendered in this popup — handed to the app on "Ajouter".
-let lastScoreResult = null
-
-// Scoring lives in the background (COMPUTE_SCORE): one prompt, one parser, one
-// cache (shared with the on-page pill), one JD-length rule and the server-side
-// JD fallback. The popup used to carry its own copy of all of that, which had
-// drifted (no fallback, different threshold, raw-URL cache key).
-async function calculateJobScore(force = false) {
-  const scoreBtn = document.getElementById('score-btn')
-  const scoreLoading = document.getElementById('score-loading')
-  const scoreDisplay = document.getElementById('score-display')
-  const scoreSummary = document.getElementById('score-summary')
-  const scoreDetails = document.getElementById('score-details')
-
-  const showNote = (msg) => {
-    scoreLoading.style.display = 'none'
-    scoreDisplay.style.display = 'block'
-    scoreSummary.textContent = msg
-    scoreSummary.style.color = '#64748b'
-    scoreDetails.style.display = 'none'
-    document.getElementById('score-badge').textContent = '–'
-    scoreBtn.disabled = false
-  }
-
-  scoreBtn.disabled = true
-  scoreLoading.style.display = 'block'
-  scoreDisplay.style.display = 'none'
+async function refreshCachedScore() {
   lastScoreResult = null
-
+  renderScoreLine(null)
+  const company = companyEl.value.trim()
+  const position = positionEl.value.trim()
+  if (!company || !position || !(jobDescription || '').trim()) return
   try {
-    const company = companyEl.value.trim()
-    const position = positionEl.value.trim()
-    if (!company || !position) throw new Error('Complétez le nom de l\'entreprise et du poste')
-
     const res = await browser.runtime.sendMessage({
       type: 'COMPUTE_SCORE',
       company, position,
-      description: jobDescription || '',
+      description: jobDescription,
       url: mainEl.dataset.url || '',
-      force
+      cacheOnly: true
     })
-
-    if (!res) throw new Error('Pas de réponse de l\'extension')
-    if (res.error) throw new Error(res.error)
-    if (res.noCv) { showNote('📄 Synchronisez votre CV depuis JobTrackr pour calculer le score'); return }
-    if (res.insufficient) { showNote('Description du poste trop courte pour un score fiable'); return }
-
-    // The background may have fetched a fuller JD than the page exposed — keep
-    // it so "Ajouter" stores the text the score was computed on.
-    if (res.jobDesc && res.jobDesc.length > (jobDescription || '').length) {
-      jobDescription = res.jobDesc
-      jdStatusEl.textContent = `✓ ${jobDescription.length} caractères`
-      jdStatusEl.className = 'jd-status found'
+    if (res && typeof res.score === 'number') {
+      lastScoreResult = res
+      renderScoreLine(res)
     }
-
-    lastScoreResult = res
-    renderScore(res)
-    scoreBtn.disabled = false
-  } catch (e) {
-    scoreLoading.style.display = 'none'
-    scoreDisplay.style.display = 'block'
-    // 402 = shared-trial quota exhausted (background callClaudeAPI surfaces it
-    // as "Claude API 402: …") — tell the user what to do instead of the raw text.
-    const trialOut = /\b402\b|TRIAL_EXHAUSTED/i.test(e.message || '')
-    scoreSummary.textContent = trialOut
-      ? '❌ Essai gratuit épuisé — ajoutez votre clé dans SmartJobTracker (Paramètres → API), puis synchronisez.'
-      : '❌ ' + e.message
-    scoreSummary.style.color = '#dc2626'
-    scoreDetails.style.display = 'none'
-    // Show recalculate button even on error
-    scoreBtn.style.display = 'inline-flex'
-    scoreBtn.disabled = false
-  }
-}
-
-// Show score section and auto-calculate when job has a description. The
-// background applies the single JD-length rule (and the server fallback), so
-// anything non-empty is handed over; a too-short JD renders a note, not a score.
-// The redesigned popup has no #score-section (scoring lives in the on-page pill),
-// so this is a no-op there and its callers don't need to change.
-function updateScoreSection() {
-  const scoreSection = document.getElementById('score-section')
-  if (!scoreSection) return
-  if (jobDescription && jobDescription.trim().length > 0) {
-    scoreSection.style.display = 'block'
-    // Auto-calculate score if CV is available
-    calculateJobScore()
-  } else {
-    scoreSection.style.display = 'none'
-    document.getElementById('score-display').style.display = 'none'
-  }
+  } catch {}
 }
 
 // ── Context modal for adding personal notes ─────────────────────────────────────

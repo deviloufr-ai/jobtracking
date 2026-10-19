@@ -203,14 +203,6 @@
       "count": 2
     }
   },
-  "src/components/ScoreJob.jsx": {
-    "no-unused-vars": {
-      "count": 1
-    },
-    "react-refresh/only-export-components": {
-      "count": 3
-    }
-  },
   "src/components/Settings.jsx": {
     "no-unused-vars": {
       "count": 1

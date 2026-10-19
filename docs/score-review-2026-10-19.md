@@ -92,6 +92,9 @@ MV3 service worker loads the `browser` shim via `importScripts`.
 | 18 | P3 | `content.js` pill + 1.7.0 Easy Apply pill | Both are fixed overlays; the score pill sits bottom-right at `z-index 2147483000`, the new ⚡ "Candidature auto" pill lives inside the LinkedIn modal. Overlap when the modal is open is plausible and **not verified** here. | Hide the score pill while the Easy Apply modal is open (`jtRemoveScorePill()` on modal detect, re-run `runScoreFlow` on close). |
 | 19 | P3 | Release | `manifest.json` is still **1.7.0** while every score fix above is post-1.7.0; users keep the old popup-side scoring until a signed build ships. | Bump to 1.7.1, build + sign the `.xpi` (Firefox) and the MV3 zip (Chrome), and bump `src/constants/extension.js` so the in-app update modal fires. |
 
+**Status (post-merge pass):** #14–#17 implemented. Open: #18 (pill/Easy Apply overlap,
+unverified), #19 (1.7.1 signed build), P3 items.
+
 ### Still open from the first pass
 
 P3 items (unrounded score in `TrackerHomeE`, `scoredAt` never shown as age, pill polling

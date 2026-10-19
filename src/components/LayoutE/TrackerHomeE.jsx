@@ -13,7 +13,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { STATUSES, getStatus, getStatusLabel } from '../../hooks/useJobs'
 import { noteLines } from '../../utils/noteFormat'
-import { scoreColorClasses } from '../ScoreJob'
+import { scoreColorClasses, provisionalScoreClasses, scoreTitle, formatScore } from '../../utils/scoreDisplay'
 import KanbanBoard from '../KanbanBoard'
 import MobilePipeline from '../MobilePipeline'
 import PlatformView from '../PlatformView'
@@ -586,8 +586,8 @@ export default function TrackerHomeE({
                         className="flex-1 min-w-0 overflow-hidden flex items-center gap-3 text-left"
                       >
                         {typeof job.score === 'number' ? (
-                          <span className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold border shrink-0 ${scoreColorClasses(job.score)}`}>
-                            {job.score}
+                          <span title={scoreTitle(job, t)} className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold border shrink-0 ${scoreColorClasses(job.score)} ${provisionalScoreClasses(job)}`}>
+                            {formatScore(job)}
                           </span>
                         ) : (
                           <span className="w-9 shrink-0" />

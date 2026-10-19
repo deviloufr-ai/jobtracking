@@ -143,6 +143,7 @@ export const en = {
     calculating: 'Calculating...',
     uploadCVFirst: 'Upload a CV to score this job.',
     noJD: 'Add a job description first.',
+    provisional: 'Provisional score — based on the listing preview, not the full posting',
     noCVSelected: 'No CV selected',
     incompleteJob: 'Job details incomplete',
   },

@@ -693,34 +693,40 @@ function scoreCacheId(url, company, position, jobDesc) {
 }
 
 // Score how well the synced CV matches a job. Returns the parsed result (cached
-// per posting+CV), or a status object: { noCv } / { insufficient } when it can't run.
-async function computeMatchScore({ company, position, description, url, force }) {
-  const { cvText, cvName } = await browser.storage.local.get(['cvText', 'cvName'])
-  if (!cvText) return { noCv: true }
+// per posting+candidate), or a status object: { noCv } / { insufficient } when it
+// can't run. `cacheOnly` (popup) answers from the cache or { miss: true } — never
+// a Claude call. Without a CV the synced profile stands in (same candidate block
+// the listing scan uses), so a profile-only user gets a pill, not `noCv`.
+async function computeMatchScore({ company, position, description, url, force, cacheOnly }) {
+  const { cvText, cvName, profile } = await browser.storage.local.get(['cvText', 'cvName', 'profile'])
+  if (!cvText && isProfileEmpty(profile)) return { noCv: true }
+  const candidate = cvText ? `CANDIDATE CV:\n${cvText}` : scanCandidateBlock(profile, null)
+  const candidateName = cvText ? (cvName || '') : 'Profil'
 
   let jobDesc = (description || '').trim()
-  // Thin DOM description → try the server fetch the web app uses.
-  if (jobDesc.length < SCORE_FALLBACK_BELOW && url) {
+  // Thin DOM description → try the server fetch the web app uses (skipped on a
+  // cache-only lookup: the popup must stay free of network work).
+  if (jobDesc.length < SCORE_FALLBACK_BELOW && url && !cacheOnly) {
     const server = await fetchJdFromServer(url)
     if (server.length > jobDesc.length) jobDesc = server
   }
-  if (!company || !position || jobDesc.length < SCORE_MIN_JD) return { insufficient: true, jobDesc }
+  if (!company || !position || jobDesc.length < SCORE_MIN_JD) return cacheOnly ? { miss: true } : { insufficient: true, jobDesc }
 
   // The language is part of the key so a UI-language switch re-scores once
   // instead of serving a cached summary in the previous language.
   const lang = await scoreOutputLanguage()
-  const cacheKey = 'score:' + djb2([scoreCacheId(url, company, position, jobDesc), djb2(cvText), lang.code].join('|'))
+  const cacheKey = 'score:' + djb2([scoreCacheId(url, company, position, jobDesc), djb2(candidate), lang.code].join('|'))
 
   if (!force) {
     const cached = (await browser.storage.local.get(cacheKey))[cacheKey]
     if (cached && clampScore(cached.score) !== null) return { ...cached, jobDesc }
   }
+  if (cacheOnly) return { miss: true }
 
   // Twin of buildPrompt in the app's src/services/scoreJob.js — keep in sync.
   const prompt = `You are an expert recruiter and CV screener. Analyze how well the candidate's CV matches the job description.
 
-CANDIDATE CV:
-${cvText}
+${candidate}
 
 JOB DESCRIPTION (${company} - ${position}):
 ${jobDesc}
@@ -748,7 +754,7 @@ Respond with ONLY a JSON object (no markdown, no preamble) with this exact struc
   const end = text.lastIndexOf('}')
   const result = normalizeScoreResult(JSON.parse(start !== -1 ? text.slice(start, end + 1) : '{}'))
 
-  const record = { ...result, cvName: cvName || '', _ts: Date.now() }
+  const record = { ...result, cvName: candidateName, _ts: Date.now() }
   browser.storage.local.set({ [cacheKey]: record })
   pruneScoreCache()
   // jobDesc is handed back so the popup can show/store the JD the score used

@@ -143,6 +143,7 @@ export const fr = {
     calculating: 'Calcul en cours...',
     uploadCVFirst: 'Importez un CV pour évaluer cette offre.',
     noJD: 'Ajoutez d\'abord une description de poste.',
+    provisional: 'Score provisoire — basé sur l\'aperçu de l\'annonce, pas sur l\'offre complète',
     noCVSelected: 'Aucun CV sélectionné',
     incompleteJob: 'Informations incomplètes',
   },

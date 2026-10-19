@@ -13,7 +13,7 @@ import {
   INTERVIEW_ROUND_META, INTERVIEW_ROUND_ORDER, INTERVIEW_TRAIN_LEVELS,
   jobRoundKeys, jobInterviewRounds, roundLabel, roundPrompt,
 } from '../../utils/interviewRounds'
-import { scoreColorClasses } from '../ScoreJob'
+import { scoreColorClasses } from '../../utils/scoreDisplay'
 import UpcomingMeetings from '../UpcomingMeetings'
 import MockInterviewChatbot from '../MockInterviewChatbot'
 import InterviewRecorder from '../InterviewRecorder'

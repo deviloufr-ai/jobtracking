@@ -2219,8 +2219,19 @@ function jtLooksLikeJobPage() {
   } catch { return false }
 }
 
+// A synced CV, or a usable profile (the background scores from the profile when
+// there is no CV — same fallback the listing scan already had; mirrors
+// isProfileEmpty in background.js).
 async function jtCvPresent() {
-  try { return !!(await browser.storage.local.get('cvText')).cvText } catch { return false }
+  try {
+    const { cvText, profile } = await browser.storage.local.get(['cvText', 'profile'])
+    if (cvText) return true
+    const p = profile || {}
+    const hasText = ['title', 'experience', 'education', 'ai_experience', 'recent_project', 'motivation']
+      .some(k => (p[k] || '').toString().trim().length > 0)
+    const hasSkills = Array.isArray(p.skills) ? p.skills.length > 0 : !!(p.skills || '').toString().trim()
+    return hasText || hasSkills
+  } catch { return false }
 }
 async function jtScoreEnabled() {
   try { return (await browser.storage.local.get('scorePillEnabled')).scorePillEnabled !== false } catch { return true }

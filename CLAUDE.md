@@ -159,6 +159,13 @@ twin of `normalizeScoreResult` — keep them in sync). Rules, after the 2026-10-
   and 2500 output tokens. A failed pill score (402 trial exhausted / 429 / network) renders a
   grey pill with the reason (402 → "add your key", click opens the app) instead of vanishing;
   `noCv` / `insufficient` stay silent.
+- **No CV → the synced profile stands in** (`scanCandidateBlock(profile, null)`, `cvName:
+  'Profil'`) for both the pill and the listing scan; `noCv` only when both are missing. The
+  redesigned popup has no scoring UI: it reads the pill's cache (`COMPUTE_SCORE` with
+  `cacheOnly: true`, never a Claude call) to show a one-line score and to hand it to the app on
+  "Ajouter". Provisional (listing-scan) scores render with a dashed border and a `~` prefix
+  (`src/utils/scoreDisplay.js` — presentation helpers live there, not in `ScoreJob.jsx`, which
+  must export only components for react-refresh).
 
 ### Gmail ingestion
 
