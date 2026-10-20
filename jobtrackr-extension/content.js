@@ -2288,8 +2288,14 @@ function jtScoreError(msg) {
 async function jtOpenApp() {
   try {
     const r = await browser.runtime.sendMessage({ type: 'GET_APP_URL' })
-    await browser.runtime.sendMessage({ type: 'OPEN_APP_TAB', url: r?.appUrl || 'https://jobtracking-three.vercel.app' })
+    await browser.runtime.sendMessage({ type: 'OPEN_APP_TAB', url: r?.appUrl || 'https://www.smartjobtracker.com' })
   } catch {}
+}
+
+// Page-console trace of why the pill is (not) shown — `[SJT score]` lines in the
+// job page's devtools console. Every silent exit of runScoreFlow logs one.
+function jtLog(msg, data) {
+  try { data === undefined ? console.info('[SJT score]', msg) : console.info('[SJT score]', msg, data) } catch {}
 }
 
 function jtRenderScorePill(state) {
@@ -2395,7 +2401,16 @@ function jtRenderScorePill(state) {
     if (err) {
       // Trial exhausted → open SmartJobTracker (where the key is entered, same
       // destination as the "＋ JobTrackr" action); any other failure → retry.
-      pill.addEventListener('click', () => { if (err.kind === 'trial') jtOpenApp(); else runScoreFlow(true) })
+      pill.addEventListener('click', async () => {
+        if (err.kind === 'trial') { jtOpenApp(); return }
+        if (err.kind === 'nocv') {
+          // Pull CV + profile from an open (or temporary) app tab, then re-score.
+          jtRenderScorePill({ loading: true })
+          try { await browser.runtime.sendMessage({ type: 'SYNC_FROM_APP' }) } catch {}
+          jtLastScoreUrl = null
+        }
+        runScoreFlow(true)
+      })
     } else {
       pill.addEventListener('click', () => { jtScoreOpen = !jtScoreOpen; jtRenderScorePill({ result: jtScoreData }) })
     }
@@ -2439,14 +2454,24 @@ function jtRenderScorePill(state) {
 async function runScoreFlow(force = false) {
   if (window.top !== window) return
   if (jtScoreBusy) return
-  if (!(await jtScoreEnabled())) { jtRemoveScorePill(); return }
-  if (!jtLooksLikeJobPage()) return
-  if (!(await jtCvPresent())) { jtRemoveScorePill(); return }
+  if (!(await jtScoreEnabled())) { jtLog('pill disabled in settings'); jtRemoveScorePill(); return }
+  if (!jtLooksLikeJobPage()) { jtLog('not a job page (host not listed, no JobPosting JSON-LD)'); return }
 
   const info = await enrichJobInfo()
-  if (!info.company || !info.position) return
+  if (!info.company || !info.position) { jtLog('company/position not detected', { company: info.company, position: info.position }); return }
   const url = info.url || window.location.href
   if (!force && url === jtLastScoreUrl && jtScoreData) return
+
+  // No CV and no usable profile in the add-on: say so (a grey pill whose click
+  // syncs from the app) instead of silently showing nothing — the most common
+  // "the pill never appears" cause is a CV that was never synced.
+  if (!(await jtCvPresent())) {
+    jtLog('no CV / profile synced into the add-on')
+    jtLastScoreUrl = url
+    jtScoreData = null
+    jtRenderScorePill({ error: { kind: 'nocv', label: 'CV non synchronisé', sub: 'Cliquer pour synchroniser depuis SmartJobTracker' } })
+    return
+  }
 
   jtLastScoreUrl = url
   jtScoreBusy = true
@@ -2460,8 +2485,15 @@ async function runScoreFlow(force = false) {
       company: info.company, position: info.position, description: info.description, url, force
     }), JT_SCORE_TIMEOUT, { error: 'timeout: no answer from the extension background' })
     await appliedP
-    // No CV / JD too thin: nothing to score, stay silent (as before).
-    if (res && (res.noCv || res.insufficient)) {
+    if (res && res.noCv) {
+      jtLog('background has no CV / profile to score against')
+      jtScoreData = null
+      jtRenderScorePill({ error: { kind: 'nocv', label: 'CV non synchronisé', sub: 'Cliquer pour synchroniser depuis SmartJobTracker' } })
+      return
+    }
+    // JD too thin (< 80 chars even after the server fetch): nothing to score, stay silent.
+    if (res && res.insufficient) {
+      jtLog('job description too short to score', { chars: (res.jobDesc || '').length, company: info.company, position: info.position })
       jtScoreData = null
       jtRemoveScorePill()
       return
@@ -2469,10 +2501,12 @@ async function runScoreFlow(force = false) {
     // A real failure (402 trial exhausted, 429, timeout, network, bad answer):
     // keep a grey pill with the reason instead of vanishing.
     if (!res || res.error || typeof res.score !== 'number') {
+      jtLog('score failed', res && res.error ? res.error : res)
       jtScoreData = null
       jtRenderScorePill({ error: jtScoreError(res ? (res.error || 'Réponse IA sans score exploitable') : 'Extension indisponible') })
       return
     }
+    jtLog('scored', { score: res.score, cached: !!res._ts, cvName: res.cvName })
     jtScoreData = { ...res, _job: info, _url: url }
     jtRenderScorePill({ result: res })
   } catch (e) {
