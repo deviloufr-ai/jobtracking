@@ -1119,10 +1119,17 @@ async function readJobsFromOpenAppTab() {
   const { appUrl } = await browser.storage.local.get('appUrl')
   const base = appUrl || DEFAULT_APP_URL
   const tabs = await browser.tabs.query({})
-  const appTab = tabs.find(t => t.url && t.url.startsWith(base))
+  // Only a fully loaded, non-discarded app tab: executeScript into a sleeping or
+  // still-loading tab blocks until it wakes/loads — which can be never — and
+  // that hang pinned the score pill on "Analyse en cours" (CHECK_APPLIED never
+  // answered). Time-boxed as a second guard.
+  const appTab = tabs.find(t => t.url && t.url.startsWith(base) && !t.discarded && t.status === 'complete')
   if (!appTab) return null
   try {
-    const res = await injectFile(appTab.id, 'read-jobs.js')
+    const res = await Promise.race([
+      injectFile(appTab.id, 'read-jobs.js'),
+      new Promise(resolve => setTimeout(() => resolve(null), 3000))
+    ])
     return res && res.ok && Array.isArray(res.jobs) ? res.jobs : null
   } catch {
     return null

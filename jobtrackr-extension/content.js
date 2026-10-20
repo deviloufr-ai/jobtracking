@@ -2195,15 +2195,26 @@ let jtScoreOpen = false, jtScoreBusy = false
 let jtLastScoreUrl = null, jtScoreData = null
 let jtApplied = null  // { status, date, company, position } when the current page is already in JobTrackr
 
+// Resolve `promise` or, after `ms`, `fallback` — a background message that never
+// gets its sendResponse (e.g. an executeScript into a sleeping app tab) must not
+// pin the pill on "Analyse en cours" forever.
+function jtWithTimeout(promise, ms, fallback) {
+  let timer
+  const limit = new Promise(resolve => { timer = setTimeout(() => resolve(fallback), ms) })
+  return Promise.race([promise, limit]).finally(() => clearTimeout(timer))
+}
+const JT_APPLIED_TIMEOUT = 5000   // the "already applied" check must never delay the score
+const JT_SCORE_TIMEOUT = 45000    // Claude (12 s) + server JD fetch (9 s) + margin
+
 // Ask the background whether this posting is already tracked in JobTrackr.
 async function jtCheckApplied(info) {
   try {
-    const res = await browser.runtime.sendMessage({
+    const res = await jtWithTimeout(browser.runtime.sendMessage({
       type: 'CHECK_APPLIED',
       url: window.location.href,
       company: (info && info.company) || '',
       position: (info && info.position) || ''
-    })
+    }), JT_APPLIED_TIMEOUT, null)
     jtApplied = (res && res.applied) ? res : null
   } catch {
     jtApplied = null
@@ -2444,10 +2455,10 @@ async function runScoreFlow(force = false) {
   try {
     // Check "already applied" in parallel with scoring so it never adds latency.
     const appliedP = jtCheckApplied(info)
-    const res = await browser.runtime.sendMessage({
+    const res = await jtWithTimeout(browser.runtime.sendMessage({
       type: 'COMPUTE_SCORE',
       company: info.company, position: info.position, description: info.description, url, force
-    })
+    }), JT_SCORE_TIMEOUT, { error: 'timeout: no answer from the extension background' })
     await appliedP
     // No CV / JD too thin: nothing to score, stay silent (as before).
     if (res && (res.noCv || res.insufficient)) {
