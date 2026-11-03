@@ -101,6 +101,16 @@ describe('isRejectionEmail — an explicit "no" survives a polite ATS wrapper', 
     })).toBe(true)
   })
 
+  it('matches the Teamtailor "poursuivre avec d’autres profils" post-interview letter', () => {
+    expect(isRejectionEmail({
+      from: 'tamina.sfetcu@botify.teamtailor-mail.com',
+      subject: 'Merci pour votre intérêt pour Botify !',
+      body: 'Merci encore pour le temps que vous m’avez accordé. Après une étude attentive des '
+        + 'différentes candidatures, nous avons malheureusement choisi de poursuivre avec d’autres '
+        + 'profils qui correspondent davantage à notre recherche actuelle.',
+    })).toBe(true)
+  })
+
   it('does NOT match a genuine application acknowledgement', () => {
     expect(isRejectionEmail({
       from: 'no-reply@greenhouse.io',

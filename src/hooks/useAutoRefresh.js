@@ -43,6 +43,10 @@ function autoCompletePastMeetings(history) {
 
     // If meeting happened 2+ hours ago and entry isn't already done
     if (now > twoHoursAfter && entry.status !== 'done') {
+      // Past events are never re-fetched (isPastMeeting filter) and dedup keys already
+      // strip "(à venir)" (useJobs), so dropping the stale label can't re-import it.
+      if (entry.note) entry.note = entry.note.replace(/\s*\(à venir\)\s*$/i, '')
+      entry.isUpcoming = false
       // Find the previous non-calendar entry to mark as done
       for (let j = i - 1; j >= 0; j--) {
         const prevEntry = updated[j]

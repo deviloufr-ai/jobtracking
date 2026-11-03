@@ -124,7 +124,9 @@ export function detectEventType(title) {
       // First-round / recruiter-call phrasings that don't use the word "entretien"
       t.includes('echange') || t.includes('échange') || t.includes('screening') ||
       t.includes('screen') || t.includes('discovery') || t.includes('debrief') ||
-      t.includes('phone screen')) return 'interview'
+      t.includes('phone screen') ||
+      // Round-numbered invites: "R1.Equancy [Product Builder]", "Round 2 - Acme", "Tour 1"
+      /\b(r|round|tour)\s?\d\b/.test(t)) return 'interview'
   if (t.includes('test') || t.includes('technique') || t.includes('technical') ||
       t.includes('case study') || t.includes('assessment')) return 'test'
   if (t.includes('onboarding') || t.includes('welcome')) return 'offer'

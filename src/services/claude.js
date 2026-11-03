@@ -156,10 +156,15 @@ const REJECTION_PHRASES = [
   'candidature non retenue', 'choisi un autre candidat', 'retenu un autre candidat',
   'choisi un autre profil', 'un autre candidat a été retenu', 'poste a été pourvu',
   'poste est pourvu', 'offre pourvue', 'ne correspond pas au profil recherché',
+  // FR — the "poursuivre avec d'autres profils" family (Teamtailor/Botify-style "no")
+  "poursuivre avec d'autres", "continuer avec d'autres", "avancer avec d'autres",
+  "choisi d'autres profils", "retenu d'autres profils", "d'autres profils qui correspond",
+  "d'autres candidats dont", "d'autres candidatures qui correspond",
 ]
 export function isRejectionEmail(e) {
   if (!e) return false
-  const hay = `${e.subject || ''} ${e.snippet || ''} ${e.body || ''}`.toLowerCase()
+  // Normalize typographic apostrophes (’) so "d’autres" matches "d'autres".
+  const hay = `${e.subject || ''} ${e.snippet || ''} ${e.body || ''}`.toLowerCase().replace(/[’`]/g, "'")
   return REJECTION_PHRASES.some(p => hay.includes(p))
 }
 function isAtsConfirmationEmail(e) {
@@ -247,8 +252,9 @@ function applyDeterministicCorrections(j, e) {
   // ③ Explicit rejection language → rejected (rejected_ats when it came through a
   // recognized ATS), overriding a mis-read acknowledgement. ATS "no"s wrap the refusal
   // in polite thanks + a candidate-experience survey, which Haiku files as "reviewing".
-  // Only override a not-yet-decided status so a real interview/offer is never downgraded.
-  if (isRejectionEmail(e) && ['reviewing', 'todo', 'waiting', 'sent'].includes(j.status)) {
+  // Post-interview "no"s ("merci pour le temps accordé… poursuivre avec d'autres profils")
+  // get misread as interview/done, so those are overridden too; an offer never is.
+  if (isRejectionEmail(e) && ['reviewing', 'todo', 'waiting', 'sent', 'interview', 'done'].includes(j.status)) {
     const from = (e.from || '').toLowerCase()
     j.status = ATS_SENDER_DOMAINS.some(d => from.includes(d)) ? 'rejected_ats' : 'rejected'
     j.notes = 'Candidature non retenue — un autre candidat a été sélectionné'
