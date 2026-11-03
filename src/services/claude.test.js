@@ -111,6 +111,18 @@ describe('isRejectionEmail — an explicit "no" survives a polite ATS wrapper', 
     })).toBe(true)
   })
 
+  it('matches a German Absage but not a German Eingangsbestätigung', () => {
+    expect(isRejectionEmail({
+      subject: 'Ihre Bewerbung',
+      body: 'Leider müssen wir Ihnen mitteilen, dass wir uns für einen anderen Kandidaten entschieden haben.',
+    })).toBe(true)
+    expect(isRejectionEmail({
+      from: 'no_reply@gulp.de',
+      subject: 'Ihre Bewerbung auf die Position "Senior Project Manager"',
+      body: 'vielen Dank für Ihre Bewerbung. Wir werden diese prüfen und uns baldmöglichst bei Ihnen zurückmelden.',
+    })).toBe(false)
+  })
+
   it('does NOT match a genuine application acknowledgement', () => {
     expect(isRejectionEmail({
       from: 'no-reply@greenhouse.io',

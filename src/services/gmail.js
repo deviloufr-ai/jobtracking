@@ -887,6 +887,8 @@ async function _fetchJobEmails(token, maxResults, months, dateRange = null, last
     { q: `in:inbox (job AND (offer OR application OR candidature)) ${dateFilter}`, pages: 1 },
     // ② Personal inbox keywords (FR)
     { q: `in:inbox category:personal (candidature OR postulation OR entretien OR recrutement OR "votre candidature" OR "nous avons bien reçu" OR "suite à votre candidature" OR "nous avons le regret" OR "sans suite" OR "n'avons pas retenu") ${dateFilter}`, pages: 1 },
+    // ②' German candidature mail (GULP/Randstad "Ihre Bewerbung auf die Position…", Absagen, Einladungen)
+    { q: `in:all (bewerbung OR "ihre bewerbung" OR vorstellungsgespräch OR absage) ${baseExclude} ${dateFilter}`, pages: 1 },
     // ②b Recruiter acknowledgement emails (FR)
     { q: `in:all "nous vous remercions" ${dateFilter}`, pages: 1 },
     // ②c Recruiter interview invitation emails (FR) — both "faire plus ample connaissance" patterns
@@ -1115,6 +1117,9 @@ async function fetchEmailDetail(id, token) {
       'we have received your application', 'we received your application',
       'your application has been received', 'thank you for applying', 'thanks for applying',
       'application received',
+      // DE
+      'vielen dank für ihre bewerbung', 'danke für ihre bewerbung', 'ihre bewerbung ist eingegangen',
+      'wir haben ihre bewerbung erhalten', 'eingang ihrer bewerbung', 'ihre bewerbung auf die position',
     ]
     const hasCandidatureConfirmation = CANDIDATURE_CONFIRMATION_SIGNALS.some(s =>
       subjectRaw.includes(s) || snippetRaw.includes(s) || bodyRaw.includes(s))
@@ -1246,6 +1251,8 @@ async function fetchEmailDetail(id, token) {
         // uses "we regret"/"not selected" (e.g. "Follow Up from Dashlane")
         'good match','not a good fit','keep your information on file','future endeavors',
         'future open roles','wish you the best in your',
+        // DE
+        'bewerbung','vorstellungsgespräch','absage','stellenangebot',
       ]
       // Scan the body too, not just subject+snippet: soft rejections carry a
       // generic subject ("Follow Up from X") and bury the signal mid-body, past

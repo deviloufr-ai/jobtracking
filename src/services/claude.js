@@ -99,6 +99,8 @@ const CONFIRMATION_PHRASES = [
   'application received', 'merci de votre candidature',
   'nous avons bien reçu votre candidature', 'bien reçu votre candidature',
   'candidature bien reçue', 'candidature enregistrée', 'candidature a bien été',
+  'vielen dank für ihre bewerbung', 'danke für ihre bewerbung', 'ihre bewerbung ist eingegangen',
+  'wir haben ihre bewerbung erhalten', 'eingang ihrer bewerbung',
 ]
 // A recognized ATS domain (teamtailor-mail.com, greenhouse.io…) sends BOTH real
 // application confirmations AND job-alert / "new opening that matches your profile"
@@ -160,6 +162,10 @@ const REJECTION_PHRASES = [
   "poursuivre avec d'autres", "continuer avec d'autres", "avancer avec d'autres",
   "choisi d'autres profils", "retenu d'autres profils", "d'autres profils qui correspond",
   "d'autres candidats dont", "d'autres candidatures qui correspond",
+  // DE
+  'leider müssen wir ihnen mitteilen', 'leider mitteilen', 'nicht berücksichtigen',
+  'nicht weiter berücksichtigen', 'für einen anderen kandidaten', 'für eine andere kandidatin',
+  'anderen bewerber entschieden', 'andere bewerberin entschieden', 'absage auf ihre bewerbung',
 ]
 export function isRejectionEmail(e) {
   if (!e) return false
