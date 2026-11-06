@@ -823,13 +823,13 @@ export default function App() {
   // (hasInterviewProcess); the badge counts only what is still live.
   const interviewCount = useMemo(() => jobs.filter(isActiveInterview).length, [jobs])
 
-  // The connected account shown in the nav rail footer: prefer the Gmail import
-  // account, otherwise fall back to the signed-in Supabase account so the row
-  // reflects who is logged in instead of a generic "Settings" placeholder.
+  // The account shown in the nav rail footer + mobile account sheet: the signed-in
+  // Supabase account (the one data is stored under), NOT the Gmail import account —
+  // showing gmailUser let a phone signed in as one user display another, so its
+  // candidatures silently landed in an account the browser never saw.
   const railAccount = useMemo(() => {
-    if (gmailUser) return gmailUser
     const u = session && session.user
-    if (!u) return null
+    if (!u) return gmailUser || null
     const m = u.user_metadata || {}
     return {
       email: u.email,
@@ -1275,15 +1275,15 @@ export default function App() {
       {/* ── Mobile: Account bottom sheet (avatar) ──────────────────────────── */}
       <BottomSheet open={accountSheet} onClose={() => setAccountSheet(false)} title={t('nav.account')}>
         <div className="space-y-1">
-          {gmailUser && (
+          {railAccount && (
             <div className="flex items-center gap-3 p-2 mb-2">
-              {gmailUser.picture
-                ? <img src={gmailUser.picture} alt="" className="w-11 h-11 rounded-full" />
-                : <div className="w-11 h-11 rounded-full bg-indigo-500 text-white text-base flex items-center justify-center font-bold">{gmailUser.email?.[0]?.toUpperCase()}</div>
+              {railAccount.picture
+                ? <img src={railAccount.picture} alt="" className="w-11 h-11 rounded-full" />
+                : <div className="w-11 h-11 rounded-full bg-indigo-500 text-white text-base flex items-center justify-center font-bold">{railAccount.email?.[0]?.toUpperCase()}</div>
               }
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold text-gray-900 truncate">{gmailUser.name || gmailUser.email}</div>
-                <div className="text-xs text-gray-400 truncate">{gmailUser.email}</div>
+                <div className="text-sm font-bold text-gray-900 truncate">{railAccount.name || railAccount.email}</div>
+                <div className="text-xs text-gray-400 truncate">{railAccount.email}</div>
               </div>
             </div>
           )}
@@ -1547,11 +1547,11 @@ export default function App() {
 
             {/* Account avatar — mobile only (tappable, opens account sheet). Shows
                 the connected Google profile photo with a small Google glyph. */}
-            <button data-tour="gmail" onClick={() => setAccountSheet(true)} className="sm:hidden relative flex items-center justify-center" aria-label={gmailUser?.email || t('mobileMenu.connectGmail')}>
-              {gmailUser?.picture
-                ? <img src={gmailUser.picture} alt="" referrerPolicy="no-referrer" className="w-8 h-8 rounded-full border-2 border-white shadow-sm" />
-                : gmailUser
-                  ? <div className="w-8 h-8 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center font-bold">{gmailUser.email?.[0]?.toUpperCase()}</div>
+            <button data-tour="gmail" onClick={() => setAccountSheet(true)} className="sm:hidden relative flex items-center justify-center" aria-label={railAccount?.email || t('mobileMenu.connectGmail')}>
+              {railAccount?.picture
+                ? <img src={railAccount.picture} alt="" referrerPolicy="no-referrer" className="w-8 h-8 rounded-full border-2 border-white shadow-sm" />
+                : railAccount
+                  ? <div className="w-8 h-8 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center font-bold">{railAccount.email?.[0]?.toUpperCase()}</div>
                   : <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                     </div>
